@@ -1,0 +1,54 @@
+<div class="page-wrap">
+  <app-page-header title="Notices & Announcements" subtitle="Publish and manage school-wide notices." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Notices'}]">
+    <button class="btn btn-primary" (click)="modalOpen.set(true)"><app-icon name="plus" [size]="16" /> Create Notice</button>
+  </app-page-header>
+
+  <div class="card card-pad">
+    <div class="search-wrap" style="margin-bottom: var(--space-5); max-width:340px">
+      <app-icon name="search" [size]="16" class="search-icon" />
+      <input class="input search-input" placeholder="Search notices…" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+    </div>
+
+    <div class="list-col">
+      @for (n of filtered(); track n.id) {
+        <div class="notice-item">
+          <div class="notice-item-icon"><app-icon name="megaphone" [size]="18" /></div>
+          <div style="flex:1; min-width:0">
+            <div class="flex justify-between items-start gap-3">
+              <div class="font-semibold">{{ n.title }}</div>
+              <app-status-badge [status]="n.status" />
+            </div>
+            <p class="text-secondary text-sm" style="margin-top:4px">{{ n.description }}</p>
+            <div class="flex gap-4 text-xs text-muted" style="margin-top: var(--space-3)">
+              <span><app-icon name="users" [size]="12" /> {{ n.audience }}</span>
+              <span><app-icon name="calendar" [size]="12" /> Published {{ n.publishDate }}</span>
+              <span><app-icon name="clock" [size]="12" /> Expires {{ n.expiryDate }}</span>
+            </div>
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-icon btn-sm"><app-icon name="edit" [size]="15" /></button>
+            <button class="btn btn-ghost btn-icon btn-sm"><app-icon name="trash" [size]="15" /></button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<app-modal [open]="modalOpen()" title="Create Notice" size="lg" (close)="modalOpen.set(false)">
+  <div class="form-grid">
+    <div style="grid-column:span 2"><label class="field-label">Title</label><input class="input" /></div>
+    <div style="grid-column:span 2"><label class="field-label">Description</label><textarea class="textarea" rows="4"></textarea></div>
+    <div>
+      <label class="field-label">Audience</label>
+      <select class="select"><option>All</option><option>Students</option><option>Parents</option><option>Teachers</option><option>Staff</option><option>Specific Class</option></select>
+    </div>
+    <div><label class="field-label">Attachment</label><input class="input" type="file" /></div>
+    <div><label class="field-label">Publish Date</label><input class="input" type="date" /></div>
+    <div><label class="field-label">Expiry Date</label><input class="input" type="date" /></div>
+  </div>
+  <div footer>
+    <button class="btn btn-outline" (click)="modalOpen.set(false)">Save as Draft</button>
+    <button class="btn btn-primary" (click)="modalOpen.set(false)">Publish Notice</button>
+  </div>
+</app-modal>

@@ -1,0 +1,112 @@
+<div class="page-wrap">
+  <app-page-header title="Fees & Finance" subtitle="Track fee collection, dues and payment history." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Fees'}]">
+    <button class="btn btn-outline"><app-icon name="download" [size]="16" /> Export</button>
+    <button class="btn btn-primary" (click)="modalOpen.set(true)"><app-icon name="wallet" [size]="16" /> Record Payment</button>
+  </app-page-header>
+
+  <div class="kpi-strip">
+    <div class="card card-pad"><div class="text-muted text-xs">Total Fees</div><div class="font-bold" style="font-size:20px">₹{{ totals().total | number }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Collected</div><div class="font-bold" style="font-size:20px; color:var(--success)">₹{{ totals().collected | number }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Pending</div><div class="font-bold" style="font-size:20px; color:var(--warning)">₹{{ totals().pending | number }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Overdue</div><div class="font-bold" style="font-size:20px; color:var(--danger)">₹{{ totals().overdue | number }}</div></div>
+  </div>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <app-progress-bar [value]="totals().pct" [label]="'Overall collection progress'" color="var(--success)" />
+  </div>
+
+  <div class="card card-pad">
+    <app-tabs [items]="tabs" [active]="activeTab()" (select)="activeTab.set($event)" />
+    <div style="margin-top: var(--space-6)">
+      @switch (activeTab()) {
+        @case ('students') {
+          <div class="filters-row">
+            <div class="search-wrap">
+              <app-icon name="search" [size]="16" class="search-icon" />
+              <input class="input search-input" placeholder="Search student…" [ngModel]="query()" (ngModelChange)="query.set($event); page.set(1)" />
+            </div>
+            <select class="select filter-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); page.set(1)">
+              <option value="all">All Status</option>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Student</th><th>Class</th><th>Total Fee</th><th>Paid</th><th>Pending</th><th>Due Date</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                @for (f of pagedFees(); track f.id) {
+                  <tr>
+                    <td class="font-medium">{{ f.studentName }}</td>
+                    <td class="text-secondary">{{ f.classSection }}</td>
+                    <td>₹{{ f.totalFee | number }}</td>
+                    <td style="color:var(--success)" class="font-semibold">₹{{ f.paid | number }}</td>
+                    <td style="color:var(--warning)" class="font-semibold">₹{{ f.pending | number }}</td>
+                    <td class="text-secondary">{{ f.dueDate }}</td>
+                    <td><app-status-badge [status]="f.status" /></td>
+                    <td><button class="btn btn-outline btn-sm">Collect</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-paginator [total]="filteredFees().length" [pageSize]="pageSize" [page]="page()" (pageChange)="page.set($event)" />
+        }
+        @case ('payments') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Receipt No.</th><th>Student</th><th>Head</th><th>Amount</th><th>Mode</th><th>Date</th><th></th></tr></thead>
+              <tbody>
+                @for (p of payments().slice(0, 20); track p.id) {
+                  <tr>
+                    <td class="text-secondary">{{ p.receiptNo }}</td>
+                    <td class="font-medium">{{ p.studentName }}</td>
+                    <td>{{ p.head }}</td>
+                    <td class="font-semibold">₹{{ p.amount | number }}</td>
+                    <td><span class="badge badge-neutral">{{ p.mode }}</span></td>
+                    <td class="text-secondary">{{ p.date }}</td>
+                    <td><button class="btn btn-ghost btn-icon btn-sm"><app-icon name="printer" [size]="15" /></button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('structure') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Fee Head</th><th>Amount</th><th>Frequency</th><th></th></tr></thead>
+              <tbody>
+                @for (s of structure(); track s.head) {
+                  <tr>
+                    <td class="font-medium">{{ s.head }}</td>
+                    <td>₹{{ s.amount | number }}</td>
+                    <td><span class="badge badge-neutral">{{ s.frequency }}</span></td>
+                    <td><button class="btn btn-ghost btn-icon btn-sm"><app-icon name="edit" [size]="15" /></button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>
+
+<app-modal [open]="modalOpen()" title="Record Fee Payment" (close)="modalOpen.set(false)">
+  <label class="field-label">Student</label>
+  <select class="select" style="margin-bottom:16px"><option>Search student…</option></select>
+  <label class="field-label">Fee Head</label>
+  <select class="select" style="margin-bottom:16px"><option>Tuition Fee</option><option>Transport Fee</option><option>Full Payment</option></select>
+  <div class="form-grid">
+    <div><label class="field-label">Amount</label><input class="input" type="number" placeholder="₹0" /></div>
+    <div><label class="field-label">Payment Mode</label><select class="select"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></div>
+  </div>
+  <div footer>
+    <button class="btn btn-outline" (click)="modalOpen.set(false)">Cancel</button>
+    <button class="btn btn-primary" (click)="modalOpen.set(false)">Record Payment</button>
+  </div>
+</app-modal>

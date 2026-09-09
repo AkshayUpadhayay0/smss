@@ -1,0 +1,40 @@
+<div class="page-wrap">
+  <app-page-header title="Examinations" subtitle="Manage exam types, schedules and subject-wise configuration." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Examinations'}]">
+    <a routerLink="/examinations/marks" class="btn btn-outline"><app-icon name="edit" [size]="16" /> Marks Entry</a>
+    <button class="btn btn-primary"><app-icon name="plus" [size]="16" /> Schedule Exam</button>
+  </app-page-header>
+
+  <div class="filters-row" style="margin-bottom: var(--space-5)">
+    @for (t of examTypes; track t) {
+      <span class="badge badge-neutral" style="padding:6px 14px">{{ t }}</span>
+    }
+  </div>
+
+  <div class="grid grid-2">
+    @for (e of exams(); track e.id) {
+      <div class="card card-pad exam-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="font-bold" style="font-size:15px">{{ e.name }}</div>
+            <div class="text-muted text-xs" style="margin-top:2px">{{ e.type }} · {{ e.startDate }} – {{ e.endDate }}</div>
+          </div>
+          <app-status-badge [status]="e.status" />
+        </div>
+        <div class="table-scroll" style="margin-top: var(--space-4)">
+          <table class="data-table">
+            <thead><tr><th>Subject</th><th>Date</th><th>Max Marks</th></tr></thead>
+            <tbody>
+              @for (s of e.subjects; track s.subject) {
+                <tr><td class="font-medium">{{ s.subject }}</td><td class="text-secondary">{{ s.date }}</td><td>{{ s.maxMarks }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="flex gap-2" style="margin-top: var(--space-4)">
+          <a routerLink="/examinations/marks" class="btn btn-outline btn-sm" style="flex:1">Enter Marks</a>
+          <a routerLink="/results" class="btn btn-outline btn-sm" style="flex:1">View Results</a>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,64 @@
+<div class="page-wrap">
+  <app-page-header title="Marks Entry" subtitle="Enter and review subject-wise marks for an examination." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Examinations', link: '/examinations'}, {label: 'Marks Entry'}]">
+    <button class="btn btn-primary" (click)="save()"><app-icon name="check" [size]="16" /> Save Marks</button>
+  </app-page-header>
+
+  @if (saved()) {
+    <div class="card card-pad success-banner"><app-icon name="check-circle" [size]="18" /> Marks saved successfully.</div>
+  }
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <div class="filters-row" style="margin-bottom:0">
+      <div>
+        <label class="field-label">Examination</label>
+        <select class="select filter-select" [ngModel]="selectedExam()" (ngModelChange)="selectedExam.set($event); load()">
+          @for (e of exams(); track e.id) { <option [value]="e.id">{{ e.name }}</option> }
+        </select>
+      </div>
+      <div style="margin-left:auto" class="flex gap-4">
+        <div class="text-sm"><span class="text-muted">Class Average:</span> <b>{{ classAverage() }}%</b></div>
+        <div class="text-sm"><span class="text-muted">Pass:</span> <b style="color:var(--success)">{{ passCount() }}/{{ entries().length }}</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <div class="table-scroll">
+      <table class="data-table marks-table">
+        <thead>
+          <tr>
+            <th>Roll No</th>
+            <th>Student</th>
+            @for (subj of subjects(); track subj) { <th>{{ subj }}</th> }
+            <th>Total</th>
+            <th>%</th>
+            <th>Grade</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of entries(); track e.studentId) {
+            <tr>
+              <td class="text-secondary">{{ e.rollNo }}</td>
+              <td class="font-medium">{{ e.studentName }}</td>
+              @for (subj of subjects(); track subj) {
+                <td>
+                  <input
+                    class="input marks-input"
+                    type="number" min="0" max="100"
+                    [ngModel]="e.marks[subj]"
+                    (ngModelChange)="updateMark(e.studentId, subj, $event)"
+                  />
+                </td>
+              }
+              <td class="font-bold">{{ e.total }}</td>
+              <td class="font-bold">{{ e.percentage }}%</td>
+              <td><span class="badge badge-primary">{{ e.grade }}</span></td>
+              <td><app-status-badge [status]="e.result" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

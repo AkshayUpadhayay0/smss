@@ -1,0 +1,34 @@
+<div class="page-wrap">
+  <app-page-header title="Hostel Management" subtitle="Track buildings, rooms, beds and student allocation." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Hostel'}]">
+    <button class="btn btn-primary"><app-icon name="plus" [size]="16" /> Allocate Room</button>
+  </app-page-header>
+
+  <div class="kpi-strip">
+    <div class="card card-pad"><div class="text-muted text-xs">Total Rooms</div><div class="font-bold" style="font-size:20px">{{ stats().totalRooms }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Occupied Beds</div><div class="font-bold" style="font-size:20px; color:var(--info)">{{ stats().occupied }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Available Beds</div><div class="font-bold" style="font-size:20px; color:var(--success)">{{ stats().available }}</div></div>
+    <div class="card card-pad">
+      <div class="text-muted text-xs">Occupancy</div>
+      <div class="font-bold" style="font-size:20px">{{ stats().pct }}%</div>
+    </div>
+  </div>
+
+  @for (b of buildings(); track b) {
+    <div class="card card-pad" style="margin-bottom: var(--space-6)">
+      <div class="widget-title" style="font-size:15px; font-weight:700; margin-bottom: var(--space-5)">{{ b }}</div>
+      <div class="grid grid-4">
+        @for (r of roomsFor(b); track r.id) {
+          <div class="room-tile" [class.full]="r.occupied === r.capacity" [class.empty-room]="r.occupied === 0">
+            <div class="flex justify-between items-center">
+              <span class="font-bold">{{ r.roomNo }}</span>
+              <span class="badge badge-neutral">{{ r.type }}</span>
+            </div>
+            <div style="margin-top: var(--space-3)">
+              <app-progress-bar [value]="(r.occupied / r.capacity) * 100" [label]="r.occupied + '/' + r.capacity + ' beds'" [showValue]="false" [thickness]="6" [color]="r.occupied === r.capacity ? 'var(--danger)' : 'var(--success)'" />
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

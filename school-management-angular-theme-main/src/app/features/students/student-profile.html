@@ -1,0 +1,126 @@
+@if (student(); as s) {
+<div class="page-wrap">
+  <app-page-header [title]="s.firstName + ' ' + s.lastName" [subtitle]="'Admission No. ' + s.admissionNo" [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Students', link: '/students'}, {label: s.firstName + ' ' + s.lastName}]">
+    <a [routerLink]="['/students', s.id, 'edit']" class="btn btn-outline"><app-icon name="edit" [size]="16" /> Edit</a>
+    <button class="btn btn-primary"><app-icon name="printer" [size]="16" /> Print Profile</button>
+  </app-page-header>
+
+  <div class="card card-pad detail-hero" style="margin-bottom: var(--space-6)">
+    <app-avatar [src]="s.photo" [name]="s.firstName + ' ' + s.lastName" [size]="88" />
+    <div style="flex:1; min-width: 240px;">
+      <div class="flex items-center gap-3">
+        <h2 style="font-size:20px;">{{ s.firstName }} {{ s.lastName }}</h2>
+        <app-status-badge [status]="s.status" />
+        <app-status-badge [status]="s.feeStatus" />
+      </div>
+      <div class="text-secondary text-sm" style="margin-top:4px;">{{ s.className }} - Section {{ s.sectionName }} · Roll No. {{ s.rollNo }}</div>
+      <div class="meta-grid">
+        <div class="meta-item"><div class="meta-label">Gender</div><div class="meta-value">{{ s.gender }}</div></div>
+        <div class="meta-item"><div class="meta-label">Date of Birth</div><div class="meta-value">{{ s.dob }}</div></div>
+        <div class="meta-item"><div class="meta-label">Blood Group</div><div class="meta-value">{{ s.bloodGroup }}</div></div>
+        <div class="meta-item"><div class="meta-label">Admission Date</div><div class="meta-value">{{ s.admissionDate }}</div></div>
+        <div class="meta-item"><div class="meta-label">Attendance</div><div class="meta-value" [style.color]="s.attendancePercent >= 90 ? 'var(--success)' : 'var(--warning)'">{{ s.attendancePercent }}%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <app-tabs [items]="tabs" [active]="activeTab()" (select)="activeTab.set($event)" />
+
+    <div style="margin-top: var(--space-6)">
+      @switch (activeTab()) {
+        @case ('overview') {
+          <div class="grid grid-2">
+            <div>
+              <div class="section-title" style="margin-bottom: var(--space-4)">Contact Information</div>
+              <div class="info-row"><span class="info-label">Phone</span><span class="info-value">{{ s.phone }}</span></div>
+              <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ s.email }}</span></div>
+              <div class="info-row"><span class="info-label">Address</span><span class="info-value">{{ s.address.line1 }}, {{ s.address.city }}, {{ s.address.state }} {{ s.address.pincode }}</span></div>
+            </div>
+            <div>
+              <div class="section-title" style="margin-bottom: var(--space-4)">Guardian Information</div>
+              <div class="info-row"><span class="info-label">Name</span><span class="info-value">{{ s.guardian.name }}</span></div>
+              <div class="info-row"><span class="info-label">Relation</span><span class="info-value">{{ s.guardian.relation }}</span></div>
+              <div class="info-row"><span class="info-label">Phone</span><span class="info-value">{{ s.guardian.phone }}</span></div>
+              <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ s.guardian.email }}</span></div>
+              <div class="info-row"><span class="info-label">Occupation</span><span class="info-value">{{ s.guardian.occupation }}</span></div>
+            </div>
+          </div>
+        }
+        @case ('attendance') {
+          <div class="flex items-center gap-4" style="margin-bottom: var(--space-5)">
+            <app-progress-bar [value]="s.attendancePercent" [label]="'Overall attendance this session'" color="var(--success)" />
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Date</th><th>Status</th><th>Remark</th></tr></thead>
+              <tbody>
+                @for (a of recentAttendance; track a.id) {
+                  <tr><td>{{ a.date }}</td><td><app-status-badge [status]="a.status" /></td><td class="text-muted">—</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('fees') {
+          @if (studentFee(s.id); as fee) {
+            <div class="grid grid-3" style="margin-bottom: var(--space-6)">
+              <div class="card card-pad"><div class="text-muted text-xs">Total Fee</div><div class="font-bold" style="font-size:18px">₹{{ fee.totalFee | number }}</div></div>
+              <div class="card card-pad"><div class="text-muted text-xs">Paid</div><div class="font-bold" style="font-size:18px; color:var(--success)">₹{{ fee.paid | number }}</div></div>
+              <div class="card card-pad"><div class="text-muted text-xs">Pending</div><div class="font-bold" style="font-size:18px; color:var(--warning)">₹{{ fee.pending | number }}</div></div>
+            </div>
+            <app-progress-bar [value]="(fee.paid / fee.totalFee) * 100" label="Payment progress" color="var(--primary)" />
+          }
+        }
+        @case ('homework') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Title</th><th>Subject</th><th>Due Date</th><th>Status</th></tr></thead>
+              <tbody>
+                @for (h of homework; track h.id) {
+                  <tr><td class="font-medium">{{ h.title }}</td><td>{{ h.subject }}</td><td class="text-secondary">{{ h.dueDate }}</td><td><app-status-badge [status]="h.status" /></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('exams') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Exam</th><th>Type</th><th>Dates</th><th>Status</th></tr></thead>
+              <tbody>
+                @for (e of exams; track e.id) {
+                  <tr><td class="font-medium">{{ e.name }}</td><td>{{ e.type }}</td><td class="text-secondary">{{ e.startDate }} – {{ e.endDate }}</td><td><app-status-badge [status]="e.status" /></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('results') {
+          <div class="empty-state">
+            <app-icon name="award" [size]="28" style="margin: 0 auto 12px; color: var(--text-muted)" />
+            <p class="text-secondary">Detailed subject-wise results appear here once exams are graded. See the <a routerLink="/results" class="link" style="color:var(--primary); font-weight:600">Results</a> module for class-wide reports.</p>
+          </div>
+        }
+        @case ('documents') {
+          <div class="grid grid-3">
+            @for (doc of s.documents; track doc.name) {
+              <div class="card card-pad flex items-center gap-3">
+                <app-icon name="file-text" [size]="22" style="color: var(--primary)" />
+                <div style="min-width:0">
+                  <div class="font-semibold text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ doc.name }}</div>
+                  <div class="text-muted text-xs">Uploaded {{ doc.uploadedOn }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>
+} @else {
+  <div class="page-wrap">
+    <div class="skeleton" style="height: 200px; border-radius: 16px;"></div>
+  </div>
+}

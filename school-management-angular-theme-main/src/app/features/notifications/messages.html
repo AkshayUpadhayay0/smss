@@ -1,0 +1,48 @@
+<div class="page-wrap">
+  <app-page-header title="Messages" subtitle="Direct messages with teachers, parents and staff." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Messages'}]" />
+
+  <div class="messages-shell card">
+    <div class="thread-list">
+      <div class="search-wrap" style="padding: var(--space-4)">
+        <app-icon name="search" [size]="15" class="search-icon" />
+        <input class="input search-input" placeholder="Search conversations…" />
+      </div>
+      @for (t of threads; track t.id) {
+        <div class="thread-item" [class.active]="t.id === activeThread().id" (click)="selectThread(t)">
+          <app-avatar [name]="t.name" [size]="40" />
+          <div style="flex:1; min-width:0">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold text-sm">{{ t.name }}</span>
+              <span class="text-muted text-xs">{{ t.time }}</span>
+            </div>
+            <div class="text-muted text-xs">{{ t.role }}</div>
+            <div class="text-secondary text-xs truncate">{{ t.last }}</div>
+          </div>
+          @if (t.unread > 0) { <span class="unread-count">{{ t.unread }}</span> }
+        </div>
+      }
+    </div>
+
+    <div class="thread-view">
+      <div class="thread-header">
+        <app-avatar [name]="activeThread().name" [size]="36" />
+        <div>
+          <div class="font-semibold text-sm">{{ activeThread().name }}</div>
+          <div class="text-muted text-xs">{{ activeThread().role }}</div>
+        </div>
+      </div>
+      <div class="thread-body">
+        @for (m of messages(); track m.id) {
+          <div class="msg-row" [class.mine]="m.from === 'me'">
+            <div class="msg-bubble">{{ m.text }}</div>
+            <div class="msg-time text-muted">{{ m.time }}</div>
+          </div>
+        }
+      </div>
+      <div class="thread-input">
+        <input class="input" placeholder="Type a message…" [ngModel]="draft()" (ngModelChange)="draft.set($event)" (keydown.enter)="send()" />
+        <button class="btn btn-primary btn-icon" (click)="send()"><app-icon name="send" [size]="16" /></button>
+      </div>
+    </div>
+  </div>
+</div>

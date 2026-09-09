@@ -1,0 +1,60 @@
+<div class="page-wrap">
+  <app-page-header title="Attendance Reports" subtitle="Daily, monthly and academic-year attendance analysis." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Attendance', link: '/attendance'}, {label: 'Reports'}]">
+    <button class="btn btn-outline"><app-icon name="download" [size]="16" /> Export</button>
+  </app-page-header>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <app-tabs [items]="tabs" [active]="activeReport()" (select)="activeReport.set($event)" />
+  </div>
+
+  @switch (activeReport()) {
+    @case ('daily') {
+      <div class="filters-row card card-pad" style="margin-bottom: var(--space-6)">
+        <div><label class="field-label">Date</label><input class="input" type="date" [ngModel]="today" style="width:160px" /></div>
+        <div><label class="field-label">Class</label><select class="select filter-select"><option>All Classes</option>@for (c of classes(); track c.id) { <option>{{ c.name }}</option> }</select></div>
+        <div><label class="field-label">Section</label><select class="select filter-select"><option>All Sections</option></select></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card card-pad flex-col items-center">
+          <div class="widget-title full">Today's Attendance Summary</div>
+          <app-donut-chart [data]="overallDonut" centerLabel="Students" />
+        </div>
+        <div class="card card-pad">
+          <div class="widget-title">Class-wise Attendance Comparison</div>
+          <app-bar-chart [series]="classComparisonSeries" [labels]="classComparisonLabels" [legend]="false" />
+        </div>
+      </div>
+    }
+    @case ('monthly') {
+      <div class="card card-pad">
+        <div class="widget-title">Monthly Attendance — September 2026</div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr><th>Student</th><th>Working Days</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead>
+            <tbody>
+              @for (s of monthlyStudents; track s.name) {
+                <tr>
+                  <td class="font-medium">{{ s.name }}</td>
+                  <td class="text-secondary">{{ s.workingDays }}</td>
+                  <td style="color:var(--success)" class="font-semibold">{{ s.present }}</td>
+                  <td style="color:var(--danger)" class="font-semibold">{{ s.absent }}</td>
+                  <td class="font-bold">{{ s.pct }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+    @case ('yearly') {
+      <div class="card card-pad" style="margin-bottom: var(--space-6)">
+        <div class="widget-title">Attendance Trend — Academic Year 2026–27</div>
+        <app-line-chart [series]="trendSeries" [labels]="trendLabels" [legend]="false" />
+      </div>
+      <div class="card card-pad">
+        <div class="widget-title">Class Comparison — Overall Attendance %</div>
+        <app-bar-chart [series]="classComparisonSeries" [labels]="classComparisonLabels" [legend]="false" />
+      </div>
+    }
+  }
+</div>

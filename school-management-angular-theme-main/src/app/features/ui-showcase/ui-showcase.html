@@ -1,0 +1,167 @@
+<div class="page-wrap">
+  <app-page-header title="UI Components" subtitle="A living showcase of every reusable component in this theme." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'UI Components'}]" />
+
+  <!-- Buttons -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Buttons</div>
+    <div class="flex gap-3 flex-wrap items-center">
+      <button class="btn btn-primary">Primary</button>
+      <button class="btn btn-outline">Secondary</button>
+      <button class="btn btn-success">Success</button>
+      <button class="btn btn-danger">Danger</button>
+      <button class="btn" style="background:var(--warning); color:#fff">Warning</button>
+      <button class="btn btn-outline">Outline</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-primary" disabled>Loading…</button>
+      <button class="btn btn-outline" disabled>Disabled</button>
+      <button class="btn btn-primary btn-icon"><app-icon name="plus" [size]="16" /></button>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Cards</div>
+    <div class="grid grid-4">
+      <div class="card card-pad"><div class="font-semibold">Basic Card</div><p class="text-secondary text-sm" style="margin-top:6px">Simple content card.</p></div>
+      <div class="card card-pad"><div class="text-muted text-xs">Statistic</div><div class="font-bold" style="font-size:22px">1,204</div></div>
+      <div class="card card-pad flex items-center gap-3"><app-avatar name="Anjali Mehta" [size]="40" /><div><div class="font-semibold text-sm">Anjali Mehta</div><div class="text-muted text-xs">Class Teacher</div></div></div>
+      <div class="card card-pad"><div class="text-muted text-xs" style="margin-bottom:8px">Progress</div><app-progress-bar [value]="68" /></div>
+    </div>
+  </div>
+
+  <!-- Badges -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Badges</div>
+    <div class="flex gap-2 flex-wrap">
+      <app-status-badge status="Active" /><app-status-badge status="Inactive" /><app-status-badge status="Pending" />
+      <app-status-badge status="Approved" /><app-status-badge status="Rejected" /><app-status-badge status="Paid" />
+      <app-status-badge status="Present" /><app-status-badge status="Absent" />
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Alerts</div>
+    <div class="flex-col gap-3">
+      <div class="alert alert-success"><app-icon name="check-circle" [size]="17" /> Changes saved successfully.</div>
+      <div class="alert alert-danger"><app-icon name="x-circle" [size]="17" /> Unable to process this request.</div>
+      <div class="alert alert-warning"><app-icon name="alert-triangle" [size]="17" /> Fee payment is due in 3 days.</div>
+      <div class="alert alert-info"><app-icon name="info" [size]="17" /> New feature: dark mode is now available.</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Progress</div>
+    <div class="grid grid-2">
+      <div class="flex-col gap-4">
+        <app-progress-bar [value]="35" label="Linear" color="var(--primary)" />
+        <app-progress-bar [value]="72" label="Animated" color="var(--success)" />
+      </div>
+      <div class="flex gap-6 items-center">
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="8" />
+          <circle cx="40" cy="40" r="34" fill="none" stroke="var(--primary)" stroke-width="8" stroke-dasharray="213.6" stroke-dashoffset="64" stroke-linecap="round" transform="rotate(-90 40 40)" />
+        </svg>
+        <span class="text-muted text-sm">Circular — 70%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Modals</div>
+    <button class="btn btn-primary" (click)="modalOpen.set(true)">Open Modal</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Tabs</div>
+    <app-tabs [items]="tabItems" [active]="activeTab()" (select)="activeTab.set($event)" />
+    <div style="margin-top: var(--space-5)"></div>
+    <app-tabs [items]="pillItems" [active]="activePillTab()" variant="pill" (select)="activePillTab.set($event)" />
+  </div>
+
+  <!-- Accordion -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Accordion — FAQ</div>
+    <div class="accordion">
+      @for (f of faqs; track f.q; let i = $index) {
+        <div class="accordion-item">
+          <button class="accordion-header" (click)="toggleAccordion(i)">
+            <span>{{ f.q }}</span>
+            <app-icon [name]="accordionOpen().has(i) ? 'minus' : 'plus'" [size]="16" />
+          </button>
+          @if (accordionOpen().has(i)) {
+            <div class="accordion-body text-secondary text-sm">{{ f.a }}</div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Tooltips -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Tooltips</div>
+    <div class="flex gap-6 flex-wrap">
+      <span class="tooltip-demo" data-tip="Top tooltip" data-pos="top">Top</span>
+      <span class="tooltip-demo" data-tip="Right tooltip" data-pos="right">Right</span>
+      <span class="tooltip-demo" data-tip="Bottom tooltip" data-pos="bottom">Bottom</span>
+      <span class="tooltip-demo" data-tip="Left tooltip" data-pos="left">Left</span>
+    </div>
+  </div>
+
+  <!-- Dropdowns -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Dropdowns</div>
+    <div class="flex gap-4 flex-wrap">
+      <select class="select" style="width:auto"><option>Basic Dropdown</option><option>Option 2</option></select>
+      <button class="btn btn-outline">Action Menu <app-icon name="chevron-down" [size]="14" /></button>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Pagination</div>
+    <app-paginator [total]="86" [pageSize]="10" [page]="page()" (pageChange)="page.set($event)" />
+  </div>
+
+  <!-- Skeletons & Spinners -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Skeleton Loaders & Spinners</div>
+    <div class="grid grid-3">
+      <div class="skeleton" style="height:80px"></div>
+      <div class="flex-col gap-2"><div class="skeleton" style="height:14px; width:80%"></div><div class="skeleton" style="height:14px; width:60%"></div><div class="skeleton" style="height:14px; width:70%"></div></div>
+      <div class="flex items-center justify-between">
+        <div class="spinner"></div>
+        <span class="text-secondary text-sm">Loading…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty states -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Empty States</div>
+    <app-empty-state icon="inbox" title="No records found" description="There is nothing to show here yet." />
+  </div>
+
+  <!-- Avatars & Breadcrumbs -->
+  <div class="card card-pad section-block">
+    <div class="section-title" style="margin-bottom: var(--space-5)">Avatars & Breadcrumbs</div>
+    <div class="flex items-center gap-3" style="margin-bottom: var(--space-5)">
+      <app-avatar name="Priya Sharma" [size]="28" />
+      <app-avatar name="Rohan Verma" [size]="36" />
+      <app-avatar name="Anjali Mehta" [size]="48" />
+      <app-avatar name="Kabir Singh" [size]="60" />
+    </div>
+    <app-page-header title="Sample Page" subtitle="Demonstrating breadcrumb navigation" [crumbs]="[{label:'Dashboard', link:'/dashboard'}, {label:'Section', link:'/ui'}, {label:'Current Page'}]" />
+  </div>
+</div>
+
+<app-modal [open]="modalOpen()" title="Confirm Action" (close)="modalOpen.set(false)">
+  <p class="text-secondary text-sm">Are you sure you want to proceed with this action? This is a sample confirmation modal.</p>
+  <div footer>
+    <button class="btn btn-outline" (click)="modalOpen.set(false)">Cancel</button>
+    <button class="btn btn-primary" (click)="modalOpen.set(false)">Confirm</button>
+  </div>
+</app-modal>

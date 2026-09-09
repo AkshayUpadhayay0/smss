@@ -1,0 +1,54 @@
+<div class="page-wrap">
+  <app-page-header title="Classes & Sections" subtitle="Manage class structure, sections, teachers and room allocation." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Classes'}]">
+    <button class="btn btn-primary" (click)="modalOpen.set(true)"><app-icon name="plus" [size]="16" /> Add Class</button>
+  </app-page-header>
+
+  <div class="kpi-strip">
+    <div class="card card-pad"><div class="text-muted text-xs">Total Classes</div><div class="font-bold" style="font-size:22px">{{ classes().length }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Total Sections</div><div class="font-bold" style="font-size:22px">{{ totalSections() }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Avg. Class Strength</div><div class="font-bold" style="font-size:22px">36</div></div>
+  </div>
+
+  <div class="grid grid-3">
+    @for (c of classes(); track c.id) {
+      <div class="card card-pad class-card">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="font-bold" style="font-size:15px">{{ c.name }}</div>
+            <div class="text-muted text-xs">{{ c.studentCount }} students · {{ c.sections.length }} sections</div>
+          </div>
+          <button class="btn btn-ghost btn-icon btn-sm" (click)="toggle(c.id)">
+            <app-icon [name]="expandedClass() === c.id ? 'chevron-down' : 'chevron-right'" [size]="16" />
+          </button>
+        </div>
+        @if (expandedClass() === c.id) {
+          <div class="section-tree">
+            @for (s of c.sections; track s.id) {
+              <div class="section-row">
+                <app-icon name="layers" [size]="14" style="color: var(--text-muted)" />
+                <span class="font-medium">Section {{ s.name }}</span>
+                <span class="text-muted text-xs">Room {{ s.roomNo }}</span>
+                <span class="badge badge-primary" style="margin-left:auto">{{ s.studentCount }} students</span>
+              </div>
+            }
+          </div>
+          <div class="flex gap-2" style="margin-top: var(--space-4)">
+            <button class="btn btn-outline btn-sm"><app-icon name="user-check" [size]="14" /> Assign Teacher</button>
+            <button class="btn btn-outline btn-sm"><app-icon name="book" [size]="14" /> Assign Subjects</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+
+<app-modal [open]="modalOpen()" title="Add New Class" (close)="modalOpen.set(false)">
+  <label class="field-label">Class Name</label>
+  <input class="input" placeholder="e.g. Class 11" style="margin-bottom:16px" />
+  <label class="field-label">Number of Sections</label>
+  <input class="input" type="number" placeholder="3" />
+  <div footer>
+    <button class="btn btn-outline" (click)="modalOpen.set(false)">Cancel</button>
+    <button class="btn btn-primary" (click)="modalOpen.set(false)">Create Class</button>
+  </div>
+</app-modal>

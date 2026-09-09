@@ -1,0 +1,25 @@
+<div class="page-wrap">
+  <app-page-header title="Notification Center" subtitle="All system and communication notifications in one place." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Notifications'}]">
+    <button class="btn btn-outline" (click)="markAllRead()"><app-icon name="check" [size]="16" /> Mark All Read</button>
+    <button class="btn btn-primary"><app-icon name="send" [size]="16" /> Send Notification</button>
+  </app-page-header>
+
+  <div class="card card-pad">
+    <app-tabs [items]="tabs" [active]="activeType()" (select)="activeType.set($event)" />
+    <div class="list-col" style="margin-top: var(--space-6)">
+      @for (n of filtered(); track n.id) {
+        <div class="notif-full-item" [class.unread]="!n.read" (click)="markRead(n.id)">
+          <div class="notif-full-icon" [class]="'type-' + n.type.toLowerCase()"><app-icon [name]="iconFor(n.type)" [size]="17" /></div>
+          <div style="flex:1">
+            <div class="flex justify-between items-start">
+              <div class="font-semibold text-sm">{{ n.title }}</div>
+              @if (!n.read) { <span class="unread-dot"></span> }
+            </div>
+            <div class="text-secondary text-sm" style="margin-top:2px">{{ n.message }}</div>
+            <div class="text-muted text-xs" style="margin-top:4px">{{ n.date }} · {{ n.type }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

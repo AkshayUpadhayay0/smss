@@ -1,0 +1,77 @@
+<div class="page-wrap">
+  <app-page-header title="Timetable" subtitle="Weekly class, teacher and room schedules." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Timetable'}]">
+    <button class="btn btn-primary"><app-icon name="plus" [size]="16" /> Add Period</button>
+  </app-page-header>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <app-tabs [items]="tabs" [active]="view()" (select)="setView($event)" />
+  </div>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <div class="filters-row" style="margin-bottom:0">
+      @if (view() === 'class') {
+        <div>
+          <label class="field-label">Class</label>
+          <select class="select filter-select" [ngModel]="selectedClass()" (ngModelChange)="selectedClass.set($event); selectedSection.set(availableSections()[0]?.id ?? ''); load()">
+            @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Section</label>
+          <select class="select filter-select" [ngModel]="selectedSection()" (ngModelChange)="selectedSection.set($event); load()">
+            @for (s of availableSections(); track s.id) { <option [value]="s.id">Section {{ s.name }}</option> }
+          </select>
+        </div>
+      } @else if (view() === 'teacher') {
+        <div>
+          <label class="field-label">Teacher</label>
+          <select class="select filter-select" [ngModel]="selectedTeacher()" (ngModelChange)="selectedTeacher.set($event)">
+            @for (t of teachers().slice(0, 30); track t.id) { <option [value]="t.id">{{ t.firstName }} {{ t.lastName }}</option> }
+          </select>
+        </div>
+      } @else {
+        <div>
+          <label class="field-label">Room</label>
+          <select class="select filter-select"><option>Room 101</option><option>Room 102</option><option>Room 103</option></select>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <div class="table-scroll">
+      <table class="timetable-grid">
+        <thead>
+          <tr>
+            <th class="time-col">Time</th>
+            @for (d of days; track d) { <th>{{ d }}</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (slot of slots; track slot[0]) {
+            <tr>
+              <td class="time-col text-secondary text-sm">{{ slot[0] }} – {{ slot[1] }}</td>
+              @for (d of days; track d) {
+                @if (cellFor(d, slot[0]); as cell) {
+                  <td [class.break-cell]="cell.isBreak">
+                    @if (cell.isBreak) {
+                      <div class="tt-break">☕ Break</div>
+                    } @else {
+                      <div class="tt-cell">
+                        <div class="tt-subject">{{ cell.subject }}</div>
+                        <div class="tt-teacher text-muted">{{ cell.teacher }}</div>
+                        <div class="tt-room text-muted">{{ cell.room }}</div>
+                      </div>
+                    }
+                  </td>
+                } @else {
+                  <td class="text-muted text-sm">—</td>
+                }
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

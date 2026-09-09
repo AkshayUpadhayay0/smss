@@ -1,0 +1,70 @@
+<div class="page-wrap">
+  <app-page-header title="Transport" subtitle="Manage vehicles, routes, drivers and student transport allocation." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Transport'}]">
+    <button class="btn btn-primary"><app-icon name="plus" [size]="16" /> Add Route</button>
+  </app-page-header>
+
+  <div class="kpi-strip">
+    <div class="card card-pad"><div class="text-muted text-xs">Vehicles</div><div class="font-bold" style="font-size:20px">{{ vehicles().length }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Routes</div><div class="font-bold" style="font-size:20px">{{ routes().length }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Drivers</div><div class="font-bold" style="font-size:20px">{{ vehicles().length }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Students Using Transport</div><div class="font-bold" style="font-size:20px">{{ totalStudents() }}</div></div>
+  </div>
+
+  <div class="card card-pad">
+    <app-tabs [items]="tabs" [active]="activeTab()" (select)="activeTab.set($event)" />
+    <div style="margin-top: var(--space-6)">
+      @switch (activeTab()) {
+        @case ('routes') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Route</th><th>Vehicle No.</th><th>Driver</th><th>Stops</th><th>Students</th></tr></thead>
+              <tbody>
+                @for (r of routes(); track r.id) {
+                  <tr>
+                    <td class="font-medium">{{ r.name }}</td>
+                    <td class="text-secondary">{{ r.vehicleNo }}</td>
+                    <td>{{ r.driverName }}</td>
+                    <td class="text-secondary">{{ r.stops.join(' → ') }}</td>
+                    <td><span class="badge badge-primary">{{ r.studentCount }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('vehicles') {
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Vehicle No.</th><th>Type</th><th>Capacity</th><th>Driver</th><th>Route</th><th>Status</th></tr></thead>
+              <tbody>
+                @for (v of vehicles(); track v.id) {
+                  <tr>
+                    <td class="font-medium">{{ v.number }}</td>
+                    <td>{{ v.type }}</td>
+                    <td class="text-secondary">{{ v.capacity }} seats</td>
+                    <td>{{ v.driverName }}</td>
+                    <td class="text-secondary">{{ v.routeName }}</td>
+                    <td><app-status-badge [status]="v.status" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('drivers') {
+          <div class="grid grid-3">
+            @for (v of vehicles(); track v.id) {
+              <div class="card card-pad flex items-center gap-3">
+                <div class="subject-icon"><app-icon name="user-check" [size]="18" /></div>
+                <div>
+                  <div class="font-semibold text-sm">{{ v.driverName }}</div>
+                  <div class="text-muted text-xs">{{ v.routeName }} · {{ v.number }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

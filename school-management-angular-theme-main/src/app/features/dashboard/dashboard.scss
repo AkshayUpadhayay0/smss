@@ -1,0 +1,48 @@
+.welcome-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap;
+}
+
+.widget-title {
+  font-size: 14.5px; font-weight: 700; font-family: var(--font-display); margin-bottom: var(--space-5);
+  &.full { text-align: center; }
+}
+
+.mini-stats {
+  margin-top: var(--space-4); width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px;
+  > div { display: flex; align-items: center; gap: 6px; }
+  b { margin-left: auto; }
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.text-primary-strong { color: var(--primary); }
+
+.fee-amount { font-size: 22px; font-weight: 800; font-family: var(--font-display); margin-bottom: var(--space-3); }
+.fee-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: var(--space-5); }
+
+.hw-row { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px; margin-top: var(--space-3); }
+.hw-row:first-of-type { margin-top: 0; }
+
+.widget-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--primary); margin-top: var(--space-5); }
+
+.list-col { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.event-row { display: flex; gap: 12px; align-items: center; }
+.event-date { width: 42px; text-align: center; background: var(--surface-alt); border-radius: var(--radius-md); padding: 4px 0; flex-shrink: 0; }
+.event-day { font-size: 15px; font-weight: 800; font-family: var(--font-display); }
+.event-mon { font-size: 9.5px; text-transform: uppercase; }
+
+.notice-row, .activity-row { display: flex; gap: 12px; align-items: flex-start; }
+.notice-icon, .activity-icon {
+  width: 30px; height: 30px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.activity-icon { background: var(--surface-alt); color: var(--text-secondary); }
+
+.break-row { background: var(--surface-alt); }
+
+.mini-metric { text-align: center; padding: var(--space-3); background: var(--surface-alt); border-radius: var(--radius-md); }
+.mini-value { font-size: 20px; font-weight: 800; font-family: var(--font-display); }
+
+.staff-preview { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-2); }
+.staff-chip { margin-left: -8px; }
+.staff-chip:first-child { margin-left: 0; }
+.staff-more { margin-left: 10px; }

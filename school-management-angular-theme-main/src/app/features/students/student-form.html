@@ -1,0 +1,135 @@
+<div class="page-wrap">
+  <app-page-header [title]="isEdit ? 'Edit Student' : 'Add Student'" subtitle="Fill in the student's academic and guardian details." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Students', link: '/students'}, {label: isEdit ? 'Edit' : 'Add'}]">
+    <a routerLink="/students" class="btn btn-outline"><app-icon name="arrow-left" [size]="16" /> Back to List</a>
+  </app-page-header>
+
+  @if (saved()) {
+    <div class="card card-pad success-banner">
+      <app-icon name="check-circle" [size]="20" /> Student {{ isEdit ? 'updated' : 'added' }} successfully. Redirecting…
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="card card-pad">
+    <div class="dropzone" style="margin-bottom: var(--space-6); max-width: 220px;">
+      <app-icon name="image" [size]="28" style="margin: 0 auto var(--space-2)" />
+      Upload Photo
+    </div>
+
+    <div class="form-section-title">Personal Information</div>
+    <div class="form-grid">
+      <div>
+        <label class="field-label">First Name</label>
+        <input class="input" [class.invalid]="form.controls.firstName.invalid && form.controls.firstName.touched" formControlName="firstName" />
+        @if (form.controls.firstName.invalid && form.controls.firstName.touched) { <div class="field-error">First name is required.</div> }
+      </div>
+      <div>
+        <label class="field-label">Last Name</label>
+        <input class="input" [class.invalid]="form.controls.lastName.invalid && form.controls.lastName.touched" formControlName="lastName" />
+        @if (form.controls.lastName.invalid && form.controls.lastName.touched) { <div class="field-error">Last name is required.</div> }
+      </div>
+      <div>
+        <label class="field-label">Gender</label>
+        <select class="select" formControlName="gender">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Date of Birth</label>
+        <input class="input" type="date" formControlName="dob" [class.invalid]="form.controls.dob.invalid && form.controls.dob.touched" />
+      </div>
+      <div>
+        <label class="field-label">Blood Group</label>
+        <select class="select" formControlName="bloodGroup">
+          <option value="">Select</option>
+          @for (bg of ['A+','A-','B+','B-','AB+','AB-','O+','O-']; track bg) { <option [value]="bg">{{ bg }}</option> }
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section-title">Academic Details</div>
+    <div class="form-grid">
+      <div>
+        <label class="field-label">Class</label>
+        <select class="select" formControlName="classId" [class.invalid]="form.controls.classId.invalid && form.controls.classId.touched">
+          <option value="">Select Class</option>
+          @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Section</label>
+        <select class="select" formControlName="sectionId" [class.invalid]="form.controls.sectionId.invalid && form.controls.sectionId.touched">
+          <option value="">Select Section</option>
+          @for (s of availableSections(); track s.id) { <option [value]="s.id">Section {{ s.name }}</option> }
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Roll Number</label>
+        <input class="input" formControlName="rollNo" [class.invalid]="form.controls.rollNo.invalid && form.controls.rollNo.touched" />
+      </div>
+      <div>
+        <label class="field-label">Admission Date</label>
+        <input class="input" type="date" formControlName="admissionDate" />
+      </div>
+    </div>
+
+    <div class="form-section-title">Guardian / Parent Information</div>
+    <div class="form-grid">
+      <div>
+        <label class="field-label">Guardian Name</label>
+        <input class="input" formControlName="guardianName" [class.invalid]="form.controls.guardianName.invalid && form.controls.guardianName.touched" />
+      </div>
+      <div>
+        <label class="field-label">Relation</label>
+        <select class="select" formControlName="guardianRelation">
+          <option value="Father">Father</option>
+          <option value="Mother">Mother</option>
+          <option value="Guardian">Guardian</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Phone Number</label>
+        <input class="input" formControlName="guardianPhone" [class.invalid]="form.controls.guardianPhone.invalid && form.controls.guardianPhone.touched" placeholder="+91 98765 43210" />
+        @if (form.controls.guardianPhone.invalid && form.controls.guardianPhone.touched) { <div class="field-error">Enter a valid phone number.</div> }
+      </div>
+      <div>
+        <label class="field-label">Email Address</label>
+        <input class="input" type="email" formControlName="guardianEmail" [class.invalid]="form.controls.guardianEmail.invalid && form.controls.guardianEmail.touched" />
+        @if (form.controls.guardianEmail.invalid && form.controls.guardianEmail.touched) { <div class="field-error">Enter a valid email.</div> }
+      </div>
+      <div>
+        <label class="field-label">Occupation</label>
+        <input class="input" formControlName="guardianOccupation" />
+      </div>
+    </div>
+
+    <div class="form-section-title">Address</div>
+    <div class="form-grid">
+      <div style="grid-column: span 2">
+        <label class="field-label">Address Line</label>
+        <input class="input" formControlName="addressLine" [class.invalid]="form.controls.addressLine.invalid && form.controls.addressLine.touched" />
+      </div>
+      <div>
+        <label class="field-label">City</label>
+        <input class="input" formControlName="city" [class.invalid]="form.controls.city.invalid && form.controls.city.touched" />
+      </div>
+      <div>
+        <label class="field-label">State</label>
+        <input class="input" formControlName="state" [class.invalid]="form.controls.state.invalid && form.controls.state.touched" />
+      </div>
+      <div>
+        <label class="field-label">Pincode</label>
+        <input class="input" formControlName="pincode" [class.invalid]="form.controls.pincode.invalid && form.controls.pincode.touched" />
+      </div>
+    </div>
+
+    <div class="form-section-title">Additional Notes</div>
+    <textarea class="textarea" rows="3" formControlName="notes" placeholder="Any additional information about the student…"></textarea>
+
+    <div class="form-actions">
+      <a routerLink="/students" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-primary"><app-icon name="check" [size]="16" /> {{ isEdit ? 'Save Changes' : 'Add Student' }}</button>
+    </div>
+  </form>
+</div>

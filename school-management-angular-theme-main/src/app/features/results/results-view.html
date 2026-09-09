@@ -1,0 +1,51 @@
+<div class="page-wrap">
+  <app-page-header title="Results" subtitle="Examination results, grade distribution and rankings." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Results'}]">
+    <button class="btn btn-outline"><app-icon name="download" [size]="16" /> Export</button>
+    <button class="btn btn-outline"><app-icon name="printer" [size]="16" /> Print Report Cards</button>
+  </app-page-header>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <label class="field-label">Examination</label>
+    <select class="select filter-select" [ngModel]="selectedExam()" (ngModelChange)="selectedExam.set($event); load()">
+      @for (e of exams(); track e.id) { <option [value]="e.id">{{ e.name }}</option> }
+    </select>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="card card-pad"><div class="text-muted text-xs">Class Average</div><div class="font-bold" style="font-size:20px">{{ avgPct() }}%</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Passed</div><div class="font-bold" style="font-size:20px; color:var(--success)">{{ passCount() }}</div></div>
+    <div class="card card-pad"><div class="text-muted text-xs">Failed</div><div class="font-bold" style="font-size:20px; color:var(--danger)">{{ failCount() }}</div></div>
+    <div class="card card-pad">
+      <div class="text-muted text-xs">Topper</div>
+      @if (topper(); as top) {
+        <div class="font-bold text-sm" style="margin-top:4px">{{ top.studentName }} <span class="text-muted">({{ top.percentage }}%)</span></div>
+      }
+    </div>
+  </div>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <div class="widget-title" style="font-size:14.5px; font-weight:700; margin-bottom: var(--space-5)">Grade Distribution</div>
+    <app-bar-chart [series]="gradeDistribution().series" [labels]="gradeDistribution().labels" [legend]="false" />
+  </div>
+
+  <div class="card card-pad">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Rank</th><th>Roll No</th><th>Student</th><th>Total</th><th>%</th><th>Grade</th><th>Result</th></tr></thead>
+        <tbody>
+          @for (e of entries(); track e.studentId; let i = $index) {
+            <tr>
+              <td class="font-bold">#{{ i + 1 }}</td>
+              <td class="text-secondary">{{ e.rollNo }}</td>
+              <td class="font-medium">{{ e.studentName }}</td>
+              <td>{{ e.total }}</td>
+              <td class="font-bold">{{ e.percentage }}%</td>
+              <td><span class="badge badge-primary">{{ e.grade }}</span></td>
+              <td><app-status-badge [status]="e.result" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

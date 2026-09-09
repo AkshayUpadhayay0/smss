@@ -1,0 +1,35 @@
+<div class="page-wrap">
+  <app-page-header title="Reports" subtitle="Generate and export reports across every module." [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Reports'}]">
+    <button class="btn btn-outline"><app-icon name="download" [size]="16" /> Export All</button>
+  </app-page-header>
+
+  <div class="grid grid-2" style="margin-bottom: var(--space-6)">
+    <div class="card card-pad">
+      <div class="widget-title" style="font-size:14.5px; font-weight:700; margin-bottom: var(--space-5)">Fee Collection Trend</div>
+      <app-line-chart [series]="revenueTrend.series" [labels]="revenueTrend.labels" [legend]="false" />
+    </div>
+    <div class="card card-pad">
+      <div class="widget-title" style="font-size:14.5px; font-weight:700; margin-bottom: var(--space-5)">Class Strength Overview</div>
+      <app-bar-chart [series]="classStrength.series" [labels]="classStrength.labels" [legend]="false" />
+    </div>
+  </div>
+
+  <div class="grid grid-3">
+    @for (cat of categories; track cat.title) {
+      <div class="card card-pad report-cat-card">
+        <div class="flex items-center gap-3" style="margin-bottom: var(--space-4)">
+          <div class="report-icon" [style.background]="cat.color + '22'" [style.color]="cat.color"><app-icon [name]="cat.icon" [size]="19" /></div>
+          <div class="font-bold" style="font-size:14.5px">{{ cat.title }}</div>
+        </div>
+        <div class="report-links">
+          @for (r of cat.reports; track r) {
+            <button class="report-link" (click)="toggleFilters(cat.title + r)">
+              <span>{{ r }}</span>
+              <app-icon name="chevron-right" [size]="14" />
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

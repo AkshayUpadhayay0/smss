@@ -1,0 +1,72 @@
+<div class="page-wrap">
+  <app-page-header title="Calendar & Events" [subtitle]="monthLabel" [crumbs]="[{label: 'Dashboard', link: '/dashboard'}, {label: 'Calendar'}]">
+    <button class="btn btn-primary" (click)="selectedEvent.set(null); modalOpen.set(true)"><app-icon name="plus" [size]="16" /> Create Event</button>
+  </app-page-header>
+
+  <div class="card card-pad" style="margin-bottom: var(--space-6)">
+    <app-tabs [items]="tabs" [active]="view()" (select)="setView($event)" />
+  </div>
+
+  @if (view() === 'month') {
+    <div class="card card-pad">
+      <div class="cal-grid cal-header">
+        @for (d of ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; track d) { <div class="cal-day-label">{{ d }}</div> }
+      </div>
+      <div class="cal-grid">
+        @for (day of calendarDays(); track $index) {
+          @if (day.date === 0) {
+            <div class="cal-cell empty"></div>
+          } @else {
+            <div class="cal-cell" [class.today]="day.isToday">
+              <div class="cal-date">{{ day.date }}</div>
+              <div class="cal-events">
+                @for (e of eventsFor(day.iso).slice(0, 2); track e.id) {
+                  <div class="cal-event-chip" [style.background]="colorFor(e.type)" (click)="openEvent(e)">{{ e.title }}</div>
+                }
+                @if (eventsFor(day.iso).length > 2) {
+                  <div class="cal-more text-muted">+{{ eventsFor(day.iso).length - 2 }} more</div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="grid grid-2">
+      @for (e of events(); track e.id) {
+        <div class="card card-pad event-list-card" (click)="openEvent(e)">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-semibold">{{ e.title }}</div>
+              <div class="text-muted text-xs" style="margin-top:2px">{{ e.date }} @if (e.time) { · {{ e.time }} } @if (e.location) { · {{ e.location }} }</div>
+            </div>
+            <span class="badge" [style.background]="colorFor(e.type)" style="color:#fff">{{ e.type }}</span>
+          </div>
+          <p class="text-secondary text-sm" style="margin-top: var(--space-3)">{{ e.description }}</p>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<app-modal [open]="modalOpen()" [title]="selectedEvent() ? selectedEvent()!.title : 'Create Event'" (close)="modalOpen.set(false)">
+  @if (selectedEvent(); as e) {
+    <div class="info-row"><span class="info-label">Type</span><span class="info-value">{{ e.type }}</span></div>
+    <div class="info-row"><span class="info-label">Date</span><span class="info-value">{{ e.date }} @if (e.endDate) { – {{ e.endDate }} }</span></div>
+    @if (e.time) { <div class="info-row"><span class="info-label">Time</span><span class="info-value">{{ e.time }}</span></div> }
+    @if (e.location) { <div class="info-row"><span class="info-label">Location</span><span class="info-value">{{ e.location }}</span></div> }
+    <p class="text-secondary text-sm" style="margin-top: var(--space-4)">{{ e.description }}</p>
+  } @else {
+    <div class="form-grid">
+      <div style="grid-column:span 2"><label class="field-label">Event Title</label><input class="input" /></div>
+      <div><label class="field-label">Type</label><select class="select"><option>Holiday</option><option>Exam</option><option>Meeting</option><option>Function</option><option>Sports</option><option>Workshop</option></select></div>
+      <div><label class="field-label">Date</label><input class="input" type="date" /></div>
+      <div style="grid-column:span 2"><label class="field-label">Description</label><textarea class="textarea" rows="3"></textarea></div>
+    </div>
+  }
+  <div footer>
+    <button class="btn btn-outline" (click)="modalOpen.set(false)">Close</button>
+    @if (!selectedEvent()) { <button class="btn btn-primary" (click)="modalOpen.set(false)">Create Event</button> }
+  </div>
+</app-modal>

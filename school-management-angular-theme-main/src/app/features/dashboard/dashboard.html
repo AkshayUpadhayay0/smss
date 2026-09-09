@@ -1,0 +1,187 @@
+<div class="page-wrap">
+  <div class="welcome-row animate-in">
+    <div>
+      <h1 class="page-title">{{ greeting() }}, {{ auth.currentUser()?.name?.split(' ')?.[0] }} 👋</h1>
+      <p class="text-secondary" style="margin-top:4px">
+        Here's what's happening at {{ branding.branding().name }} — {{ session }}.
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a routerLink="/students" class="btn btn-outline"><app-icon name="user-plus" [size]="16" /> Add Student</a>
+      <a routerLink="/reports" class="btn btn-primary"><app-icon name="bar-chart" [size]="16" /> View Reports</a>
+    </div>
+  </div>
+
+  <!-- Main stats -->
+  <div class="grid grid-6" style="margin-top: var(--space-6)">
+    <app-stat-card label="Total Students" [value]="(totalStudents | number) ?? '0'" icon="users" color="var(--primary)" bg="var(--primary-light)" change="+8.2%" trend="up" footnote="from last session" />
+    <app-stat-card label="Total Teachers" [value]="totalTeachers.toString()" icon="user-check" color="#7c3aed" bg="#ede9fe" change="+3.1%" trend="up" footnote="from last session" />
+    <app-stat-card label="Total Classes" [value]="totalClasses.toString()" icon="layers" color="var(--info)" bg="var(--info-light)" footnote="Nursery to Class 12" />
+    <app-stat-card label="Today's Attendance" [value]="attendanceToday().pct + '%'" icon="check-square" color="var(--success)" bg="var(--success-light)" change="+1.4%" trend="up" footnote="of enrolled students" />
+    <app-stat-card label="Pending Fees" [value]="'₹' + (feeStats().pending / 100000 | number:'1.1-1') + 'L'" icon="wallet" color="var(--warning)" bg="var(--warning-light)" change="-4.6%" trend="down" footnote="outstanding this term" />
+    <app-stat-card label="Upcoming Exams" [value]="upcomingExamsCount.toString()" icon="award" color="var(--danger)" bg="var(--danger-light)" footnote="scheduled this month" />
+  </div>
+
+  <!-- Row 2: donuts + fees + homework -->
+  <div class="grid grid-4" style="margin-top: var(--space-6); align-items: stretch;">
+    <div class="card card-pad flex-col items-center">
+      <div class="widget-title full">Attendance Overview</div>
+      <app-donut-chart [data]="attendanceDonut()" centerLabel="Total" />
+    </div>
+
+    <div class="card card-pad flex-col items-center">
+      <div class="widget-title full">Student Overview</div>
+      <app-donut-chart [data]="genderDonut()" centerLabel="Students" [showLegend]="false" />
+      <div class="mini-stats">
+        <div><span class="dot" style="background:var(--primary)"></span> Boys <b>{{ studentStats().boys }}</b></div>
+        <div><span class="dot" style="background:#ec4899"></span> Girls <b>{{ studentStats().girls }}</b></div>
+        <div class="text-secondary text-sm">New admissions: <b class="text-primary-strong">{{ studentStats().newAdmissions }}</b></div>
+        <div class="text-secondary text-sm">Inactive: <b>{{ studentStats().inactive }}</b></div>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="widget-title">Fee Collection</div>
+      <div class="fee-amount">₹{{ feeStats().collected | number }} <span class="text-muted text-sm">/ ₹{{ feeStats().total | number }}</span></div>
+      <app-progress-bar [value]="feeStats().pct" color="var(--success)" [showValue]="false" />
+      <div class="fee-grid">
+        <div><span class="text-muted text-xs">Collected</span><div class="font-bold" style="color:var(--success)">₹{{ (feeStats().collected/1000 | number:'1.0-0') }}K</div></div>
+        <div><span class="text-muted text-xs">Pending</span><div class="font-bold" style="color:var(--warning)">₹{{ (feeStats().pending/1000 | number:'1.0-0') }}K</div></div>
+        <div><span class="text-muted text-xs">Overdue</span><div class="font-bold" style="color:var(--danger)">₹{{ (feeStats().overdue/1000 | number:'1.0-0') }}K</div></div>
+      </div>
+      <a routerLink="/fees" class="widget-link">View fee reports <app-icon name="arrow-right" [size]="13" /></a>
+    </div>
+
+    <div class="card card-pad">
+      <div class="widget-title">Homework Summary</div>
+      <div class="hw-row"><span>Assigned</span><b>{{ homeworkStats().assigned }}</b></div>
+      <app-progress-bar [value]="100" color="var(--primary)" [showValue]="false" [thickness]="6" />
+      <div class="hw-row"><span>Submitted</span><b style="color:var(--success)">{{ homeworkStats().submitted }}</b></div>
+      <app-progress-bar [value]="(homeworkStats().submitted / homeworkStats().assigned) * 100" color="var(--success)" [showValue]="false" [thickness]="6" />
+      <div class="hw-row"><span>Pending</span><b style="color:var(--warning)">{{ homeworkStats().pending }}</b></div>
+      <app-progress-bar [value]="(homeworkStats().pending / homeworkStats().assigned) * 100" color="var(--warning)" [showValue]="false" [thickness]="6" />
+      <div class="hw-row"><span>Overdue</span><b style="color:var(--danger)">{{ homeworkStats().overdue }}</b></div>
+      <app-progress-bar [value]="(homeworkStats().overdue / homeworkStats().assigned) * 100" color="var(--danger)" [showValue]="false" [thickness]="6" />
+    </div>
+  </div>
+
+  <!-- Row 3: charts -->
+  <div class="grid grid-2" style="margin-top: var(--space-6);">
+    <div class="card card-pad">
+      <div class="widget-title">Academic Performance <span class="text-muted text-sm font-medium">— average % by class</span></div>
+      <app-bar-chart [series]="performanceBar.series" [labels]="performanceBar.labels" [legend]="false" />
+    </div>
+    <div class="card card-pad">
+      <div class="widget-title">Admission Trend <span class="text-muted text-sm font-medium">— last 6 months</span></div>
+      <app-line-chart [series]="admissionTrend.series" [labels]="admissionTrend.labels" />
+    </div>
+  </div>
+
+  <!-- Row 4: lists -->
+  <div class="grid grid-3" style="margin-top: var(--space-6); align-items: start;">
+    <div class="card card-pad">
+      <div class="widget-title">Upcoming Events</div>
+      <div class="list-col">
+        @for (e of upcomingEvents; track e.id) {
+          <div class="event-row">
+            <div class="event-date">
+              <div class="event-day">{{ e.date | date:'d' }}</div>
+              <div class="event-mon text-muted">{{ e.date | date:'MMM' }}</div>
+            </div>
+            <div class="event-body">
+              <div class="font-semibold text-sm">{{ e.title }}</div>
+              <div class="text-muted text-xs">{{ e.type }} @if (e.time) { · {{ e.time }} }</div>
+            </div>
+          </div>
+        }
+      </div>
+      <a routerLink="/calendar" class="widget-link">Open calendar <app-icon name="arrow-right" [size]="13" /></a>
+    </div>
+
+    <div class="card card-pad">
+      <div class="widget-title">Recent Notices</div>
+      <div class="list-col">
+        @for (n of recentNotices; track n.id) {
+          <div class="notice-row">
+            <div class="notice-icon"><app-icon name="megaphone" [size]="15" /></div>
+            <div>
+              <div class="font-semibold text-sm">{{ n.title }}</div>
+              <div class="text-muted text-xs">{{ n.audience }} · {{ n.publishDate | date:'MMM d' }}</div>
+            </div>
+          </div>
+        }
+      </div>
+      <a routerLink="/notices" class="widget-link">View all notices <app-icon name="arrow-right" [size]="13" /></a>
+    </div>
+
+    <div class="card card-pad">
+      <div class="widget-title">Recent Activities</div>
+      <div class="list-col">
+        @for (a of recentActivities; track a.id) {
+          <div class="activity-row">
+            <div class="activity-icon"><app-icon [name]="a.icon" [size]="14" /></div>
+            <div>
+              <div class="text-sm"><b>{{ a.actor }}</b> {{ a.action }}</div>
+              <div class="text-muted text-xs">{{ a.timestamp }}</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 5: timetable + teacher summary -->
+  <div class="grid grid-2" style="margin-top: var(--space-6); margin-bottom: var(--space-2);">
+    <div class="card card-pad">
+      <div class="widget-title">Today's Timetable <span class="text-muted text-sm font-medium">— Class 9-A</span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead>
+          <tbody>
+            @for (p of todaysTimetable; track p.startTime) {
+              <tr [class.break-row]="p.isBreak">
+                <td class="text-sm">{{ p.startTime }} – {{ p.endTime }}</td>
+                @if (p.isBreak) {
+                  <td colspan="3" class="text-muted text-sm">☕ Break</td>
+                } @else {
+                  <td class="font-medium text-sm">{{ p.subject }}</td>
+                  <td class="text-sm text-secondary">{{ p.teacher }}</td>
+                  <td class="text-sm text-secondary">{{ p.room }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="widget-title">Teacher Summary</div>
+      <div class="grid grid-3" style="margin-bottom: var(--space-5)">
+        <div class="mini-metric">
+          <div class="mini-value">{{ teacherStats().total }}</div>
+          <div class="text-muted text-xs">Total Teachers</div>
+        </div>
+        <div class="mini-metric">
+          <div class="mini-value" style="color:var(--success)">{{ teacherStats().present }}</div>
+          <div class="text-muted text-xs">Present Today</div>
+        </div>
+        <div class="mini-metric">
+          <div class="mini-value" style="color:var(--danger)">{{ teacherStats().absent }}</div>
+          <div class="text-muted text-xs">Absent</div>
+        </div>
+      </div>
+      <div class="list-col">
+      </div>
+      <div class="staff-preview">
+        @for (t of [0,1,2,3,4]; track t) {
+          <div class="staff-chip">
+            <app-avatar [size]="28" />
+          </div>
+        }
+        <div class="staff-more text-muted text-xs">+{{ teacherStats().total - 5 }} more</div>
+      </div>
+      <a routerLink="/teachers" class="widget-link">Manage teachers <app-icon name="arrow-right" [size]="13" /></a>
+    </div>
+  </div>
+</div>
