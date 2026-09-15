@@ -1,0 +1,67 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.pagination-bar {
+  @include m.flex-between;
+  flex-wrap: wrap;
+  gap: v.$space-3;
+  padding-top: v.$space-4;
+  font-size: v.$font-size-sm;
+  color: var(--text-secondary);
+}
+
+.page-size-select {
+  margin-left: v.$space-4;
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-2;
+
+  select {
+    border: 1px solid var(--border-color);
+    border-radius: v.$radius-sm;
+    padding: 2px v.$space-2;
+    background: var(--surface-color);
+    color: var(--text-primary);
+  }
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: v.$space-1;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 v.$space-2;
+  border-radius: v.$radius-sm;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-color-alt);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.is-active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--primary-contrast);
+  }
+}
+
+.page-ellipsis {
+  padding: 0 v.$space-1;
+  color: var(--text-tertiary);
+}

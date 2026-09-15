@@ -1,0 +1,31 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.main-layout {
+  min-height: 100vh;
+  background: var(--background-color);
+}
+
+.main-layout-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left v.$transition-base;
+
+  @include m.respond-up(lg) {
+    margin-left: v.$sidebar-width;
+
+    &.is-collapsed {
+      margin-left: v.$sidebar-width-collapsed;
+    }
+  }
+}
+
+.main-layout-body {
+  flex: 1;
+  padding: v.$space-6;
+
+  @include m.respond-down(sm) {
+    padding: v.$space-4;
+  }
+}

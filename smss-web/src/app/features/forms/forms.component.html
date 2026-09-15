@@ -1,0 +1,135 @@
+<app-page-header
+  title="Form"
+  subtitle="Reactive Forms component showcase — every control type in one place."
+  icon="file-text"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Management' }, { label: 'Form' }]"
+>
+</app-page-header>
+
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <app-card title="Text Fields" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <app-input
+          label="Full Name"
+          formControlName="fullName"
+          [required]="true"
+          placeholder="e.g. Priya Sharma"
+          prefixIcon="user"
+          [errorText]="errorFor('fullName')"
+        ></app-input>
+        <app-input
+          label="Email"
+          type="email"
+          formControlName="email"
+          [required]="true"
+          placeholder="you@example.com"
+          prefixIcon="mail"
+          [errorText]="errorFor('email')"
+        ></app-input>
+      </div>
+      <div class="form-row">
+        <app-input
+          label="Password"
+          type="password"
+          formControlName="password"
+          [required]="true"
+          [showPasswordToggle]="true"
+          prefixIcon="lock"
+          placeholder="At least 8 characters"
+          help="Use 8+ characters with a mix of letters and numbers."
+          [errorText]="errorFor('password')"
+        ></app-input>
+        <app-input
+          label="Age"
+          type="number"
+          formControlName="age"
+          placeholder="e.g. 28"
+          [errorText]="errorFor('age')"
+        ></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Website (URL)" type="url" formControlName="website" placeholder="https://example.com"></app-input>
+        <app-input label="Phone" type="tel" formControlName="phone" prefixIcon="phone" placeholder="+91 98765 43210"></app-input>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-row">
+        <app-input
+          label="Organization Code"
+          formControlName="organizationCode"
+          help="Disabled field — set by the system."
+        ></app-input>
+        <app-input
+          label="Account ID"
+          formControlName="accountId"
+          [readonly]="true"
+          help="Readonly field — visible but not editable."
+        ></app-input>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Selection Controls" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <app-select label="Role" formControlName="role" [required]="true" [options]="roleOptions" [errorText]="errorFor('role')"></app-select>
+        <app-select label="Skills (multi-select)" formControlName="skills" [options]="skillOptions" [multiple]="true" help="Hold Ctrl/Cmd to select multiple."></app-select>
+      </div>
+      <div class="form-row">
+        <app-radio-group label="Plan" formControlName="plan" [options]="planOptions"></app-radio-group>
+        <div class="form-group inline-controls">
+          <span class="form-label">Preferences</span>
+          <app-checkbox label="Account is active" formControlName="isActive"></app-checkbox>
+          <app-switch label="Receive product updates" formControlName="receiveUpdates"></app-switch>
+        </div>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Other Controls" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="startDate">Start Date</label>
+          <input class="form-control" id="startDate" type="date" formControlName="startDate" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="endDate">End Date (range end)</label>
+          <input class="form-control" id="endDate" type="date" formControlName="endDate" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="meetingTime">Time</label>
+          <input class="form-control" id="meetingTime" type="time" formControlName="meetingTime" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="brandColor">Brand Color</label>
+          <input class="form-control color-input" id="brandColor" type="color" formControlName="brandColor" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="fileUpload">File Upload</label>
+          <input class="form-control" id="fileUpload" type="file" />
+          <span class="form-help">PNG, JPG or PDF up to 5MB.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="experienceYears">Years of Experience: {{ f.experienceYears.value }}</label>
+          <input class="range-input" id="experienceYears" type="range" min="0" max="20" formControlName="experienceYears" />
+        </div>
+      </div>
+      <app-textarea label="Bio" formControlName="bio" placeholder="Tell us a little about yourself…" [rows]="4" help="Maximum 250 characters recommended."></app-textarea>
+    </div>
+  </app-card>
+
+  <div class="form-actions">
+    <app-button type="button" variant="secondary" (pressed)="onReset()">Reset</app-button>
+    <app-button type="submit" variant="primary">
+      <app-icon name="check" [size]="16"></app-icon>
+      Submit Form
+    </app-button>
+  </div>
+</form>

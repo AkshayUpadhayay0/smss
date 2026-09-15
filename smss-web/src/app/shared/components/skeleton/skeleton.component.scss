@@ -1,0 +1,12 @@
+@use 'variables' as v;
+
+.app-skeleton {
+  display: block;
+  border-radius: v.$radius-sm;
+  background: linear-gradient(90deg, var(--surface-color-alt) 25%, var(--badge-neutral-bg) 37%, var(--surface-color-alt) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+.is-round-md { border-radius: v.$radius-md; }
+.is-round-full { border-radius: v.$radius-full; }

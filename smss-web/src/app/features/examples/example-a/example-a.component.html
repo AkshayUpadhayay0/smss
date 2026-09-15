@@ -1,0 +1,14 @@
+<app-page-header
+  title="Example A"
+  subtitle="Level 1 — root example page."
+  icon="rows-3"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Examples' }, { label: 'A' }]"
+>
+</app-page-header>
+
+<app-card>
+  <p class="text-secondary" style="margin-bottom: 16px;">
+    This route demonstrates a nested route structure with an automatically-built breadcrumb trail. Go deeper to see it grow.
+  </p>
+  <app-button variant="primary" routerLink="/example/a/b">Go to Level 2 (B) →</app-button>
+</app-card>

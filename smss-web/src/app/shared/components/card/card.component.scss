@@ -1,0 +1,29 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.app-card {
+  @include m.card-surface;
+  padding: v.$space-6;
+
+  &.no-padding {
+    padding: 0;
+
+    .app-card-header {
+      padding: v.$space-5 v.$space-6;
+    }
+  }
+}
+
+.app-card-header {
+  @include m.flex-between;
+  margin-bottom: v.$space-4;
+}
+
+.app-card-title {
+  font-size: v.$font-size-md;
+  font-weight: v.$font-weight-semibold;
+}
+
+.no-padding .app-card-body {
+  padding: 0 v.$space-6 v.$space-6;
+}

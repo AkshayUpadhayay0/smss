@@ -1,0 +1,18 @@
+<app-page-header
+  title="Example D"
+  subtitle="Level 4 — the deepest example route (Home / A / B / C / D)."
+  icon="rows-3"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Examples' }, { label: 'A', url: '/example/a' }, { label: 'B', url: '/example/a/b' }, { label: 'C', url: '/example/a/b/c' }, { label: 'D' }]"
+>
+</app-page-header>
+
+<app-card>
+  <div style="display:flex; align-items:center; gap:8px; color: var(--success-color); margin-bottom: 16px;">
+    <app-icon name="check-circle-2" [size]="18"></app-icon>
+    <span class="font-medium">You've reached the deepest nested example route.</span>
+  </div>
+  <p class="text-secondary" style="margin-bottom: 16px;">
+    All four levels render inside the same MainLayout — only the router outlet content and breadcrumb change.
+  </p>
+  <app-button variant="secondary" routerLink="/example/a/b/c">← Back to C</app-button>
+</app-card>

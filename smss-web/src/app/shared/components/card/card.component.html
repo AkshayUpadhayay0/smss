@@ -1,0 +1,13 @@
+<div class="app-card" [class.no-padding]="noPadding()">
+  @if (title()) {
+    <div class="app-card-header">
+      <h3 class="app-card-title">{{ title() }}</h3>
+      <div class="app-card-header-actions">
+        <ng-content select="[card-actions]"></ng-content>
+      </div>
+    </div>
+  }
+  <div class="app-card-body">
+    <ng-content></ng-content>
+  </div>
+</div>

@@ -1,0 +1,17 @@
+<div class="progress-wrapper">
+  @if (label()) {
+    <div class="progress-label-row">
+      <span>{{ label() }}</span>
+      <span>{{ clamped() }}%</span>
+    </div>
+  }
+  <div class="progress-track" role="progressbar" [attr.aria-valuenow]="clamped()" aria-valuemin="0" aria-valuemax="100">
+    <div
+      class="progress-fill"
+      [class.is-success]="variant() === 'success'"
+      [class.is-warning]="variant() === 'warning'"
+      [class.is-danger]="variant() === 'danger'"
+      [style.width.%]="clamped()"
+    ></div>
+  </div>
+</div>

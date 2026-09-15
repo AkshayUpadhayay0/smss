@@ -1,0 +1,16 @@
+<div
+  class="alert"
+  [class.alert-success]="variant() === 'success'"
+  [class.alert-warning]="variant() === 'warning'"
+  [class.alert-danger]="variant() === 'danger'"
+  [class.alert-info]="variant() === 'info'"
+  role="alert"
+>
+  <app-icon [name]="icon" [size]="18"></app-icon>
+  <div class="alert-body">
+    @if (title()) {
+      <p class="alert-title">{{ title() }}</p>
+    }
+    <div class="alert-content"><ng-content></ng-content></div>
+  </div>
+</div>

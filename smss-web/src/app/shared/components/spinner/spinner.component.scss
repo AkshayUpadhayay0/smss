@@ -1,0 +1,9 @@
+@use 'variables' as v;
+
+.app-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2.5px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  animation: spin 0.7s linear infinite;
+}

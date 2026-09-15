@@ -1,0 +1,23 @@
+<header class="page-header">
+  <div class="page-header-main">
+    <div class="page-header-title-row">
+      @if (icon()) {
+        <span class="page-header-icon">
+          <app-icon [name]="icon()!" [size]="20"></app-icon>
+        </span>
+      }
+      <div>
+        <h1 class="page-header-title">{{ title() }}</h1>
+        @if (subtitle()) {
+          <p class="page-header-subtitle">{{ subtitle() }}</p>
+        }
+      </div>
+    </div>
+    @if (breadcrumbs()) {
+      <app-breadcrumb [items]="breadcrumbs()!"></app-breadcrumb>
+    }
+  </div>
+  <div class="page-header-actions">
+    <ng-content></ng-content>
+  </div>
+</header>

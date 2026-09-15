@@ -1,0 +1,74 @@
+// Default / White theme.
+// These variables are declared on :root AND on body.theme-default so the
+// app looks correct before the ThemeService applies a class, and so
+// switching back to "Default" always works the same way as any other theme.
+
+@mixin default-theme-vars {
+  // Brand / primary
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-active: #3730a3;
+  --primary-soft: #eef2ff;
+  --primary-contrast: #ffffff;
+
+  // Semantic
+  --success-color: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning-color: #d97706;
+  --warning-soft: #fffbeb;
+  --danger-color: #dc2626;
+  --danger-soft: #fef2f2;
+  --info-color: #0284c7;
+  --info-soft: #f0f9ff;
+
+  // Chrome
+  --header-bg: #ffffff;
+  --header-border: #e5e7eb;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-active-bg: var(--primary-soft);
+  --sidebar-active-text: var(--primary-color);
+  --sidebar-active-bar: var(--primary-color);
+  --sidebar-hover-bg: #f8fafc;
+  --sidebar-text: #475569;
+  --sidebar-text-muted: #94a3b8;
+
+  // Surfaces / background
+  --background-color: #f6f7fb;
+  --surface-color: #ffffff;
+  --surface-color-alt: #f8fafc;
+
+  // Text
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --text-on-primary: #ffffff;
+
+  // Borders
+  --border-color: #e5e7eb;
+  --border-color-strong: #cbd5e1;
+
+  // Links / focus
+  --link-color: var(--primary-color);
+  --focus-ring-color: rgba(79, 70, 229, 0.22);
+
+  // Components
+  --badge-neutral-bg: #f1f5f9;
+  --badge-neutral-text: #475569;
+  --progress-track: #e5e7eb;
+  --scrollbar-thumb: #cbd5e1;
+
+  // Theme swatch (used by theme selector preview dots)
+  --theme-swatch-1: #4f46e5;
+  --theme-swatch-2: #16a34a;
+  --theme-swatch-3: #0284c7;
+  --theme-swatch-4: #d97706;
+}
+
+:root {
+  @include default-theme-vars;
+}
+
+body.theme-default {
+  @include default-theme-vars;
+}

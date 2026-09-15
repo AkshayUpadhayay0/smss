@@ -1,0 +1,20 @@
+<div class="form-group">
+  @if (label()) {
+    <span class="form-label">{{ label() }}</span>
+  }
+  <div class="radio-options" [class.is-inline]="inline()">
+    @for (option of options(); track option.value) {
+      <label class="radio-row" [class.is-disabled]="disabledState()">
+        <input
+          type="radio"
+          [name]="groupName"
+          [checked]="value() === option.value"
+          [disabled]="disabledState()"
+          (change)="select(option.value)"
+        />
+        <span class="radio-dot"></span>
+        <span class="radio-label">{{ option.label }}</span>
+      </label>
+    }
+  </div>
+</div>

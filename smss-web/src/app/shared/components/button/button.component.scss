@@ -1,0 +1,19 @@
+:host {
+  display: inline-flex;
+}
+:host([block]) {
+  display: flex;
+  width: 100%;
+}
+
+button {
+  position: relative;
+}
+
+.btn-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

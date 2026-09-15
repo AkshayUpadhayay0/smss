@@ -1,1 +1,20 @@
-/* You can add global styles to this file, and also import other style files */
+// =========================================================
+// Global stylesheet entry point.
+// Import order matters: variables/mixins -> themes -> reset -> utilities
+// =========================================================
+@use 'styles/variables';
+@use 'styles/mixins';
+
+@use 'styles/themes/default';
+@use 'styles/themes/green';
+@use 'styles/themes/blue';
+@use 'styles/themes/orange';
+@use 'styles/themes/yellow';
+@use 'styles/themes/purple';
+
+@use 'styles/reset';
+@use 'styles/utilities';
+
+html, body {
+  scroll-behavior: smooth;
+}

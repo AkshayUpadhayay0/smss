@@ -1,0 +1,11 @@
+@if (confirmDialogService.state(); as state) {
+  <app-modal [open]="true" [title]="state.title" size="sm" (closed)="resolve(false)">
+    <p>{{ state.message }}</p>
+    <div modal-footer>
+      <app-button variant="secondary" (pressed)="resolve(false)">{{ state.cancelLabel }}</app-button>
+      <app-button [variant]="state.variant === 'danger' ? 'danger' : 'primary'" (pressed)="resolve(true)">
+        {{ state.confirmLabel }}
+      </app-button>
+    </div>
+  </app-modal>
+}

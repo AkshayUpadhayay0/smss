@@ -1,0 +1,43 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.breadcrumb {
+  ol {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: v.$space-1;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: v.$space-1;
+    font-size: v.$font-size-sm;
+  }
+
+  a {
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+
+    &:hover {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+  }
+
+  .breadcrumb-home-icon {
+    color: var(--text-tertiary);
+    margin-right: 2px;
+  }
+
+  .breadcrumb-current {
+    color: var(--text-primary);
+    font-weight: v.$font-weight-medium;
+  }
+
+  .breadcrumb-separator {
+    color: var(--text-tertiary);
+  }
+}

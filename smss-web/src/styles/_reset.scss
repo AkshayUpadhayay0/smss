@@ -1,0 +1,80 @@
+@use 'variables' as v;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: v.$font-family-base;
+  font-size: v.$font-size-base;
+  line-height: v.$line-height-base;
+  color: var(--text-primary);
+  background: var(--background-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color v.$transition-base, color v.$transition-base;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: v.$font-weight-semibold;
+  color: var(--text-primary);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+ul, ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+svg {
+  display: block;
+}
+
+// Visible, accessible focus outline for keyboard users only
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary-color);
+}

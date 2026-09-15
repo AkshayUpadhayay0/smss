@@ -1,0 +1,68 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+
+  @include m.respond-up(lg) {
+    grid-template-columns: 440px 1fr;
+  }
+}
+
+.auth-brand-panel {
+  display: none;
+  background: linear-gradient(160deg, var(--primary-color), var(--primary-active));
+  color: #fff;
+  padding: v.$space-12 v.$space-10;
+  flex-direction: column;
+  justify-content: center;
+
+  @include m.respond-up(lg) {
+    display: flex;
+  }
+}
+
+.auth-brand-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: v.$radius-lg;
+  background: rgba(255, 255, 255, 0.16);
+  @include m.flex-center;
+  margin-bottom: v.$space-6;
+}
+
+.auth-brand-content h1 {
+  font-size: v.$font-size-2xl;
+  margin-bottom: v.$space-3;
+}
+
+.auth-brand-content p {
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin-bottom: v.$space-8;
+  max-width: 340px;
+}
+
+.auth-brand-points {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-3;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: v.$space-2;
+    font-size: v.$font-size-sm;
+    color: rgba(255, 255, 255, 0.92);
+  }
+}
+
+.auth-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$space-6;
+  background: var(--background-color);
+}

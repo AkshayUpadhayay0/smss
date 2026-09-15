@@ -1,0 +1,48 @@
+<div class="auth-card">
+  <h1 class="auth-title">Sign in</h1>
+  <p class="auth-subtitle">Welcome back! Please enter your details.</p>
+
+  @if (errorMessage()) {
+    <app-alert variant="danger" style="margin-bottom: 16px;">{{ errorMessage() }}</app-alert>
+  }
+
+  <div class="demo-hint">
+    <app-icon name="info" [size]="15"></app-icon>
+    Demo credentials are pre-filled — just click Sign In.
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <app-input
+      label="Email"
+      type="email"
+      formControlName="email"
+      [required]="true"
+      prefixIcon="mail"
+      placeholder="you@example.com"
+      [errorText]="errorFor('email')"
+    ></app-input>
+
+    <app-input
+      label="Password"
+      type="password"
+      formControlName="password"
+      [required]="true"
+      [showPasswordToggle]="true"
+      prefixIcon="lock"
+      placeholder="Enter your password"
+      [errorText]="errorFor('password')"
+    ></app-input>
+
+    <div class="auth-row">
+      <app-checkbox label="Remember me" formControlName="rememberMe"></app-checkbox>
+      <a href="javascript:void(0)" class="forgot-link">Forgot password?</a>
+    </div>
+
+    <app-button type="submit" variant="primary" [block]="true" [loading]="loading()">Sign In</app-button>
+  </form>
+
+  <p class="auth-footer-text">
+    Don't have an organization yet?
+    <a routerLink="/register">Create one</a>
+  </p>
+</div>

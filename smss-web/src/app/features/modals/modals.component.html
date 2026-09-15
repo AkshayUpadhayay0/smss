@@ -1,0 +1,91 @@
+<app-page-header
+  title="Modals"
+  subtitle="One reusable modal shell, used for every dialog pattern below."
+  icon="square-check-big"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Management' }, { label: 'Modals' }]"
+>
+</app-page-header>
+
+<app-card>
+  <div class="ui-row">
+    <app-button variant="primary" (pressed)="open('basic')">Basic Modal</app-button>
+    <app-button variant="danger" (pressed)="openConfirm()">Confirmation Modal</app-button>
+    <app-button variant="secondary" (pressed)="open('form')">Form Modal</app-button>
+    <app-button variant="secondary" (pressed)="open('large')">Large Modal</app-button>
+    <app-button variant="secondary" (pressed)="open('fullscreen')">Full-screen Modal</app-button>
+    <app-button variant="secondary" (pressed)="simulateLoadingModal()">Loading Modal</app-button>
+  </div>
+</app-card>
+
+<!-- Basic modal -->
+<app-modal [open]="activeModal() === 'basic'" title="Basic Modal" size="sm" (closed)="close()">
+  <p>This is a simple modal with a title, some content, and two footer actions.</p>
+  <div modal-footer>
+    <app-button variant="secondary" (pressed)="close()">Cancel</app-button>
+    <app-button variant="primary" (pressed)="close()">Save</app-button>
+  </div>
+</app-modal>
+
+<!-- Form modal -->
+<app-modal [open]="activeModal() === 'form'" title="Add Announcement" size="md" (closed)="close()">
+  <form [formGroup]="quickForm" (ngSubmit)="submitQuickForm()">
+    <app-input
+      label="Title"
+      formControlName="title"
+      [required]="true"
+      placeholder="e.g. Scheduled maintenance"
+      [errorText]="quickForm.get('title')?.touched && quickForm.get('title')?.invalid ? 'Title is required.' : undefined"
+    ></app-input>
+    <app-input label="Description" formControlName="description" placeholder="Optional details"></app-input>
+  </form>
+  <div modal-footer>
+    <app-button variant="secondary" (pressed)="close()">Cancel</app-button>
+    <app-button variant="primary" (pressed)="submitQuickForm()">Save</app-button>
+  </div>
+</app-modal>
+
+<!-- Large modal -->
+<app-modal [open]="activeModal() === 'large'" title="Organization Details" size="lg" (closed)="close()">
+  <div class="modal-grid">
+    <div>
+      <p class="text-sm text-secondary">Organization Name</p>
+      <p class="font-medium">Demo School</p>
+    </div>
+    <div>
+      <p class="text-sm text-secondary">Organization Code</p>
+      <p class="font-medium">DEMO</p>
+    </div>
+    <div>
+      <p class="text-sm text-secondary">Active Theme</p>
+      <p class="font-medium">Blue</p>
+    </div>
+    <div>
+      <p class="text-sm text-secondary">Total Users</p>
+      <p class="font-medium">128</p>
+    </div>
+  </div>
+  <p class="text-sm text-secondary" style="margin-top: 16px;">
+    Large modals are useful for showing more detailed information or multi-column layouts without leaving the current page.
+  </p>
+  <div modal-footer>
+    <app-button variant="secondary" (pressed)="close()">Close</app-button>
+  </div>
+</app-modal>
+
+<!-- Fullscreen modal -->
+<app-modal [open]="activeModal() === 'fullscreen'" title="Full-screen Preview" size="fullscreen" (closed)="close()">
+  <p class="text-secondary">
+    Full-screen modals are useful for immersive tasks like previewing a document, editing a large form, or reviewing a report.
+  </p>
+  <div modal-footer>
+    <app-button variant="secondary" (pressed)="close()">Close</app-button>
+  </div>
+</app-modal>
+
+<!-- Loading modal -->
+<app-modal [open]="activeModal() === 'loading'" [showClose]="false" [closeOnBackdrop]="false" size="sm">
+  <div class="loading-modal-content">
+    <app-spinner [size]="28"></app-spinner>
+    <p>Processing your request…</p>
+  </div>
+</app-modal>

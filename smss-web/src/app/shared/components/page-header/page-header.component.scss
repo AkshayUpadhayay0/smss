@@ -1,0 +1,49 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.page-header {
+  @include m.flex-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: v.$space-4;
+  margin-bottom: v.$space-6;
+}
+
+.page-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-3;
+  margin-bottom: v.$space-2;
+}
+
+.page-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: v.$radius-md;
+  background: var(--primary-soft);
+  color: var(--primary-color);
+  @include m.flex-center;
+  flex-shrink: 0;
+}
+
+.page-header-title {
+  font-size: v.$font-size-xl;
+}
+
+.page-header-subtitle {
+  color: var(--text-secondary);
+  font-size: v.$font-size-sm;
+  margin-top: 2px;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: v.$space-2;
+  flex-wrap: wrap;
+}
+
+@include m.respond-down(sm) {
+  .page-header {
+    flex-direction: column;
+  }
+}

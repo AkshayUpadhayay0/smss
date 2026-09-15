@@ -1,0 +1,40 @@
+<div class="form-group">
+  @if (label()) {
+    <label class="form-label" [for]="inputId">
+      {{ label() }}
+      @if (required()) {
+        <span class="required-mark">*</span>
+      }
+    </label>
+  }
+  <div class="input-group" [class.has-prefix]="prefixIcon()" [class.has-suffix]="showPasswordToggle() && type() === 'password'">
+    @if (prefixIcon()) {
+      <span class="input-prefix">
+        <app-icon [name]="prefixIcon()!" [size]="16"></app-icon>
+      </span>
+    }
+    <input
+      class="form-control"
+      [class.is-invalid]="!!errorText()"
+      [id]="inputId"
+      [type]="resolvedType"
+      [placeholder]="placeholder()"
+      [value]="value()"
+      [readonly]="readonly()"
+      [disabled]="disabledState()"
+      [required]="required()"
+      (input)="handleInput($event)"
+      (blur)="onTouched()"
+    />
+    @if (showPasswordToggle() && type() === 'password') {
+      <span class="input-suffix is-clickable" (click)="togglePasswordVisibility()">
+        <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="16"></app-icon>
+      </span>
+    }
+  </div>
+  @if (errorText()) {
+    <span class="form-error">{{ errorText() }}</span>
+  } @else if (help()) {
+    <span class="form-help">{{ help() }}</span>
+  }
+</div>

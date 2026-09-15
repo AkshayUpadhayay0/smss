@@ -1,0 +1,26 @@
+<div class="form-group">
+  @if (label()) {
+    <label class="form-label" [for]="textareaId">
+      {{ label() }}
+      @if (required()) {
+        <span class="required-mark">*</span>
+      }
+    </label>
+  }
+  <textarea
+    class="form-control"
+    [class.is-invalid]="!!errorText()"
+    [id]="textareaId"
+    [rows]="rows()"
+    [placeholder]="placeholder()"
+    [disabled]="disabledState()"
+    [required]="required()"
+    (input)="handleInput($event)"
+    (blur)="onTouched()"
+  >{{ value() }}</textarea>
+  @if (errorText()) {
+    <span class="form-error">{{ errorText() }}</span>
+  } @else if (help()) {
+    <span class="form-help">{{ help() }}</span>
+  }
+</div>

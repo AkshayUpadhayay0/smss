@@ -1,0 +1,50 @@
+<app-page-header
+  title="Swagger / API Documentation"
+  subtitle="Placeholder for OpenAPI/Swagger UI once a backend is connected."
+  icon="code"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Documentation' }, { label: 'Swagger' }]"
+>
+</app-page-header>
+
+<div class="swagger-grid page-section">
+  <app-card title="API Status">
+    <div class="swagger-status-row">
+      <span class="status-dot"></span>
+      <span class="font-medium">No backend connected</span>
+    </div>
+    <p class="text-sm text-secondary" style="margin-top: 8px;">
+      This template ships with mock/localStorage data. Once a real backend is available, point the app to it below and
+      generate interactive Swagger UI docs from its OpenAPI schema.
+    </p>
+  </app-card>
+
+  <app-card title="Base API URL">
+    <code class="api-url">{{ apiUrl }}</code>
+    <p class="text-sm text-secondary" style="margin-top: 8px;">
+      Configured per environment in <code>src/environments</code> — never hard-coded in components.
+    </p>
+  </app-card>
+
+  <app-card title="Authentication">
+    <p class="text-sm text-secondary">
+      The API expects a <code>Bearer</code> token in the <code>Authorization</code> header. The included
+      <code>authInterceptor</code> already attaches the current session token to every outgoing request.
+    </p>
+  </app-card>
+</div>
+
+<app-card title="Example Endpoints" class="page-section" [noPadding]="true">
+  <div class="endpoint-list">
+    @for (endpoint of endpoints; track endpoint.path + endpoint.method) {
+      <div class="endpoint-row">
+        <app-badge [variant]="methodVariant(endpoint.method)" class="method-badge">{{ endpoint.method }}</app-badge>
+        <code class="endpoint-path">{{ endpoint.path }}</code>
+        <span class="endpoint-desc">{{ endpoint.description }}</span>
+      </div>
+    }
+  </div>
+</app-card>
+
+<app-card title="Sample Response" class="page-section">
+  <pre class="response-block">{{ sampleResponse }}</pre>
+</app-card>

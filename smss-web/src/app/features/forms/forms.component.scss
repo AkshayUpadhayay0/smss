@@ -1,0 +1,26 @@
+@use 'variables' as v;
+
+.inline-controls {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-3;
+  justify-content: center;
+}
+
+.color-input {
+  padding: 4px;
+  height: 44px;
+  cursor: pointer;
+}
+
+.range-input {
+  width: 100%;
+  accent-color: var(--primary-color);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$space-3;
+  padding-bottom: v.$space-8;
+}

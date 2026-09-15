@@ -1,0 +1,57 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.table-scroll {
+  overflow-x: auto;
+  @include m.scrollbar-thin;
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: v.$font-size-sm;
+  min-width: 640px;
+
+  th, td {
+    text-align: left;
+    padding: v.$space-3 v.$space-4;
+    white-space: nowrap;
+  }
+
+  thead th {
+    color: var(--text-secondary);
+    font-weight: v.$font-weight-medium;
+    font-size: v.$font-size-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border-color);
+    user-select: none;
+
+    &.is-sortable {
+      cursor: pointer;
+      &:hover { color: var(--text-primary); }
+    }
+  }
+
+  .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: v.$space-1;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color v.$transition-fast;
+
+    &:hover { background: var(--surface-color-alt); }
+    &:last-child { border-bottom: none; }
+  }
+
+  .empty-row:hover {
+    background: transparent;
+  }
+
+  .actions-col {
+    text-align: right;
+  }
+}

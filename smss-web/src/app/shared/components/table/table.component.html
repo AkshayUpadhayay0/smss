@@ -1,0 +1,54 @@
+<div class="table-scroll">
+  <table class="app-table">
+    <thead>
+      <tr>
+        @for (column of columns(); track column.key) {
+          <th [style.width]="column.width" [class.is-sortable]="column.sortable" (click)="onHeaderClick(column)">
+            <span class="th-content">
+              {{ column.label }}
+              @if (column.sortable) {
+                <app-icon [name]="sortIconFor(column)" [size]="14"></app-icon>
+              }
+            </span>
+          </th>
+        }
+        @if (hasActions()) {
+          <th class="actions-col">Actions</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @if (loading()) {
+        @for (r of skeletonRows; track $index) {
+          <tr>
+            @for (column of columns(); track column.key) {
+              <td><app-skeleton height="14px"></app-skeleton></td>
+            }
+            @if (hasActions()) {
+              <td><app-skeleton width="60px" height="14px"></app-skeleton></td>
+            }
+          </tr>
+        }
+      } @else if (rows().length === 0) {
+        <tr class="empty-row">
+          <td [attr.colspan]="columns().length + (hasActions() ? 1 : 0)">
+            <app-empty-state icon="inbox" title="No data" [description]="emptyMessage()"></app-empty-state>
+          </td>
+        </tr>
+      } @else {
+        @for (row of rows(); track $index) {
+          <tr>
+            @for (column of columns(); track column.key) {
+              <td>{{ row[column.key] }}</td>
+            }
+            @if (hasActions() && rowActionsTemplate) {
+              <td class="actions-col">
+                <ng-container [ngTemplateOutlet]="rowActionsTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+              </td>
+            }
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>

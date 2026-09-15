@@ -1,0 +1,60 @@
+@use 'variables' as v;
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-2;
+  cursor: pointer;
+  font-size: v.$font-size-sm;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  &.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    input { cursor: not-allowed; }
+  }
+}
+
+.checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-color-strong);
+  background: var(--surface-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color v.$transition-fast, border-color v.$transition-fast;
+  position: relative;
+}
+
+input:checked + .checkbox-box {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+}
+
+input:focus-visible + .checkbox-box {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}

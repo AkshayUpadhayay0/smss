@@ -1,0 +1,29 @@
+@use 'variables' as v;
+
+.app-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.app-dropdown-trigger {
+  cursor: pointer;
+}
+
+.app-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: v.$radius-md;
+  box-shadow: v.$shadow-lg;
+  padding: v.$space-2;
+  z-index: v.$z-dropdown;
+  animation: fade-in v.$transition-fast;
+
+  &.align-left {
+    right: auto;
+    left: 0;
+  }
+}
