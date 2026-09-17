@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("smss-api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+60ea1553d14eedb8ee39367c71cbee24cb10dad9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0df3f9e7b4c8d686aef8000a8bc2863a74735a36")]
 [assembly: System.Reflection.AssemblyProductAttribute("smss-api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("smss-api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
