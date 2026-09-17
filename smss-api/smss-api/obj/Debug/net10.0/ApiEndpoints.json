@@ -8,5 +8,128 @@
     "Order": 0,
     "Parameters": [],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetBoardTypes",
+    "RelativePath": "api/MasterData/board-types",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetCities",
+    "RelativePath": "api/MasterData/cities/{countryId}/{stateId}/{districtId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "countryId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "stateId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "districtId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetCountries",
+    "RelativePath": "api/MasterData/countries",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetDistricts",
+    "RelativePath": "api/MasterData/districts/{countryId}/{stateId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "countryId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "stateId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetRoles",
+    "RelativePath": "api/MasterData/role",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetSchoolLevels",
+    "RelativePath": "api/MasterData/school-levels",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetSchoolTypes",
+    "RelativePath": "api/MasterData/school-types",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetStates",
+    "RelativePath": "api/MasterData/states/{countryId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "countryId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "smss_api.Controllers.MasterDataController",
+    "Method": "GetStatus",
+    "RelativePath": "api/MasterData/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   }
 ]

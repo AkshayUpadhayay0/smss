@@ -1,3 +1,5 @@
 <Solution>
+  <Project Path="smss-api-db-layer/smss-api-db-layer.csproj" Id="f1b38274-007d-42e5-ab40-aa0b94433987" />
+  <Project Path="smss-api-service-layer/smss-api-service-layer.csproj" Id="197c351f-4a72-4194-92f1-ef3831440ec1" />
   <Project Path="smss-api/smss-api.csproj" />
 </Solution>
