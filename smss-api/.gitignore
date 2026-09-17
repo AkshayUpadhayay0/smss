@@ -1,0 +1,322 @@
+# ============================================================
+# Visual Studio
+# ============================================================
+
+.vs/
+.vscode/
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio temporary files
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio Code
+.history/
+*.code-workspace
+
+
+# ============================================================
+# .NET / ASP.NET Core
+# ============================================================
+
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+!**/[Pp]ackages/repositories.config
+
+# NuGet cache
+.nuget/
+
+# ASP.NET Core generated files
+aspnetcore-browser-refresh.js
+scopedcss/
+*.razor.css.map
+
+# Generated documentation
+*.xml
+
+
+# ============================================================
+# .NET MAUI / Xamarin (if used later)
+# ============================================================
+
+# .NET MAUI
+*.apk
+*.aab
+*.ipa
+
+# Xamarin
+*.xcodeproj
+*.xcworkspace
+
+
+# ============================================================
+# Logs
+# ============================================================
+
+*.log
+logs/
+Log/
+Logs/
+
+
+# ============================================================
+# Database / Local Development
+# ============================================================
+
+# Local database files
+*.db
+*.db3
+*.sqlite
+*.sqlite3
+
+# SQL Server LocalDB
+*.mdf
+*.ldf
+
+# SQLite temporary files
+*-journal
+*-wal
+*-shm
+
+
+# ============================================================
+# Entity Framework Core
+# ============================================================
+
+# EF generated migration build artifacts
+Migrations/**/obj/
+
+# NOTE:
+# Do NOT ignore your actual EF Core migration files.
+# Keep:
+# Migrations/*.cs
+
+
+# ============================================================
+# User-specific / Local configuration
+# ============================================================
+
+# Local application settings
+appsettings.Local.json
+appsettings.Development.Local.json
+
+# User secrets
+secrets.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+
+# ============================================================
+# Certificates / HTTPS development
+# ============================================================
+
+# ASP.NET Core development certificate
+*.pfx
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.cer
+
+
+# ============================================================
+# Publish output
+# ============================================================
+
+publish/
+Publish/
+*.publishsettings
+
+# Deployment packages
+*.zip
+
+
+# ============================================================
+# IIS / ASP.NET temporary files
+# ============================================================
+
+wwwroot/uploads/
+wwwroot/temp/
+
+# ASP.NET temporary files
+App_Data/
+Temporary ASP.NET Files/
+
+
+# ============================================================
+# Rider / JetBrains
+# ============================================================
+
+.idea/
+*.sln.iml
+
+
+# ============================================================
+# ReSharper
+# ============================================================
+
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+
+# ============================================================
+# Code Coverage
+# ============================================================
+
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+
+# ============================================================
+# OS generated files
+# ============================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Windows installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows Explorer temporary files
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# macOS folder attributes
+._*
+
+# Linux
+*~
+.directory
+
+
+# ============================================================
+# Temporary files
+# ============================================================
+
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Visual Studio temporary folders
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+
+# ============================================================
+# Node / Frontend
+# ============================================================
+
+# If Angular / React / Node projects exist inside this repository
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.npm/
+.yarn/
+.pnpm-store/
+
+dist/
+.angular/
+.cache/
+
+
+# ============================================================
+# Docker
+# ============================================================
+
+# Local Docker environment
+docker-compose.override.yml
+
+# Docker local environment files
+docker.env
+
+
+# ============================================================
+# Azure / Cloud local files
+# ============================================================
+
+.azure/
+.azuredevops/
+
+
+# ============================================================
+# Backup files
+# ============================================================
+
+*.orig
+*.rej
+*.old
+
+
+# ============================================================
+# Local IDE / tooling
+# ============================================================
+
+.vsconfig
+
+# MSBuild
+*.binlog
+
+# dotnet tools
+.dotnet/
+
+
+# ============================================================
+# Generated / Temporary folders
+# ============================================================
+
+artifacts/
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+
+# ============================================================
+# Keep important source/configuration files
+# ============================================================
+
+# IMPORTANT:
+# appsettings.json is intentionally NOT ignored.
+# appsettings.json can contain shared application configuration.
+#
+# However, NEVER commit real passwords, API keys, JWT secrets,
+# database passwords, connection strings containing credentials,
+# or other sensitive production secrets.
