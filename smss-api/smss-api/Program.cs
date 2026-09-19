@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.@interface;
 using smss_api_db_layer.repository;
+using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
 using smss_api_service_layer.service;
 
@@ -16,6 +18,30 @@ builder.Services.AddDbContext<dbContext>(options =>
 // Add services to the container.
 builder.Services.AddScoped<IMasterDataRepository, MasterDataRepository>();
 builder.Services.AddScoped<IMasterDataService, MasterDataService>();
+
+builder.Services.AddScoped<ISchoolRegistrationRepository, SchoolRegistrationRepository>();
+builder.Services.AddScoped<ISchoolRegistrationService, SchoolRegistrationService>();
+
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    x => x.Key,
+                    x => x.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+            return new BadRequestObjectResult(new ApiResponse<object>
+            {
+                Status = false,
+                StatusCode = 400,
+                Message = "Validation failed",
+                Data = errors
+            });
+        };
+    });
 
 
 builder.Services.AddControllers();

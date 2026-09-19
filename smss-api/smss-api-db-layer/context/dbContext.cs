@@ -28,6 +28,10 @@ namespace smss_api_db_layer.context
 
         public DbSet<LutSchoolLevel> LutSchoolLevels { get; set; } = null!;
         public DbSet<LutRole> LutRoles { get; set; } = null!;
+        public DbSet<TbSchools> Schools { get; set; } = null!;
+        public DbSet<TbUsers> Users { get; set; } = null!; 
+        public DbSet<TbUserRoles> UserRoles { get; set; } = null!;
+        public DbSet<TbSchoolContacts> SchoolContacts { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 
@@ -79,6 +83,60 @@ namespace smss_api_db_layer.context
             modelBuilder.Entity<LutRole>()
                 .HasKey(x => x.RoleId);
 
+            // TB SCHOOLS
+            modelBuilder.Entity<TbSchools>(e =>
+            {
+                e.ToTable("tb_schools");
+                e.HasKey(x => x.SchoolId);
+
+                e.HasIndex(x => x.SchoolCode).IsUnique();
+                e.HasIndex(x => x.SchoolGstin).IsUnique();
+                e.HasIndex(x => x.SchoolPan).IsUnique();
+                e.HasMany(x => x.Contacts)
+                 .WithOne()
+                 .HasForeignKey(c => c.SchoolId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TbUsers>(e =>
+            {
+                e.ToTable("tb_users");
+                e.HasKey(x => x.UserId);
+                e.Property(x => x.UserId).UseIdentityAlwaysColumn();
+                e.HasIndex(x => x.Username).IsUnique();
+
+
+                e.HasOne<TbSchools>().WithMany().HasForeignKey(x => x.SchoolId);
+            });
+
+            modelBuilder.Entity<TbUserRoles>(e =>
+            {
+                e.ToTable("tb_user_roles");
+                e.HasKey(x => x.UserRoleId);
+                e.Property(x => x.UserRoleId).UseIdentityAlwaysColumn();
+                e.HasIndex(x => new { x.UserId, x.RoleId }).IsUnique();
+
+                e.HasOne(x => x.User)
+                 .WithMany(u => u.UserRoles)
+                 .HasForeignKey(x => x.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne<LutRole>()
+                 .WithMany()
+                 .HasForeignKey(x => x.RoleId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // inside the existing modelBuilder.Entity<TbSchools>(e => { ... }) block, add:
+            
+
+            // new block
+            modelBuilder.Entity<TbSchoolContacts>(e =>
+            {
+                e.ToTable("tb_school_contacts");
+                e.HasKey(x => x.ContactId);
+                e.Property(x => x.ContactId).UseIdentityAlwaysColumn();
+            });
         }
 
     }
