@@ -1,0 +1,15 @@
+<app-page-header
+  title="Table"
+  subtitle="Reusable data table example — search, sort, paginate."
+  icon="table-2"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Management' }, { label: 'Table' }]"
+>
+  <app-button variant="secondary" (pressed)="simulateLoading()">
+    <app-icon name="refresh-cw" [size]="16"></app-icon>
+    Refresh
+  </app-button>
+  <app-button variant="primary">
+    <app-icon name="circle-plus" [size]="16"></app-icon>
+    Add User
+  </app-button>
+</app-page-header>

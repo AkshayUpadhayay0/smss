@@ -2,6 +2,7 @@ import { NavItem } from '../models';
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/dashboard', icon: 'layout-dashboard' },
+  { label: 'Registered Schools', route: '/schools', icon: 'home' },
   {
     label: 'Management',
     icon: 'layout-grid',

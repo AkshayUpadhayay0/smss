@@ -93,8 +93,26 @@ export const routes: Routes = [
         title: 'Example D — smss-web',
         data: { breadcrumb: ['Examples', 'A', 'B', 'C', 'D'] },
       },
+
+      // acttual 
+      // =========================================================
+      // school registration FLOW
+      // =========================================================
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/organization/organization.routes').then(
+            (m) => m.SCHL_DATA_ROUTES
+          ),
+      },
+
+
+      
     ],
   },
+
+
+
 
   { path: '**', redirectTo: 'dashboard' },
 ];
