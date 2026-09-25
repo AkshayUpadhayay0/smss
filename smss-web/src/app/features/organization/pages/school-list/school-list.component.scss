@@ -1,0 +1,61 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.table-toolbar {
+  @include m.flex-between;
+  flex-wrap: wrap;
+  gap: v.$space-3;
+  padding: v.$space-5 v.$space-6;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table-search {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+  max-width: 420px;
+
+  .form-control {
+    padding-left: v.$space-8;
+  }
+}
+
+.table-search-icon {
+  position: absolute;
+  left: v.$space-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+}
+
+.table-toolbar-meta {
+  display: flex;
+  align-items: center;
+  gap: v.$space-2;
+  font-size: v.$font-size-sm;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$space-1;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: v.$radius-sm;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  @include m.flex-center;
+
+  &:hover { background: var(--surface-color-alt); color: var(--text-primary); }
+  &.is-danger:hover { background: var(--danger-soft); color: var(--danger-color); }
+}
+
+.table-footer {
+  padding: 0 v.$space-6 v.$space-5;
+}

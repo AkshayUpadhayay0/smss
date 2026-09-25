@@ -1,0 +1,161 @@
+<app-page-header [title]="isEditMode ? 'Edit School' : 'Register School'"
+  [subtitle]="isEditMode ? 'Update this school\'s details.' : 'Onboard a new school onto the platform.'" icon="home"
+  [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Schools', url: '/schools' }, { label: isEditMode ? 'Edit' : 'Add' }]">
+
+  <app-button type="button" variant="secondary" routerLink="/schools">Cancel</app-button>
+  <app-button type="submit" variant="success" [disabled]="submitting()">
+    <app-icon name="check" [size]="16"></app-icon>
+    {{ submitting() ? 'Saving...' : (isEditMode ? 'Update School' : 'Register School') }}
+  </app-button>
+
+</app-page-header>
+
+<form *ngIf="!registrationResult(); else successBlock" [formGroup]="form" (ngSubmit)="submit()">
+  <app-card title="School Identity" class="page-section">
+    <div class="form-section">
+      <div class="form-row" *ngIf="!isEditMode">
+        <app-input label="School Code" formControlName="schoolCode" [required]="true" placeholder="e.g. ABC-001"
+          [errorText]="errorFor(form.get('schoolCode'))"></app-input>
+        <app-input label="School Name" formControlName="schoolName" [required]="true"
+          placeholder="e.g. ABC Public School" [errorText]="errorFor(form.get('schoolName'))"></app-input>
+      </div>
+      <div class="form-row" *ngIf="isEditMode">
+        <app-input label="School Name" formControlName="schoolName" [required]="true"
+          placeholder="e.g. ABC Public School" [errorText]="errorFor(form.get('schoolName'))"></app-input>
+        <app-input label="Short Name" formControlName="schoolShortName" placeholder="e.g. ABC"></app-input>
+      </div>
+      <div class="form-row" *ngIf="!isEditMode">
+        <app-input label="Short Name" formControlName="schoolShortName" placeholder="e.g. ABC"></app-input>
+        <app-input label="Establish Year" type="number" formControlName="schoolEstablishYear" placeholder="e.g. 1998"
+          [errorText]="errorFor(form.get('schoolEstablishYear'))"></app-input>
+      </div>
+      <div class="form-row" *ngIf="isEditMode">
+        <app-input label="Establish Year" type="number" formControlName="schoolEstablishYear" placeholder="e.g. 1998"
+          [errorText]="errorFor(form.get('schoolEstablishYear'))"></app-input>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Tax / Legal" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <app-input label="GSTIN" formControlName="schoolGstin" placeholder="e.g. 07ABCDE1234F1Z5"
+          [errorText]="errorFor(form.get('schoolGstin'))"></app-input>
+        <app-input label="PAN" formControlName="schoolPan" placeholder="e.g. ABCDE1234F"
+          [errorText]="errorFor(form.get('schoolPan'))"></app-input>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Location" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <app-input label="Country Id" type="number" formControlName="countryId"></app-input>
+        <app-input label="State Id" type="number" formControlName="stateId"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="District Id" type="number" formControlName="districtId"></app-input>
+        <app-input label="City Id" type="number" formControlName="cityId"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Address Line 1" formControlName="addressLine1"></app-input>
+        <app-input label="Address Line 2" formControlName="addressLine2"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Pincode" formControlName="pincode" [errorText]="errorFor(form.get('pincode'))"></app-input>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Contact" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <app-input label="Email" type="email" formControlName="email" prefixIcon="mail"
+          [errorText]="errorFor(form.get('email'))"></app-input>
+        <app-input label="Mobile Number" formControlName="mobileNumber" prefixIcon="phone"
+          [errorText]="errorFor(form.get('mobileNumber'))"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Website" type="url" formControlName="website" placeholder="https://example.com"></app-input>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="Subscription" class="page-section">
+    <div class="form-section">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="subscriptionStartDate">Start Date</label>
+          <input class="form-control" id="subscriptionStartDate" type="date" formControlName="subscriptionStartDate" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="subscriptionEndDate">End Date</label>
+          <input class="form-control" id="subscriptionEndDate" type="date" formControlName="subscriptionEndDate" />
+        </div>
+      </div>
+    </div>
+  </app-card>
+
+  <app-card title="School Contacts" class="page-section" formArrayName="contacts">
+    <div class="contact-block" *ngFor="let contact of contactGroups; let i = index" [formGroupName]="i">
+      <div class="form-row">
+        <app-select label="Contact Type" formControlName="contactType" [required]="true" [options]="contactTypeOptions"
+          [errorText]="errorFor(contact.get('contactType'))"></app-select>
+        <app-input label="Contact Name" formControlName="contactName" [required]="true"
+          [errorText]="errorFor(contact.get('contactName'))"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Designation" formControlName="designation"></app-input>
+        <app-input label="Email" type="email" formControlName="email"
+          [errorText]="errorFor(contact.get('email'))"></app-input>
+      </div>
+      <div class="form-row">
+        <app-input label="Mobile" formControlName="mobileNumber"
+          [errorText]="errorFor(contact.get('mobileNumber'))"></app-input>
+        <div class="form-group inline-controls">
+          <span class="form-label">Primary Contact</span>
+          <label class="radio-inline">
+            <input type="radio" name="primaryContact" [checked]="contact.get('isPrimary')?.value"
+              (change)="setPrimary(i)" />
+            Set as primary
+          </label>
+        </div>
+      </div>
+
+      <div class="contact-block-actions">
+        <app-button type="button" variant="danger" (pressed)="removeContact(i)" [disabled]="contacts.length === 1">
+          <app-icon name="trash-2" [size]="14"></app-icon>
+          Remove Contact
+        </app-button>
+      </div>
+    </div>
+
+    <app-button type="button" variant="secondary" (pressed)="addContact()">
+      <app-icon name="circle-plus" [size]="16"></app-icon>
+      Add Contact
+    </app-button>
+  </app-card>
+
+  <!-- <div class="form-actions">
+    <app-button type="button" variant="secondary" routerLink="/schools">Cancel</app-button>
+    <app-button type="submit" variant="primary" [disabled]="submitting()">
+      <app-icon name="check" [size]="16"></app-icon>
+      {{ submitting() ? 'Saving...' : (isEditMode ? 'Update School' : 'Register School') }}
+    </app-button>
+  </div> -->
+</form>
+
+<ng-template #successBlock>
+  <app-card class="page-section success-card">
+    <div class="success-panel">
+      <app-icon name="circle-check" [size]="40" class="success-icon"></app-icon>
+      <h2>School registered successfully</h2>
+      <p>Save these login details now — the password is shown only once.</p>
+      <div class="credentials">
+        <div><strong>Username:</strong> {{ registrationResult()?.username }}</div>
+        <div><strong>Temporary Password:</strong> {{ registrationResult()?.temporaryPassword }}</div>
+      </div>
+      <app-button variant="primary" (pressed)="doneAfterRegistration()">Done</app-button>
+    </div>
+  </app-card>
+</ng-template>

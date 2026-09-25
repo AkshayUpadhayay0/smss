@@ -1,19 +1,12 @@
 import { Routes } from '@angular/router';
+import { SchoolListComponent } from './pages/school-list/school-list.component';
+import { AddSchoolComponent } from './pages/school-registration/add-school.component';
+
 
 export const SCHL_DATA_ROUTES: Routes = [
 
-    {
-        path: 'schools',
-        loadComponent: () =>
-            import('./pages/school-list/school-list.component').then(
-                (m) => m.SchoolListComponent),
-        title: 'Schools',
-    },
-    {
-        path: 'add-schools',
-        loadComponent: () =>
-            import('./pages/school-registration/add-school.component').then(
-                (m) => m.AddSchoolComponent),
-        title: 'Create Organization — smss-web',
-    },
+    { path: 'schools', component: SchoolListComponent },
+    { path: 'schools/add', component: AddSchoolComponent },
+    { path: 'schools/:schoolId/edit', component: AddSchoolComponent }
+    
 ];

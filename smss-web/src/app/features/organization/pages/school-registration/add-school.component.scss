@@ -1,0 +1,79 @@
+@use 'variables' as v;
+
+
+.contact-block {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px dashed var(--border-color, #e5e7eb);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+.contact-block-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.radio-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.success-card .success-panel {
+  text-align: center;
+  padding: 2rem 1rem;
+
+  .success-icon {
+    color: var(--color-success, #16a34a);
+    margin-bottom: 0.5rem;
+  }
+
+  .credentials {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1.25rem auto;
+    max-width: 360px;
+    font-family: monospace;
+    text-align: left;
+  }
+}
+
+
+.inline-controls {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-3;
+  justify-content: center;
+}
+
+.color-input {
+  padding: 4px;
+  height: 44px;
+  cursor: pointer;
+}
+
+.range-input {
+  width: 100%;
+  accent-color: var(--primary-color);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$space-3;
+  padding-bottom: v.$space-8;
+}
