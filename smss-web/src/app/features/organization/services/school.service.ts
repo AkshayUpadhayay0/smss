@@ -14,7 +14,7 @@ import {
 export class SchoolService {
   private readonly baseUrl = `${environment.apiUrl}/api/SchoolRegistration`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getSchools(): Observable<ApiResponse<SchoolsListModel[]>> {
     return this.http.get<ApiResponse<SchoolsListModel[]>>(`${this.baseUrl}/schools`);
@@ -31,4 +31,10 @@ export class SchoolService {
   updateSchool(schoolId: string, payload: UpdateSchoolRequest): Observable<ApiResponse<SchoolsListModel>> {
     return this.http.put<ApiResponse<SchoolsListModel>>(`${this.baseUrl}/schools/${schoolId}`, payload);
   }
+
+  toggleSchoolStatus(schoolId: string): Observable<ApiResponse<SchoolsListModel>> {
+    return this.http.post<ApiResponse<SchoolsListModel>>(`${this.baseUrl}/schools/${schoolId}/toggle-status`, {});
+  }
+
+
 }

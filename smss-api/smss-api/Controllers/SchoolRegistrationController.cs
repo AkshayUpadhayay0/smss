@@ -49,5 +49,13 @@ namespace smss_api.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
+        // POST api/SchoolRegistration/schools/sch2026001/toggle-status
+        [HttpPost("schools/{schoolId}/toggle-status")]
+        public async Task<IActionResult> ToggleSchoolStatus(string schoolId)
+        {
+            var response = await _schoolRegistrationService.ToggleSchoolStatusAsync(schoolId);
+            return StatusCode(response.StatusCode, response);
+        }
+
     }
 }

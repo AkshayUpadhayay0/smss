@@ -10,16 +10,20 @@ import { PaginationComponent } from '../../../../shared/components/pagination/pa
 
 import { SortDirection, TableColumn } from '../../../../core/models';
 import { ConfirmDialogService, ToastService } from '../../../../core/services';
+import { MasterDataService } from '../../../../core/services/master-data.service';
 
 import { SchoolService } from '../../services/school.service';
 import { SchoolsListModel } from '../../model/school.model';
 
-const COLUMNS: TableColumn<SchoolsListModel>[] = [
+// A school row plus a resolved, human-readable status name for display/search
+type SchoolRow = SchoolsListModel & { schoolStatusName: string };
+
+const COLUMNS: TableColumn<SchoolRow>[] = [
   { key: 'schoolCode', label: 'School Code', sortable: true, width: '140px' },
   { key: 'schoolName', label: 'School Name', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'mobileNumber', label: 'Mobile', sortable: true, width: '140px' },
-  { key: 'schoolStatusId', label: 'Status', sortable: true, width: '110px' },
+  { key: 'schoolStatusName', label: 'Status', sortable: true, width: '110px' },
 ];
 
 @Component({
@@ -40,6 +44,7 @@ const COLUMNS: TableColumn<SchoolsListModel>[] = [
 })
 export class SchoolListComponent implements OnInit {
   private readonly schoolService = inject(SchoolService);
+  private readonly masterDataService = inject(MasterDataService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
@@ -53,7 +58,20 @@ export class SchoolListComponent implements OnInit {
   readonly currentPage = signal(1);
   readonly pageSize = signal(10);
 
-  readonly allRows = signal<SchoolsListModel[]>([]);
+  // sid -> name map for the "general status" group (Active / Inactive)
+  private readonly statusNameById = signal<Record<number, string>>({});
+  private activeStatusId: number | null = null;
+  private inactiveStatusId: number | null = null;
+
+  private readonly rawRows = signal<SchoolsListModel[]>([]);
+
+  readonly allRows = computed<SchoolRow[]>(() => {
+    const names = this.statusNameById();
+    return this.rawRows().map((r) => ({
+      ...r,
+      schoolStatusName: r.schoolStatusId != null ? names[r.schoolStatusId] ?? String(r.schoolStatusId) : '-',
+    }));
+  });
 
   readonly filteredRows = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
@@ -61,13 +79,13 @@ export class SchoolListComponent implements OnInit {
 
     if (term) {
       rows = rows.filter((r) =>
-        [r.schoolCode, r.schoolName, r.email, r.mobileNumber].some((v) =>
+        [r.schoolCode, r.schoolName, r.email, r.mobileNumber, r.schoolStatusName].some((v) =>
           (v ?? '').toLowerCase().includes(term),
         ),
       );
     }
 
-    const key = this.sortKey() as keyof SchoolsListModel;
+    const key = this.sortKey() as keyof SchoolRow;
     const dir = this.sortDirection();
     if (key && dir) {
       rows = [...rows].sort((a, b) => {
@@ -86,6 +104,16 @@ export class SchoolListComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.masterDataService.getStatusesByType('general status').subscribe((statuses) => {
+      const map: Record<number, string> = {};
+      statuses.forEach((s) => {
+        map[s.sid] = s.sname;
+        if (s.sname === 'Active') this.activeStatusId = s.sid;
+        if (s.sname === 'Inactive') this.inactiveStatusId = s.sid;
+      });
+      this.statusNameById.set(map);
+    });
+
     this.loadSchools();
   }
 
@@ -96,7 +124,7 @@ export class SchoolListComponent implements OnInit {
       next: (res) => {
         this.loading.set(false);
         if (res.status) {
-          this.allRows.set(res.data || []);
+          this.rawRows.set(res.data || []);
         } else if (res.statusCode !== 404) {
           this.toastService.danger('Failed to load schools', res.message);
         }
@@ -131,25 +159,51 @@ export class SchoolListComponent implements OnInit {
     this.currentPage.set(1);
   }
 
-  view(row: SchoolsListModel): void {
+  view(row: SchoolRow): void {
     this.toastService.info('School details', `${row.schoolName} (${row.schoolCode})`);
   }
 
-  edit(row: SchoolsListModel): void {
+  edit(row: SchoolRow): void {
     this.router.navigate(['/schools', row.schoolId, 'edit']);
   }
 
-  async remove(row: SchoolsListModel): Promise<void> {
+  isActive(row: SchoolRow): boolean {
+    return this.activeStatusId != null && row.schoolStatusId === this.activeStatusId;
+  }
+
+  statusActionIcon(row: SchoolRow): string {
+    return this.isActive(row) ? 'trash' : 'circle-check';
+  }
+
+  statusActionLabel(row: SchoolRow): string {
+    return this.isActive(row) ? 'Deactivate' : 'Activate';
+  }
+
+  async toggleStatus(row: SchoolRow): Promise<void> {
+    const willActivate = !this.isActive(row);
     const confirmed = await this.confirmDialogService.confirm({
-      title: 'Delete school',
-      message: `Are you sure you want to delete ${row.schoolName}? This action cannot be undone.`,
-      confirmLabel: 'Delete',
-      variant: 'danger',
+      title: willActivate ? 'Activate school' : 'Deactivate school',
+      message: willActivate
+        ? `Reactivate ${row.schoolName}? Its login will be re-enabled.`
+        : `Deactivate ${row.schoolName}? Its login will be disabled until reactivated.`,
+      confirmLabel: willActivate ? 'Activate' : 'Deactivate',
+      variant: willActivate ? 'primary' : 'danger',
     });
 
     if (!confirmed) return;
 
-    // No DELETE endpoint on the API yet — see note below.
-    this.toastService.info('Not available yet', "Deleting schools isn't wired up to the API yet.");
+    this.schoolService.toggleSchoolStatus(row.schoolId).subscribe({
+      next: (res) => {
+        if (res.status && res.data) {
+          this.rawRows.update((rows) =>
+            rows.map((r) => (r.schoolId === row.schoolId ? { ...r, schoolStatusId: res.data!.schoolStatusId } : r)),
+          );
+          this.toastService.success(willActivate ? 'School activated' : 'School deactivated', res.message);
+        } else {
+          this.toastService.danger('Action failed', res.message);
+        }
+      },
+      error: () => this.toastService.danger('Action failed', 'Please try again.'),
+    });
   }
 }

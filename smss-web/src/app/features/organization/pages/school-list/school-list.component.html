@@ -14,8 +14,13 @@
   <div class="table-toolbar">
     <div class="table-search">
       <app-icon name="search" [size]="16" class="table-search-icon"></app-icon>
-      <input type="search" class="form-control" placeholder="Search by school code, name, email or mobile…"
-        [value]="searchTerm()" (input)="onSearch($any($event.target).value)" />
+      <input
+        type="search"
+        class="form-control"
+        placeholder="Search by school code, name, email, mobile or status…"
+        [value]="searchTerm()"
+        (input)="onSearch($any($event.target).value)"
+      />
     </div>
     <div class="table-toolbar-meta">
       <app-icon name="rows-3" [size]="15"></app-icon>
@@ -23,9 +28,16 @@
     </div>
   </div>
 
-  <app-table [columns]="columns" [rows]="pagedRows()" [loading]="loading()" [sortKey]="sortKey()"
-    [sortDirection]="sortDirection()" [hasActions]="true" emptyMessage="Register a school to see it here."
-    (sortChange)="onSortChange($event)">
+  <app-table
+    [columns]="columns"
+    [rows]="pagedRows()"
+    [loading]="loading()"
+    [sortKey]="sortKey()"
+    [sortDirection]="sortDirection()"
+    [hasActions]="true"
+    emptyMessage="Register a school to see it here."
+    (sortChange)="onSortChange($event)"
+  >
     <ng-template #rowActions let-row>
       <div class="row-actions">
         <button type="button" class="icon-btn" (click)="view(row)" aria-label="View">
@@ -34,15 +46,27 @@
         <button type="button" class="icon-btn" (click)="edit(row)" aria-label="Edit">
           <app-icon name="pencil" [size]="16"></app-icon>
         </button>
-        <button type="button" class="icon-btn is-danger" (click)="remove(row)" aria-label="Delete">
-          <app-icon name="trash-2" [size]="16"></app-icon>
+        <button
+          type="button"
+          class="icon-btn"
+          [class.is-danger]="isActive(row)"
+          (click)="toggleStatus(row)"
+          [attr.aria-label]="statusActionLabel(row)"
+          [title]="statusActionLabel(row)"
+        >
+          <app-icon [name]="statusActionIcon(row)" [size]="16"></app-icon>
         </button>
       </div>
     </ng-template>
   </app-table>
 
   <div class="table-footer">
-    <app-pagination [currentPage]="currentPage()" [totalItems]="filteredRows().length" [pageSize]="pageSize()"
-      (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination>
+    <app-pagination
+      [currentPage]="currentPage()"
+      [totalItems]="filteredRows().length"
+      [pageSize]="pageSize()"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
   </div>
 </app-card>

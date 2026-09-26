@@ -233,5 +233,39 @@ namespace smss_api_service_layer.service
             _logger.LogError(ex, "Error while {Action}", action);
             return Fail(500, "Something went wrong. Please try again later.");
         }
+
+        public async Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId)
+        {
+            try
+            {
+                var school = await _repo.GetSchoolByIdAsync(schoolId, track: true);
+                if (school == null) return Fail(404, "School not found");
+
+                var activeId = await _repo.GetStatusIdByNameAsync("Active", "general status");
+                var inactiveId = await _repo.GetStatusIdByNameAsync("Inactive", "general status");
+                if (activeId == null || inactiveId == null)
+                    return Fail(500, "'Active'/'Inactive' status is not configured in lut_status");
+
+                var newStatusId = school.SchoolStatusId == activeId ? inactiveId : activeId;
+                var now = DateTime.UtcNow;
+
+                school.SchoolStatusId = newStatusId;
+                school.UpdatedAt = now;
+
+                // Keep the school's login in lockstep — an inactive school shouldn't still be able to log in
+                var user = await _repo.GetUserBySchoolIdAsync(schoolId, track: true);
+                if (user != null)
+                {
+                    user.StatusId = newStatusId;
+                    user.UpdatedAt = now;
+                }
+
+                await _repo.SaveChangesAsync();
+
+                var message = newStatusId == activeId ? "School activated successfully" : "School deactivated successfully";
+                return Ok(200, message, SchoolMapper.ToResponse(school));
+            }
+            catch (Exception ex) { return Error(ex, "toggling school status"); }
+        }
     }
 }

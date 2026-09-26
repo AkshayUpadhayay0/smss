@@ -70,6 +70,23 @@ namespace smss_api_db_layer.repository
             await _dbContext.SaveChangesAsync();
         }
 
+        public async Task<TbUsers?> GetUserBySchoolIdAsync(string schoolId, bool track = false)
+        {
+            IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.SchoolId == schoolId);
+            if (!track) query = query.AsNoTracking();
+            return await query.FirstOrDefaultAsync();
+        }
+
+        // Matches lut_status by name + stype, e.g. ("Active", "general status") -> sid 1
+        public async Task<int?> GetStatusIdByNameAsync(string statusName, string statusType)
+        {
+            return await _dbContext.LutStatus
+                .AsNoTracking()
+                .Where(s => s.Sname == statusName && s.Stype == statusType)
+                .Select(s => (int?)s.Sid)
+                .FirstOrDefaultAsync();
+        }
+
         public Task<int> SaveChangesAsync() => _dbContext.SaveChangesAsync();
     }
 }

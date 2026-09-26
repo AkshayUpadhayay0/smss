@@ -13,6 +13,8 @@ namespace smss_api_db_layer.@interface
         Task<long?> GetRoleIdByNameAsync(string roleName);
         Task<List<string>> GetDuplicateFieldsAsync(string? schoolCode, string? gstin, string? pan, string? excludeSchoolId = null);
         Task AddSchoolWithAdminUserAsync(TbSchools school, TbUsers user);
+        Task<TbUsers?> GetUserBySchoolIdAsync(string schoolId, bool track = false);
+        Task<int?> GetStatusIdByNameAsync(string statusName, string statusType);
         Task<int> SaveChangesAsync();
     }
 }
