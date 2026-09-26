@@ -1,13 +1,6 @@
 <app-page-header [title]="isEditMode ? 'Edit School' : 'Register School'"
   [subtitle]="isEditMode ? 'Update this school\'s details.' : 'Onboard a new school onto the platform.'" icon="home"
   [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Schools', url: '/schools' }, { label: isEditMode ? 'Edit' : 'Add' }]">
-
-  <app-button type="button" variant="secondary" routerLink="/schools">Cancel</app-button>
-  <app-button type="submit" variant="success" [disabled]="submitting()">
-    <app-icon name="check" [size]="16"></app-icon>
-    {{ submitting() ? 'Saving...' : (isEditMode ? 'Update School' : 'Register School') }}
-  </app-button>
-
 </app-page-header>
 
 <form *ngIf="!registrationResult(); else successBlock" [formGroup]="form" (ngSubmit)="submit()">
@@ -33,6 +26,16 @@
         <app-input label="Establish Year" type="number" formControlName="schoolEstablishYear" placeholder="e.g. 1998"
           [errorText]="errorFor(form.get('schoolEstablishYear'))"></app-input>
       </div>
+
+      <div class="form-row">
+        <app-select label="School Type" formControlName="schoolTypeId" [options]="schoolTypeOptions()"></app-select>
+        <app-select label="School Level" formControlName="schoolLevelId" [options]="schoolLevelOptions()"></app-select>
+      </div>
+      <div class="form-row">
+        <app-select label="Board" formControlName="boardTypeId" [options]="boardTypeOptions()"></app-select>
+        <app-select label="School Status" formControlName="schoolStatusId"
+          [options]="schoolStatusOptions()"></app-select>
+      </div>
     </div>
   </app-card>
 
@@ -50,12 +53,12 @@
   <app-card title="Location" class="page-section">
     <div class="form-section">
       <div class="form-row">
-        <app-input label="Country Id" type="number" formControlName="countryId"></app-input>
-        <app-input label="State Id" type="number" formControlName="stateId"></app-input>
+        <app-select label="Country" formControlName="countryId" [options]="countryOptions()"></app-select>
+        <app-select label="State" formControlName="stateId" [options]="stateOptions()"></app-select>
       </div>
       <div class="form-row">
-        <app-input label="District Id" type="number" formControlName="districtId"></app-input>
-        <app-input label="City Id" type="number" formControlName="cityId"></app-input>
+        <app-select label="District" formControlName="districtId" [options]="districtOptions()"></app-select>
+        <app-select label="City" formControlName="cityId" [options]="cityOptions()"></app-select>
       </div>
       <div class="form-row">
         <app-input label="Address Line 1" formControlName="addressLine1"></app-input>
@@ -93,6 +96,10 @@
           <input class="form-control" id="subscriptionEndDate" type="date" formControlName="subscriptionEndDate" />
         </div>
       </div>
+      <div class="form-row">
+        <app-select label="Subscription Status" formControlName="subscriptionStatusId"
+          [options]="subscriptionStatusOptions()"></app-select>
+      </div>
     </div>
   </app-card>
 
@@ -123,7 +130,8 @@
       </div>
 
       <div class="contact-block-actions">
-        <app-button type="button" variant="danger" (pressed)="removeContact(i)" [disabled]="contacts.length === 1">
+        <app-button type="button" variant="danger" (pressed)="removeContact(i)"
+          [disabled]="contacts.length === 1">
           <app-icon name="trash-2" [size]="14"></app-icon>
           Remove Contact
         </app-button>
@@ -136,13 +144,13 @@
     </app-button>
   </app-card>
 
-  <!-- <div class="form-actions">
+  <div class="form-actions">
     <app-button type="button" variant="secondary" routerLink="/schools">Cancel</app-button>
     <app-button type="submit" variant="primary" [disabled]="submitting()">
       <app-icon name="check" [size]="16"></app-icon>
       {{ submitting() ? 'Saving...' : (isEditMode ? 'Update School' : 'Register School') }}
     </app-button>
-  </div> -->
+  </div>
 </form>
 
 <ng-template #successBlock>
