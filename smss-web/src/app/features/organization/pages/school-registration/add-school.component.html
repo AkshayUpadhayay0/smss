@@ -33,9 +33,47 @@
       </div>
       <div class="form-row">
         <app-select label="Board" formControlName="boardTypeId" [options]="boardTypeOptions()"></app-select>
-        <app-select label="School Status" formControlName="schoolStatusId"
-          [options]="schoolStatusOptions()"></app-select>
       </div>
+    </div>
+  </app-card>
+
+  <app-card title="School Logo" class="page-section">
+    <div class="logo-field">
+      <div class="logo-preview" [class.is-empty]="!currentLogo()">
+        <img *ngIf="currentLogo() as logo" [src]="logo" alt="School logo" />
+        <!-- <app-icon *ngIf="!currentLogo()" name="image" [size]="32"></app-icon> -->
+         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+      </div>
+
+      <div class="logo-actions" *ngIf="!isViewMode; else viewLogoNote">
+        <input #logoInput type="file" hidden accept="image/png,image/jpeg,image/webp"
+          (change)="onLogoSelected($event)" />
+        <div class="logo-buttons">
+          <app-button type="button" variant="secondary" (pressed)="logoInput.click()">
+            <app-icon name="upload" [size]="16"></app-icon>
+            {{ currentLogo() ? 'Change Logo' : 'Upload Logo' }}
+          </app-button>
+          <app-button *ngIf="currentLogo()" type="button" variant="danger" (pressed)="clearLogo()">
+            <app-icon name="trash" [size]="14"></app-icon>
+            Remove
+          </app-button>
+          <app-button *ngIf="removeExistingLogo()" type="button" variant="secondary" (pressed)="undoRemoveLogo()">
+            Undo
+          </app-button>
+        </div>
+        <p class="logo-help">Optional. PNG, JPG or WEBP, up to 2 MB.</p>
+        <p class="logo-error" *ngIf="logoError()">{{ logoError() }}</p>
+        <p class="logo-note" *ngIf="logoFile()">The new logo is saved when you submit the form.</p>
+        <p class="logo-note" *ngIf="removeExistingLogo()">The logo will be removed when you submit the form.</p>
+      </div>
+
+      <ng-template #viewLogoNote>
+        <p class="logo-help" *ngIf="!currentLogo()">No logo uploaded.</p>
+      </ng-template>
     </div>
   </app-card>
 
@@ -130,8 +168,7 @@
       </div>
 
       <div class="contact-block-actions">
-        <app-button type="button" variant="danger" (pressed)="removeContact(i)"
-          [disabled]="contacts.length === 1">
+        <app-button type="button" variant="danger" (pressed)="removeContact(i)" [disabled]="contacts.length === 1">
           <app-icon name="trash-2" [size]="14"></app-icon>
           Remove Contact
         </app-button>

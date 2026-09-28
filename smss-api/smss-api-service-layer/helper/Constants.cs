@@ -16,4 +16,10 @@ namespace smss_api_service_layer.helper
     {
         public const string SchoolAdmin = "School Admin";
     }
+    public static class StatusNames
+    {
+        public const string Active = "Active";
+        public const string Inactive = "Inactive";
+        public const string GeneralType = "general status";   // matches lut_status.stype
+    }
 }

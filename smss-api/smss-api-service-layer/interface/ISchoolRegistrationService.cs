@@ -12,5 +12,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> RegisterSchoolAsync(CreateSchoolRequest request);
         Task<ApiResponse<object>> UpdateSchoolAsync(string schoolId, UpdateSchoolRequest request);
         Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId);
+
+        Task<ApiResponse<object>> UploadLogoAsync(string schoolId, Stream content, string fileName, long length, CancellationToken ct);
+        Task<ApiResponse<object>> RemoveLogoAsync(string schoolId);
     }
 }

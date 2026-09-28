@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, computed, inject, signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Observable, catchError, map, of } from 'rxjs';
 
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { CardComponent } from '../../../../shared/components/card/card.component';
@@ -25,6 +28,10 @@ const MOBILE_PATTERN = /^[6-9][0-9]{9}$/;
 const GSTIN_PATTERN = /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z]Z[0-9A-Za-z]$/;
 const PAN_PATTERN = /^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/;
 const PINCODE_PATTERN = /^[1-9][0-9]{5}$/;
+
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const LOGO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const LOGO_ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
 
 const CONTACT_TYPE_OPTIONS: SelectOption[] = [
   { label: 'School Owner', value: 'School Owner' },
@@ -51,8 +58,9 @@ const CONTACT_TYPE_OPTIONS: SelectOption[] = [
   templateUrl: './add-school.component.html',
   styleUrls: ['./add-school.component.scss'],
 })
-export class AddSchoolComponent implements OnInit {
+export class AddSchoolComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly schoolService = inject(SchoolService);
   private readonly masterDataService = inject(MasterDataService);
   private readonly toastService = inject(ToastService);
@@ -61,38 +69,62 @@ export class AddSchoolComponent implements OnInit {
 
   readonly contactTypeOptions = CONTACT_TYPE_OPTIONS;
 
-  // Static lookups — fetched once, cached by the service itself
   readonly countryOptions = toSignal(this.masterDataService.getCountryOptions(), { initialValue: [] as SelectOption[] });
   readonly schoolTypeOptions = toSignal(this.masterDataService.getSchoolTypeOptions(), { initialValue: [] as SelectOption[] });
   readonly schoolLevelOptions = toSignal(this.masterDataService.getSchoolLevelOptions(), { initialValue: [] as SelectOption[] });
   readonly boardTypeOptions = toSignal(this.masterDataService.getBoardTypeOptions(), { initialValue: [] as SelectOption[] });
-  readonly schoolStatusOptions = toSignal(this.masterDataService.getSchoolStatusOptions(), { initialValue: [] as SelectOption[] });
   readonly subscriptionStatusOptions = toSignal(this.masterDataService.getSubscriptionStatusOptions(), { initialValue: [] as SelectOption[] });
 
-  // Cascading lookups — depend on a parent selection, updated manually
   readonly stateOptions = signal<SelectOption[]>([]);
   readonly districtOptions = signal<SelectOption[]>([]);
   readonly cityOptions = signal<SelectOption[]>([]);
 
+  // ---- Logo state ----
+  readonly logoFile = signal<File | null>(null);                  // freshly picked file, uploaded on save
+  readonly newLogoPreview = signal<string | null>(null);          // object URL of that file
+  readonly existingLogoUrl = signal<string | null>(null);         // logo already stored for this school
+  readonly removeExistingLogo = signal(false);                    // removal requested, applied on save
+  readonly logoError = signal<string | null>(null);
+  readonly currentLogo = computed(
+    () => this.newLogoPreview() ?? (this.removeExistingLogo() ? null : this.existingLogoUrl()),
+  );
+
   form!: FormGroup;
   isEditMode = false;
+  isViewMode = false;
   schoolId: string | null = null;
 
   readonly submitting = signal(false);
   readonly registrationResult = signal<SchoolRegistrationResponse | null>(null);
 
   ngOnInit(): void {
+    // Mode must be known BEFORE the form is built (schoolCode validators depend on it)
+    this.schoolId = this.route.snapshot.paramMap.get('schoolId');
+    this.isEditMode = !!this.schoolId;
+    this.isViewMode = this.route.snapshot.data['mode'] === 'view';
+
     this.buildForm();
     this.setupLocationCascade();
 
-    this.schoolId = this.route.snapshot.paramMap.get('schoolId');
-    this.isEditMode = !!this.schoolId;
-
-    if (this.isEditMode && this.schoolId) {
+    if (this.schoolId) {
       this.loadSchool(this.schoolId);
     } else {
       this.addContact();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.revokePreview();
+  }
+
+  get pageTitle(): string {
+    if (this.isViewMode) return 'School Details';
+    return this.isEditMode ? 'Edit School' : 'Register School';
+  }
+
+  get pageSubtitle(): string {
+    if (this.isViewMode) return 'Read-only view of this school.';
+    return this.isEditMode ? "Update this school's details." : 'Onboard a new school onto the platform.';
   }
 
   get contacts(): FormArray {
@@ -105,7 +137,11 @@ export class AddSchoolComponent implements OnInit {
 
   private buildForm(): void {
     this.form = this.fb.group({
-      schoolCode: ['', this.isEditMode ? [] : [Validators.required, Validators.maxLength(100)]],
+      // School code is set once at registration and locked afterwards
+      schoolCode: [
+        { value: '', disabled: this.isEditMode },
+        this.isEditMode ? [] : [Validators.required, Validators.maxLength(100), Validators.pattern(/^[A-Za-z0-9_-]+$/)],
+      ],
       schoolName: ['', [Validators.required, Validators.maxLength(250)]],
       schoolShortName: ['', Validators.maxLength(100)],
       schoolTypeId: [''],
@@ -127,16 +163,83 @@ export class AddSchoolComponent implements OnInit {
       email: ['', Validators.email],
       mobileNumber: ['', Validators.pattern(MOBILE_PATTERN)],
       website: [''],
-      logoUrl: [''],
 
       subscriptionPlanId: [null],
       subscriptionStartDate: [null],
       subscriptionEndDate: [null],
       subscriptionStatusId: [''],
-      schoolStatusId: [''],
 
       contacts: this.fb.array([]),
     });
+  }
+
+  // ---------------- Logo ----------------
+
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';                       // lets the same file be picked again
+    if (!file) return;
+
+    const error = this.validateLogo(file);
+    if (error) {
+      this.logoError.set(error);
+      return;
+    }
+
+    this.revokePreview();
+    this.logoError.set(null);
+    this.removeExistingLogo.set(false);     // a new file replaces the old one anyway
+    this.logoFile.set(file);
+    this.newLogoPreview.set(URL.createObjectURL(file));
+  }
+
+  clearLogo(): void {
+    this.logoError.set(null);
+    if (this.newLogoPreview()) {            // first discard a newly picked file
+      this.revokePreview();
+      this.newLogoPreview.set(null);
+      this.logoFile.set(null);
+    } else if (this.existingLogoUrl()) {
+      this.removeExistingLogo.set(true);    // applied when the form is saved
+    }
+  }
+
+  undoRemoveLogo(): void {
+    this.removeExistingLogo.set(false);
+  }
+
+  private validateLogo(file: File): string | null {
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!LOGO_ALLOWED_EXTENSIONS.includes(ext) || !LOGO_ALLOWED_TYPES.includes(file.type)) {
+      return 'Only PNG, JPG or WEBP images are allowed.';
+    }
+    if (file.size > LOGO_MAX_BYTES) return 'Logo must be 2 MB or smaller.';
+    return null;
+  }
+
+  private revokePreview(): void {
+    const url = this.newLogoPreview();
+    if (url) URL.revokeObjectURL(url);
+  }
+
+  // Applies the pending logo change. Emits null on success/no-op, or an error message.
+  private syncLogo(schoolId: string): Observable<string | null> {
+    const file = this.logoFile();
+    let call$: Observable<unknown>;
+
+    if (file) {
+      call$ = this.schoolService.uploadLogo(schoolId, file);
+    } else if (this.removeExistingLogo() && this.existingLogoUrl()) {
+      call$ = this.schoolService.removeLogo(schoolId);
+    } else {
+      return of(null);
+    }
+
+    return call$.pipe(
+      map((): string | null => null),
+      catchError((err) => of<string | null>(err?.error?.message || 'Please try again.')),
+    );
   }
 
   // ---------------- Location cascade (user-driven) ----------------
@@ -200,30 +303,34 @@ export class AddSchoolComponent implements OnInit {
     });
   }
 
-  // ---------------- Location cascade (edit mode — load saved chain) ----------------
+  // ---------------- Location cascade (edit/view: load saved chain) ----------------
 
   private loadLocationChain(countryId?: number, stateId?: number, districtId?: number, cityId?: number): void {
+    if (!countryId) return;
+
     const stateCtrl = this.form.get('stateId')!;
     const districtCtrl = this.form.get('districtId')!;
     const cityCtrl = this.form.get('cityId')!;
-
-    if (!countryId) return;
+    // In view mode everything stays disabled
+    const enable = (c: AbstractControl) => {
+      if (!this.isViewMode) c.enable({ emitEvent: false });
+    };
 
     this.masterDataService.getStateOptions(countryId).subscribe((states) => {
       this.stateOptions.set(states);
-      stateCtrl.enable({ emitEvent: false });
+      enable(stateCtrl);
       stateCtrl.setValue(stateId ? String(stateId) : '', { emitEvent: false });
       if (!stateId) return;
 
       this.masterDataService.getDistrictOptions(countryId, stateId).subscribe((districts) => {
         this.districtOptions.set(districts);
-        districtCtrl.enable({ emitEvent: false });
+        enable(districtCtrl);
         districtCtrl.setValue(districtId ? String(districtId) : '', { emitEvent: false });
         if (!districtId) return;
 
         this.masterDataService.getCityOptions(countryId, stateId, districtId).subscribe((cities) => {
           this.cityOptions.set(cities);
-          cityCtrl.enable({ emitEvent: false });
+          enable(cityCtrl);
           cityCtrl.setValue(cityId ? String(cityId) : '', { emitEvent: false });
         });
       });
@@ -238,32 +345,35 @@ export class AddSchoolComponent implements OnInit {
           return;
         }
         const data = res.data;
+        const idToString = (v?: number | null) => (v != null ? String(v) : '');
 
         this.form.patchValue(
           {
+            schoolCode: data.schoolCode,
             schoolName: data.schoolName,
             schoolShortName: data.schoolShortName,
-            schoolTypeId: data.schoolTypeId != null ? String(data.schoolTypeId) : '',
-            schoolLevelId: data.schoolLevelId != null ? String(data.schoolLevelId) : '',
-            boardTypeId: data.boardTypeId != null ? String(data.boardTypeId) : '',
+            schoolTypeId: idToString(data.schoolTypeId),
+            schoolLevelId: idToString(data.schoolLevelId),
+            boardTypeId: idToString(data.boardTypeId),
             schoolEstablishYear: data.schoolEstablishYear,
             schoolGstin: data.schoolGstin,
             schoolPan: data.schoolPan,
+            countryId: idToString(data.countryId),
             addressLine1: data.addressLine1,
             addressLine2: data.addressLine2,
             pincode: data.pincode,
             email: data.email,
             mobileNumber: data.mobileNumber,
             website: data.website,
-            logoUrl: data.logoUrl,
             subscriptionPlanId: data.subscriptionPlanId,
             subscriptionStartDate: data.subscriptionStartDate,
             subscriptionEndDate: data.subscriptionEndDate,
-            subscriptionStatusId: data.subscriptionStatusId != null ? String(data.subscriptionStatusId) : '',
-            schoolStatusId: data.schoolStatusId != null ? String(data.schoolStatusId) : '',
+            subscriptionStatusId: idToString(data.subscriptionStatusId),
           },
-          { emitEvent: false },
+          { emitEvent: false },   // don't trigger the reset-children cascade
         );
+
+        this.existingLogoUrl.set(this.schoolService.toLogoUrl(data.logoUrl));
 
         this.loadLocationChain(
           data.countryId ?? undefined,
@@ -274,7 +384,10 @@ export class AddSchoolComponent implements OnInit {
 
         this.contacts.clear();
         (data.contacts || []).forEach((c) => this.contacts.push(this.buildContactGroup(c)));
-        if (this.contacts.length === 0) this.addContact();
+        if (this.contacts.length === 0 && !this.isViewMode) this.addContact();
+
+        if (this.isViewMode) this.form.disable({ emitEvent: false });
+        this.cdr.markForCheck();
       },
       error: () => this.toastService.danger('Failed to load school', 'Please try again.'),
     });
@@ -323,7 +436,16 @@ export class AddSchoolComponent implements OnInit {
     return 'This field is invalid.';
   }
 
+  // "" -> null so optional fields pass server-side [EmailAddress]/[Url] checks
+  private blankToNull<T extends object>(obj: T): T {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v]),
+    ) as T;
+  }
+
   submit(): void {
+    if (this.isViewMode) return;
+
     if (this.contacts.length > 0 && !this.contacts.controls.some((c) => c.get('isPrimary')?.value)) {
       this.toastService.danger('Missing primary contact', 'Exactly one contact must be marked as primary.');
       return;
@@ -335,45 +457,68 @@ export class AddSchoolComponent implements OnInit {
     }
 
     this.submitting.set(true);
-    const raw = this.form.getRawValue();
 
-    // String select values -> numbers (or null) for the API
+    // getRawValue() so the disabled cascade controls are included
+    const raw = this.blankToNull(this.form.getRawValue());
+    const toId = (v: unknown): number | null => (v == null ? null : Number(v));
+
     const payload = {
       ...raw,
-      schoolTypeId: raw.schoolTypeId ? Number(raw.schoolTypeId) : null,
-      schoolLevelId: raw.schoolLevelId ? Number(raw.schoolLevelId) : null,
-      boardTypeId: raw.boardTypeId ? Number(raw.boardTypeId) : null,
-      countryId: raw.countryId ? Number(raw.countryId) : null,
-      stateId: raw.stateId ? Number(raw.stateId) : null,
-      districtId: raw.districtId ? Number(raw.districtId) : null,
-      cityId: raw.cityId ? Number(raw.cityId) : null,
-      subscriptionStatusId: raw.subscriptionStatusId ? Number(raw.subscriptionStatusId) : null,
-      schoolStatusId: raw.schoolStatusId ? Number(raw.schoolStatusId) : null,
+      schoolEstablishYear: toId(raw.schoolEstablishYear),
+      schoolTypeId: toId(raw.schoolTypeId),
+      schoolLevelId: toId(raw.schoolLevelId),
+      boardTypeId: toId(raw.boardTypeId),
+      countryId: toId(raw.countryId),
+      stateId: toId(raw.stateId),
+      districtId: toId(raw.districtId),
+      cityId: toId(raw.cityId),
+      subscriptionStatusId: toId(raw.subscriptionStatusId),
+      contacts: (raw.contacts as SchoolContact[]).map((c) => this.blankToNull(c)),
     };
 
     if (this.isEditMode && this.schoolId) {
-      const { schoolCode, ...updatePayload } = payload as UpdateSchoolRequest & { schoolCode: string };
-      this.schoolService.updateSchool(this.schoolId, updatePayload).subscribe({
+      const schoolId = this.schoolId;
+      const { schoolCode, ...updatePayload } = payload;   // code is immutable after registration
+
+      this.schoolService.updateSchool(schoolId, updatePayload as UpdateSchoolRequest).subscribe({
         next: (res) => {
-          this.submitting.set(false);
-          if (res.status) {
+          if (!res.status) {
+            this.submitting.set(false);
+            this.toastService.danger('Update failed', res.message);
+            return;
+          }
+          this.syncLogo(schoolId).subscribe((logoError) => {
+            this.submitting.set(false);
+            if (logoError) {
+              // stay on the page so the logo can be retried
+              this.toastService.danger('Logo not saved', `The details were saved, but the logo was not: ${logoError}`);
+              return;
+            }
             this.toastService.success('School updated', `${raw.schoolName} was updated successfully.`);
             this.router.navigate(['/schools']);
-          } else {
-            this.toastService.danger('Update failed', res.message);
-          }
+          });
         },
         error: (err) => this.handleError(err),
       });
     } else {
       this.schoolService.registerSchool(payload as CreateSchoolRequest).subscribe({
         next: (res) => {
-          this.submitting.set(false);
-          if (res.status && res.data) {
-            this.registrationResult.set(res.data);
-          } else {
+          if (!(res.status && res.data)) {
+            this.submitting.set(false);
             this.toastService.danger('Registration failed', res.message);
+            return;
           }
+          const result = res.data;
+          this.syncLogo(result.school.schoolId).subscribe((logoError) => {
+            this.submitting.set(false);
+            if (logoError) {
+              this.toastService.danger(
+                'Logo not saved',
+                `The school was registered, but the logo was not: ${logoError} You can add it later from Edit.`,
+              );
+            }
+            this.registrationResult.set(result);   // credentials panel opens either way
+          });
         },
         error: (err) => this.handleError(err),
       });

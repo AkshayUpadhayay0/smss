@@ -36,5 +36,20 @@ export class SchoolService {
     return this.http.post<ApiResponse<SchoolsListModel>>(`${this.baseUrl}/schools/${schoolId}/toggle-status`, {});
   }
 
+  // multipart upload: do NOT set Content-Type manually, the browser adds the boundary
+  uploadLogo(schoolId: string, file: File): Observable<ApiResponse<SchoolsListModel>> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    return this.http.post<ApiResponse<SchoolsListModel>>(`${this.baseUrl}/schools/${schoolId}/logo`, formData);
+  }
 
+  removeLogo(schoolId: string): Observable<ApiResponse<SchoolsListModel>> {
+    return this.http.post<ApiResponse<SchoolsListModel>>(`${this.baseUrl}/schools/${schoolId}/logo/remove`, {});
+  }
+
+  // The API returns a relative URL (/uploads/...); make it absolute for <img src>
+  toLogoUrl(relativeUrl?: string | null): string | null {
+    if (!relativeUrl) return null;
+    return /^https?:\/\//i.test(relativeUrl) ? relativeUrl : `${environment.apiUrl}${relativeUrl}`;
+  }
 }

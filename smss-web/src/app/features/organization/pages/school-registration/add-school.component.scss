@@ -77,3 +77,53 @@
   gap: v.$space-3;
   padding-bottom: v.$space-8;
 }
+
+
+
+.logo-field {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.logo-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-color, #d1d5db);
+  background: var(--surface-muted, #f9fafb);
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  &:not(.is-empty) {
+    border-style: solid;
+    background: #fff;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.logo-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.logo-help,
+.logo-note,
+.logo-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+}
+
+.logo-help { color: #6b7280; }
+.logo-note { color: #2563eb; }
+.logo-error { color: #b91c1c; font-size: 0.85rem; }

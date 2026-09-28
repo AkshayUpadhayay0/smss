@@ -57,5 +57,28 @@ namespace smss_api.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
+
+        private const long MaxLogoRequestBytes = 3 * 1024 * 1024;   // a little above the 2 MB rule to allow multipart overhead
+
+        // POST api/SchoolRegistration/schools/sch2026001/logo   (multipart/form-data, field name: file)
+        [HttpPost("schools/{schoolId}/logo")]
+        [RequestSizeLimit(MaxLogoRequestBytes)]
+        public async Task<IActionResult> UploadLogo(string schoolId, IFormFile? file, CancellationToken ct)
+        {
+            if (file == null)
+                return BadRequest(new ApiResponse<object> { Status = false, StatusCode = 400, Message = "Logo file is required.", Data = null });
+
+            await using var stream = file.OpenReadStream();
+            var response = await _schoolRegistrationService.UploadLogoAsync(schoolId, stream, file.FileName, file.Length, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/SchoolRegistration/schools/sch2026001/logo/remove
+        [HttpPost("schools/{schoolId}/logo/remove")]
+        public async Task<IActionResult> RemoveLogo(string schoolId)
+        {
+            var response = await _schoolRegistrationService.RemoveLogoAsync(schoolId);
+            return StatusCode(response.StatusCode, response);
+        }
     }
 }

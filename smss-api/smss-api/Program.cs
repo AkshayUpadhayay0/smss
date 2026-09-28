@@ -6,6 +6,7 @@ using smss_api_db_layer.repository;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
 using smss_api_service_layer.service;
+using Microsoft.Extensions.FileProviders;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,16 @@ builder.Services.AddScoped<IMasterDataService, MasterDataService>();
 
 builder.Services.AddScoped<ISchoolRegistrationRepository, SchoolRegistrationRepository>();
 builder.Services.AddScoped<ISchoolRegistrationService, SchoolRegistrationService>();
+
+// File storage: relative paths resolve against the project folder
+var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";
+if (!Path.IsPathRooted(uploadsRoot))
+    uploadsRoot = Path.Combine(builder.Environment.ContentRootPath, uploadsRoot);
+Directory.CreateDirectory(uploadsRoot);
+const string uploadsRequestPath = "/uploads";
+
+builder.Services.AddSingleton<IFileStorageService>(sp =>
+    new LocalFileStorageService(uploadsRoot, uploadsRequestPath, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
 
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
@@ -72,6 +83,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AngularDev");
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = uploadsRequestPath,
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers["X-Content-Type-Options"] = "nosniff"
+});
 
 app.UseHttpsRedirection();
 

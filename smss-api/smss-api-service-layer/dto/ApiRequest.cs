@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using smss_api_service_layer.helper;
 
 namespace smss_api_service_layer.dto
 {
@@ -64,7 +65,7 @@ namespace smss_api_service_layer.dto
         [RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")]
         public string? MobileNumber { get; set; }
         [Url, StringLength(200)] public string? Website { get; set; }
-        public string? LogoUrl { get; set; }
+        //public string? LogoUrl { get; set; }
 
         public long? SubscriptionPlanId { get; set; }
         public DateOnly? SubscriptionStartDate { get; set; }
@@ -102,7 +103,9 @@ namespace smss_api_service_layer.dto
     // ---------- Create / Update ----------
     public class CreateSchoolRequest : SchoolBaseRequest
     {
-        [Required, StringLength(100)] public string SchoolCode { get; set; } = null!;
+        [Required, StringLength(100)]
+        [RegularExpression(SchoolCodeRules.Pattern, ErrorMessage = SchoolCodeRules.Message)]
+        public string SchoolCode { get; set; } = null!;
         public List<SchoolContactRequest> Contacts { get; set; } = new();
 
         public override IEnumerable<ValidationResult> Validate(ValidationContext context)
