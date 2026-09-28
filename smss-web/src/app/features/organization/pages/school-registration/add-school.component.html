@@ -1,10 +1,18 @@
 <app-page-header [title]="isEditMode ? 'Edit School' : 'Register School'"
   [subtitle]="isEditMode ? 'Update this school\'s details.' : 'Onboard a new school onto the platform.'" icon="home"
   [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Schools', url: '/schools' }, { label: isEditMode ? 'Edit' : 'Add' }]">
+  
+  <div class="new-school-badge">
+    <span class="badge-dot"></span>
+    <span>
+      {{ isEditMode ? 'Edit School' : 'New School' }}
+    </span>
+  </div>
+
 </app-page-header>
 
 <form *ngIf="!registrationResult(); else successBlock" [formGroup]="form" (ngSubmit)="submit()">
-  <app-card title="School Identity" class="page-section">
+  <app-card title="Basic Information" class="page-section">
     <div class="form-section">
       <div class="form-row" *ngIf="!isEditMode">
         <app-input label="School Code" formControlName="schoolCode" [required]="true" placeholder="e.g. ABC-001"
@@ -42,11 +50,11 @@
       <div class="logo-preview" [class.is-empty]="!currentLogo()">
         <img *ngIf="currentLogo() as logo" [src]="logo" alt="School logo" />
         <!-- <app-icon *ngIf="!currentLogo()" name="image" [size]="32"></app-icon> -->
-         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <path d="M21 15l-5-5L5 21"/>
-              </svg>
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <path d="M21 15l-5-5L5 21" />
+        </svg>
       </div>
 
       <div class="logo-actions" *ngIf="!isViewMode; else viewLogoNote">

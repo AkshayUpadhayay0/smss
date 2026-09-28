@@ -127,3 +127,46 @@
 .logo-help { color: #6b7280; }
 .logo-note { color: #2563eb; }
 .logo-error { color: #b91c1c; font-size: 0.85rem; }
+
+
+/* ================================================================
+   NEW SCHOOL BADGE
+   ================================================================ */
+
+.new-school-badge {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  margin-top: 13px;
+
+  padding: 7px 12px;
+
+  border: 1px solid #e0e7f0;
+
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 2px 6px rgba(25, 45, 75, 0.04);
+
+  font-size: 11px;
+
+  color: #1e293b;
+}
+
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: #1769f5;
+
+  box-shadow:
+    0 0 0 4px #eaf2ff;
+}
