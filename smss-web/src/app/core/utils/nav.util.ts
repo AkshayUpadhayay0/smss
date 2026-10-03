@@ -4,6 +4,17 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/dashboard', icon: 'layout-dashboard' },
   { label: 'Registered Schools', route: '/schools', icon: 'home' },
   {
+    label: 'Masters',
+    icon: 'book-open',
+    children: [
+      { label: 'Board Type', route: '/master-data/board-types', icon: 'table-2' },
+      { label: 'School Type', route: '/master-data/school-types', icon: 'table-2' },
+      { label: 'School Level', route: '/master-data/school-levels', icon: 'table-2' },
+      { label: 'Status', route: '/master-data/status', icon: 'table-2' },
+      { label: 'Role', route: '/master-data/roles', icon: 'table-2' },
+    ],
+  },
+  {
     label: 'Management',
     icon: 'layout-grid',
     children: [

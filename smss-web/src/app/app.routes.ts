@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/guards';
+import { BOARD_TYPE_CONFIG, SCHOOL_TYPE_CONFIG, SCHOOL_LEVEL_CONFIG, STATUS_CONFIG, ROLE_CONFIG } from './features/master-data/master-configs';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
@@ -34,6 +35,40 @@ export const routes: Routes = [
         title: 'Dashboard — smss-web',
         data: { breadcrumb: 'Dashboard' },
       },
+      
+      {
+        path: 'master-data/board-types',
+        loadComponent: () => import('./features/master-data/master-list/master-list.component')
+          .then(m => m.MasterListComponent),
+        data: { config: BOARD_TYPE_CONFIG }
+        // add your existing auth guard here; this screen should be SUPER_ADMIN only
+      },
+      {
+        path: 'master-data/school-types',
+        loadComponent: () => import('./features/master-data/master-list/master-list.component')
+          .then(m => m.MasterListComponent),
+        data: { config: SCHOOL_TYPE_CONFIG }
+      },
+      {
+        path: 'master-data/school-levels',
+        loadComponent: () => import('./features/master-data/master-list/master-list.component')
+          .then(m => m.MasterListComponent),
+        data: { config: SCHOOL_LEVEL_CONFIG }
+      },
+      {
+        path: 'master-data/status',
+        loadComponent: () => import('./features/master-data/master-list/master-list.component')
+          .then(m => m.MasterListComponent),
+        data: { config: STATUS_CONFIG }
+      },
+      {
+        path: 'master-data/roles',
+        loadComponent: () => import('./features/master-data/master-list/master-list.component')
+          .then(m => m.MasterListComponent),
+        data: { config: ROLE_CONFIG }
+      },
+
+
       {
         path: 'table',
         loadComponent: () => import('./features/table/table.component').then((m) => m.TablePageComponent),
@@ -94,6 +129,7 @@ export const routes: Routes = [
         data: { breadcrumb: ['Examples', 'A', 'B', 'C', 'D'] },
       },
 
+
       // acttual 
       // =========================================================
       // school registration FLOW
@@ -107,7 +143,7 @@ export const routes: Routes = [
       },
 
 
-      
+
     ],
   },
 

@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Npgsql;
+using smss_api_db_layer.constants;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
@@ -14,6 +16,7 @@ namespace smss_api_db_layer.repository
 {
     public class MasterDataRepository : IMasterDataRepository
     {
+        private const string PgUniqueViolation = "23505";
         private readonly dbContext _dbContext;
         public MasterDataRepository(dbContext dbContext)
         {
@@ -44,23 +47,62 @@ namespace smss_api_db_layer.repository
             return await _dbContext.LutCities .AsNoTracking() .Where(x => x.Cid == countryId && x.Sid == stateId && x.Did == districtId) .OrderBy(x => x.CityName) .ToListAsync(); 
         }
 
-        // ========================================================= // GET Status // =========================================================
-        public async Task<List<LutStatus>> GetStatusAsync()
-        {
-            return await _dbContext.LutStatus.AsNoTracking().OrderBy(x => x.Sname).ToListAsync();
-        }
-
         // =========================================================
         // GET ACTIVE BOARD TYPES
         // =========================================================
 
-        public async Task<List<LutBoardType>> GetBoardTypesAsync()
+        public async Task<List<LutBoardType>> GetBoardTypesAsync(bool includeInactive = false)
         {
-            return await _dbContext.LutBoardTypes
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.BoardName)
-                .ToListAsync();
+            IQueryable<LutBoardType> query = _dbContext.LutBoardTypes.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.BoardName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutBoardType?> GetBoardTypeByIdAsync(long id)
+        {
+            return await _dbContext.LutBoardTypes.FirstOrDefaultAsync(x => x.BoardTypeId == id);
+        }
+
+        public async Task<bool> BoardTypeExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutBoardTypes.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.BoardTypeId != excludeId) &&
+                (x.BoardCode.ToUpper() == upperCode || x.BoardName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddBoardTypeAsync(LutBoardType entity)
+        {
+            try
+            {
+                _dbContext.LutBoardTypes.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateBoardTypeAsync(LutBoardType entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
         }
 
 
@@ -68,13 +110,58 @@ namespace smss_api_db_layer.repository
         // GET ACTIVE SCHOOL TYPES
         // =========================================================
 
-        public async Task<List<LutSchoolType>> GetSchoolTypesAsync()
+        public async Task<List<LutSchoolType>> GetSchoolTypesAsync(bool includeInactive = false)
         {
-            return await _dbContext.LutSchoolTypes
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.SchoolTypeName)
-                .ToListAsync();
+            IQueryable<LutSchoolType> query = _dbContext.LutSchoolTypes.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.SchoolTypeName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutSchoolType?> GetSchoolTypeByIdAsync(long id)
+        {
+            return await _dbContext.LutSchoolTypes.FirstOrDefaultAsync(x => x.SchoolTypeId == id);
+        }
+
+        public async Task<bool> SchoolTypeExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutSchoolTypes.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.SchoolTypeId != excludeId) &&
+                (x.SchoolTypeCode.ToUpper() == upperCode || x.SchoolTypeName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddSchoolTypeAsync(LutSchoolType entity)
+        {
+            try
+            {
+                _dbContext.LutSchoolTypes.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateSchoolTypeAsync(LutSchoolType entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
         }
 
 
@@ -82,27 +169,205 @@ namespace smss_api_db_layer.repository
         // GET ACTIVE SCHOOL LEVELS
         // =========================================================
 
-        public async Task<List<LutSchoolLevel>> GetSchoolLevelsAsync()
+        public async Task<List<LutSchoolLevel>> GetSchoolLevelsAsync(bool includeInactive = false)
         {
-            return await _dbContext.LutSchoolLevels
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.SchoolLevelName)
-                .ToListAsync();
+            IQueryable<LutSchoolLevel> query = _dbContext.LutSchoolLevels.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.SchoolLevelName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutSchoolLevel?> GetSchoolLevelByIdAsync(long id)
+        {
+            return await _dbContext.LutSchoolLevels.FirstOrDefaultAsync(x => x.SchoolLevelId == id);
+        }
+
+        public async Task<bool> SchoolLevelExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutSchoolLevels.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.SchoolLevelId != excludeId) &&
+                (x.SchoolLevelCode.ToUpper() == upperCode || x.SchoolLevelName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddSchoolLevelAsync(LutSchoolLevel entity)
+        {
+            try
+            {
+                _dbContext.LutSchoolLevels.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateSchoolLevelAsync(LutSchoolLevel entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // ========================================================= 
+        // GET Status 
+        // =========================================================
+        public async Task<List<LutStatus>> GetStatusAsync(bool includeInactive = false)
+        {
+            IQueryable<LutStatus> query = _dbContext.LutStatus.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.Sname).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutStatus?> GetStatusByIdAsync(int id)
+        {
+            return await _dbContext.LutStatus.FirstOrDefaultAsync(x => x.Sid == id);
+        }
+
+        // Names must be unique within a status type.
+        public async Task<bool> StatusExistsAsync(string name, string type, int? excludeId = null)
+        {
+            string lowerName = name.ToLower();
+            string lowerType = type.ToLower();
+
+            return await _dbContext.LutStatus.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.Sid != excludeId) &&
+                x.Sname.ToLower() == lowerName && x.Stype.ToLower() == lowerType);
+        }
+
+        public async Task<bool> AddStatusAsync(LutStatus entity)
+        {
+            try
+            {
+                _dbContext.LutStatus.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateStatusAsync(LutStatus entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
         }
 
 
-
         // =========================================================
-        // GET ACTIVE Roles
+        // GET Roles
         // =========================================================
 
-        public async Task<List<LutRole>> GetRolesAsync()
+        public async Task<List<LutRole>> GetRolesAsync(bool includeInactive = false)
         {
-            return await _dbContext.LutRoles
-                .AsNoTracking()
-                .OrderBy(x => x.RoleName)
-                .ToListAsync();
+            IQueryable<LutRole> query = _dbContext.LutRoles.AsNoTracking();
+
+            if (!includeInactive)
+            {
+                string inactiveName = StatusLookup.Inactive.ToLower();
+                string generalType = StatusLookup.GeneralType.ToLower();
+
+                // Hide roles whose status is the "Inactive" general status. NULL status counts as active.
+                query = query.Where(r => r.StatusId == null || !_dbContext.LutStatus.Any(s =>
+                    s.Sid == r.StatusId &&
+                    s.Sname.ToLower() == inactiveName &&
+                    s.Stype.ToLower() == generalType));
+            }
+
+            return await query.OrderBy(x => x.RoleName).ToListAsync();
         }
+
+        public async Task<int?> GetStatusIdByNameAsync(string name, string type)
+        {
+            string lowerName = name.Trim().ToLower();
+            string lowerType = type.Trim().ToLower();
+
+            return await _dbContext.LutStatus.AsNoTracking()
+                .Where(s => s.Sname.ToLower() == lowerName && s.Stype.ToLower() == lowerType)
+                .Select(s => (int?)s.Sid)
+                .FirstOrDefaultAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutRole?> GetRoleByIdAsync(long id)
+        {
+            return await _dbContext.LutRoles.FirstOrDefaultAsync(x => x.RoleId == id);
+        }
+
+        public async Task<bool> RoleExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutRoles.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.RoleId != excludeId) &&
+                (x.RoleCode.ToUpper() == upperCode || x.RoleName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddRoleAsync(LutRole entity)
+        {
+            try
+            {
+                _dbContext.LutRoles.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateRoleAsync(LutRole entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // Raw SQL because tb_user_roles needs no entity here. Requires EF Core 7+.
+        // If your DbContext already has a DbSet for tb_user_roles, use CountAsync on it instead.
+        public async Task<int> CountRoleAssignmentsAsync(long roleId)
+        {
+            return await _dbContext.Database
+                .SqlQuery<int>($"SELECT COUNT(*)::int AS \"Value\" FROM public.tb_user_roles WHERE role_id = {roleId}")
+                .SingleAsync();
+        }
+
     }
 }
