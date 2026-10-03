@@ -31,6 +31,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbSchools> Schools { get; set; } = null!;
         public DbSet<TbUsers> Users { get; set; } = null!; 
         public DbSet<TbUserRoles> UserRoles { get; set; } = null!;
+        public DbSet<TbRefreshTokens> RefreshTokens { get; set; } = null!;
         public DbSet<TbSchoolContacts> SchoolContacts { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
@@ -107,6 +108,20 @@ namespace smss_api_db_layer.context
 
 
                 e.HasOne<TbSchools>().WithMany().HasForeignKey(x => x.SchoolId);
+            });
+
+            modelBuilder.Entity<TbRefreshTokens>(e =>
+            {
+                e.ToTable("tb_refresh_tokens");
+                e.HasKey(x => x.RefreshTokenId);
+                e.Property(x => x.RefreshTokenId).UseIdentityAlwaysColumn();
+                e.HasIndex(x => x.TokenHash).IsUnique();
+                e.HasIndex(x => x.UserId);
+
+                e.HasOne<TbUsers>()
+                 .WithMany()
+                 .HasForeignKey(x => x.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<TbUserRoles>(e =>

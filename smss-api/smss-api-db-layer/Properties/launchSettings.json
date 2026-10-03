@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "smss-api-db-layer": {
+      "commandName": "Project"
+    },
+    "Profile 1": {
+      "commandName": "Project"
+    }
+  }
+}

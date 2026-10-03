@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
@@ -8,6 +9,7 @@ namespace smss_api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SchoolRegistrationController : ControllerBase
     {
         private readonly ISchoolRegistrationService _schoolRegistrationService;

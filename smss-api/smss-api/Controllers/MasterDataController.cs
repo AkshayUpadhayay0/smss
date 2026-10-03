@@ -8,6 +8,7 @@ namespace smss_api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class MasterDataController : ControllerBase
     {
         private readonly IMasterDataService _masterDataService;

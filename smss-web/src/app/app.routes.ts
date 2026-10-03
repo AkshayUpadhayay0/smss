@@ -35,7 +35,14 @@ export const routes: Routes = [
         title: 'Dashboard — smss-web',
         data: { breadcrumb: 'Dashboard' },
       },
-      
+      {
+        path: 'change-password',
+        loadComponent: () =>
+          import('./features/auth/change-password/change-password.component').then((m) => m.ChangePasswordPageComponent),
+        title: 'Change Password — smss-web',
+        data: { breadcrumb: ['Account', 'Change Password'] },
+      },
+
       {
         path: 'master-data/board-types',
         loadComponent: () => import('./features/master-data/master-list/master-list.component')

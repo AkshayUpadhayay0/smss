@@ -2,7 +2,7 @@ import { Organization } from './organization.model';
 import { User } from './user.model';
 
 export interface LoginPayload {
-  email: string;
+  username: string;
   password: string;
   rememberMe: boolean;
 }
@@ -23,5 +23,41 @@ export interface Session {
   user: User;
   organization: Organization;
   token: string;
+  refreshToken?: string;
   expiresAt: number;
+  isFirstLogin?: boolean;
+}
+
+// ---- API contract (api/Auth/*) ----
+export interface ApiEnvelope<T> {
+  status: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
+export interface AuthUserResponse {
+  userId: number;
+  username: string;
+  userType: string;
+  email?: string | null;
+  schoolId?: string | null;
+  schoolCode?: string | null;
+  schoolName?: string | null;
+  logoUrl?: string | null;
+  roles: string[];
+  isFirstLogin: boolean;
+}
+
+export interface LoginResponse {
+  token: string;
+  expiresAt: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
+  user: AuthUserResponse;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }

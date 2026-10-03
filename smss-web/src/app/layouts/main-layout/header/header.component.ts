@@ -22,6 +22,10 @@ export class HeaderComponent {
   readonly toggleSidebar = output<void>();
   readonly toggleMobileSidebar = output<void>();
 
+  goToChangePassword(): void {
+    this.router.navigate(['/change-password']);
+  }
+
   logout(): void {
     this.authService.logout();
     this.toastService.info('Signed out', 'You have been logged out successfully.');

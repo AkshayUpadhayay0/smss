@@ -1,23 +1,15 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 
-/**
- * Not exercised today (the template has no HTTP backend yet), but wired
- * into `provideHttpClient` so that switching mock services for real
- * HttpClient calls later automatically gets an Authorization header.
- */
+/** Attaches the JWT to requests that go to our own API (never to third-party URLs). */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.session()?.token;
+  const token = inject(AuthService).session()?.token;
 
-  if (!token) {
+  if (!token || !req.url.startsWith(environment.apiUrl)) {
     return next(req);
   }
 
-  const cloned = req.clone({
-    setHeaders: { Authorization: `Bearer ${token}` },
-  });
-
-  return next(cloned);
+  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
 };

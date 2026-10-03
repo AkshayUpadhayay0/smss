@@ -7,6 +7,10 @@ using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
 using smss_api_service_layer.service;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using smss_api_service_layer.helper;
+using System.Text;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +24,10 @@ builder.Services.AddDbContext<dbContext>(options =>
 builder.Services.AddScoped<IMasterDataRepository, MasterDataRepository>();
 builder.Services.AddScoped<IMasterDataService, MasterDataService>();
 
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<JwtTokenGenerator>();
+
 builder.Services.AddScoped<ISchoolRegistrationRepository, SchoolRegistrationRepository>();
 builder.Services.AddScoped<ISchoolRegistrationService, SchoolRegistrationService>();
 
@@ -32,6 +40,29 @@ const string uploadsRequestPath = "/uploads";
 
 builder.Services.AddSingleton<IFileStorageService>(sp =>
     new LocalFileStorageService(uploadsRoot, uploadsRequestPath, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
+
+// JWT authentication
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
+if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
+    throw new InvalidOperationException("Jwt:Key must be configured and at least 32 characters long.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
@@ -93,6 +124,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
