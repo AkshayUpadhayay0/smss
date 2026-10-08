@@ -1,53 +1,78 @@
 import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-let uid = 0;
+let nextId = 0;
 
 @Component({
   selector: 'app-textarea',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './textarea.component.html',
   styleUrl: './textarea.component.scss',
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => TextareaComponent),
-      multi: true,
-    },
-  ],
+  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => TextareaComponent), multi: true }],
+  template: `
+    <div class="field">
+      @if (label()) {
+        <label [for]="id">{{ label() }}@if (required()) {<span class="required">*</span>}</label>
+      }
+      <div class="control" [class.invalid]="!!errorText()" [class.disabled]="isDisabled()">
+        <textarea
+          [id]="id"
+          [rows]="rows()"
+          [value]="value()"
+          [placeholder]="placeholder()"
+          [attr.maxlength]="maxLength()"
+          [readOnly]="readonly()"
+          [disabled]="isDisabled()"
+          [attr.aria-invalid]="!!errorText()"
+          (input)="onInput($event)"
+          (blur)="onTouched()"
+        ></textarea>
+      </div>
+      @if (errorText()) {
+        <span class="error">{{ errorText() }}</span>
+      } @else if (helpText()) {
+        <span class="help">{{ helpText() }}</span>
+      }
+    </div>
+  `,
 })
 export class TextareaComponent implements ControlValueAccessor {
-  readonly label = input<string | undefined>(undefined);
-  readonly placeholder = input<string>('');
-  readonly help = input<string | undefined>(undefined);
-  readonly errorText = input<string | undefined>(undefined);
-  readonly required = input<boolean>(false);
-  readonly rows = input<number>(4);
+  protected readonly id = `app-textarea-${nextId++}`;
 
-  readonly textareaId = `app-textarea-${++uid}`;
-  readonly value = signal<string>('');
-  readonly disabledState = signal(false);
+  readonly label = input<string>();
+  readonly required = input(false);
+  readonly placeholder = input('');
+  readonly rows = input(3);
+  readonly maxLength = input<number>();
+  readonly helpText = input<string>();
+  readonly errorText = input<string>();
+  readonly readonly = input(false);
+  readonly disabled = input(false);
 
-  protected onChange: (value: string) => void = () => {};
+  protected readonly value = signal('');
+  private readonly formDisabled = signal(false);
+  protected isDisabled(): boolean {
+    return this.disabled() || this.formDisabled();
+  }
+
+  private onChange: (v: string) => void = () => {};
   protected onTouched: () => void = () => {};
 
-  writeValue(value: string): void {
-    this.value.set(value ?? '');
+  protected onInput(event: Event): void {
+    const v = (event.target as HTMLTextAreaElement).value;
+    this.value.set(v);
+    this.onChange(v);
   }
-  registerOnChange(fn: (value: string) => void): void {
+
+  writeValue(v: string | null): void {
+    this.value.set(v ?? '');
+  }
+  registerOnChange(fn: (v: string) => void): void {
     this.onChange = fn;
   }
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
   setDisabledState(isDisabled: boolean): void {
-    this.disabledState.set(isDisabled);
-  }
-
-  handleInput(event: Event): void {
-    const target = event.target as HTMLTextAreaElement;
-    this.value.set(target.value);
-    this.onChange(target.value);
+    this.formDisabled.set(isDisabled);
   }
 }

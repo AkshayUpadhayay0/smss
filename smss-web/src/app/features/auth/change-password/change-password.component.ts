@@ -1,71 +1,73 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { InputComponent } from '../../../shared/components/input/input.component';
-import { AlertComponent } from '../../../shared/components/alert/alert.component';
-import { AuthService, ToastService } from '../../../core/services';
+import { finalize } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { ButtonComponent, CardComponent, InputComponent, PageHeaderComponent } from '../../../shared/components';
 
-function passwordsMatch(group: AbstractControl): ValidationErrors | null {
-  const next = group.get('newPassword')?.value;
-  const confirm = group.get('confirmPassword')?.value;
-  return next && confirm && next !== confirm ? { mismatch: true } : null;
+const MIN_LENGTH = 8; // server rule
+
+function matchesNewPassword(control: AbstractControl): ValidationErrors | null {
+  const parent = control.parent;
+  return parent && control.value !== parent.get('newPassword')?.value ? { mismatch: true } : null;
 }
 
 @Component({
-  selector: 'app-change-password-page',
-  standalone: true,
-  imports: [ReactiveFormsModule, ButtonComponent, InputComponent, AlertComponent],
+  selector: 'app-change-password',
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, InputComponent, PageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './change-password.component.html',
   styleUrl: './change-password.component.scss',
+  templateUrl: './change-password.component.html',
 })
-export class ChangePasswordPageComponent {
-  private readonly fb = inject(FormBuilder);
+export class ChangePasswordComponent {
+  private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
-  private readonly toastService = inject(ToastService);
-  readonly authService = inject(AuthService);
 
-  readonly loading = signal(false);
-  readonly errorMessage = signal<string | null>(null);
+  protected readonly firstLogin = this.auth.user()?.isFirstLogin ?? false;
+  protected readonly form = new FormGroup({
+    currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    newPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(MIN_LENGTH), Validators.maxLength(100)] }),
+    confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, matchesNewPassword] }),
+  });
+  protected readonly submitted = signal(false);
+  protected readonly saving = signal(false);
 
-  readonly form = this.fb.group(
-    {
-      currentPassword: ['', [Validators.required]],
-      newPassword: ['', [Validators.required, Validators.minLength(8)]],
-      confirmPassword: ['', [Validators.required]],
-    },
-    { validators: passwordsMatch },
-  );
-
-  errorFor(controlName: 'currentPassword' | 'newPassword' | 'confirmPassword'): string | undefined {
-    const control = this.form.get(controlName);
-    if (!control || !control.touched) return undefined;
-    if (control.hasError('required')) return 'This field is required.';
-    if (control.hasError('minlength')) return 'Password must be at least 8 characters.';
-    if (controlName === 'confirmPassword' && this.form.hasError('mismatch')) return 'Passwords do not match.';
-    return undefined;
+  constructor() {
+    this.form.controls.newPassword.valueChanges
+      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .subscribe(() => this.form.controls.confirmPassword.updateValueAndValidity());
   }
 
-  onSubmit(): void {
-    if (this.loading()) return;
-    this.errorMessage.set(null);
+  protected error(name: 'currentPassword' | 'newPassword' | 'confirmPassword'): string | undefined {
+    const c = this.form.controls[name];
+    if (c.valid || !(c.touched || this.submitted())) return undefined;
+    if (c.hasError('required')) return 'This field is required';
+    if (c.hasError('minlength')) return `Use at least ${MIN_LENGTH} characters`;
+    if (c.hasError('maxlength')) return 'Maximum 100 characters';
+    if (c.hasError('mismatch')) return 'Passwords do not match';
+    return 'Invalid value';
+  }
+
+  protected submit(): void {
+    if (this.saving()) return;
+    this.submitted.set(true);
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
 
-    this.loading.set(true);
     const { currentPassword, newPassword } = this.form.getRawValue();
-
-    this.authService.changePassword({ currentPassword: currentPassword!, newPassword: newPassword! }).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.toastService.success('Password updated', 'Your password has been changed.');
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMessage.set(this.authService.errorMessage(err, 'Unable to change password. Please try again.'));
-      },
-    });
+    this.saving.set(true);
+    this.auth
+      .changePassword({ currentPassword, newPassword })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => {
+          this.toast.success('Password changed. Other devices have been signed out.');
+          void this.router.navigateByUrl('/dashboard');
+        },
+        error: () => undefined, // the server's reason (e.g. wrong current password) is toasted by the interceptor
+      });
   }
 }

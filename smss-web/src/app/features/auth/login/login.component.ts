@@ -1,66 +1,70 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { InputComponent } from '../../../shared/components/input/input.component';
-import { CheckboxComponent } from '../../../shared/components/checkbox/checkbox.component';
-import { AlertComponent } from '../../../shared/components/alert/alert.component';
-import { AuthService, ToastService } from '../../../core/services';
+import { finalize } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { ButtonComponent, IconComponent, InputComponent } from '../../../shared/components';
+
+/** Only same-app absolute paths are allowed as a post-login target (prevents open redirects). */
+export function safeReturnUrl(url: string | undefined): string | null {
+  return url && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/login') ? url : null;
+}
 
 @Component({
-  selector: 'app-login-page',
-  standalone: true,
-  imports: [ReactiveFormsModule, ButtonComponent, InputComponent, CheckboxComponent, AlertComponent],
+  selector: 'app-login',
+  imports: [ReactiveFormsModule, ButtonComponent, IconComponent, InputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
+  templateUrl: './login.component.html',
 })
-export class LoginPageComponent {
-  private readonly fb = inject(FormBuilder);
-  private readonly authService = inject(AuthService);
+export class LoginComponent {
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly toastService = inject(ToastService);
 
-  readonly loading = signal(false);
-  readonly errorMessage = signal<string | null>(null);
+  /** Bound from the ?returnUrl= query param (withComponentInputBinding). */
+  readonly returnUrl = input<string>();
 
-  readonly form = this.fb.group({
-    username: ['', [Validators.required]],
-    password: ['', [Validators.required]],
-    rememberMe: [false],
+  protected readonly form = new FormGroup({
+    username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    rememberMe: new FormControl(false, { nonNullable: true }),
   });
+  protected readonly submitted = signal(false);
+  protected readonly loading = signal(false);
+  protected readonly errorMessage = signal<string | null>(null);
 
-  errorFor(controlName: 'username' | 'password'): string | undefined {
-    const control = this.form.get(controlName);
-    if (!control || !control.touched || control.valid) return undefined;
-    if (control.hasError('required')) return 'This field is required.';
-    return undefined;
+  protected fieldError(name: 'username' | 'password'): string | undefined {
+    const c = this.form.controls[name];
+    if (!c.invalid || !(c.touched || this.submitted())) return undefined;
+    return name === 'username' ? 'Enter your username' : 'Enter your password';
   }
 
-  onSubmit(): void {
+  protected submit(): void {
     if (this.loading()) return;
+    this.submitted.set(true);
     this.errorMessage.set(null);
-    this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
 
-    this.loading.set(true);
     const { username, password, rememberMe } = this.form.getRawValue();
-
-    this.authService.login({ username: username!.trim(), password: password!, rememberMe: !!rememberMe }).subscribe({
-      next: (session) => {
-        this.loading.set(false);
-        if (session.isFirstLogin) {
-          this.toastService.success('Welcome!', 'Please set a new password to continue.');
-          this.router.navigate(['/change-password']);
-          return;
-        }
-        this.toastService.success('Welcome back!', 'You have signed in successfully.');
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMessage.set(this.authService.errorMessage(err, 'Unable to sign in. Please try again.'));
-      },
-    });
+    this.loading.set(true);
+    this.auth
+      .login({ username: username.trim(), password, rememberMe })
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (user) => {
+          // A temporary password (first login) must be replaced before anything else.
+          const target = user.isFirstLogin ? '/change-password' : (safeReturnUrl(this.returnUrl()) ?? '/dashboard');
+          void this.router.navigateByUrl(target);
+        },
+        error: (e: { error?: { message?: string }; status?: number }) => {
+          this.form.controls.password.reset('');
+          this.errorMessage.set(
+            e?.status === 0 ? 'Cannot reach the server. Check your connection and try again.' : (e?.error?.message ?? 'Sign in failed. Please try again.'),
+          );
+        },
+      });
   }
 }

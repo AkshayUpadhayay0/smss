@@ -1,40 +1,60 @@
-import { ChangeDetectionStrategy, Component, HostListener, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, afterNextRender, inject, input, output, viewChild } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'fullscreen';
+let nextId = 0;
 
 /**
- * Single reusable modal shell. Any page/component projects its own
- * content into it instead of re-implementing overlay/backdrop/close
- * behavior (spec #11 — "do not duplicate modal implementation").
+ * Generic modal. Content is projected; buttons go in the footer slot:
+ * `<app-modal title="…" (closed)="…"> body <ng-container modal-footer> buttons </ng-container> </app-modal>`
+ * Closes on backdrop click, Escape and the X button unless `dismissible` is false (e.g. while saving).
  */
 @Component({
   selector: 'app-modal',
-  standalone: true,
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './modal.component.html',
   styleUrl: './modal.component.scss',
+  template: `
+    <div class="backdrop" (mousedown)="onBackdrop($event)">
+      <div #dialog class="modal" role="dialog" aria-modal="true" tabindex="-1" [attr.aria-labelledby]="titleId">
+        <header class="header">
+          <h3 [id]="titleId">{{ title() }}</h3>
+          <button type="button" class="close" aria-label="Close" [disabled]="!dismissible()" (click)="requestClose()">
+            <app-icon name="x" [size]="18" />
+          </button>
+        </header>
+        <div class="body"><ng-content /></div>
+        <footer class="footer"><ng-content select="[modal-footer]" /></footer>
+      </div>
+    </div>
+  `,
 })
 export class ModalComponent {
-  readonly open = input<boolean>(false);
-  readonly title = input<string | undefined>(undefined);
-  readonly size = input<ModalSize>('md');
-  readonly showClose = input<boolean>(true);
-  readonly closeOnBackdrop = input<boolean>(true);
+  protected readonly titleId = `app-modal-title-${nextId++}`;
+  private readonly dialog = viewChild.required<ElementRef<HTMLElement>>('dialog');
 
+  readonly title = input.required<string>();
+  readonly dismissible = input(true);
   readonly closed = output<void>();
 
+  constructor() {
+    // Move focus into the dialog unless a field inside already autofocused.
+    afterNextRender(() => {
+      const el = this.dialog().nativeElement;
+      if (!el.contains(document.activeElement)) el.focus();
+    });
+  }
+
   @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.open()) this.close();
+  protected onEscape(): void {
+    this.requestClose();
   }
 
-  close(): void {
-    this.closed.emit();
+  protected onBackdrop(event: MouseEvent): void {
+    // Only a press that starts on the backdrop itself closes (not a drag that ends there).
+    if (event.target === event.currentTarget) this.requestClose();
   }
 
-  onBackdropClick(): void {
-    if (this.closeOnBackdrop()) this.close();
+  protected requestClose(): void {
+    if (this.dismissible()) this.closed.emit();
   }
 }

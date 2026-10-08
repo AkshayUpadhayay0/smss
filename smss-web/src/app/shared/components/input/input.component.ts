@@ -1,79 +1,84 @@
 import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { IconComponent } from '../icon/icon.component';
+import { IconName } from '../icon/icons';
 
-let uid = 0;
+let nextId = 0;
 
-/**
- * Reusable text-field ControlValueAccessor. Works with Reactive Forms
- * (formControlName / formControl) exactly like a native <input>, but adds
- * label/help/error/prefix/suffix chrome so every page renders fields the
- * same way (spec #9, #28).
- */
 @Component({
   selector: 'app-input',
-  standalone: true,
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './input.component.html',
   styleUrl: './input.component.scss',
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => InputComponent),
-      multi: true,
-    },
-  ],
+  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => InputComponent), multi: true }],
+  template: `
+    <div class="field">
+      @if (label()) {
+        <label [for]="id">{{ label() }}@if (required()) {<span class="required">*</span>}</label>
+      }
+      <div class="control" [class.invalid]="!!errorText()" [class.disabled]="isDisabled()">
+        @if (prefixIcon()) {
+          <app-icon [name]="prefixIcon()!" [size]="16" />
+        }
+        <input
+          [id]="id"
+          [type]="type()"
+          [value]="value()"
+          [placeholder]="placeholder()"
+          [readOnly]="readonly()"
+          [disabled]="isDisabled()"
+          [attr.aria-invalid]="!!errorText()"
+          (input)="onInput($event)"
+          (blur)="onTouched()"
+        />
+      </div>
+      @if (errorText()) {
+        <span class="error">{{ errorText() }}</span>
+      } @else if (helpText()) {
+        <span class="help">{{ helpText() }}</span>
+      }
+    </div>
+  `,
 })
 export class InputComponent implements ControlValueAccessor {
-  readonly label = input<string | undefined>(undefined);
-  readonly type = input<string>('text');
-  readonly placeholder = input<string>('');
-  readonly help = input<string | undefined>(undefined);
-  readonly errorText = input<string | undefined>(undefined);
-  readonly required = input<boolean>(false);
-  readonly readonly = input<boolean>(false);
-  readonly prefixIcon = input<string | undefined>(undefined);
-  readonly showPasswordToggle = input<boolean>(false);
+  protected readonly id = `app-input-${nextId++}`;
 
-  readonly inputId = `app-input-${++uid}`;
-  readonly value = signal<string>('');
-  readonly disabledState = signal(false);
-  readonly showPassword = signal(false);
+  readonly label = input<string>();
+  readonly type = input<'text' | 'email' | 'password' | 'number' | 'tel' | 'date' | 'url'>('text');
+  readonly required = input(false);
+  readonly placeholder = input('');
+  readonly prefixIcon = input<IconName>();
+  readonly helpText = input<string>();
+  readonly errorText = input<string>();
+  readonly readonly = input(false);
+  /** Standalone use; with forms the control's disabled state is applied via setDisabledState. */
+  readonly disabled = input(false);
 
-  protected onChange: (value: string) => void = () => {};
+  protected readonly value = signal('');
+  private readonly formDisabled = signal(false);
+  protected isDisabled(): boolean {
+    return this.disabled() || this.formDisabled();
+  }
+
+  private onChange: (v: string) => void = () => {};
   protected onTouched: () => void = () => {};
 
-  get resolvedType(): string {
-    if (this.type() === 'password' && this.showPasswordToggle()) {
-      return this.showPassword() ? 'text' : 'password';
-    }
-    return this.type();
+  protected onInput(event: Event): void {
+    const v = (event.target as HTMLInputElement).value;
+    this.value.set(v);
+    this.onChange(v);
   }
 
-  writeValue(value: string): void {
-    this.value.set(value ?? '');
+  writeValue(v: string | number | null): void {
+    this.value.set(v == null ? '' : String(v));
   }
-
-  registerOnChange(fn: (value: string) => void): void {
+  registerOnChange(fn: (v: string) => void): void {
     this.onChange = fn;
   }
-
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
-
   setDisabledState(isDisabled: boolean): void {
-    this.disabledState.set(isDisabled);
-  }
-
-  handleInput(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.value.set(target.value);
-    this.onChange(target.value);
-  }
-
-  togglePasswordVisibility(): void {
-    this.showPassword.update((v) => !v);
+    this.formDisabled.set(isDisabled);
   }
 }

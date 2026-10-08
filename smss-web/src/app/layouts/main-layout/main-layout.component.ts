@@ -1,31 +1,49 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { HeaderComponent } from './header/header.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
-import { readStorage, STORAGE_KEYS, writeStorage } from '../../core/utils/storage.util';
+import { TopbarComponent } from './topbar/topbar.component';
+
+const MOBILE_QUERY = '(max-width: 991px)';
 
 @Component({
   selector: 'app-main-layout',
-  standalone: true,
-  imports: [RouterOutlet, HeaderComponent, SidebarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
+  template: `
+    <div class="shell" [class.collapsed]="collapsed() && !isMobile()" [class.mobile]="isMobile()" [class.drawer-open]="drawerOpen()">
+      <app-sidebar
+        class="sidebar"
+        [collapsed]="collapsed() && !isMobile()"
+        (navigated)="drawerOpen.set(false)"
+        (expandRequested)="collapsed.set(false)"
+      />
+      @if (isMobile() && drawerOpen()) {
+        <div class="backdrop" (click)="drawerOpen.set(false)"></div>
+      }
+      <div class="main">
+        <app-topbar class="topbar" (menuToggle)="toggleSidebar()" />
+        <main class="content">
+          <router-outlet />
+        </main>
+      </div>
+    </div>
+  `,
 })
 export class MainLayoutComponent {
-  readonly collapsed = signal(readStorage<boolean>(STORAGE_KEYS.sidebarCollapsed, false));
-  readonly mobileOpen = signal(false);
+  protected readonly isMobile = signal(window.matchMedia(MOBILE_QUERY).matches);
+  protected readonly collapsed = signal(false);
+  protected readonly drawerOpen = signal(false);
 
-  toggleSidebar(): void {
-    this.collapsed.update((v) => !v);
-    writeStorage(STORAGE_KEYS.sidebarCollapsed, this.collapsed());
+  @HostListener('window:resize')
+  protected onResize(): void {
+    const mobile = window.matchMedia(MOBILE_QUERY).matches;
+    this.isMobile.set(mobile);
+    if (!mobile) this.drawerOpen.set(false);
   }
 
-  toggleMobileSidebar(): void {
-    this.mobileOpen.update((v) => !v);
-  }
-
-  closeMobileSidebar(): void {
-    this.mobileOpen.set(false);
+  protected toggleSidebar(): void {
+    if (this.isMobile()) this.drawerOpen.update((v) => !v);
+    else this.collapsed.update((v) => !v);
   }
 }

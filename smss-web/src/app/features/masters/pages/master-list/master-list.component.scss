@@ -1,0 +1,30 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+
+  .search {
+    width: min(360px, 100%);
+  }
+
+  .filter {
+    width: 220px;
+    margin-left: auto;
+    margin-right: var(--space-3);
+  }
+
+  .count {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+.retry {
+  display: flex;
+  justify-content: center;
+  padding-bottom: var(--space-6);
+}

@@ -1,0 +1,100 @@
+<div class="page">
+  <app-page-header
+    title="Components Preview"
+    subtitle="Throwaway page showing every shared component"
+    icon="layers"
+    [breadcrumbs]="[{ label: 'Dev' }, { label: 'Components Preview' }]"
+  >
+    <app-button variant="secondary"><app-icon name="eye" [size]="16" />Secondary</app-button>
+    <app-button><app-icon name="plus" [size]="16" />Add School</app-button>
+  </app-page-header>
+
+  <div class="stack">
+    <app-card title="Buttons">
+      <div class="row">
+        <app-button><app-icon name="plus" [size]="16" />Primary</app-button>
+        <app-button variant="secondary"><app-icon name="pencil" [size]="16" />Secondary</app-button>
+        <app-button variant="danger"><app-icon name="trash-2" [size]="16" />Danger</app-button>
+        <app-button variant="danger-ghost"><app-icon name="trash-2" [size]="16" />Danger ghost</app-button>
+        <app-button [disabled]="true">Disabled</app-button>
+      </div>
+      <div class="row">
+        <app-button size="sm">Small</app-button>
+        <app-button size="md">Medium</app-button>
+        <app-button size="lg">Large</app-button>
+      </div>
+    </app-card>
+
+    <app-card title="Form controls">
+      <form class="grid" [formGroup]="form" (ngSubmit)="submit()">
+        <app-input label="School name" [required]="true" placeholder="e.g. Green Valley" prefixIcon="building-2" formControlName="name" [errorText]="error('name')" />
+        <app-input label="Email" type="email" [required]="true" placeholder="admin@school.com" prefixIcon="mail" helpText="We'll send login details here" formControlName="email" [errorText]="error('email')" />
+        <app-select label="Board type" [required]="true" [options]="boardOptions" formControlName="board" [errorText]="error('board')" />
+        <app-select label="School levels (multiple)" [multiple]="true" [options]="boardOptions" formControlName="levels" />
+        <app-input label="Disabled" placeholder="Can't type here" [disabled]="true" />
+        <app-input label="Read-only" [readonly]="true" prefixIcon="lock" helpText="School code is immutable" />
+        <div class="row full">
+          <app-button type="submit">Validate form</app-button>
+        </div>
+      </form>
+    </app-card>
+
+    <app-card title="Table + pagination" [noPadding]="true">
+      <div class="toolbar">
+        <div class="search">
+          <app-input placeholder="Search by code or name…" prefixIcon="search" (input)="onSearch($event)" />
+        </div>
+        <div class="row">
+          <app-button variant="secondary" size="sm" (click)="toggleLoading()">Toggle loading</app-button>
+          <app-button variant="secondary" size="sm" (click)="showEmpty.set(!showEmpty())">Toggle empty</app-button>
+          <span class="count">{{ total() }} records</span>
+        </div>
+      </div>
+      <app-table
+        [columns]="columns"
+        [rows]="pageRows()"
+        [loading]="loading()"
+        [hasActions]="true"
+        [sortKey]="sortKey()"
+        [sortDirection]="sortDirection()"
+        emptyMessage="No schools match your search."
+        (sortChange)="onSort($event)"
+      >
+        <ng-template #rowActions let-row>
+          <app-button variant="secondary" size="sm" aria-label="View"><app-icon name="eye" [size]="14" /></app-button>
+          <app-button variant="secondary" size="sm" aria-label="Edit"><app-icon name="pencil" [size]="14" /></app-button>
+          <app-button variant="danger-ghost" size="sm" aria-label="Delete" (click)="askConfirm(true)"><app-icon name="trash-2" [size]="14" /></app-button>
+        </ng-template>
+      </app-table>
+      <app-pagination
+        [currentPage]="page()"
+        [totalItems]="total()"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="onPageSize($event)"
+      />
+    </app-card>
+
+    <app-card title="Toasts &amp; confirm dialog">
+      <div class="row">
+        <app-button variant="secondary" (click)="showToast('success')">Success</app-button>
+        <app-button variant="secondary" (click)="showToast('error')">Error</app-button>
+        <app-button variant="secondary" (click)="showToast('danger')">Danger</app-button>
+        <app-button variant="secondary" (click)="showToast('info')">Info</app-button>
+        <app-button variant="secondary" (click)="showToast('warning')">Warning</app-button>
+      </div>
+      <div class="row">
+        <app-button (click)="askConfirm(false)">Confirm dialog</app-button>
+        <app-button variant="danger" (click)="askConfirm(true)">Danger confirm</app-button>
+      </div>
+    </app-card>
+
+    <app-card title="Icons">
+      <div class="icons">
+        @for (name of iconNames; track name) {
+          <div class="icon-cell"><app-icon [name]="name" [size]="22" /><span>{{ name }}</span></div>
+        }
+      </div>
+    </app-card>
+  </div>
+</div>

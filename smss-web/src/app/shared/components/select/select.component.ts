@@ -1,73 +1,94 @@
 import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { IconComponent } from '../icon/icon.component';
 
+/** Values are always strings — convert numeric ids with `.toString()` when building options. */
 export interface SelectOption {
   label: string;
   value: string;
 }
 
-let uid = 0;
+let nextId = 0;
 
 @Component({
   selector: 'app-select',
-  standalone: true,
+  imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './select.component.html',
   styleUrl: './select.component.scss',
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SelectComponent),
-      multi: true,
-    },
-  ],
+  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SelectComponent), multi: true }],
+  template: `
+    <div class="field">
+      @if (label()) {
+        <label [for]="id">{{ label() }}@if (required()) {<span class="required">*</span>}</label>
+      }
+      <div class="control" [class.invalid]="!!errorText()" [class.disabled]="isDisabled()">
+        <select
+          [id]="id"
+          [multiple]="multiple()"
+          [disabled]="isDisabled()"
+          [attr.aria-invalid]="!!errorText()"
+          (change)="onSelect($event)"
+          (blur)="onTouched()"
+        >
+          @if (!multiple()) {
+            <option value="" [selected]="selected().length === 0">{{ placeholder() }}</option>
+          }
+          @for (opt of options(); track opt.value) {
+            <option [value]="opt.value" [selected]="selected().includes(opt.value)">{{ opt.label }}</option>
+          }
+        </select>
+        @if (!multiple()) {
+          <app-icon name="chevron-down" [size]="16" />
+        }
+      </div>
+      @if (errorText()) {
+        <span class="error">{{ errorText() }}</span>
+      }
+    </div>
+  `,
 })
 export class SelectComponent implements ControlValueAccessor {
-  readonly label = input<string | undefined>(undefined);
-  readonly options = input.required<SelectOption[]>();
-  readonly placeholder = input<string>('Select an option');
-  readonly help = input<string | undefined>(undefined);
-  readonly errorText = input<string | undefined>(undefined);
-  readonly required = input<boolean>(false);
-  readonly multiple = input<boolean>(false);
+  protected readonly id = `app-select-${nextId++}`;
 
-  readonly selectId = `app-select-${++uid}`;
-  readonly value = signal<string>('');
-  readonly multiValue = signal<string[]>([]);
-  readonly disabledState = signal(false);
+  readonly label = input<string>();
+  readonly options = input<SelectOption[]>([]);
+  readonly required = input(false);
+  readonly multiple = input(false);
+  readonly placeholder = input('Select…');
+  readonly errorText = input<string>();
+  readonly disabled = input(false);
 
-  protected onChange: (value: string | string[]) => void = () => {};
+  protected readonly selected = signal<string[]>([]);
+  private readonly formDisabled = signal(false);
+  protected isDisabled(): boolean {
+    return this.disabled() || this.formDisabled();
+  }
+
+  private onChange: (v: string | string[]) => void = () => {};
   protected onTouched: () => void = () => {};
 
-  writeValue(value: string | string[]): void {
+  protected onSelect(event: Event): void {
+    const el = event.target as HTMLSelectElement;
     if (this.multiple()) {
-      this.multiValue.set(Array.isArray(value) ? value : []);
+      const values = Array.from(el.selectedOptions).map((o) => o.value);
+      this.selected.set(values);
+      this.onChange(values);
     } else {
-      this.value.set((value as string) ?? '');
+      this.selected.set(el.value ? [el.value] : []);
+      this.onChange(el.value);
     }
   }
 
-  registerOnChange(fn: (value: string | string[]) => void): void {
+  writeValue(v: string | string[] | null): void {
+    this.selected.set(v == null || v === '' ? [] : Array.isArray(v) ? v.map(String) : [String(v)]);
+  }
+  registerOnChange(fn: (v: string | string[]) => void): void {
     this.onChange = fn;
   }
-
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
-
   setDisabledState(isDisabled: boolean): void {
-    this.disabledState.set(isDisabled);
-  }
-
-  handleChange(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    if (this.multiple()) {
-      const selected = Array.from(target.selectedOptions).map((o) => o.value);
-      this.multiValue.set(selected);
-      this.onChange(selected);
-    } else {
-      this.value.set(target.value);
-      this.onChange(target.value);
-    }
+    this.formDisabled.set(isDisabled);
   }
 }

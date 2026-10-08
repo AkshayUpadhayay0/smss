@@ -1,64 +1,32 @@
-@if (mobileOpen()) {
-  <div class="sidebar-overlay" (click)="closeMobile.emit()"></div>
-}
+<div class="brand">
+  <app-logo [showText]="!collapsed()" />
+</div>
 
-<aside class="app-sidebar" [class.is-collapsed]="collapsed()" [class.is-mobile-open]="mobileOpen()">
-  <div class="sidebar-brand">
-    <div class="sidebar-brand-logo">
-      <app-icon name="graduation-cap" [size]="20"></app-icon>
-    </div>
-    @if (!collapsed()) {
-      <span class="sidebar-brand-name">SMSS</span>
-    }
-  </div>
-
-  <nav class="sidebar-nav">
-    @for (item of navItems; track item.label) {
-      @if (item.children) {
-        <div class="sidebar-group" routerLinkActive="has-active-child">
-          <button type="button" class="sidebar-group-toggle" [attr.title]="collapsed() ? item.label : null" (click)="toggleGroup(item.label)">
-            <app-icon [name]="item.icon" [size]="18"></app-icon>
-            @if (!collapsed()) {
-              <span class="sidebar-label">{{ item.label }}</span>
-              <app-icon
-                name="chevron-down"
-                [size]="14"
-                class="sidebar-chevron"
-                [class.is-open]="isExpanded(item.label)"
-              ></app-icon>
+<nav class="nav" aria-label="Main navigation">
+  @for (item of items; track item.label) {
+    @if (item.children) {
+      <div class="group" [class.open]="isOpen(item)">
+        <button type="button" class="link group-toggle" [attr.aria-expanded]="isOpen(item)" [title]="collapsed() ? item.label : ''" (click)="toggleGroup(item)">
+          <app-icon [name]="item.icon" [size]="20" />
+          <span class="label">{{ item.label }}</span>
+          <app-icon class="chevron" name="chevron-down" [size]="16" />
+        </button>
+        @if (isOpen(item) && !collapsed()) {
+          <div class="children">
+            @for (child of item.children; track child.route) {
+              <a class="link child" [routerLink]="child.route" routerLinkActive="active" (click)="navigated.emit()">
+                <span class="dot"></span>
+                <span class="label">{{ child.label }}</span>
+              </a>
             }
-          </button>
-          @if (isExpanded(item.label) && !collapsed()) {
-            <div class="sidebar-children">
-              @for (child of item.children; track child.route) {
-                <a
-                  [routerLink]="child.route"
-                  routerLinkActive="is-active"
-                  class="sidebar-child-link"
-                  (click)="onLinkClick()"
-                >
-                  <app-icon [name]="child.icon || 'circle'" [size]="15"></app-icon>
-                  <span>{{ child.label }}</span>
-                </a>
-              }
-            </div>
-          }
-        </div>
-      } @else {
-        <a
-          [routerLink]="item.route"
-          routerLinkActive="is-active"
-          [routerLinkActiveOptions]="{ exact: false }"
-          class="sidebar-link"
-          [attr.title]="collapsed() ? item.label : null"
-          (click)="onLinkClick()"
-        >
-          <app-icon [name]="item.icon" [size]="18"></app-icon>
-          @if (!collapsed()) {
-            <span class="sidebar-label">{{ item.label }}</span>
-          }
-        </a>
-      }
+          </div>
+        }
+      </div>
+    } @else {
+      <a class="link" [routerLink]="item.route" routerLinkActive="active" [title]="collapsed() ? item.label : ''" (click)="navigated.emit()">
+        <app-icon [name]="item.icon" [size]="20" />
+        <span class="label">{{ item.label }}</span>
+      </a>
     }
-  </nav>
-</aside>
+  }
+</nav>

@@ -1,0 +1,51 @@
+<app-modal [title]="title()" [dismissible]="!saving()" (closed)="closed.emit()">
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (config().formNotice; as notice) {
+      <p class="notice"><app-icon name="triangle-alert" [size]="16" />{{ notice }}</p>
+    }
+
+    @for (field of config().fields; track field.key) {
+      @switch (field.type) {
+        @case ('textarea') {
+          <app-textarea
+            [label]="field.label"
+            [required]="!!field.required"
+            [maxLength]="field.maxLength"
+            [placeholder]="field.placeholder ?? ''"
+            [helpText]="field.helpText"
+            [formControlName]="field.key"
+            [errorText]="error(field.key)"
+          />
+        }
+        @case ('select') {
+          <app-select
+            [label]="field.label"
+            [required]="!!field.required"
+            [options]="field.options ?? []"
+            [formControlName]="field.key"
+            [errorText]="error(field.key)"
+          />
+        }
+        @default {
+          <app-input
+            [label]="field.label"
+            [required]="!!field.required"
+            [placeholder]="field.placeholder ?? ''"
+            [helpText]="field.helpText"
+            [prefixIcon]="field.createOnly && isEdit() ? 'lock' : undefined"
+            [formControlName]="field.key"
+            [errorText]="error(field.key)"
+          />
+        }
+      }
+    }
+
+    <!-- lets Enter submit; the visible button lives in the modal footer -->
+    <button type="submit" hidden tabindex="-1"></button>
+  </form>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    <app-button [disabled]="saving()" (click)="submit()">{{ saving() ? 'Saving…' : isEdit() ? 'Update' : 'Create' }}</app-button>
+  </ng-container>
+</app-modal>

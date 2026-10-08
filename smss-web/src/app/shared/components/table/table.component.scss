@@ -1,63 +1,120 @@
-@use 'variables' as v;
-@use 'mixins' as m;
-
-.table-scroll {
-  overflow-x: auto;
-  @include m.scrollbar-thin;
+:host {
+  display: block;
 }
 
-.app-table {
+.wrap {
+  overflow-x: auto;
+}
+
+table {
   width: 100%;
   border-collapse: collapse;
-  font-size: v.$font-size-sm;
-  min-width: 640px;
+}
 
-  th, td {
-    text-align: left;
-    padding: v.$table-cell-padding-y v.$table-cell-padding-x;
-    white-space: nowrap;
-    vertical-align: middle;
-  }
+th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
 
-  td {
-    color: var(--text-primary);
-  }
+td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
 
-  thead th {
-    background: var(--surface-color-alt);
-    color: var(--text-secondary);
-    font-weight: v.$font-weight-semibold;
-    font-size: v.$font-size-xs;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    border-bottom: 1px solid var(--border-color);
-    user-select: none;
+tbody tr:last-child td {
+  border-bottom: 0;
+}
 
-    &.is-sortable {
-      cursor: pointer;
-      &:hover { color: var(--text-primary); }
+tbody tr:hover:not(.skeleton) {
+  background: var(--color-primary-soft);
+}
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+
+  app-icon {
+    color: var(--color-text-disabled);
+
+    &.active {
+      color: var(--color-primary);
     }
   }
 
-  .th-content {
-    display: inline-flex;
-    align-items: center;
-    gap: v.$space-1;
+  &:hover {
+    color: var(--color-text);
   }
+}
 
-  tbody tr {
-    border-bottom: 1px solid var(--border-color);
-    transition: background-color v.$transition-fast;
+.actions-col {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
 
-    &:hover { background: var(--surface-color-alt); }
-    &:last-child { border-bottom: none; }
+.actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  background: var(--color-status-inactive-bg);
+  color: var(--color-status-inactive-fg);
+
+  &.active {
+    background: var(--color-status-active-bg);
+    color: var(--color-status-active-fg);
   }
+}
 
-  .empty-row:hover {
-    background: transparent;
-  }
+.skeleton .bar {
+  display: block;
+  height: 12px;
+  width: 70%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-border) 50%, var(--color-surface-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
 
-  .actions-col {
-    text-align: right;
+  &.short {
+    width: 40px;
+    margin-left: auto;
   }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-12) var(--space-4);
+  color: var(--color-text-subtle);
 }

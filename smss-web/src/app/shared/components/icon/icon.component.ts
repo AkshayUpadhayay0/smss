@@ -1,31 +1,44 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { LucideDynamicIcon } from '@lucide/angular';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ICONS, IconName, IconShape } from './icons';
 
-/**
- * Single wrapper around the icon library. Every other component renders
- * icons through <app-icon> instead of importing lucide directly, so the
- * whole app is guaranteed to use one consistent icon system (spec #32).
- */
 @Component({
   selector: 'app-icon',
-  standalone: true,
-  imports: [LucideDynamicIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<svg [lucideIcon]="name()" [size]="size()" [strokeWidth]="strokeWidth()" class="app-icon"></svg>`,
-  styles: [
-    `
-      :host {
-        display: inline-flex;
-        line-height: 0;
+  styleUrl: './icon.component.scss',
+  template: `
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      [attr.width]="size()"
+      [attr.height]="size()"
+    >
+      @for (shape of shapes(); track $index) {
+        @if (isPath(shape)) {
+          <path [attr.d]="shape" />
+        } @else if (isCircle(shape)) {
+          <circle [attr.cx]="shape.c[0]" [attr.cy]="shape.c[1]" [attr.r]="shape.c[2]" />
+        } @else {
+          <rect [attr.x]="shape.r[0]" [attr.y]="shape.r[1]" [attr.width]="shape.r[2]" [attr.height]="shape.r[3]" [attr.rx]="shape.r[4]" />
+        }
       }
-      .app-icon {
-        display: block;
-      }
-    `,
-  ],
+    </svg>
+  `,
 })
 export class IconComponent {
-  readonly name = input.required<string>();
-  readonly size = input<number>(20);
-  readonly strokeWidth = input<number>(1.9);
+  readonly name = input.required<IconName>();
+  readonly size = input(18);
+
+  protected readonly shapes = computed<readonly IconShape[]>(() => ICONS[this.name()] ?? []);
+
+  protected isPath(s: IconShape): s is string {
+    return typeof s === 'string';
+  }
+  protected isCircle(s: IconShape): s is { c: [number, number, number] } {
+    return typeof s !== 'string' && 'c' in s;
+  }
 }

@@ -1,17 +1,20 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { IconComponent } from '../../shared/components/icon/icon.component';
+import { LogoComponent } from '../../shared/components/logo/logo.component';
 
-/**
- * Layout for Login/Registration. Kept separate from MainLayout because
- * auth pages have no sidebar/header/breadcrumb (spec #25).
- */
 @Component({
   selector: 'app-auth-layout',
-  standalone: true,
-  imports: [RouterOutlet, IconComponent],
+  imports: [RouterOutlet, LogoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './auth-layout.component.html',
   styleUrl: './auth-layout.component.scss',
+  template: `
+    <div class="wrap">
+      <div class="brand"><app-logo /></div>
+      <div class="card">
+        <router-outlet />
+      </div>
+      <p class="footer">School Management System</p>
+    </div>
+  `,
 })
 export class AuthLayoutComponent {}

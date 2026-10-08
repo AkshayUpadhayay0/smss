@@ -1,0 +1,88 @@
+<header class="topbar">
+  <div class="left">
+    <button type="button" class="icon-btn" aria-label="Toggle sidebar" (click)="menuToggle.emit()">
+      <app-icon name="menu" [size]="20" />
+    </button>
+
+    <div class="dropdown">
+      <button type="button" class="org" [attr.aria-expanded]="openMenu() === 'org'" (click)="toggle('org')">
+        <span class="avatar sm">{{ initial(org().name) }}</span>
+        <span class="meta">
+          <span class="name">{{ org().name }}</span>
+          <span class="sub">{{ org().code }}</span>
+        </span>
+        <app-icon name="chevron-down" [size]="16" />
+      </button>
+      @if (openMenu() === 'org') {
+        <div class="menu">
+          <div class="menu-title">Current organization</div>
+          <div class="menu-item current">
+            <span class="avatar sm">{{ initial(org().name) }}</span>
+            <span class="meta">
+              <span class="name">{{ org().name }}</span>
+              <span class="sub">{{ org().code }}</span>
+            </span>
+            <app-icon name="check" [size]="16" />
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="right">
+    @if (searchOpen()) {
+      <div class="search">
+        <app-icon name="search" [size]="16" />
+        <input type="search" placeholder="Search…" aria-label="Search" autofocus />
+        <button type="button" class="icon-btn small" aria-label="Close search" (click)="searchOpen.set(false)">
+          <app-icon name="x" [size]="14" />
+        </button>
+      </div>
+    } @else {
+      <button type="button" class="icon-btn" aria-label="Search" (click)="searchOpen.set(true)">
+        <app-icon name="search" [size]="20" />
+      </button>
+    }
+
+    <div class="dropdown">
+      <button type="button" class="icon-btn" aria-label="Notifications" [attr.aria-expanded]="openMenu() === 'notifications'" (click)="toggle('notifications')">
+        <app-icon name="bell" [size]="20" />
+        <span class="unread-dot"></span>
+      </button>
+      @if (openMenu() === 'notifications') {
+        <div class="menu wide right-aligned">
+          <div class="menu-title">Notifications</div>
+          @for (n of notifications; track n.title) {
+            <div class="menu-item">
+              <span class="meta">
+                <span class="name">{{ n.title }}</span>
+                <span class="sub">{{ n.time }}</span>
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="dropdown">
+      <button type="button" class="user" [attr.aria-expanded]="openMenu() === 'user'" (click)="toggle('user')">
+        <span class="avatar">{{ initial(user().name) }}</span>
+        <span class="meta">
+          <span class="name">{{ user().name }}</span>
+          <span class="sub">{{ user().role }}</span>
+        </span>
+        <app-icon name="chevron-down" [size]="16" />
+      </button>
+      @if (openMenu() === 'user') {
+        <div class="menu right-aligned">
+          <a class="menu-item action" routerLink="/change-password" (click)="openMenu.set(null)">
+            <app-icon name="lock" [size]="16" /> Change password
+          </a>
+          <button type="button" class="menu-item action danger" (click)="logout()">
+            <app-icon name="log-out" [size]="16" /> Log out
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</header>

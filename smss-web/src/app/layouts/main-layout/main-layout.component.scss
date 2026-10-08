@@ -1,35 +1,77 @@
-@use 'variables' as v;
-@use 'mixins' as m;
-
-.main-layout {
-  min-height: 100vh;
-  background: var(--background-color);
+:host {
+  display: block;
 }
 
-.main-layout-content {
+.shell {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: var(--z-sidebar);
+  width: var(--sidebar-width);
+  transition:
+    width var(--transition-base),
+    transform var(--transition-base);
+}
+
+.main {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: margin-left v.$transition-base;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-base);
+}
 
-  @include m.respond-up(lg) {
-    margin-left: v.$sidebar-width;
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+}
 
-    &.is-collapsed {
-      margin-left: v.$sidebar-width-collapsed;
-    }
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+.collapsed {
+  .sidebar {
+    width: var(--sidebar-width-collapsed);
+  }
+
+  .main {
+    margin-left: var(--sidebar-width-collapsed);
   }
 }
 
-// Page container: one gutter and one max width for every screen.
-.main-layout-body {
-  flex: 1;
-  width: 100%;
-  max-width: v.$page-max-width;
-  margin: 0 auto;
-  padding: v.$page-gutter;
-
-  @include m.respond-down(md) {
-    padding: v.$page-gutter-mobile;
+// Mobile / tablet: sidebar becomes an off-canvas drawer
+.mobile {
+  .sidebar {
+    transform: translateX(-100%);
   }
+
+  .main {
+    margin-left: 0;
+  }
+
+  &.drawer-open .sidebar {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-sidebar) - 1);
+  background: rgb(20 22 40 / 0.45);
 }

@@ -1,0 +1,94 @@
+// Shared look for app-input / app-select. @use this inside component SCSS.
+
+:host {
+  display: block;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+
+  .required {
+    color: var(--color-danger);
+    margin-left: 2px;
+  }
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-subtle);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:hover:not(.disabled) {
+    border-color: var(--color-primary-300);
+  }
+
+  &:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
+  }
+
+  &.invalid {
+    border-color: var(--color-danger);
+
+    &:focus-within {
+      box-shadow: 0 0 0 3px rgb(220 38 38 / 0.15);
+    }
+  }
+
+  &.disabled {
+    background: var(--color-surface-muted);
+    cursor: not-allowed;
+  }
+
+  input,
+  select {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    padding: var(--space-2) 0;
+    outline: none;
+    box-shadow: none;
+
+    &::placeholder {
+      color: var(--color-text-subtle);
+    }
+
+    &:disabled {
+      color: var(--color-text-disabled);
+      cursor: not-allowed;
+    }
+  }
+}
+
+.help,
+.error {
+  font-size: var(--text-xs);
+}
+
+.help {
+  color: var(--color-text-muted);
+}
+
+.error {
+  color: var(--color-danger);
+}

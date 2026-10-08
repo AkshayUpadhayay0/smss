@@ -1,199 +1,108 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map, shareReplay } from 'rxjs';
-import { environment } from '../../../environments/environment';   // adjust depth if needed
+import { Injectable, inject } from '@angular/core';
+import { Observable, catchError, map, shareReplay, throwError } from 'rxjs';
 import { SelectOption } from '../../shared/components/select/select.component';
-import {
-    BoardType,
-    City,
-    Country,
-    District,
-    RoleLookup,
-    SchoolLevel,
-    SchoolType,
-    State,
-    StatusLookup,
-    StatusType,
-} from '../models/master-data.model';
+import { BoardType, City, Country, District, RoleLookup, SchoolLevel, SchoolType, State, StatusLookup, StatusType } from '../models/master-data.model';
+import { ApiService } from './api.service';
 
-interface ApiEnvelope<T> {
-    status: boolean;
-    statusCode: number;
-    message: string;
-    data: T;
-}
+const BASE = '/api/MasterData';
 
+/**
+ * Caches lookups for the app session. Failed requests are NOT cached, so a retry hits the server again.
+ * Option mappers feed `<app-select [options]>` directly (values are strings, per the select contract).
+ */
 @Injectable({ providedIn: 'root' })
 export class MasterDataService {
-    private readonly baseUrl = `${environment.apiUrl}/api/MasterData`;
+  private readonly api = inject(ApiService);
+  private readonly cache = new Map<string, Observable<unknown>>();
 
-    // Static/rarely-changing lookups — fetched once per app session, then replayed
-    private countries$?: Observable<Country[]>;
-    private statuses$?: Observable<StatusLookup[]>;
-    private boardTypes$?: Observable<BoardType[]>;
-    private schoolTypes$?: Observable<SchoolType[]>;
-    private schoolLevels$?: Observable<SchoolLevel[]>;
-    private roles$?: Observable<RoleLookup[]>;
-
-    // Cascading location lookups — cached per parent key so re-selecting the same
-    // country/state/district doesn't refire the HTTP call
-    private statesCache = new Map<number, Observable<State[]>>();
-    private districtsCache = new Map<string, Observable<District[]>>();
-    private citiesCache = new Map<string, Observable<City[]>>();
-
-    constructor(private http: HttpClient) { }
-
-    // ---------------- Location (cascading) ----------------
-
-    getCountries(): Observable<Country[]> {
-        if (!this.countries$) {
-            this.countries$ = this.http
-                .get<ApiEnvelope<Country[]>>(`${this.baseUrl}/countries`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.countries$;
+  private cached<T>(key: string, path: string): Observable<T> {
+    let req = this.cache.get(key) as Observable<T> | undefined;
+    if (!req) {
+      req = this.api.get<T>(`${BASE}/${path}`).pipe(
+        catchError((err) => {
+          this.cache.delete(key);
+          return throwError(() => err);
+        }),
+        shareReplay(1),
+      );
+      this.cache.set(key, req);
     }
+    return req;
+  }
 
-    getStates(countryId: number): Observable<State[]> {
-        if (!this.statesCache.has(countryId)) {
-            const req$ = this.http
-                .get<ApiEnvelope<State[]>>(`${this.baseUrl}/states/${countryId}`)
-                .pipe(map((res) => res.data), shareReplay(1));
-            this.statesCache.set(countryId, req$);
-        }
-        return this.statesCache.get(countryId)!;
-    }
+  /** Drop cached lookups (call after a master is created / edited / toggled so dropdowns refresh). */
+  invalidate(): void {
+    this.cache.clear();
+  }
 
-    getDistricts(countryId: number, stateId: number): Observable<District[]> {
-        const key = `${countryId}:${stateId}`;
-        if (!this.districtsCache.has(key)) {
-            const req$ = this.http
-                .get<ApiEnvelope<District[]>>(`${this.baseUrl}/districts/${countryId}/${stateId}`)
-                .pipe(map((res) => res.data), shareReplay(1));
-            this.districtsCache.set(key, req$);
-        }
-        return this.districtsCache.get(key)!;
-    }
+  // ── Location (cascading, cached per parent key) ───────────────────
+  getCountries(): Observable<Country[]> {
+    return this.cached('countries', 'countries');
+  }
+  getStates(countryId: number): Observable<State[]> {
+    return this.cached(`states:${countryId}`, `states/${countryId}`);
+  }
+  getDistricts(countryId: number, stateId: number): Observable<District[]> {
+    return this.cached(`districts:${countryId}:${stateId}`, `districts/${countryId}/${stateId}`);
+  }
+  getCities(countryId: number, stateId: number, districtId: number): Observable<City[]> {
+    return this.cached(`cities:${countryId}:${stateId}:${districtId}`, `cities/${countryId}/${stateId}/${districtId}`);
+  }
 
-    getCities(countryId: number, stateId: number, districtId: number): Observable<City[]> {
-        const key = `${countryId}:${stateId}:${districtId}`;
-        if (!this.citiesCache.has(key)) {
-            const req$ = this.http
-                .get<ApiEnvelope<City[]>>(`${this.baseUrl}/cities/${countryId}/${stateId}/${districtId}`)
-                .pipe(map((res) => res.data), shareReplay(1));
-            this.citiesCache.set(key, req$);
-        }
-        return this.citiesCache.get(key)!;
-    }
+  // ── Status / simple lookups ───────────────────────────────────────
+  getStatuses(): Observable<StatusLookup[]> {
+    return this.cached('status', 'status');
+  }
+  getStatusesByType(type: StatusType): Observable<StatusLookup[]> {
+    return this.getStatuses().pipe(map((list) => list.filter((s) => s.stype === type)));
+  }
+  getBoardTypes(): Observable<BoardType[]> {
+    return this.cached('board-types', 'board-types');
+  }
+  getSchoolTypes(): Observable<SchoolType[]> {
+    return this.cached('school-types', 'school-types');
+  }
+  getSchoolLevels(): Observable<SchoolLevel[]> {
+    return this.cached('school-levels', 'school-levels');
+  }
+  getRoles(): Observable<RoleLookup[]> {
+    return this.cached('role', 'role');
+  }
 
-    // ---------------- Status (filtered by stype) ----------------
+  // ── SelectOption mappers ──────────────────────────────────────────
+  getCountryOptions(): Observable<SelectOption[]> {
+    return this.getCountries().pipe(map((l) => l.map((c) => ({ label: c.cname, value: c.cid.toString() }))));
+  }
+  getStateOptions(countryId: number): Observable<SelectOption[]> {
+    return this.getStates(countryId).pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));
+  }
+  getDistrictOptions(countryId: number, stateId: number): Observable<SelectOption[]> {
+    return this.getDistricts(countryId, stateId).pipe(map((l) => l.map((d) => ({ label: d.dname, value: d.did.toString() }))));
+  }
+  getCityOptions(countryId: number, stateId: number, districtId: number): Observable<SelectOption[]> {
+    return this.getCities(countryId, stateId, districtId).pipe(map((l) => l.map((c) => ({ label: c.cityName, value: c.cityId.toString() }))));
+  }
 
-    getStatuses(): Observable<StatusLookup[]> {
-        if (!this.statuses$) {
-            this.statuses$ = this.http
-                .get<ApiEnvelope<StatusLookup[]>>(`${this.baseUrl}/status`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.statuses$;
-    }
+  /** Inactive entries stay selectable (an existing school may reference one) but are labelled. */
+  getBoardTypeOptions(): Observable<SelectOption[]> {
+    return this.getBoardTypes().pipe(map((l) => l.map((b) => ({ label: this.label(b.boardName, b.isActive), value: b.boardTypeId.toString() }))));
+  }
+  getSchoolTypeOptions(): Observable<SelectOption[]> {
+    return this.getSchoolTypes().pipe(map((l) => l.map((s) => ({ label: this.label(s.schoolTypeName, s.isActive), value: s.schoolTypeId.toString() }))));
+  }
+  getSchoolLevelOptions(): Observable<SelectOption[]> {
+    return this.getSchoolLevels().pipe(map((l) => l.map((s) => ({ label: this.label(s.schoolLevelName, s.isActive), value: s.schoolLevelId.toString() }))));
+  }
 
-    getStatusesByType(type: StatusType): Observable<StatusLookup[]> {
-        return this.getStatuses().pipe(map((list) => list.filter((s) => s.stype === type)));
-    }
+  /** General status (Active / Inactive …) — used to display a school's status badge. */
+  getGeneralStatusOptions(): Observable<SelectOption[]> {
+    return this.getStatusesByType('general status').pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));
+  }
+  getSubscriptionStatusOptions(): Observable<SelectOption[]> {
+    return this.getStatusesByType('school plan status').pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));
+  }
 
-    // ---------------- Simple lookups ----------------
-
-    getBoardTypes(): Observable<BoardType[]> {
-        if (!this.boardTypes$) {
-            this.boardTypes$ = this.http
-                .get<ApiEnvelope<BoardType[]>>(`${this.baseUrl}/board-types`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.boardTypes$;
-    }
-
-    getSchoolTypes(): Observable<SchoolType[]> {
-        if (!this.schoolTypes$) {
-            this.schoolTypes$ = this.http
-                .get<ApiEnvelope<SchoolType[]>>(`${this.baseUrl}/school-types`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.schoolTypes$;
-    }
-
-    getSchoolLevels(): Observable<SchoolLevel[]> {
-        if (!this.schoolLevels$) {
-            this.schoolLevels$ = this.http
-                .get<ApiEnvelope<SchoolLevel[]>>(`${this.baseUrl}/school-levels`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.schoolLevels$;
-    }
-
-    getRoles(): Observable<RoleLookup[]> {
-        if (!this.roles$) {
-            this.roles$ = this.http
-                .get<ApiEnvelope<RoleLookup[]>>(`${this.baseUrl}/role`)
-                .pipe(map((res) => res.data), shareReplay(1));
-        }
-        return this.roles$;
-    }
-
-    // ---------------- SelectOption convenience mappers ----------------
-    // Feed these straight into [options] on <app-select>
-
-    getCountryOptions(): Observable<SelectOption[]> {
-        return this.getCountries().pipe(
-            map((list) => list.map((c) => ({ label: c.cname, value: c.cid.toString() }))),
-        );
-    }
-
-    getStateOptions(countryId: number): Observable<SelectOption[]> {
-        return this.getStates(countryId).pipe(
-            map((list) => list.map((s) => ({ label: s.sname, value: s.sid.toString() }))),
-        );
-    }
-
-    getDistrictOptions(countryId: number, stateId: number): Observable<SelectOption[]> {
-        return this.getDistricts(countryId, stateId).pipe(
-            map((list) => list.map((d) => ({ label: d.dname, value: d.did.toString() }))),
-        );
-    }
-
-    getCityOptions(countryId: number, stateId: number, districtId: number): Observable<SelectOption[]> {
-        return this.getCities(countryId, stateId, districtId).pipe(
-            map((list) => list.map((c) => ({ label: c.cityName, value: c.cityId.toString() }))),
-        );
-    }
-
-    getBoardTypeOptions(): Observable<SelectOption[]> {
-        return this.getBoardTypes().pipe(
-            map((list) => list.map((b) => ({ label: b.boardName, value: b.boardTypeId.toString() }))),
-        );
-    }
-
-    getSchoolTypeOptions(): Observable<SelectOption[]> {
-        return this.getSchoolTypes().pipe(
-            map((list) => list.map((s) => ({ label: s.schoolTypeName, value: s.schoolTypeId.toString() }))),
-        );
-    }
-
-    getSchoolLevelOptions(): Observable<SelectOption[]> {
-        return this.getSchoolLevels().pipe(
-            map((list) => list.map((s) => ({ label: s.schoolLevelName, value: s.schoolLevelId.toString() }))),
-        );
-    }
-
-    getSchoolStatusOptions(): Observable<SelectOption[]> {
-        return this.getStatusesByType('general status').pipe(
-            map((list) => list.map((s) => ({ label: s.sname, value: s.sid.toString() }))),
-        );
-    }
-
-    getSubscriptionStatusOptions(): Observable<SelectOption[]> {
-        return this.getStatusesByType('school plan status').pipe(
-            map((list) => list.map((s) => ({ label: s.sname, value: s.sid.toString() }))),
-        );
-    }
-    
+  private label(name: string, isActive: boolean): string {
+    return isActive ? name : `${name} (Inactive)`;
+  }
 }

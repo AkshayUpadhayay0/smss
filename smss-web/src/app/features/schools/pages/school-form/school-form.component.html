@@ -1,0 +1,132 @@
+<app-page-header [title]="heading().title" [subtitle]="heading().subtitle" icon="building-2" [breadcrumbs]="breadcrumbs()">
+  <app-button variant="secondary" (click)="goToList()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
+  @if (isView() && school()) {
+    <app-button (click)="goToEdit()"><app-icon name="pencil" [size]="16" />Edit</app-button>
+  }
+</app-page-header>
+
+@if (created(); as result) {
+  <app-registration-result [result]="result" (done)="goToList()" />
+} @else if (loading()) {
+  <app-card><p class="status-note">Loading school…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="status-note">
+      <p>This school could not be loaded.</p>
+      <app-button variant="secondary" (click)="goToList()">Back to list</app-button>
+    </div>
+  </app-card>
+} @else {
+  <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-card title="School Logo">
+      <app-logo-upload [currentUrl]="logoUrl()" [disabled]="isView()" (changed)="onLogoChanged($event)" />
+    </app-card>
+
+    <app-card title="School Identity">
+      <div class="grid">
+        <app-input
+          label="School code"
+          [required]="isAdd()"
+          placeholder="e.g. GVPS-01"
+          prefixIcon="lock"
+          formControlName="schoolCode"
+          [readonly]="!isAdd()"
+          [helpText]="isAdd() ? 'Letters, numbers, hyphen and underscore. Cannot be changed later.' : 'The school code cannot be changed.'"
+          [errorText]="err('schoolCode')"
+        />
+        <app-input label="School name" [required]="true" placeholder="Full school name" formControlName="schoolName" [errorText]="err('schoolName')" />
+        <app-input label="Short name" placeholder="Optional" formControlName="schoolShortName" [errorText]="err('schoolShortName')" />
+        <app-select label="School type" [options]="schoolTypeOptions()" formControlName="schoolTypeId" />
+        <app-select label="School level" [options]="schoolLevelOptions()" formControlName="schoolLevelId" />
+        <app-select label="Board type" [options]="boardTypeOptions()" formControlName="boardTypeId" />
+        <app-input label="Established year" type="number" placeholder="e.g. 1998" formControlName="schoolEstablishYear" [errorText]="err('schoolEstablishYear')" />
+      </div>
+    </app-card>
+
+    <app-card title="Tax &amp; Legal">
+      <div class="grid">
+        <app-input label="GSTIN" placeholder="15-character GSTIN" formControlName="schoolGstin" [errorText]="err('schoolGstin')" helpText="Optional. Saved in uppercase." />
+        <app-input label="PAN" placeholder="10-character PAN" formControlName="schoolPan" [errorText]="err('schoolPan')" helpText="Optional. Saved in uppercase." />
+      </div>
+    </app-card>
+
+    <app-card title="Location">
+      <div class="grid">
+        <app-select label="Country" placeholder="Select country…" [options]="countryOptions()" formControlName="countryId" />
+        <app-select label="State" placeholder="Select state…" [options]="stateOptions()" formControlName="stateId" />
+        <app-select label="District" placeholder="Select district…" [options]="districtOptions()" formControlName="districtId" />
+        <app-select label="City" placeholder="Select city…" [options]="cityOptions()" formControlName="cityId" />
+        <app-input label="Address line 1" placeholder="Street, building" formControlName="addressLine1" [errorText]="err('addressLine1')" />
+        <app-input label="Address line 2" placeholder="Area, landmark" formControlName="addressLine2" [errorText]="err('addressLine2')" />
+        <app-input label="Pincode" placeholder="6-digit pincode" formControlName="pincode" [errorText]="err('pincode')" />
+      </div>
+    </app-card>
+
+    <app-card title="Contact Details">
+      <div class="grid">
+        <app-input label="Email" type="email" placeholder="school@example.com" prefixIcon="mail" formControlName="email" [errorText]="err('email')" />
+        <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
+        <app-input label="Website" type="url" placeholder="https://example.com" formControlName="website" [errorText]="err('website')" />
+      </div>
+    </app-card>
+
+    <app-card title="Subscription">
+      <div class="grid">
+        <app-input label="Subscription plan ID" type="number" placeholder="Optional" formControlName="subscriptionPlanId" [errorText]="err('subscriptionPlanId')" />
+        <app-select label="Subscription status" [options]="subscriptionStatusOptions()" formControlName="subscriptionStatusId" />
+        <app-input label="Start date" type="date" formControlName="subscriptionStartDate" />
+        <app-input label="End date" type="date" formControlName="subscriptionEndDate" [errorText]="err('subscriptionEndDate')" />
+      </div>
+    </app-card>
+
+    <app-card title="School Contacts">
+      @if (contacts.length === 0) {
+        <p class="empty-note">{{ isView() ? 'No contacts on file.' : 'No contacts added yet.' }}</p>
+      }
+
+      @for (group of contacts.controls; track group; let i = $index) {
+        <fieldset class="contact" [formGroup]="group">
+          <div class="contact-head">
+            <label class="primary-radio">
+              <input type="radio" name="primaryContact" [checked]="group.controls.isPrimary.value" [disabled]="isView()" (change)="setPrimary(i)" />
+              Primary contact
+            </label>
+            @if (canRemove(group)) {
+              <app-button variant="danger-ghost" size="sm" aria-label="Remove contact" (click)="removeContact(i)">
+                <app-icon name="trash-2" [size]="14" />Remove
+              </app-button>
+            }
+          </div>
+          <div class="grid">
+            <app-select label="Contact type" [required]="true" [options]="contactTypeOptions" formControlName="contactType" [errorText]="cerr(group, 'contactType')" />
+            <app-input label="Name" [required]="true" formControlName="contactName" [errorText]="cerr(group, 'contactName')" />
+            <app-input label="Designation" formControlName="designation" [errorText]="cerr(group, 'designation')" />
+            <app-input label="Email" type="email" formControlName="email" [errorText]="cerr(group, 'email')" />
+            <app-input label="Mobile number" type="tel" formControlName="mobileNumber" [errorText]="cerr(group, 'mobileNumber')" />
+            <app-input label="Alternate mobile" type="tel" formControlName="alternateMobileNumber" [errorText]="cerr(group, 'alternateMobileNumber')" />
+          </div>
+        </fieldset>
+      }
+
+      @if (primaryError(); as message) {
+        <p class="primary-error" role="alert"><app-icon name="circle-alert" [size]="16" />{{ message }}</p>
+      }
+
+      @if (!isView()) {
+        <app-button variant="secondary" size="sm" (click)="addContact()"><app-icon name="plus" [size]="14" />Add contact</app-button>
+        @if (!isAdd() && contacts.length > 0) {
+          <p class="hint">Saved contacts can be edited but not removed.</p>
+        }
+      }
+    </app-card>
+
+    @if (!isView()) {
+      <div class="footer">
+        <app-button variant="secondary" (click)="goToList()">Cancel</app-button>
+        <app-button type="submit" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : isAdd() ? 'Register School' : 'Update School' }}
+        </app-button>
+      </div>
+    }
+  </form>
+}

@@ -1,24 +1,39 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ModalComponent } from '../modal/modal.component';
+import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
+import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { ButtonComponent } from '../button/button.component';
-import { ConfirmDialogService } from '../../../core/services';
+import { IconComponent } from '../icon/icon.component';
 
-/**
- * Mounted once in AppComponent. Reads ConfirmDialogService.state() so any
- * component can call `confirmDialogService.confirm({...})` and await the
- * result without building its own confirmation modal (spec #11).
- */
+/** Mount once in the root component; drive it through ConfirmDialogService.confirm(). */
 @Component({
   selector: 'app-confirm-dialog',
-  standalone: true,
-  imports: [ModalComponent, ButtonComponent],
+  imports: [ButtonComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './confirm-dialog.component.html',
+  styleUrl: './confirm-dialog.component.scss',
+  template: `
+    @if (dialog.state(); as s) {
+      <div class="backdrop" (click)="dialog.resolve(false)">
+        <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" (click)="$event.stopPropagation()">
+          <span class="badge" [class.danger]="s.variant === 'danger'">
+            <app-icon [name]="s.variant === 'danger' ? 'triangle-alert' : 'info'" [size]="22" />
+          </span>
+          <h3 id="confirm-title">{{ s.title }}</h3>
+          <p>{{ s.message }}</p>
+          <div class="buttons">
+            <app-button variant="secondary" (click)="dialog.resolve(false)">{{ s.cancelText }}</app-button>
+            <app-button [variant]="s.variant === 'danger' ? 'danger' : 'primary'" (click)="dialog.resolve(true)">
+              {{ s.confirmText }}
+            </app-button>
+          </div>
+        </div>
+      </div>
+    }
+  `,
 })
 export class ConfirmDialogComponent {
-  readonly confirmDialogService = inject(ConfirmDialogService);
+  protected readonly dialog = inject(ConfirmDialogService);
 
-  resolve(result: boolean): void {
-    this.confirmDialogService.resolve(result);
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.dialog.state()) this.dialog.resolve(false);
   }
 }

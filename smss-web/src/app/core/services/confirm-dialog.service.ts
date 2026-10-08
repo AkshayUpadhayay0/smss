@@ -1,42 +1,41 @@
 import { Injectable, signal } from '@angular/core';
 
 export interface ConfirmOptions {
-  title: string;
+  title?: string;
   message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  variant?: 'danger' | 'primary';
+  confirmText?: string;
+  cancelText?: string;
+  /** 'danger' renders the confirm button red. */
+  variant?: 'primary' | 'danger';
 }
 
-interface ConfirmState extends ConfirmOptions {
-  resolve: (value: boolean) => void;
+export interface ConfirmState extends Required<Omit<ConfirmOptions, 'message'>> {
+  message: string;
 }
 
-/**
- * Single confirmation dialog shared by the whole app. Components call
- * `confirmDialogService.confirm({...})` and `await` the promise instead of
- * each page implementing its own "Are you sure?" modal.
- */
 @Injectable({ providedIn: 'root' })
 export class ConfirmDialogService {
-  readonly state = signal<ConfirmState | null>(null);
+  private resolver: ((value: boolean) => void) | null = null;
+  private readonly _state = signal<ConfirmState | null>(null);
+  readonly state = this._state.asReadonly();
 
   confirm(options: ConfirmOptions): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      this.state.set({
-        confirmLabel: 'Confirm',
-        cancelLabel: 'Cancel',
-        variant: 'primary',
-        ...options,
-        resolve,
-      });
+    // Resolve any dialog still open as cancelled.
+    this.resolver?.(false);
+    this._state.set({
+      title: options.title ?? 'Are you sure?',
+      message: options.message,
+      confirmText: options.confirmText ?? 'Confirm',
+      cancelText: options.cancelText ?? 'Cancel',
+      variant: options.variant ?? 'primary',
     });
+    return new Promise<boolean>((resolve) => (this.resolver = resolve));
   }
 
+  /** Called by the dialog host component. */
   resolve(result: boolean): void {
-    const current = this.state();
-    if (!current) return;
-    current.resolve(result);
-    this.state.set(null);
+    this.resolver?.(result);
+    this.resolver = null;
+    this._state.set(null);
   }
 }

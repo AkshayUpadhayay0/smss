@@ -1,43 +1,46 @@
 import { Injectable, signal } from '@angular/core';
-import { ToastMessage, ToastVariant } from '../models';
 
-let toastCounter = 0;
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-/**
- * Global toast queue. Call `toastService.success(...)` etc from any
- * component/service; the single <app-toast-host> mounted in AppComponent
- * renders the queue, so no page needs its own toast markup.
- */
+export interface Toast {
+  id: number;
+  type: ToastType;
+  message: string;
+  title?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ToastService {
-  readonly toasts = signal<ToastMessage[]>([]);
+  private nextId = 1;
+  private readonly _toasts = signal<Toast[]>([]);
+  readonly toasts = this._toasts.asReadonly();
 
-  show(variant: ToastVariant, title: string, message?: string, duration = 4000): void {
-    const toast: ToastMessage = { id: ++toastCounter, variant, title, message, duration };
-    this.toasts.update((list) => [...list, toast]);
-
-    if (duration > 0) {
-      setTimeout(() => this.dismiss(toast.id), duration);
-    }
+  success(message: string, title?: string, durationMs = 4000): void {
+    this.show('success', message, title, durationMs);
   }
-
-  success(title: string, message?: string): void {
-    this.show('success', title, message);
+  error(message: string, title?: string, durationMs = 6000): void {
+    this.show('error', message, title, durationMs);
   }
-
-  info(title: string, message?: string): void {
-    this.show('info', title, message);
+  /** Alias of error() for destructive/failed actions. */
+  danger(message: string, title?: string, durationMs = 6000): void {
+    this.show('error', message, title, durationMs);
   }
-
-  warning(title: string, message?: string): void {
-    this.show('warning', title, message);
+  info(message: string, title?: string, durationMs = 4000): void {
+    this.show('info', message, title, durationMs);
   }
-
-  danger(title: string, message?: string): void {
-    this.show('danger', title, message);
+  warning(message: string, title?: string, durationMs = 5000): void {
+    this.show('warning', message, title, durationMs);
   }
 
   dismiss(id: number): void {
-    this.toasts.update((list) => list.filter((t) => t.id !== id));
+    this._toasts.update((list) => list.filter((t) => t.id !== id));
+  }
+
+  private show(type: ToastType, message: string, title: string | undefined, durationMs: number): void {
+    const id = this.nextId++;
+    this._toasts.update((list) => [...list, { id, type, message, title }]);
+    if (durationMs > 0) {
+      setTimeout(() => this.dismiss(id), durationMs);
+    }
   }
 }

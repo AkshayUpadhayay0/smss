@@ -1,39 +1,49 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { NAV_ITEMS } from '../../../core/utils/nav.util';
+import { LogoComponent } from '../../../shared/components/logo/logo.component';
+import { NAV_ITEMS, NavItem } from '../nav.config';
 
 @Component({
   selector: 'app-sidebar',
-  standalone: true,
-  imports: [RouterLink, RouterLinkActive, IconComponent],
+  imports: [RouterLink, RouterLinkActive, IconComponent, LogoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
+  host: { '[class.is-collapsed]': 'collapsed()' },
+  templateUrl: './sidebar.component.html',
 })
 export class SidebarComponent {
-  readonly collapsed = input<boolean>(false);
-  readonly mobileOpen = input<boolean>(false);
-  readonly closeMobile = output<void>();
+  private readonly router = inject(Router);
 
-  readonly navItems = NAV_ITEMS;
-  readonly expandedGroups = signal<Set<string>>(new Set(NAV_ITEMS.filter((i) => i.children).map((i) => i.label)));
+  readonly collapsed = input(false);
+  /** Emitted when a link is followed (lets the mobile drawer close itself). */
+  readonly navigated = output<void>();
+  /** Emitted when a group is clicked while the rail is collapsed, so the layout can expand it. */
+  readonly expandRequested = output<void>();
 
-  isExpanded(label: string): boolean {
-    return this.expandedGroups().has(label);
+  protected readonly items = NAV_ITEMS;
+  private readonly openGroups = signal<Set<string>>(
+    new Set(NAV_ITEMS.filter((i) => this.containsUrl(i, this.router.url)).map((i) => i.label)),
+  );
+
+  protected isOpen(item: NavItem): boolean {
+    return this.openGroups().has(item.label);
   }
 
-  toggleGroup(label: string): void {
-    const next = new Set(this.expandedGroups());
-    if (next.has(label)) {
-      next.delete(label);
-    } else {
-      next.add(label);
+  protected toggleGroup(item: NavItem): void {
+    if (this.collapsed()) {
+      this.expandRequested.emit();
+      this.openGroups.update((s) => new Set(s).add(item.label));
+      return;
     }
-    this.expandedGroups.set(next);
+    this.openGroups.update((s) => {
+      const next = new Set(s);
+      if (!next.delete(item.label)) next.add(item.label);
+      return next;
+    });
   }
 
-  onLinkClick(): void {
-    this.closeMobile.emit();
+  private containsUrl(item: NavItem, url: string): boolean {
+    return !!item.children?.some((c) => url.startsWith(c.route));
   }
 }

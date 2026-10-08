@@ -1,0 +1,59 @@
+<app-page-header [title]="config().title" [subtitle]="config().subtitle" [icon]="config().icon" [breadcrumbs]="breadcrumbs()">
+  <app-button (click)="openCreate()"><app-icon name="plus" [size]="16" />Add {{ config().title }}</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input [placeholder]="'Search ' + config().title.toLowerCase() + '…'" prefixIcon="search" (input)="onSearch($event)" />
+    </div>
+    @if (config().filter; as f) {
+      <div class="filter">
+        <app-select [options]="filterOptions()" [formControl]="filterControl" [placeholder]="f.allLabel" (change)="onFilter()" />
+      </div>
+    }
+    <span class="count">{{ total() }} {{ total() === 1 ? 'record' : 'records' }}</span>
+  </div>
+
+  <app-table
+    [columns]="config().columns"
+    [rows]="pageRows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [sortKey]="sortKey()"
+    [sortDirection]="sortDirection()"
+    [emptyMessage]="loadFailed() ? 'Could not load records.' : search() ? 'Nothing matches your search.' : 'No records yet.'"
+    (sortChange)="onSort($event)"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
+        <app-icon name="pencil" [size]="14" />
+      </app-button>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="togglingId() === idOf(row)" (click)="toggleStatus(row)">
+          <app-icon name="toggle-left" [size]="14" />Deactivate
+        </app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="togglingId() === idOf(row)" (click)="toggleStatus(row)">
+          <app-icon name="toggle-right" [size]="14" />Activate
+        </app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="page.set($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (modal(); as m) {
+  <app-master-form-modal [config]="config()" [item]="m.item" (saved)="onSaved($event)" (closed)="modal.set(null)" />
+}

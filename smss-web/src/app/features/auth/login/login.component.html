@@ -1,37 +1,20 @@
-<div class="auth-card">
-  <h1 class="auth-title">Sign in</h1>
-  <p class="auth-subtitle">Welcome back! Please enter your details.</p>
+<div class="heading">
+  <h2>Sign in</h2>
+  <p class="text-muted">Enter your credentials to access SMSS.</p>
+</div>
 
-  @if (errorMessage()) {
-    <app-alert variant="danger" style="margin-bottom: 16px;">{{ errorMessage() }}</app-alert>
+<form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  @if (errorMessage(); as message) {
+    <p class="alert" role="alert"><app-icon name="circle-alert" [size]="16" />{{ message }}</p>
   }
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <app-input
-      label="Username"
-      type="text"
-      formControlName="username"
-      [required]="true"
-      prefixIcon="user"
-      placeholder="Enter your username"
-      [errorText]="errorFor('username')"
-    ></app-input>
+  <app-input label="Username" placeholder="Your username" prefixIcon="user" formControlName="username" [errorText]="fieldError('username')" />
+  <app-input label="Password" type="password" placeholder="Your password" prefixIcon="lock" formControlName="password" [errorText]="fieldError('password')" />
 
-    <app-input
-      label="Password"
-      type="password"
-      formControlName="password"
-      [required]="true"
-      [showPasswordToggle]="true"
-      prefixIcon="lock"
-      placeholder="Enter your password"
-      [errorText]="errorFor('password')"
-    ></app-input>
+  <label class="remember">
+    <input type="checkbox" formControlName="rememberMe" />
+    Keep me signed in on this device
+  </label>
 
-    <div class="auth-row">
-      <app-checkbox label="Remember me" formControlName="rememberMe"></app-checkbox>
-    </div>
-
-    <app-button type="submit" variant="primary" [block]="true" [loading]="loading()">Sign In</app-button>
-  </form>
-</div>
+  <app-button type="submit" [block]="true" size="lg" [disabled]="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</app-button>
+</form>

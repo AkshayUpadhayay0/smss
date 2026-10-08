@@ -1,9 +1,0 @@
-<div class="avatar" [class.avatar-sm]="size() === 'sm'" [class.avatar-lg]="size() === 'lg'">
-  @if (imageUrl()) {
-    <img [src]="imageUrl()" [alt]="name()" />
-  } @else if (initials()) {
-    <span class="avatar-initials">{{ initials() }}</span>
-  } @else {
-    <app-icon name="user" [size]="16"></app-icon>
-  }
-</div>

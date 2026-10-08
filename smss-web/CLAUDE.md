@@ -1,115 +1,173 @@
-# SMSS Web — Angular frontend
+# SMSS — Project Guide for Claude Code
 
-Frontend for **SMSS**, a production-grade, multi-tenant School Management SaaS.
-This repo (`smss-web`) is the Angular client. The backend is a separate ASP.NET Core Web API solution (`smss_api`) on PostgreSQL.
+This is a multi-tenant School Management SaaS frontend (Angular), paired
+with an existing, working .NET API (smss_api, separate repo/folder — not
+rewritten, only consumed). Read this fully before making changes. This
+file is the persistent memory for this project across sessions — keep it
+updated as the app evolves; don't let it go stale.
 
-Act like a senior full-stack engineer on a long-running product, not a tutorial generator. Think before coding, protect existing architecture, build incrementally.
+## Stack & conventions
+- Angular, standalone components only (no NgModules)
+- Signals for component state (not plain class fields + manual change
+  detection) — `signal()`, `computed()`, `toSignal()` for observables
+- Reactive Forms for all forms
+- SCSS, no inline styles
+- `ChangeDetectionStrategy.OnPush` on every component
+- Routes use `loadComponent` (lazy), and feature route files are mounted
+  at the ROOT path in app.routes.ts — e.g. a schools feature's routes
+  are `/schools`, `/schools/add`, NOT `/organization/schools/add`
 
-## Stack
+## API contract — every backend endpoint returns this shape
+    { "status": bool, "statusCode": int, "message": string, "data": T|null }
+Model this as a generic `ApiResponse<T>` interface, used everywhere.
 
-- Angular (standalone components, no NgModules), TypeScript, SCSS
-- Angular Material where appropriate, plus the project's own custom theme and shared components
-- REST calls to the ASP.NET Core API via `HttpClient`
-- Responsive, mobile-friendly UI; should look like a modern commercial SaaS, not a demo
+## Backend base URL
+Configured via `environment.apiUrl`. Default dev: `https://localhost:7037`.
 
-## Commands (Windows, run from the repo root)
+## Design system (match this exactly — see reference screenshot)
+- Primary brand color: violet/purple (~#7C5CFC — refine against the
+  actual logo gradient), used for: active sidebar item (solid pill with
+  left accent bar), primary buttons, logo mark background
+- Layout: fixed left sidebar (white/very light background) + top bar
+  (white, border-bottom) + content area (light gray `#F8F9FB`-ish
+  background) with white rounded cards floating on it
+- Sidebar: logo + "SMSS" wordmark top-left, nav items with icons
+  (lucide-style line icons), collapsible groups (e.g. "Masters" expands
+  to Board Type / School Type / School Level / Status / Role), active
+  item highlighted solid violet with white text
+- Top bar: hamburger/menu toggle, current org switcher (avatar initial +
+  name + code, e.g. "SMSS Admin / SUAD01"), search icon, notification
+  bell (with unread dot), user menu (avatar + name + role, e.g.
+  "SMSS Admin / Super Admin") with dropdown chevron
+- Page header pattern used on every list/form page: small icon in a
+  rounded square, bold page title, gray subtitle line, breadcrumb trail
+  below (Home / Current Page), action buttons top-right (secondary
+  outline + primary solid)
+- Data tables: white card container, toolbar row with search input
+  (icon-prefixed) + record count on the right, sortable column headers
+  (up/down arrow icons), status shown as a pill badge (green bg/text for
+  Active, matching pattern for Inactive), row actions as icon buttons
+  (view/edit/delete) right-aligned, pagination footer (Showing X–Y of Z,
+  items-per-page select, Previous/page-numbers/Next)
+- Buttons: primary = solid violet rounded, secondary = white with gray
+  border, danger = red, all with small icon + label
+- Border radius: generous (8–12px) throughout — cards, buttons, inputs,
+  badges all rounded, not sharp
+- Typography: clean sans-serif, bold headings, muted gray for secondary
+  text/subtitles/breadcrumbs
 
-- `npm install` — install dependencies
-- `npm start` (or `ng serve`) — dev server
-- `ng build` — production build; run it before declaring a task done
-- `ng test` — unit tests, if present
-- Before finishing any change, make sure `ng build` compiles with no errors.
+## Shared component library to build (shared/components/)
+Build these as the foundation BEFORE any feature screens:
+- `page-header` — icon, title, subtitle, breadcrumbs input, content
+  projection for action buttons
+- `card` — optional title, optional noPadding input, content projection
+- `button` — variant: primary | secondary | danger | danger-ghost, size,
+  disabled, type (button/submit), icon support via content projection
+- `input` — label, type, required, placeholder, prefixIcon, help text,
+  errorText, readonly/disabled support, ControlValueAccessor
+- `select` — label, options: {label, value: string}[], required,
+  multiple, errorText, ControlValueAccessor — IMPORTANT: value must be
+  STRING typed (numeric ids get `.toString()`'d when building options)
+- `table` — generic `TableColumn<T>[]` (key, label, sortable, width),
+  rows input, loading state, sortKey/sortDirection, hasActions flag with
+  an `#rowActions` template ref for custom action buttons per row,
+  empty-state message
+- `pagination` — currentPage, totalItems, pageSize, page/pageSize change
+  events, "Showing X–Y of Z" text
+- `icon` — wraps an icon set (lucide or similar), name + size inputs
+- Toast/notification service (success/error/info/danger methods) and a
+  confirm-dialog service (async confirm() returning boolean) — used
+  throughout for feedback and destructive-action confirmation
 
-## Project structure
+## Layout structure
+- `AuthLayoutComponent` — centered card, no sidebar, used for /login
+- `MainLayoutComponent` — sidebar + topbar + router-outlet, used for
+  everything else, guarded by an auth guard once real JWT auth exists
+- `app.routes.ts` splits into an auth-layout branch (login) and a
+  main-layout branch (everything else), each feature's routes file
+  lazy-loaded via `loadChildren`
 
-Feature-based layout under `src/app`:
+## Core services (core/services/)
+- `ToastService`, `ConfirmDialogService` (used everywhere)
+- `MasterDataService` — caches lookups (countries/states/districts/
+  cities via cascading parent-keyed cache, plus board-types/
+  school-types/school-levels/status/role via shareReplay(1)) and
+  exposes both raw getters and `SelectOption[]`-mapping convenience
+  methods for direct use in `<app-select>`
 
-- `core/` — singletons: services (e.g. `MasterDataService` in `core/services`), interceptors, guards, API config
-- `shared/` — reusable components (tables, dialogs, cards, confirm dialog, form controls), pipes, models
-- `layout/` — shell, sidebar, header
-- `features/` — one folder per business area (schools, master-data, ...), each with its own components, services, models, routes
+## Known backend state (DO NOT re-invent — this already works)
+- School registration: POST /api/SchoolRegistration/register creates
+  school + contacts + login user + role in one transaction. School code
+  is immutable after creation. GET /schools, GET /schools/{id},
+  PUT /schools/{id}. "Delete" = POST /schools/{id}/toggle-status
+  (flips Active/Inactive, never a real delete). Status is NEVER sent by
+  the client on create/update — server defaults new schools to Active.
+- Logo: POST /schools/{id}/logo (multipart, field name "file"),
+  POST /schools/{id}/logo/remove. Response `logoUrl` is a relative path
+  like `/uploads/{schoolCode}/logo/....png` — prepend `environment.apiUrl`
+  to render it.
+- Master data: GET/POST/PUT + POST .../toggle-status under
+  /api/MasterData/{board-types|school-types|school-levels|status|role},
+  plus read-only cascading location endpoints (countries, states/
+  {countryId}, districts/{countryId}/{stateId},
+  cities/{countryId}/{stateId}/{districtId}).
+- Auth: POST /api/Auth/login, /refresh, /logout, GET /me,
+  POST /change-password. JWT bearer tokens. Login UI not yet built in
+  the old project — build it fresh here.
+- A Super Admin account already exists in the DB (bootstrapped via a
+  one-time setup endpoint) — login screen should work against it once
+  built: org_user_id SUAD01, standard username/password login.
 
-Routes are mounted at the root (for example `/schools`, `/master-data/board-types`). Use lazy `loadComponent` / `loadChildren` for feature routes.
-Before adding anything, read the nearest existing example and copy its conventions. Do not invent a competing pattern.
-
-## Backend contract
-
-Every API returns this shape. Do not assume any other:
-
-```json
-{ "status": true, "statusCode": 200, "message": "...", "data": {} }
-```
-
-- On `status: false`, show `message` to the user (snackbar or inline). Never show raw HTTP errors, stack traces, or SQL text.
-- Unwrap `data` in the service layer, not in components. Components should deal with typed models.
-- Lookup APIs live under `/api/MasterData/...` and feed the shared `MasterDataService`. Reuse it; do not call lookup endpoints ad hoc from components.
-- Toggle-status endpoints use **POST**, not PATCH (PATCH failed from the browser).
-- API base URL comes from `src/environments/*`. Never hard-code URLs or secrets in components.
-
-## Domain rules (must respect)
-
-- The tenant is a **School**. Never rename it to Organization.
-- `school_id` is a business id like `sch2026001`, generated by the backend. The frontend never generates it.
-- Schools and users are created only through the API, never assumed to exist from direct DB inserts.
-- "Delete" for schools and masters means **toggle Active/Inactive**. Never offer hard delete unless explicitly asked.
-- New school is Active by default; there is no status field on the add/edit school form. Status changes only through the activate/deactivate toggle in the list.
-- Do not hard-code lookup ids such as `lut_status.sid`. Resolve by code or name through the API, or let the backend decide.
-- Do not hard-code role ids. Use role codes: `SUPER_ADMIN`, `SCHOOL_ADMIN`, `PRINCIPAL`, `TEACHER`, `ACCOUNTANT`, `STUDENT`, `GUARDIAN`.
-- A user can hold multiple roles.
-- Location hierarchy is Country → State → District → City (LGD codes: cid, sid, did, city_id). Do not replace it.
-
-## Multi-tenancy and security
-
-- Never trust `school_id` coming from the client. Once auth exists, the school comes from the token on the server; the UI must not let a user pick another school's id.
-- Login/authentication is **not built yet**. `[Authorize]` lines on some backend endpoints are temporarily commented out. When auth is added, expect: a login page, JWT handling, an `HttpInterceptor` that attaches the token and handles 401/403, route guards, and role-based menu visibility. Keep new code ready for this (no assumptions that endpoints are public).
-- Never store passwords or tokens in plain text, log them, or put them in URLs. Never display password hashes.
-- Show a generated temporary password only once, in the registration result, and never persist it in the client.
-- Hide UI by role as a convenience only. The API is the real enforcement.
-
-## UI / UX standards
-
-- Every list: loading indicator, empty state, error state, pagination for anything that can grow.
-- Every form: reactive forms, inline validation messages, disabled submit while invalid or saving, double-submit protection.
-- Destructive or status-changing actions (activate/deactivate) use a confirmation dialog.
-- Success and failure feedback through a consistent snackbar/toast.
-- Responsive from phone to desktop. Test the layout at narrow widths.
-- Reuse shared components before creating new ones.
-
-## Angular conventions
-
-- Standalone components with `OnPush` change detection where practical. Known gotcha: an earlier master screen only refreshed after a click. Fix such issues properly (signals, `async` pipe, or `markForCheck`), not with timers or hacks.
-- Strong typing: no `any`. Define interfaces for request and response models in the feature's `models/`.
-- Unsubscribe correctly (`takeUntilDestroyed`, `async` pipe, or signals). No leaking subscriptions.
-- Keep components thin; HTTP and mapping live in services.
-- File naming: kebab-case, `feature-name.component.ts`, `feature-name.service.ts`, `feature-name.model.ts`.
-- SCSS: use the shared theme variables. No inline styles, no magic colors.
-- Avoid adding new npm packages without saying why. Prefer what is already installed.
-
-## How to work in this repo
-
-1. For anything non-trivial, first state: affected screens/files, backend endpoints needed, and risks. Then implement.
-2. If a backend endpoint or DB column is needed and doesn't exist, say so and describe the contract; don't fake it in the UI.
-3. Build step by step, one screen or one concern at a time. Finish and verify before moving on.
-4. Make the smallest correct change. Preserve working behavior; do not refactor unrelated code.
-5. When debugging: identify the actual error, explain the cause, fix minimally, say if other files need changes.
-6. Do not repeat questions already settled here (PostgreSQL, Angular, multi-tenant, School terminology).
-7. If a previous decision must change, say: Previous decision / New decision / Reason / Impact.
-8. If something is genuinely ambiguous and affects architecture, ask. Otherwise make the most reasonable production-grade assumption and state it.
-
-## Done means
-
-- `ng build` passes with no errors or new warnings
-- Loading, empty, error, and validation states handled
-- Works at mobile width
-- No hard-coded ids, URLs, or secrets
-- Brief summary of what changed and what to test manually
-
-## Planned modules (do not block them)
-
-Auth and roles/permissions, principal and employee management, students and guardians, admissions, academics, exams and report cards, attendance, leave, timetable, homework, notices, parent/student portal, library, certificates, finance (fees, expenses, ledger, reconciliation), reporting. Design current screens so these can be added without rework.
-
-## Current status
-
-- Done: master data screens for board type, school type, school level (config-driven generic list + form dialog); school registration list/add/edit/status toggle in progress or finishing; optional school logo upload
-- Next: Status master, then Role master (system roles protected; block deactivating roles with active users), then finish school registration
-- Not started: login/authentication
+## House rules
+- No hardcoded status/role ids in any logic — those come from the API
+- Don't build features not yet requested (no academic/attendance/exam
+  modules yet — registration + master data + auth is the current scope)
+- Ask before large architectural decisions; don't guess silently on
+  anything that would be expensive to undo
+## Current state (update as the app evolves)
+- Done: design tokens (`src/styles/_tokens.scss`, CSS custom properties), shared component
+  library (`shared/components`, import from the barrel `shared/components/index.ts`),
+  Toast/ConfirmDialog services (hosts mounted once in `app.html`), AuthLayout + MainLayout
+  (`layouts/`), nav in `layouts/main-layout/nav.config.ts`, routes with placeholder pages
+  (`features/placeholder`), `environments/` (dev build swaps via fileReplacements),
+  `ApiResponse<T>`, `ApiService` (prefixes apiUrl, unwraps envelope), `errorInterceptor`
+  (toasts failures; opt out per request with `SKIP_ERROR_TOAST` HttpContext).
+- Icons: curated Lucide subset in `shared/components/icon/icons.ts` (no npm dependency) — add
+  new icons there.
+- Nav URLs: `/dashboard`, `/schools`, `/masters/{board-type|school-type|school-level|status|role}`.
+- Placeholders to replace: topbar org/user/notifications (hard-coded in `topbar.component.ts`),
+  `/login` (`login-placeholder`), every `PlaceholderPageComponent` route, missing `/change-password`.
+- Throwaway: `/dev/components-preview` (`src/app/dev/`) — delete once the look & feel is approved.
+- School Registration feature built (`features/schools/`): list, add/edit/view (one `SchoolFormComponent`,
+  `mode` + `schoolId` bound from route data/params), logo upload, status toggle, one-time credentials panel.
+  Pure form logic lives in `utils/school-form.ts` (build form, map to/from API) and `utils/school-validators.ts`.
+- `MasterDataService` rebuilt (`core/services/`) on `ApiService`; failed lookups are not cached.
+- API facts learned: SchoolRegistration controller is `[Authorize]` (JWT needed — login not built yet);
+  update never deletes contacts (so saved contacts can't be removed in the UI); update OVERWRITES
+  `subscriptionStatusId`, so it is part of the form even though the original spec omitted it; there is no
+  subscription-plan lookup endpoint (plan ID is a plain number input).
+- All School and Master Data API calls were verified live with curl (not clicked through in a browser yet).
+  Test records left in the DB (inactive): school ZZ-TEST-001 (+ its login user), ZZTEST board type / school type /
+  school level / role, and two "ZZ Test Status" rows.
+- Dev server gotcha: a long-running `ng serve` can go stale and serve components WITHOUT their styles (inputs look
+  unstyled). Restart it before blaming the CSS.
+- Master Data (`features/masters/`): ONE generic `MasterListComponent` + `MasterFormModalComponent`, driven by a
+  `MasterConfig` (see `models/master.model.ts`); each master is a config in `configs/` passed as route data
+  (`data: { config }`, bound to the `config` input). All five are built (Board Type, School Type, School Level,
+  Status, Role). Optional config hooks: `derive` (extra display fields), `deactivateWarning` (stronger confirm text),
+  `formNotice`, `filter` (dropdown above the table, used by Status for its type) and per-field `minLength`. CRUD goes through `MasterCrudService`, which invalidates `MasterDataService` caches.
+- Master API facts: every GET hides inactive rows unless `?includeInactive=true` (lists must pass it); update DTOs
+  omit the code field (immutable); Status HAS POST/PUT/toggle and an `isActive` flag (not read-only); Role returns
+  `isActive` + `isProtected` and the server only protects SUPER_ADMIN and SCHOOL_ADMIN; role deactivation with
+  assigned users returns 409 with a message. Status names "Active"/"Inactive" are looked up BY NAME server-side —
+  renaming them would break the app.
+- Every `.subscribe()` on an HTTP call needs an `error` handler (interceptor already toasts) or RxJS rethrows it
+  as an uncaught error.
+- Auth built (`core/services/auth.service.ts`, `core/interceptors/auth.interceptor.ts`, `core/guards/auth.guard.ts`,
+  `features/auth/`): login page, change-password page, bearer interceptor with single-flight refresh + retry,
+  `authGuard` on the main layout, `guestGuard` on /login, real user/org in the top bar, logout. Login ID is the org
+  user id (e.g. SUAD001); the response `user.username` is the person's DISPLAY NAME. Refresh tokens are single-use and
+  rotated — replaying an old one revokes ALL of that user's sessions, so never refresh concurrently (AuthService.refresh
+  is single-flight). Interceptor order matters: [errorInterceptor, authInterceptor] so a recovered 401 never toasts.
+  Session lives in sessionStorage, or localStorage with "Keep me signed in". A first-login user (isFirstLogin) is sent to
+  /change-password after login. Test sessions with `seedSession()` from `core/testing/auth-test-utils.ts`.
