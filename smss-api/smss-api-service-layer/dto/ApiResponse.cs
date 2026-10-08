@@ -66,6 +66,8 @@ namespace smss_api_service_layer.dto
     {
         public SchoolResponse School { get; set; } = null!;
         public string Username { get; set; } = null!;
-        public string TemporaryPassword { get; set; } = null!;   // shown only this once, never stored in plain text
+        public string TemporaryPassword { get; set; } = null!;
+        public bool EmailSent { get; set; }
+        public string? EmailSentTo { get; set; }
     }
 }

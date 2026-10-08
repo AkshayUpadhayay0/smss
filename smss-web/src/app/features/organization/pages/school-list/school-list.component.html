@@ -38,6 +38,10 @@
     emptyMessage="Register a school to see it here."
     (sortChange)="onSortChange($event)"
   >
+    <ng-template appTableCell="schoolStatusName" let-row>
+      <app-badge [variant]="isActive(row) ? 'success' : 'neutral'">{{ row.schoolStatusName }}</app-badge>
+    </ng-template>
+
     <ng-template #rowActions let-row>
       <div class="row-actions">
         <button type="button" class="icon-btn" (click)="view(row)" aria-label="View">

@@ -1,12 +1,18 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MasterConfig, MasterItem } from '../../../core/models/master-data.model';
+import { AlertComponent } from '../../../shared/components/alert/alert.component';
+import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { InputComponent } from '../../../shared/components/input/input.component';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
+import { TextareaComponent } from '../../../shared/components/textarea/textarea.component';
+
+type FieldName = 'code' | 'name' | 'type' | 'description';
 
 @Component({
   selector: 'app-master-form-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ModalComponent, AlertComponent, InputComponent, TextareaComponent, ButtonComponent],
   templateUrl: './master-form-dialog.component.html',
   styleUrls: ['./master-form-dialog.component.scss']
 })
@@ -32,6 +38,20 @@ export class MasterFormDialogComponent implements OnInit {
   get hasCode(): boolean { return !!this.config.keys.code; }
   get hasDescription(): boolean { return this.config.hasDescription !== false; }
   get typeField() { return this.config.typeField; }
+  get codeLabel(): string { return this.config.codeLabel ?? 'Code'; }
+  get dialogTitle(): string { return `${this.isEdit ? 'Edit' : 'Add'} ${this.config.singular}`; }
+
+  /** Inline validation message for a field, shown once it has been touched. */
+  errorFor(field: FieldName, label: string): string | undefined {
+    const ctrl = this.form.controls[field];
+    if (!ctrl.touched || !ctrl.errors) return undefined;
+    const e = ctrl.errors;
+    if (e['required']) return `${label} is required.`;
+    if (e['minlength']) return `${label} must be at least ${e['minlength'].requiredLength} characters.`;
+    if (e['maxlength']) return `${label} must be at most ${e['maxlength'].requiredLength} characters.`;
+    if (e['pattern']) return 'Only letters, numbers and underscore are allowed.';
+    return undefined;
+  }
 
   ngOnInit(): void {
     const c = this.form.controls;

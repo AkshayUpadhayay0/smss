@@ -1,108 +1,90 @@
-<div class="page" *ngIf="config">
-  <header class="page-header">
-    <div>
-      <h1>{{ config.title }}</h1>
-      <p>{{ config.subtitle }}</p>
-    </div>
-    <button class="btn btn-primary" (click)="openAdd()">+ Add {{ config.singular }}</button>
-  </header>
+@if (config) {
+  <app-page-header [title]="config.title" [subtitle]="config.subtitle" icon="book-open"
+    [breadcrumbs]="[{ label: 'Home', url: '/dashboard' }, { label: 'Masters' }, { label: config.title }]">
+    <app-button variant="secondary" (pressed)="load()" [disabled]="loading">
+      <app-icon name="refresh-cw" [size]="16"></app-icon>
+      Refresh
+    </app-button>
+    <app-button variant="primary" (pressed)="openAdd()">
+      <app-icon name="circle-plus" [size]="16"></app-icon>
+      Add {{ config.singular }}
+    </app-button>
+  </app-page-header>
 
-  <div class="toolbar">
-    <input class="search" type="search" [(ngModel)]="search" (ngModelChange)="onFilterChange()"
-      [placeholder]="'Search by code or name'" />
-    <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
-      <option value="all">All</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <div class="state" *ngIf="loading">Loading…</div>
-
-    <div class="state error" *ngIf="!loading && loadError">
-      {{ loadError }} <button class="link" (click)="load()">Retry</button>
-    </div>
-
-    <div class="state" *ngIf="!loading && !loadError && filtered.length === 0">
-      <strong>No {{ config.title.toLowerCase() }} found</strong>
-      <span *ngIf="items.length === 0">Click "Add {{ config.singular }}" to create the first one.</span>
-      <span *ngIf="items.length > 0">Try changing the search or filter.</span>
-    </div>
-
-    <div class="table-wrap" *ngIf="!loading && !loadError && filtered.length > 0">
-      <table>
-        <thead>
-          <tr>
-            <th *ngIf="config.keys.code">{{ config.codeLabel }}</th>
-            <th>{{ config.nameLabel }}</th>
-            <th *ngIf="config.typeField as t">{{ t.label }}</th>
-            <th class="hide-sm" *ngIf="config.hasDescription !== false">Description</th>
-            <th>Status</th>
-            <th class="actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let item of paged; trackBy: trackById">
-            <td *ngIf="config.keys.code"><code>{{ item[config.keys.code!] }}</code></td>
-            <td>{{ item[config.keys.name] }}</td>
-            <td *ngIf="config.typeField as t">{{ item[t.key] }}</td>
-            <td class="hide-sm desc" *ngIf="config.hasDescription !== false">{{ item.description || '—' }}</td>
-            <td>
-              <span class="badge" [class.on]="item.isActive">{{ item.isActive ? 'Active' : 'Inactive' }}</span>
-            </td>
-            <td class="actions">
-              <button class="btn-sm" (click)="openEdit(item)">Edit</button>
-              <!-- <button class="btn-sm" [class.danger]="item.isActive" (click)="askToggle(item)">
-                {{ item.isActive ? 'Deactivate' : 'Activate' }}
-              </button> -->
-              <button class="btn-sm" [class.danger]="item.isActive" (click)="askToggle(item)"
-                [disabled]="item.isProtected && item.isActive"
-                [title]="item.isProtected && item.isActive ? 'System roles cannot be deactivated' : ''">
-                {{ item.isActive ? 'Deactivate' : 'Activate' }}
-              </button>
-              
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pager" *ngIf="!loading && filtered.length > pageSize">
-      <span>{{ filtered.length }} records</span>
-      <div>
-        <button (click)="goTo(page - 1)" [disabled]="page === 1">‹ Prev</button>
-        <span>Page {{ page }} of {{ totalPages }}</span>
-        <button (click)="goTo(page + 1)" [disabled]="page === totalPages">Next ›</button>
+  <app-card [noPadding]="true">
+    <div class="table-toolbar">
+      <div class="table-search">
+        <app-icon name="search" [size]="16" class="table-search-icon"></app-icon>
+        <input type="search" class="form-control" placeholder="Search by code or name…" aria-label="Search"
+          [(ngModel)]="search" (ngModelChange)="onFilterChange()" />
+      </div>
+      <select class="form-control status-filter" aria-label="Filter by status"
+        [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
+        <option value="all">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <div class="table-toolbar-meta">
+        <app-icon name="rows-3" [size]="15"></app-icon>
+        {{ filtered.length }} records
       </div>
     </div>
-  </div>
 
-  <!-- Add / Edit -->
-  <app-master-form-dialog *ngIf="dialogOpen" [config]="config" [item]="editingItem" [saving]="saving"
-    [errorMessage]="dialogError" (save)="onSave($event)" (cancel)="closeDialog()">
-  </app-master-form-dialog>
+    @if (loadError && !loading) {
+      <app-empty-state icon="circle-alert" [title]="'Could not load ' + config.title.toLowerCase()"
+        [description]="loadError">
+        <app-button variant="secondary" size="sm" (pressed)="load()">Retry</app-button>
+      </app-empty-state>
+    } @else {
+      <app-table [columns]="columns" [rows]="paged" [loading]="loading" [hasActions]="true"
+        [emptyTitle]="'No ' + config.title.toLowerCase() + ' found'"
+        [emptyMessage]="items.length === 0
+          ? 'Click &quot;Add ' + config.singular + '&quot; to create the first one.'
+          : 'Try changing the search or filter.'">
 
-  <!-- Activate / Deactivate confirmation -->
-  <div class="backdrop" *ngIf="confirmItem" (click)="cancelToggle()">
-    <div class="confirm" role="alertdialog" (click)="$event.stopPropagation()">
-      <h3>{{ confirmItem.isActive ? 'Deactivate' : 'Activate' }} {{ config.singular }}?</h3>
-      <p *ngIf="confirmItem.isActive">
-        <strong>{{ confirmItem[config.keys.name] }}</strong> will no longer appear in dropdowns for new records.
-        Existing records that use it are not affected.
-      </p>
-      <p *ngIf="!confirmItem.isActive">
-        <strong>{{ confirmItem[config.keys.name] }}</strong> will be available in dropdowns again.
-      </p>
-      <div class="confirm-actions">
-        <button class="btn btn-ghost" (click)="cancelToggle()" [disabled]="toggling">Cancel</button>
-        <button class="btn" [class.btn-danger]="confirmItem.isActive" [class.btn-primary]="!confirmItem.isActive"
-          (click)="confirmToggle()" [disabled]="toggling">
-          {{ toggling ? 'Please wait…' : (confirmItem.isActive ? 'Deactivate' : 'Activate') }}
-        </button>
-      </div>
-    </div>
-  </div>
+        <ng-template [appTableCell]="config.keys.code ?? ''" let-row let-value="value">
+          <span class="code-chip">{{ value }}</span>
+        </ng-template>
 
-  <div class="toast" *ngIf="toast" [class.error]="toast.type === 'error'">{{ toast.text }}</div>
-</div>
+        <ng-template appTableCell="description" let-row>
+          <span class="desc-cell" [title]="row.description || ''">{{ row.description || '—' }}</span>
+        </ng-template>
+
+        <ng-template appTableCell="isActive" let-row>
+          <app-badge [variant]="row.isActive ? 'success' : 'neutral'">{{ row.isActive ? 'Active' : 'Inactive' }}</app-badge>
+        </ng-template>
+
+        <ng-template #rowActions let-item>
+          <div class="row-actions">
+            <button type="button" class="icon-btn" (click)="openEdit(item)"
+              [attr.aria-label]="'Edit ' + item[config.keys.name]" title="Edit">
+              <app-icon name="pencil" [size]="16"></app-icon>
+            </button>
+            <button type="button" class="icon-btn" [class.is-danger]="item.isActive"
+              (click)="toggleStatus(item)"
+              [disabled]="(item.isProtected && item.isActive) || togglingId === item[config.keys.id]"
+              [attr.aria-label]="(item.isActive ? 'Deactivate ' : 'Activate ') + item[config.keys.name]"
+              [title]="item.isProtected && item.isActive
+                ? 'System roles cannot be deactivated'
+                : (item.isActive ? 'Deactivate' : 'Activate')">
+              <app-icon [name]="item.isActive ? 'circle-x' : 'circle-check'" [size]="16"></app-icon>
+            </button>
+          </div>
+        </ng-template>
+      </app-table>
+
+      @if (!loading && filtered.length > 0) {
+        <div class="table-footer">
+          <app-pagination [currentPage]="page" [totalItems]="filtered.length" [pageSize]="pageSize"
+            (pageChange)="goTo($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination>
+        </div>
+      }
+    }
+  </app-card>
+
+  @if (dialogOpen) {
+    <app-master-form-dialog [config]="config" [item]="editingItem" [saving]="saving"
+      [errorMessage]="dialogError" (save)="onSave($event)" (cancel)="closeDialog()">
+    </app-master-form-dialog>
+  }
+}

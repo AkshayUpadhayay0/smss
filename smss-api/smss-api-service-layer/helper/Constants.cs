@@ -10,11 +10,13 @@ namespace smss_api_service_layer.helper
     public static class UserTypes
     {
         public const string SchoolId = "School Id";
+        public const string SuperAdmin = "Super Admin";
     }
 
     public static class RoleNames
     {
         public const string SchoolAdmin = "School Admin";
+        public const string SuperAdmin = "Super Admin";
     }
     public static class StatusNames
     {

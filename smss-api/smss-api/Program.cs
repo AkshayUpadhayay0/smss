@@ -31,6 +31,12 @@ builder.Services.AddSingleton<JwtTokenGenerator>();
 builder.Services.AddScoped<ISchoolRegistrationRepository, SchoolRegistrationRepository>();
 builder.Services.AddScoped<ISchoolRegistrationService, SchoolRegistrationService>();
 
+builder.Services.AddScoped<ISystemSetupRepository, SystemSetupRepository>();
+builder.Services.AddScoped<ISystemSetupService, SystemSetupService>();
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
 // File storage: relative paths resolve against the project folder
 var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";
 if (!Path.IsPathRooted(uploadsRoot))

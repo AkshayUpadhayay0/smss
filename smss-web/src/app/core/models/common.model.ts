@@ -23,6 +23,8 @@ export interface TableColumn<T = any> {
   label: string;
   sortable?: boolean;
   width?: string;
+  /** Extra class on the column's th/td, e.g. 'hide-mobile'. */
+  cellClass?: string;
 }
 
 export interface UserTableRow {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using smss_api_db_layer.entity;
@@ -17,14 +18,22 @@ namespace smss_api_service_layer.service
         private readonly ISchoolRegistrationRepository _repo;
         private readonly ILogger<SchoolRegistrationService> _logger;
         private readonly IFileStorageService _storage;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _config;
 
-        public SchoolRegistrationService( ISchoolRegistrationRepository repo, IFileStorageService storage, ILogger<SchoolRegistrationService> logger)
+        public SchoolRegistrationService(
+            ISchoolRegistrationRepository repo,
+            IFileStorageService storage,
+            IEmailService emailService,
+            IConfiguration config,
+            ILogger<SchoolRegistrationService> logger)
         {
             _repo = repo;
             _storage = storage;
+            _emailService = emailService;
+            _config = config;
             _logger = logger;
         }
-
         // ---------------- GET ----------------
         public async Task<ApiResponse<object>> GetSchoolsAsync()
         {
@@ -110,11 +119,36 @@ namespace smss_api_service_layer.service
 
                 await _repo.AddSchoolWithAdminUserAsync(school, user);
 
+                var recipientEmail = school.Contacts.FirstOrDefault(c => c.IsPrimary)?.Email ?? school.Email;
+                var emailSent = false;
+
+                if (!string.IsNullOrWhiteSpace(recipientEmail))
+                {
+                    try
+                    {
+                        var (subject, html) = EmailTemplates.SchoolAdminCredentials(
+                            school.SchoolName, school.SchoolId, user.Username!, tempPassword, _config["Email:LoginUrl"]);
+                        await _emailService.SendAsync(recipientEmail, subject, html);
+                        emailSent = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        // The school is already registered successfully — email failure must not fail this response
+                        _logger.LogWarning(ex, "Failed to send credentials email to {Email} for school {SchoolId}", recipientEmail, schoolId);
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("No contact/school email available to send credentials for school {SchoolId}", schoolId);
+                }
+
                 return Ok(201, "School registered successfully", new SchoolRegistrationResponse
                 {
                     School = SchoolMapper.ToResponse(school),
                     Username = user.Username!,
-                    TemporaryPassword = tempPassword
+                    TemporaryPassword = tempPassword,
+                    EmailSent = emailSent,
+                    EmailSentTo = emailSent ? recipientEmail : null
                 });
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))

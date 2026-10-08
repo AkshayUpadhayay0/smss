@@ -17,7 +17,7 @@ namespace smss_api_db_layer.repository
         public async Task<TbUsers?> GetUserByUsernameAsync(string username, bool track = false)
         {
             var key = username.ToLower();
-            IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.Username != null && u.Username.ToLower() == key);
+            IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.OrgUserId != null && u.OrgUserId.ToLower() == key);
             if (!track) query = query.AsNoTracking();
             return await query.FirstOrDefaultAsync();
         }

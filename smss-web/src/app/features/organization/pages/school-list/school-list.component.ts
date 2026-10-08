@@ -6,6 +6,8 @@ import { CardComponent } from '../../../../shared/components/card/card.component
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { TableComponent } from '../../../../shared/components/table/table.component';
+import { TableCellDirective } from '../../../../shared/components/table/table-cell.directive';
+import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 
 import { SortDirection, TableColumn } from '../../../../core/models';
@@ -36,6 +38,8 @@ const COLUMNS: TableColumn<SchoolRow>[] = [
     IconComponent,
     ButtonComponent,
     TableComponent,
+    TableCellDirective,
+    BadgeComponent,
     PaginationComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
