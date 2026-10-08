@@ -6,10 +6,24 @@
   background: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   @include m.flex-between;
-  padding: 0 v.$space-5;
+  padding: 0 v.$page-gutter;
   position: sticky;
   top: 0;
   z-index: v.$z-header;
+
+  @include m.respond-down(md) {
+    padding: 0 v.$page-gutter-mobile;
+  }
+}
+
+// Sidebar toggles switch at the same breakpoint where the sidebar docks (lg):
+// below it the sidebar is an off-canvas drawer, above it it can collapse.
+.toggle-mobile {
+  @include m.respond-up(lg) { display: none; }
+}
+
+.toggle-desktop {
+  @include m.respond-down(lg) { display: none; }
 }
 
 .header-left {

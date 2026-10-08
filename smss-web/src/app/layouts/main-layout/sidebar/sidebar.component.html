@@ -8,15 +8,15 @@
       <app-icon name="graduation-cap" [size]="20"></app-icon>
     </div>
     @if (!collapsed()) {
-      <span class="sidebar-brand-name">smss-web</span>
+      <span class="sidebar-brand-name">SMSS</span>
     }
   </div>
 
   <nav class="sidebar-nav">
     @for (item of navItems; track item.label) {
       @if (item.children) {
-        <div class="sidebar-group">
-          <button type="button" class="sidebar-group-toggle" (click)="toggleGroup(item.label)">
+        <div class="sidebar-group" routerLinkActive="has-active-child">
+          <button type="button" class="sidebar-group-toggle" [attr.title]="collapsed() ? item.label : null" (click)="toggleGroup(item.label)">
             <app-icon [name]="item.icon" [size]="18"></app-icon>
             @if (!collapsed()) {
               <span class="sidebar-label">{{ item.label }}</span>
@@ -50,6 +50,7 @@
           routerLinkActive="is-active"
           [routerLinkActiveOptions]="{ exact: false }"
           class="sidebar-link"
+          [attr.title]="collapsed() ? item.label : null"
           (click)="onLinkClick()"
         >
           <app-icon [name]="item.icon" [size]="18"></app-icon>

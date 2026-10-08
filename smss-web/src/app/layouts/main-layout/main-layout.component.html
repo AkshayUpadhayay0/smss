@@ -1,6 +1,6 @@
 <div class="main-layout">
   <app-sidebar
-    [collapsed]="collapsed()"
+    [collapsed]="collapsed() && !mobileOpen()"
     [mobileOpen]="mobileOpen()"
     (closeMobile)="closeMobileSidebar()"
   ></app-sidebar>

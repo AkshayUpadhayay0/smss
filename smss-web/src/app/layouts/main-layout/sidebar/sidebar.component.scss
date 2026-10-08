@@ -60,8 +60,9 @@
 }
 
 .sidebar-brand-name {
-  font-weight: v.$font-weight-semibold;
-  font-size: v.$font-size-md;
+  font-weight: v.$font-weight-bold;
+  font-size: v.$font-size-lg;
+  letter-spacing: 0.02em;
   color: var(--text-primary);
   white-space: nowrap;
 }
@@ -113,6 +114,11 @@
       background: var(--sidebar-active-bar);
     }
   }
+}
+
+.sidebar-group.has-active-child > .sidebar-group-toggle {
+  color: var(--text-primary);
+  font-weight: v.$font-weight-semibold;
 }
 
 .sidebar-label {

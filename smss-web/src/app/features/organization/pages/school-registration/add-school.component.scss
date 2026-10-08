@@ -1,10 +1,34 @@
 @use 'variables' as v;
+@use 'mixins' as m;
 
+// ---------- Header badge ----------
+.new-school-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-2;
+  padding: v.$space-1 v.$space-3;
+  border: 1px solid var(--border-color);
+  border-radius: v.$radius-full;
+  background: var(--surface-color);
+  box-shadow: v.$shadow-xs;
+  font-size: v.$font-size-xs;
+  font-weight: v.$font-weight-medium;
+  color: var(--text-secondary);
+}
 
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+// ---------- Contacts ----------
 .contact-block {
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px dashed var(--border-color, #e5e7eb);
+  padding-bottom: v.$space-4;
+  margin-bottom: v.$space-4;
+  border-bottom: 1px dashed var(--border-color);
 
   &:last-of-type {
     border-bottom: none;
@@ -14,94 +38,52 @@
 .contact-block-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  margin-top: v.$space-2;
+}
+
+.inline-controls {
+  justify-content: center;
 }
 
 .radio-inline {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-}
+  gap: v.$space-2;
+  font-size: v.$font-size-base;
+  color: var(--text-primary);
 
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-
-.success-card .success-panel {
-  text-align: center;
-  padding: 2rem 1rem;
-
-  .success-icon {
-    color: var(--color-success, #16a34a);
-    margin-bottom: 0.5rem;
-  }
-
-  .credentials {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 1.25rem auto;
-    max-width: 360px;
-    font-family: monospace;
-    text-align: left;
+  input {
+    accent-color: var(--primary-color);
   }
 }
 
-
-.inline-controls {
-  display: flex;
-  flex-direction: column;
-  gap: v.$space-3;
-  justify-content: center;
-}
-
-.color-input {
-  padding: 4px;
-  height: 44px;
-  cursor: pointer;
-}
-
-.range-input {
-  width: 100%;
-  accent-color: var(--primary-color);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: v.$space-3;
-  padding-bottom: v.$space-8;
-}
-
-
-
+// ---------- Logo ----------
 .logo-field {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: v.$space-6;
   flex-wrap: wrap;
 }
 
 .logo-preview {
   width: 120px;
   height: 120px;
-  border-radius: 12px;
-  border: 1px dashed var(--border-color, #d1d5db);
-  background: var(--surface-muted, #f9fafb);
-  color: #9ca3af;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: v.$radius-lg;
+  border: 1px dashed var(--border-color-strong);
+  background: var(--surface-color-alt);
+  color: var(--text-tertiary);
+  @include m.flex-center;
   overflow: hidden;
+  flex-shrink: 0;
 
   &:not(.is-empty) {
     border-style: solid;
-    background: #fff;
+    border-color: var(--border-color);
+    background: var(--surface-color);
+
+    .empty-icon {
+      display: none;
+    }
   }
 
   img {
@@ -111,62 +93,78 @@
   }
 }
 
+.empty-icon {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.5;
+}
+
 .logo-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: v.$space-2;
   flex-wrap: wrap;
 }
 
 .logo-help,
 .logo-note,
 .logo-error {
-  margin: 0.5rem 0 0;
-  font-size: 0.8rem;
+  margin-top: v.$space-2;
+  font-size: v.$font-size-xs;
 }
 
-.logo-help { color: #6b7280; }
-.logo-note { color: #2563eb; }
-.logo-error { color: #b91c1c; font-size: 0.85rem; }
+.logo-help { color: var(--text-tertiary); }
+.logo-note { color: var(--info-color); }
+.logo-error { color: var(--danger-color); font-weight: v.$font-weight-medium; }
 
+// ---------- Form actions ----------
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: v.$space-3;
+  margin-top: v.$space-2;
+  padding: v.$space-5 0 v.$space-8;
+  border-top: 1px solid var(--border-color);
+}
 
-/* ================================================================
-   NEW SCHOOL BADGE
-   ================================================================ */
-
-.new-school-badge {
-  display: inline-flex;
-
+// ---------- Registration result ----------
+.success-panel {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: v.$space-2;
+  text-align: center;
+  padding: v.$space-8 v.$space-4;
 
-  gap: 7px;
+  h2 {
+    font-size: v.$font-size-lg;
+  }
 
-  margin-top: 13px;
-
-  padding: 7px 12px;
-
-  border: 1px solid #e0e7f0;
-
-  border-radius: 8px;
-
-  background: #ffffff;
-
-  box-shadow:
-    0 2px 6px rgba(25, 45, 75, 0.04);
-
-  font-size: 11px;
-
-  color: #1e293b;
+  p {
+    color: var(--text-secondary);
+  }
 }
 
+.success-icon {
+  color: var(--success-color);
+  margin-bottom: v.$space-2;
+}
 
-.badge-dot {
-  width: 8px;
-  height: 8px;
+.credentials {
+  width: 100%;
+  max-width: 360px;
+  margin: v.$space-4 auto;
+  padding: v.$space-4;
+  border-radius: v.$radius-md;
+  border: 1px solid color-mix(in srgb, var(--success-color) 25%, transparent);
+  background: var(--success-soft);
+  color: var(--text-primary);
+  font-family: v.$font-family-mono;
+  font-size: v.$font-size-sm;
+  text-align: left;
+  word-break: break-all;
 
-  border-radius: 50%;
-
-  background: #1769f5;
-
-  box-shadow:
-    0 0 0 4px #eaf2ff;
+  div + div {
+    margin-top: v.$space-1;
+  }
 }

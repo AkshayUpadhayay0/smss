@@ -1,9 +1,9 @@
 <header class="app-header">
   <div class="header-left">
-    <button type="button" class="icon-btn hide-desktop" (click)="toggleMobileSidebar.emit()" aria-label="Open menu">
+    <button type="button" class="icon-btn toggle-mobile" (click)="toggleMobileSidebar.emit()" aria-label="Open menu">
       <app-icon name="menu" [size]="20"></app-icon>
     </button>
-    <button type="button" class="icon-btn hide-mobile" (click)="toggleSidebar.emit()" aria-label="Toggle sidebar">
+    <button type="button" class="icon-btn toggle-desktop" (click)="toggleSidebar.emit()" aria-label="Toggle sidebar">
       <app-icon name="menu" [size]="20"></app-icon>
     </button>
 

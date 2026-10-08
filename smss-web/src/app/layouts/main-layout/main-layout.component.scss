@@ -21,11 +21,15 @@
   }
 }
 
+// Page container: one gutter and one max width for every screen.
 .main-layout-body {
   flex: 1;
-  padding: v.$space-6;
+  width: 100%;
+  max-width: v.$page-max-width;
+  margin: 0 auto;
+  padding: v.$page-gutter;
 
-  @include m.respond-down(sm) {
-    padding: v.$space-4;
+  @include m.respond-down(md) {
+    padding: v.$page-gutter-mobile;
   }
 }

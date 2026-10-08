@@ -5,8 +5,12 @@
   @include m.flex-between;
   flex-wrap: wrap;
   gap: v.$space-3;
-  padding: v.$space-5 v.$space-6;
+  padding: v.$space-4 v.$space-6;
   border-bottom: 1px solid var(--border-color);
+
+  @include m.respond-down(md) {
+    padding: v.$space-4;
+  }
 }
 
 .table-search {
@@ -14,6 +18,12 @@
   flex: 1;
   min-width: 240px;
   max-width: 420px;
+
+  @include m.respond-down(md) {
+    flex-basis: 100%;
+    min-width: 0;
+    max-width: none;
+  }
 
   .form-control {
     padding-left: v.$space-8;
@@ -57,5 +67,10 @@
 }
 
 .table-footer {
-  padding: 0 v.$space-6 v.$space-5;
+  padding: 0 v.$space-6 v.$space-4;
+  border-top: 1px solid var(--border-color);
+
+  @include m.respond-down(md) {
+    padding: 0 v.$space-4 v.$space-4;
+  }
 }

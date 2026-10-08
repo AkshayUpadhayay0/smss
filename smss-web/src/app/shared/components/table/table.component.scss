@@ -14,13 +14,19 @@
 
   th, td {
     text-align: left;
-    padding: v.$space-3 v.$space-4;
+    padding: v.$table-cell-padding-y v.$table-cell-padding-x;
     white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  td {
+    color: var(--text-primary);
   }
 
   thead th {
+    background: var(--surface-color-alt);
     color: var(--text-secondary);
-    font-weight: v.$font-weight-medium;
+    font-weight: v.$font-weight-semibold;
     font-size: v.$font-size-xs;
     text-transform: uppercase;
     letter-spacing: 0.03em;
