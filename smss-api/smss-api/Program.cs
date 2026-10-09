@@ -39,6 +39,8 @@ builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<IClassSubjectRepository, ClassSubjectRepository>();
 builder.Services.AddScoped<IClassSubjectService, ClassSubjectService>();
+builder.Services.AddScoped<IDocumentTypeRepository, DocumentTypeRepository>();
+builder.Services.AddScoped<IDocumentTypeService, DocumentTypeService>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IEmployeeDesignationRepository, EmployeeDesignationRepository>();

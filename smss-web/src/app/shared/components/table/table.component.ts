@@ -9,8 +9,11 @@ export interface TableColumn<T> {
   label: string;
   sortable?: boolean;
   width?: string;
-  /** 'status' renders the value as an Active/Inactive pill (boolean, or a string such as "Active"). */
-  type?: 'text' | 'status';
+  /**
+   * 'status' renders the value as an Active/Inactive pill (boolean, or a string such as "Active").
+   * 'badge' renders the text in the same pill shape, highlighted only when it is "Yes" (e.g. Required: Yes / No).
+   */
+  type?: 'text' | 'status' | 'badge';
 }
 
 export interface SortChange {
@@ -70,6 +73,8 @@ export interface SortChange {
                       <span class="pill" [class.active]="isActive(cell(row, col.key))">
                         {{ statusLabel(cell(row, col.key)) }}
                       </span>
+                    } @else if (col.type === 'badge') {
+                      <span class="pill" [class.active]="cell(row, col.key) === 'Yes'">{{ cell(row, col.key) }}</span>
                     } @else {
                       {{ cell(row, col.key) }}
                     }

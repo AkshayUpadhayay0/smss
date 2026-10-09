@@ -31,7 +31,6 @@ namespace smss_api_db_layer.context
         public DbSet<LutReligionCategory> LutReligionCategories { get; set; } = null!;
         public DbSet<LutBloodGroup> LutBloodGroups { get; set; } = null!;
         public DbSet<LutGender> LutGenders { get; set; } = null!;
-        public DbSet<LutDocumentType> LutDocumentTypes { get; set; } = null!;
         public DbSet<LutRole> LutRoles { get; set; } = null!;
         public DbSet<TbSchools> Schools { get; set; } = null!;
         public DbSet<TbUsers> Users { get; set; } = null!; 
@@ -42,6 +41,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbClasses> Classes { get; set; } = null!;
         public DbSet<TbSections> Sections { get; set; } = null!;
         public DbSet<TbClassSubjects> ClassSubjects { get; set; } = null!;
+        public DbSet<TbDocumentType> DocumentTypes { get; set; } = null!;
         public DbSet<TbSubjects> Subjects { get; set; } = null!;
         public DbSet<TbEmployeeDesignations> EmployeeDesignations { get; set; } = null!;
         public DbSet<TbEmployeeDepartments> EmployeeDepartments { get; set; } = null!;

@@ -182,7 +182,7 @@ migration later):
 | Religion/Caste Category | global (`lut_`), school opts in/out |
 | Blood Group | global |
 | Gender | global |
-| Document Type | global, extensible per school later |
+| Document Type | school-owned (`tb_document_types`) — reclassified from global; the earlier lut_document_type version was removed |
 | Student Category | global (`lut_student_category`) — reclassified from school-owned; the earlier tb_student_categories version was removed |
 | Class-Subject Mapping | school-owned |
 | Class-Section Mapping | school-owned |
@@ -192,7 +192,7 @@ Build order once RBAC is fixed: School Profile + User Profile → Academic
 Year → Class → Section → Class-Section Mapping → Subject →
 Class-Subject Mapping → Employee Department/Designation → Student
 Category → Admission Type. Global masters (Gender, Blood Group,
-Religion/Caste, Document Type) can reuse the existing Super-Admin
+Religion/Caste) can reuse the existing Super-Admin
 generic master-list pattern.
 
 ---

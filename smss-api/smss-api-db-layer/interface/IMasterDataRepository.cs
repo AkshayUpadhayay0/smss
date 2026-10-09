@@ -77,14 +77,7 @@ namespace smss_api_db_layer.@interface
         Task<bool> AddGenderAsync(LutGender entity);      // false = unique constraint violation
         Task<bool> UpdateGenderAsync(LutGender entity);   // false = unique constraint violation
 
-        // DOCUMENT TYPES
-        Task<List<LutDocumentType>> GetDocumentTypesAsync(bool includeInactive = false);
-        Task<LutDocumentType?> GetDocumentTypeByIdAsync(long id);
-        Task<bool> DocumentTypeExistsAsync(string code, string name, long? excludeId = null);
-        Task<bool> AddDocumentTypeAsync(LutDocumentType entity);      // false = unique constraint violation
-        Task<bool> UpdateDocumentTypeAsync(LutDocumentType entity);   // false = unique constraint violation
-
-        // STUDENT CATEGORYS
+        // STUDENT CATEGORIES
         Task<List<LutStudentCategory>> GetStudentCategoriesAsync(bool includeInactive = false);
         Task<LutStudentCategory?> GetStudentCategoryByIdAsync(long id);
         Task<bool> StudentCategoryExistsAsync(string code, string name, long? excludeId = null);

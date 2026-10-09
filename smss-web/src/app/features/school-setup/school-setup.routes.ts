@@ -31,6 +31,10 @@ export const SCHOOL_SETUP_ROUTES: Routes = [
     path: 'school-setup/class-subjects',
     loadComponent: () => import('./pages/class-subject-mapping/class-subject-mapping.component').then((m) => m.ClassSubjectMappingComponent),
   },
+  {
+    path: 'school-setup/document-types',
+    loadComponent: () => import('./pages/document-type-list/document-type-list.component').then((m) => m.DocumentTypeListComponent),
+  },
   lookup('subjects', SUBJECT_CONFIG),
   lookup('employee-designations', EMPLOYEE_DESIGNATION_CONFIG),
   lookup('employee-departments', EMPLOYEE_DEPARTMENT_CONFIG),

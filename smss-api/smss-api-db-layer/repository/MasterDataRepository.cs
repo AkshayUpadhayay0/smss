@@ -545,65 +545,7 @@ namespace smss_api_db_layer.repository
         }
 
         // =========================================================
-        // GET ACTIVE DOCUMENT TYPES
-        // =========================================================
-
-        public async Task<List<LutDocumentType>> GetDocumentTypesAsync(bool includeInactive = false)
-        {
-            IQueryable<LutDocumentType> query = _dbContext.LutDocumentTypes.AsNoTracking();
-
-            if (!includeInactive)
-                query = query.Where(x => x.IsActive);
-
-            return await query.OrderBy(x => x.DocumentTypeName).ToListAsync();
-        }
-
-        // Tracked on purpose: used for update/toggle.
-        public async Task<LutDocumentType?> GetDocumentTypeByIdAsync(long id)
-        {
-            return await _dbContext.LutDocumentTypes.FirstOrDefaultAsync(x => x.DocumentTypeId == id);
-        }
-
-        public async Task<bool> DocumentTypeExistsAsync(string code, string name, long? excludeId = null)
-        {
-            string upperCode = code.ToUpper();
-            string lowerName = name.ToLower();
-
-            return await _dbContext.LutDocumentTypes.AsNoTracking().AnyAsync(x =>
-                (excludeId == null || x.DocumentTypeId != excludeId) &&
-                (x.DocumentTypeCode.ToUpper() == upperCode || x.DocumentTypeName.ToLower() == lowerName));
-        }
-
-        public async Task<bool> AddDocumentTypeAsync(LutDocumentType entity)
-        {
-            try
-            {
-                _dbContext.LutDocumentTypes.Add(entity);
-                await _dbContext.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
-            {
-                _dbContext.Entry(entity).State = EntityState.Detached;
-                return false;
-            }
-        }
-
-        public async Task<bool> UpdateDocumentTypeAsync(LutDocumentType entity)
-        {
-            try
-            {
-                await _dbContext.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
-            {
-                return false;
-            }
-        }
-
-        // =========================================================
-        // GET ACTIVE STUDENT CATEGORYS
+        // GET ACTIVE STUDENT CATEGORIES
         // =========================================================
 
         public async Task<List<LutStudentCategory>> GetStudentCategoriesAsync(bool includeInactive = false)

@@ -30,7 +30,7 @@ describe('route-roles', () => {
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/school-profile', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types'];
+      const schoolSide = ['/school-profile', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }

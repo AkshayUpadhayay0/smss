@@ -215,11 +215,16 @@ Build these as the foundation BEFORE any feature screens:
   whole set in one transaction (hard add/delete; status_id is only set to Active on insert, never toggled). There is no separate
   Class-Section mapping table: tb_sections.class_id is that relationship. The service verifies class AND subjects belong to the
   caller's school (DB doesn't). Mapped-but-inactive subjects stay visible in the checklist so a save never silently drops them.
-- Global lookups added under Super Admin Masters: Religion/Caste Category, Blood Group, Gender, Document Type (`/masters/{religion-category|
-  blood-group|gender|document-type}`, API `/api/MasterData/{religion-categories|blood-groups|genders|document-types}`), written in the exact
+- Global lookups added under Super Admin Masters: Religion/Caste Category, Blood Group, Gender (`/masters/{religion-category|
+  blood-group|gender}`, API `/api/MasterData/{religion-categories|blood-groups|genders}`; Document Type was later moved to school-owned), written in the exact
   Board Type style (code immutable after create, duplicate code OR name -> 409, isActive toggle) inside MasterDataController/Service/
   Repository, and four more `MasterConfig`s for the same generic list. Columns use `is_active` (Board Type's is `isactive`); description is
   varchar(250); blood group names are max 10 chars. Gender (3) and Blood Group (8) come pre-seeded. Super Admin only in ROUTE_ROLES.
 - Student Category is a GLOBAL lookup (Super Admin Masters, `/masters/student-category`, API `/api/MasterData/student-categories`, table
   `lut_student_category`, same style/config pattern as Gender & co.). The earlier school-owned version (tb_student_categories,
   /school-setup/student-categories, /api/StudentCategories) was deleted entirely.
+- Document Types is SCHOOL-owned (`tb_document_types`; `/school-setup/document-types`, API `/api/DocumentType/{schoolId}[/update|/{id}/toggle-status]`).
+  Fields: name (50), code (20, stored upper-case, unique per school), appliesTo STUDENT|EMPLOYEE|BOTH, isRequired; status via toggle. The routes carry
+  {schoolId} (frontend takes it from the session via AuthService), but the controller REFUSES (403) any id that is not the JWT school_id and always
+  uses the token value. TODO: drop {schoolId} from the routes. The global lut_document_type version was removed (the table itself still exists, unused).
+  The shared table got a `type: 'badge'` column kind (pill, highlighted when the value is "Yes").

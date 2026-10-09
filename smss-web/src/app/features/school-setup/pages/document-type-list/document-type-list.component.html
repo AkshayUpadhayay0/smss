@@ -1,0 +1,54 @@
+<app-page-header title="Document Types" subtitle="Manage the documents your school collects for students and employees" icon="file-text" [breadcrumbs]="breadcrumbs">
+  <app-button (click)="openCreate()"><app-icon name="plus" [size]="16" />Add Document Type</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input placeholder="Search document types…" prefixIcon="search" (input)="onSearch($event)" />
+    </div>
+    <span class="count">{{ total() }} {{ total() === 1 ? 'record' : 'records' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="pageRows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [sortKey]="sortKey()"
+    [sortDirection]="sortDirection()"
+    [emptyMessage]="loadFailed() ? 'Could not load document types.' : search() ? 'Nothing matches your search.' : 'No document types yet. Add your first one to get started.'"
+    (sortChange)="onSort($event)"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
+        <app-icon name="pencil" [size]="14" />
+      </app-button>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="busyId() === row.documentTypeId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-left" [size]="14" />Deactivate
+        </app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.documentTypeId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-right" [size]="14" />Activate
+        </app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="page.set($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (modal(); as m) {
+  <app-document-type-form-modal [documentType]="m.documentType" (saved)="onSaved($event)" (closed)="modal.set(null)" />
+}

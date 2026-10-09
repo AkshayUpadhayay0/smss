@@ -71,27 +71,4 @@ namespace smss_api_service_layer.dto
         [StringLength(250)]
         public string? Description { get; set; }
     }
-
-    public class CreateDocumentTypeRequestDto
-    {
-        [Required, StringLength(30, MinimumLength = 2)]
-        [RegularExpression(@"^[A-Za-z0-9_]+$", ErrorMessage = "Code may contain only letters, numbers and underscore.")]
-        public string DocumentTypeCode { get; set; } = string.Empty;
-
-        [Required, StringLength(100, MinimumLength = 2)]
-        public string DocumentTypeName { get; set; } = string.Empty;
-
-        [StringLength(250)]
-        public string? Description { get; set; }
-    }
-
-    // DocumentTypeCode is deliberately absent: the code is immutable after creation.
-    public class UpdateDocumentTypeRequestDto
-    {
-        [Required, StringLength(100, MinimumLength = 2)]
-        public string DocumentTypeName { get; set; } = string.Empty;
-
-        [StringLength(250)]
-        public string? Description { get; set; }
-    }
 }

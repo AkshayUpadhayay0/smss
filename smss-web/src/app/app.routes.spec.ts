@@ -153,7 +153,7 @@ describe('app routes', () => {
         const { harness } = await go('/dashboard');
         harness.routeNativeElement!.querySelector<HTMLButtonElement>('.group-toggle')?.click();
         harness.detectChanges();
-        expect(nav(harness)).toBe('Dashboard | Registered Schools | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Document Type | Student Category');
+        expect(nav(harness)).toBe('Dashboard | Registered Schools | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(

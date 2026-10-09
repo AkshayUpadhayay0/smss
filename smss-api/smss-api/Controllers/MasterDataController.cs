@@ -386,47 +386,7 @@ namespace smss_api.Controllers
         }
 
         // =========================================================
-        // DOCUMENT TYPES
-        // =========================================================
-
-        // GET: api/MasterData/document-types?includeInactive=true
-        [HttpGet("document-types")]
-        public async Task<IActionResult> GetDocumentTypes([FromQuery] bool includeInactive = false)
-        {
-            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
-            var response = await _masterDataService.GetDocumentTypesAsync(includeInactive);
-            return StatusCode(response.StatusCode, response);
-        }
-
-        // POST: api/MasterData/document-types
-        [HttpPost("document-types")]
-        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
-        public async Task<IActionResult> CreateDocumentType([FromBody] CreateDocumentTypeRequestDto request)
-        {
-            var response = await _masterDataService.CreateDocumentTypeAsync(request);
-            return StatusCode(response.StatusCode, response);
-        }
-
-        // PUT: api/MasterData/document-types/{id}
-        [HttpPut("document-types/{id:long}")]
-        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
-        public async Task<IActionResult> UpdateDocumentType(long id, [FromBody] UpdateDocumentTypeRequestDto request)
-        {
-            var response = await _masterDataService.UpdateDocumentTypeAsync(id, request);
-            return StatusCode(response.StatusCode, response);
-        }
-
-        // POST: api/MasterData/document-types/{id}/toggle-status
-        [HttpPost("document-types/{id:long}/toggle-status")]
-        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
-        public async Task<IActionResult> ToggleDocumentTypeStatus(long id)
-        {
-            var response = await _masterDataService.ToggleDocumentTypeStatusAsync(id);
-            return StatusCode(response.StatusCode, response);
-        }
-
-        // =========================================================
-        // STUDENT CATEGORYS
+        // STUDENT CATEGORIES
         // =========================================================
 
         // GET: api/MasterData/student-categories?includeInactive=true

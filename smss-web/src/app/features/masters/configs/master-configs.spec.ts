@@ -7,7 +7,6 @@ import { MasterConfig, MasterItem } from '../models/master.model';
 import { MasterListComponent } from '../pages/master-list/master-list.component';
 import { BLOOD_GROUP_CONFIG } from './blood-group.config';
 import { BOARD_TYPE_CONFIG } from './board-type.config';
-import { DOCUMENT_TYPE_CONFIG } from './document-type.config';
 import { GENDER_CONFIG } from './gender.config';
 import { RELIGION_CATEGORY_CONFIG } from './religion-category.config';
 import { ROLE_CONFIG } from './role.config';
@@ -25,7 +24,6 @@ const ALL: [string, MasterConfig][] = [
   ['Religion/Caste Category', RELIGION_CATEGORY_CONFIG],
   ['Blood Group', BLOOD_GROUP_CONFIG],
   ['Gender', GENDER_CONFIG],
-  ['Document Type', DOCUMENT_TYPE_CONFIG],
   ['Student Category', STUDENT_CATEGORY_CONFIG],
 ];
 
