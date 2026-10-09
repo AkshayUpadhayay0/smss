@@ -74,17 +74,87 @@ describe('SchoolFormComponent', () => {
       expect(c.stateId.disabled).toBe(true);
     });
 
+    /** A UDISE code, a name and the (mandatory) first contact, which the form pre-creates as primary. */
     function fillValid() {
-      cmp.form.patchValue({ schoolCode: 'GVPS-01', schoolName: '  Green Valley  ' });
+      cmp.form.patchValue({ schoolCode: '09010100101', schoolName: '  Green Valley  ' });
+      cmp.contacts.at(0).patchValue({ contactType: 'Principal', contactName: 'A. Sharma', email: 'a@example.com', mobileNumber: '9876543211' });
     }
+
+    it('requires an 11-digit UDISE code (digits only, leading zeros allowed)', () => {
+      const code = cmp.form.controls.schoolCode;
+      for (const bad of ['', '1234567890', '123456789012', '0901010010a', 'GVPS-01', '0901 0100101']) {
+        code.setValue(bad);
+        expect([bad, code.invalid]).toEqual([bad, true]);
+      }
+      for (const good of ['09010100101', '12345678901', ' 09010100101 ']) {
+        code.setValue(good);
+        expect([good, code.valid]).toEqual([good, true]);
+      }
+      code.setValue('123');
+      code.markAsTouched();
+      expect(cmp.err('schoolCode')).toBe('UDISE code must be exactly 11 digits');
+    });
+
+    it('labels the field "UDISE code"', () => {
+      expect(fixture.nativeElement.textContent).toContain('UDISE code');
+      expect(fixture.nativeElement.textContent).not.toContain('School code');
+    });
+
+    it('starts with one contact, pre-marked as the primary, and cannot remove the last one', () => {
+      expect(cmp.contacts.length).toBe(1);
+      expect(cmp.contacts.at(0).controls.isPrimary.value).toBe(true);
+      expect(cmp.canRemove(cmp.contacts.at(0))).toBe(false);
+      cmp.addContact();
+      expect(cmp.canRemove(cmp.contacts.at(0))).toBe(true);
+      cmp.removeContact(1);
+      expect(cmp.canRemove(cmp.contacts.at(0))).toBe(false);
+    });
+
+    it('email and mobile are mandatory for every contact; alternate mobile and designation are optional', () => {
+      fillValid();
+      const row = cmp.contacts.at(0);
+      for (const blank of ['', '   ']) {
+        row.patchValue({ email: blank, mobileNumber: blank });
+        expect(['email', blank, row.controls.email.hasError('required')]).toEqual(['email', blank, true]);
+        expect(['mobile', blank, row.controls.mobileNumber.hasError('required')]).toEqual(['mobile', blank, true]);
+      }
+      row.patchValue({ email: 'not-an-email', mobileNumber: '1234567890' });
+      expect(row.controls.email.invalid).toBe(true);
+      expect(row.controls.mobileNumber.invalid).toBe(true);
+
+      cmp.submit();
+      http.expectNone(`${API}/api/SchoolRegistration/register`);
+      expect(cmp.cerr(row, 'email')).toBe('Enter a valid email address');
+      expect(cmp.cerr(row, 'mobileNumber')).toBe('Enter a valid 10-digit mobile number');
+
+      row.patchValue({ email: '', mobileNumber: '' });
+      expect(cmp.cerr(row, 'email')).toBe('This field is required');
+      expect(cmp.cerr(row, 'mobileNumber')).toBe('This field is required');
+
+      row.patchValue({ email: 'ok@example.com', mobileNumber: '9876543210', designation: '', alternateMobileNumber: '' });
+      expect(row.valid).toBe(true);
+    });
+
+    it('marks Email and Mobile as required in the contact rows', () => {
+      const labels = [...(fixture.nativeElement as HTMLElement).querySelectorAll('fieldset.contact label')].map((l) => l.textContent?.replace(/\s+/g, ' ').trim());
+      expect(labels).toEqual(expect.arrayContaining(['Email*', 'Mobile number*', 'Name*', 'Contact type*']));
+      expect(labels).toContain('Designation');
+      expect(labels).toContain('Alternate mobile');
+    });
+
+    it('will not register without a completed primary contact', () => {
+      cmp.form.patchValue({ schoolCode: '09010100101', schoolName: 'Green Valley' }); // contact left blank
+      cmp.submit();
+      http.expectNone(`${API}/api/SchoolRegistration/register`);
+      expect(cmp.contacts.at(0).invalid).toBe(true);
+      expect(cmp.cerr(cmp.contacts.at(0), 'contactName')).toBe('This field is required');
+    });
 
     it('blocks submit when contacts exist but none (or several) is primary, with a clear message', () => {
       fillValid();
       cmp.addContact();
-      cmp.addContact();
-      cmp.contacts.at(0).patchValue({ contactType: 'Principal', contactName: 'A' });
-      cmp.contacts.at(1).patchValue({ contactType: 'Owner', contactName: 'B' });
-      cmp.contacts.at(0).controls.isPrimary.setValue(false);
+      cmp.contacts.at(1).patchValue({ contactType: 'Owner', contactName: 'B', email: 'b@example.com', mobileNumber: '9876543212' });
+      cmp.contacts.at(0).controls.isPrimary.setValue(false); // now nobody is primary
       expect(cmp.contacts.errors?.['primary']).toBeTruthy();
 
       cmp.submit();
@@ -97,8 +167,7 @@ describe('SchoolFormComponent', () => {
       expect(cmp.contacts.at(1).controls.isPrimary.value).toBe(true);
     });
 
-    it('first added contact is primary; removing the primary promotes the next one', () => {
-      cmp.addContact();
+    it('an added contact is not primary; removing the primary promotes the next one', () => {
       cmp.addContact();
       expect(cmp.contacts.at(0).controls.isPrimary.value).toBe(true);
       expect(cmp.contacts.at(1).controls.isPrimary.value).toBe(false);
@@ -128,13 +197,12 @@ describe('SchoolFormComponent', () => {
     it('sends blanks as null, uppercases GSTIN/PAN, converts ids to numbers and omits status/logo fields', () => {
       fillValid();
       cmp.form.patchValue({ schoolGstin: '07aabcu9603r1zm', schoolPan: 'aabcu9603r', boardTypeId: '1', schoolEstablishYear: '1998' });
-      cmp.addContact();
-      cmp.contacts.at(0).patchValue({ contactType: 'Principal', contactName: 'A. Sharma', email: '' });
+      cmp.contacts.at(0).patchValue({ alternateMobileNumber: '' });
 
       cmp.submit();
       const req = http.expectOne(`${API}/api/SchoolRegistration/register`);
       const body = req.request.body;
-      expect(body.schoolCode).toBe('GVPS-01');
+      expect(body.schoolCode).toBe('09010100101');
       expect(body.schoolName).toBe('Green Valley');
       expect(body.email).toBeNull();
       expect(body.website).toBeNull();
@@ -143,7 +211,7 @@ describe('SchoolFormComponent', () => {
       expect(body.schoolPan).toBe('AABCU9603R');
       expect(body.boardTypeId).toBe(1);
       expect(body.schoolEstablishYear).toBe(1998);
-      expect(body.contacts[0]).toMatchObject({ contactName: 'A. Sharma', email: null, isPrimary: true });
+      expect(body.contacts[0]).toMatchObject({ contactName: 'A. Sharma', email: 'a@example.com', mobileNumber: '9876543211', designation: null, alternateMobileNumber: null, isPrimary: true });
       expect(body.contacts[0].contactId).toBeUndefined();
       expect(body).not.toHaveProperty('schoolStatusId');
       expect(body).not.toHaveProperty('logoUrl');
@@ -257,6 +325,35 @@ describe('SchoolFormComponent', () => {
       cmp.submit();
       http.expectOne((r) => r.method === 'PUT').flush(envelope(makeSchool()));
       http.expectOne(`${API}/api/SchoolRegistration/schools/sch2026001/logo/remove`).flush(envelope(makeSchool()));
+    });
+
+    it('a legacy (non-UDISE) code is shown read-only and never blocks saving', () => {
+      loadEdit();
+      flushLookups(http);
+      expect(cmp.form.controls.schoolCode.value).toBe('GVPS-01');
+      expect(cmp.form.controls.schoolCode.disabled).toBe(true);
+      expect(cmp.form.valid).toBe(true);
+    });
+
+    it('requires a primary contact on edit too: a school with no contacts cannot be saved until one is added', () => {
+      create('edit', 'sch2026001');
+      flushLookups(http);
+      http.expectOne(`${API}/api/SchoolRegistration/schools/sch2026001`).flush(envelope(makeSchool({ contacts: [] })));
+      flushLookups(http);
+      fixture.detectChanges();
+      expect(cmp.contacts.length).toBe(0);
+
+      cmp.submit();
+      http.expectNone((r) => r.method === 'PUT');
+      expect(cmp.primaryError()).toBe('Add a contact and mark it as the primary contact');
+
+      cmp.addContact();
+      cmp.contacts.at(0).patchValue({ contactType: 'Principal', contactName: 'New Principal', email: 'np@example.com', mobileNumber: '9876543219' });
+      cmp.submit();
+      const req = http.expectOne((r) => r.method === 'PUT');
+      expect(req.request.body.contacts).toHaveLength(1);
+      expect(req.request.body.contacts[0]).toMatchObject({ contactName: 'New Principal', isPrimary: true });
+      req.flush(envelope(makeSchool()));
     });
 
     it('does not allow removing saved contacts (the API never deletes them)', () => {

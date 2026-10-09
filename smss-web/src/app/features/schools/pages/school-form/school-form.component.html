@@ -25,13 +25,13 @@
     <app-card title="School Identity">
       <div class="grid">
         <app-input
-          label="School code"
+          label="UDISE code"
           [required]="isAdd()"
-          placeholder="e.g. GVPS-01"
+          placeholder="11-digit UDISE code"
           prefixIcon="lock"
           formControlName="schoolCode"
           [readonly]="!isAdd()"
-          [helpText]="isAdd() ? 'Letters, numbers, hyphen and underscore. Cannot be changed later.' : 'The school code cannot be changed.'"
+          [helpText]="isAdd() ? '11-digit UDISE+ code issued by the Ministry of Education. Cannot be changed later.' : 'The UDISE code cannot be changed.'"
           [errorText]="err('schoolCode')"
         />
         <app-input label="School name" [required]="true" placeholder="Full school name" formControlName="schoolName" [errorText]="err('schoolName')" />
@@ -80,6 +80,7 @@
     </app-card>
 
     <app-card title="School Contacts">
+      <p class="hint required-note">A primary contact is required: add at least one contact and mark exactly one as primary. Every contact needs a name, email and mobile number.</p>
       @if (contacts.length === 0) {
         <p class="empty-note">{{ isView() ? 'No contacts on file.' : 'No contacts added yet.' }}</p>
       }
@@ -89,7 +90,7 @@
           <div class="contact-head">
             <label class="primary-radio">
               <input type="radio" name="primaryContact" [checked]="group.controls.isPrimary.value" [disabled]="isView()" (change)="setPrimary(i)" />
-              Primary contact
+              Primary contact <span class="req">*</span>
             </label>
             @if (canRemove(group)) {
               <app-button variant="danger-ghost" size="sm" aria-label="Remove contact" (click)="removeContact(i)">
@@ -101,8 +102,8 @@
             <app-select label="Contact type" [required]="true" [options]="contactTypeOptions" formControlName="contactType" [errorText]="cerr(group, 'contactType')" />
             <app-input label="Name" [required]="true" formControlName="contactName" [errorText]="cerr(group, 'contactName')" />
             <app-input label="Designation" formControlName="designation" [errorText]="cerr(group, 'designation')" />
-            <app-input label="Email" type="email" formControlName="email" [errorText]="cerr(group, 'email')" />
-            <app-input label="Mobile number" type="tel" formControlName="mobileNumber" [errorText]="cerr(group, 'mobileNumber')" />
+            <app-input label="Email" type="email" [required]="true" formControlName="email" [errorText]="cerr(group, 'email')" />
+            <app-input label="Mobile number" type="tel" [required]="true" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="cerr(group, 'mobileNumber')" />
             <app-input label="Alternate mobile" type="tel" formControlName="alternateMobileNumber" [errorText]="cerr(group, 'alternateMobileNumber')" />
           </div>
         </fieldset>

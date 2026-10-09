@@ -141,6 +141,12 @@ Build these as the foundation BEFORE any feature screens:
 - School Registration feature built (`features/schools/`): list, add/edit/view (one `SchoolFormComponent`,
   `mode` + `schoolId` bound from route data/params), logo upload, status toggle, one-time credentials panel.
   Pure form logic lives in `utils/school-form.ts` (build form, map to/from API) and `utils/school-validators.ts`.
+- School form rules: the school code is the school's UDISE+ code — exactly 11 digits, validated ONLY when adding
+  (existing schools have legacy codes like SUAD01; on edit/view the control is disabled so it never blocks saving).
+  A primary contact is mandatory: the add form starts with one pre-marked primary row, the last contact can't be
+  removed, and at least one contact + exactly one primary is required on edit too. Every contact needs email AND mobile
+  (alternate mobile/designation optional) — legacy saved contacts missing them must be completed before an update saves. The server itself only enforces
+  `^[A-Za-z0-9_-]+$` for the code and 'exactly one primary IF contacts exist', so these two rules live in the UI only.
 - `MasterDataService` rebuilt (`core/services/`) on `ApiService`; failed lookups are not cached.
 - API facts learned: SchoolRegistration controller is `[Authorize]` (JWT needed — login not built yet);
   update never deletes contacts (so saved contacts can't be removed in the UI); update OVERWRITES
@@ -171,3 +177,49 @@ Build these as the foundation BEFORE any feature screens:
   is single-flight). Interceptor order matters: [errorInterceptor, authInterceptor] so a recovered 401 never toasts.
   Session lives in sessionStorage, or localStorage with "Keep me signed in". A first-login user (isFirstLogin) is sent to
   /change-password after login. Test sessions with `seedSession()` from `core/testing/auth-test-utils.ts`.
+- ROLE ACCESS (UI): ONE config, `core/config/route-roles.ts` (`ROUTE_ROLES`), read by BOTH `roleGuard`
+  (`core/guards/role.guard.ts`, a `canActivateChild` on the main layout so it re-runs on every page change) and the
+  sidebar (`SidebarComponent.items`). Fails CLOSED: a route with no entry is denied. A new page needs an entry there —
+  a test (`route-roles.spec.ts`) fails if a page has no entry or an entry has no page. `/dashboard` and
+  `/change-password` are `'authenticated'` (denied users are redirected to /dashboard, so it must stay open).
+  `AuthService.currentUserRoles` (signal) comes from the session restored synchronously from storage → no menu flash.
+  This is UX only; the API is the real security boundary.
+- ROLES: the API returns role NAMES ("Super Admin", "School Admin", …) in `user.roles` and the JWT role claim — NOT role
+  codes — and names are editable in Master Data → Role. Renaming a role there changes access. The API's
+  `[Authorize(Roles=…)]` must use the same strings (or the API should switch the claim to RoleCode).
+- API SECURITY GAP (found 2026-10-09): the API has NO server-side role checks. A School Admin token can GET all schools,
+  and POST/PUT master data (verified: POST /MasterData/board-types returned 201). Needs `[Authorize(Roles=…)]` re-enabled.
+- School Setup (school-owned masters, `features/school-setup/`, sidebar group "School Setup", routes `/school-setup/*`,
+  School Admin only in ROUTE_ROLES): Academic Year built (list + add/edit modal; status and "current" are row ACTIONS —
+  toggle-status, Set as Current — never form fields). API `/api/AcademicYear` is always scoped to the token's school_id
+  (shared helper `User.GetSchoolId()` in smss_api/Helpers, also used by School Profile `/me`); another school's id returns 404.
+  Rules: first year auto-current; current year can't be deactivated; inactive year can't be set current; duplicate name 409.
+  Super Admin's own account also has a school record, so it can reach these endpoints for ITS OWN (empty) school only.
+- Class master built (`/school-setup/classes`, API `/api/Classes`, same tenant pattern as Academic Year): list defaults to
+  Sequence Order ascending (ties by name); sequence_order is a smallint (1–32767, not unique); duplicate name per school 409;
+  toggle-status has no refusal rules yet (Sections will reference class_id later).
+- Section master built (`/school-setup/sections`, API `/api/Sections`): belongs to a Class. Unique (class_id, section_name), so the
+  same name works under different classes. The DB does NOT tie class_id to school_id, so the service verifies the class belongs
+  to the caller's school (400 otherwise). Responses carry joined className + classSequenceOrder; the list's Class column sorts in
+  class display order. The form's class dropdown lists active classes only (plus the section's own class when editing).
+- Four simple school-owned masters built (Subject, Employee Designation, Employee Department, Admission Type; routes
+  `/school-setup/{subjects|employee-designations|employee-departments|admission-types}`, API
+  `/api/{Subjects|EmployeeDesignations|EmployeeDepartments|AdmissionTypes}`; Student Category was originally a fifth but was
+  reclassified as GLOBAL and removed from here — see below). Backend: four independent
+  entity/repo/service/controller sets in the Class style (generated from one template, no shared base, so per-master rules can
+  be added freely). Frontend: ONE config-driven pair in `features/school-setup/` (`SchoolLookupListComponent` +
+  `SchoolLookupFormModalComponent`, configs in `configs/school-lookups.config.ts`) — deliberately separate from the Super Admin
+  `MasterConfig` pattern. Only Subject has a code field. Add a new simple school-owned master = a config + a route + a nav/ROUTE_ROLES entry.
+- Class-Subject Mapping built (`/school-setup/class-subjects`, API `/api/ClassSubjects`): a checklist UI (class dropdown + subject
+  checkboxes + Save), NOT a list/form. Save calls `POST /ClassSubjects/bulk {classId, subjectIds}` which replaces the class's
+  whole set in one transaction (hard add/delete; status_id is only set to Active on insert, never toggled). There is no separate
+  Class-Section mapping table: tb_sections.class_id is that relationship. The service verifies class AND subjects belong to the
+  caller's school (DB doesn't). Mapped-but-inactive subjects stay visible in the checklist so a save never silently drops them.
+- Global lookups added under Super Admin Masters: Religion/Caste Category, Blood Group, Gender, Document Type (`/masters/{religion-category|
+  blood-group|gender|document-type}`, API `/api/MasterData/{religion-categories|blood-groups|genders|document-types}`), written in the exact
+  Board Type style (code immutable after create, duplicate code OR name -> 409, isActive toggle) inside MasterDataController/Service/
+  Repository, and four more `MasterConfig`s for the same generic list. Columns use `is_active` (Board Type's is `isactive`); description is
+  varchar(250); blood group names are max 10 chars. Gender (3) and Blood Group (8) come pre-seeded. Super Admin only in ROUTE_ROLES.
+- Student Category is a GLOBAL lookup (Super Admin Masters, `/masters/student-category`, API `/api/MasterData/student-categories`, table
+  `lut_student_category`, same style/config pattern as Gender & co.). The earlier school-owned version (tb_student_categories,
+  /school-setup/student-categories, /api/StudentCategories) was deleted entirely.

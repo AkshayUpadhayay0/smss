@@ -4,12 +4,13 @@ import {
   GSTIN_RE,
   PAN_RE,
   PINCODE_RE,
-  SCHOOL_CODE_RE,
+  UDISE_RE,
   endDateValidator,
   establishYearValidator,
   mobileValidator,
   pattern,
   positiveIntValidator,
+  requiredTrimmed,
   primaryContactValidator,
   urlValidator,
 } from './school-validators';
@@ -23,8 +24,9 @@ export function createContactGroup(contact?: Partial<SchoolContact>) {
     contactType: new FormControl(contact?.contactType ?? '', { nonNullable: true, validators: [Validators.required] }),
     contactName: new FormControl(contact?.contactName ?? '', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
     designation: new FormControl(contact?.designation ?? '', { nonNullable: true, validators: [Validators.maxLength(150)] }),
-    email: new FormControl(contact?.email ?? '', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
-    mobileNumber: new FormControl(contact?.mobileNumber ?? '', { nonNullable: true, validators: [mobileValidator] }),
+    // Email and mobile are mandatory for every school contact (alternate mobile stays optional).
+    email: new FormControl(contact?.email ?? '', { nonNullable: true, validators: [requiredTrimmed, Validators.email, Validators.maxLength(150)] }),
+    mobileNumber: new FormControl(contact?.mobileNumber ?? '', { nonNullable: true, validators: [requiredTrimmed, mobileValidator] }),
     alternateMobileNumber: new FormControl(contact?.alternateMobileNumber ?? '', { nonNullable: true, validators: [mobileValidator] }),
     isPrimary: new FormControl(contact?.isPrimary ?? false, { nonNullable: true }),
   });
@@ -36,7 +38,7 @@ export function createSchoolForm() {
   return new FormGroup({
     schoolCode: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(100), pattern(SCHOOL_CODE_RE, 'Only letters, numbers, hyphen and underscore are allowed')],
+      validators: [Validators.required, pattern(UDISE_RE, 'UDISE code must be exactly 11 digits')],
     }),
     schoolName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(250)] }),
     schoolShortName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),

@@ -24,6 +24,16 @@ export class AuthService {
 
   readonly user = computed<AuthUser | null>(() => this.session()?.user ?? null);
 
+  /**
+   * Role NAMES of the signed-in user (from login/refresh, restored synchronously from storage, so the first render
+   * already has them — no flash of the wrong menu). Empty when signed out.
+   */
+  readonly currentUserRoles = computed<readonly string[]>(() => this.session()?.user.roles ?? []);
+
+  isLoggedIn(): boolean {
+    return this.hasValidSession();
+  }
+
   accessToken(): string | null {
     return this.session()?.token ?? null;
   }
@@ -58,6 +68,15 @@ export class AuthService {
       tap((res) => this.store(res, this.session()?.remember ?? false)),
       map((res) => res.user),
     );
+  }
+
+  /** Keeps the cached user (shown in the topbar) in step after the user's own data changes, e.g. school name or logo. */
+  patchUser(changes: Partial<AuthUser>): void {
+    const current = this.session();
+    if (!current) return;
+    const next: AuthSession = { ...current, user: { ...current.user, ...changes } };
+    this.session.set(next);
+    this.write(current.remember ? 'local' : 'session', JSON.stringify(next));
   }
 
   /** Exchanges the refresh token for a new pair; emits the new access token. Single-flight. */

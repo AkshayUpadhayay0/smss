@@ -92,7 +92,14 @@ export class SchoolFormComponent implements OnInit {
     this.setupDateRevalidation();
     this.setChildrenEnabled({ state: false, district: false, city: false });
 
-    if (this.isAdd()) return;
+    if (this.isAdd()) {
+      // A primary contact is mandatory, so the form starts with one (pre-selected as primary).
+      this.contacts.push(createContactGroup({ isPrimary: true }), { emitEvent: false });
+      return;
+    }
+
+    // The UDISE rule is for NEW schools; legacy codes (e.g. "SUAD01") can't be changed, so they must not block saving.
+    this.form.controls.schoolCode.disable({ emitEvent: false });
 
     const id = this.schoolId();
     if (!id) {
@@ -232,9 +239,12 @@ export class SchoolFormComponent implements OnInit {
     this.contacts.markAsDirty();
   }
 
-  /** Saved contacts can't be removed: the API's update never deletes contacts. */
+  /**
+   * Saved contacts can't be removed (the API's update never deletes contacts), and the last contact can't be
+   * removed because a primary contact is mandatory.
+   */
   protected canRemove(group: ContactGroup): boolean {
-    return !this.isView() && group.controls.contactId.value == null;
+    return !this.isView() && group.controls.contactId.value == null && this.contacts.length > 1;
   }
 
   protected removeContact(index: number): void {

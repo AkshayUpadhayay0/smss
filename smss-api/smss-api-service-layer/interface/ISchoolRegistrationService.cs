@@ -13,6 +13,12 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> UpdateSchoolAsync(string schoolId, UpdateSchoolRequest request);
         Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId);
 
+        // "My school": schoolId is taken from the caller's token; null/empty means the account has no school (400)
+        Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId);
+        Task<ApiResponse<object>> UpdateMySchoolAsync(string? schoolId, UpdateMySchoolProfileRequest request);
+        Task<ApiResponse<object>> UploadMyLogoAsync(string? schoolId, Stream content, string fileName, long length, CancellationToken ct);
+        Task<ApiResponse<object>> RemoveMyLogoAsync(string? schoolId);
+
         Task<ApiResponse<object>> UploadLogoAsync(string schoolId, Stream content, string fileName, long length, CancellationToken ct);
         Task<ApiResponse<object>> RemoveLogoAsync(string schoolId);
     }

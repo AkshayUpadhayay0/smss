@@ -226,6 +226,71 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error(ex, "updating school"); }
         }
 
+        // ---------------- MY SCHOOL (school id comes from the caller's token, never the client) ----------------
+        private const string NoSchoolMessage = TenantMessages.NoSchool;
+
+        public Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId) =>
+            string.IsNullOrWhiteSpace(schoolId) ? Task.FromResult(Fail(400, NoSchoolMessage)) : GetSchoolByIdAsync(schoolId);
+
+        public async Task<ApiResponse<object>> UpdateMySchoolAsync(string? schoolId, UpdateMySchoolProfileRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);
+            try
+            {
+                var school = await _repo.GetSchoolByIdAsync(schoolId, track: true);
+                if (school == null) return Fail(404, "School not found");
+
+                var gstin = Clean(req.SchoolGstin)?.ToUpperInvariant();
+                var pan = Clean(req.SchoolPan)?.ToUpperInvariant();
+
+                var duplicates = await _repo.GetDuplicateFieldsAsync(null, gstin, pan, excludeSchoolId: schoolId);
+                if (duplicates.Count > 0)
+                    return Fail(409, $"Already exists: {string.Join(", ", duplicates)}");
+
+                // Subscription, status, code and logo are intentionally not touched here
+                school.SchoolName = req.SchoolName.Trim();
+                school.SchoolShortName = Clean(req.SchoolShortName);
+                school.SchoolTypeId = req.SchoolTypeId;
+                school.SchoolLevelId = req.SchoolLevelId;
+                school.BoardTypeId = req.BoardTypeId;
+                school.SchoolEstablishYear = req.SchoolEstablishYear;
+                school.SchoolGstin = gstin;
+                school.SchoolPan = pan;
+                school.CountryId = req.CountryId;
+                school.StateId = req.StateId;
+                school.DistrictId = req.DistrictId;
+                school.CityId = req.CityId;
+                school.AddressLine1 = Clean(req.AddressLine1);
+                school.AddressLine2 = Clean(req.AddressLine2);
+                school.Pincode = Clean(req.Pincode);
+                school.Email = Clean(req.Email);
+                school.MobileNumber = Clean(req.MobileNumber);
+                school.Website = Clean(req.Website);
+                school.UpdatedAt = DateTime.UtcNow;
+
+                await _repo.SaveChangesAsync();
+                return Ok(200, "School profile updated successfully", SchoolMapper.ToResponse(school));
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                return Fail(409, "GSTIN or PAN already exists");
+            }
+            catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
+            {
+                _logger.LogWarning(ex, "Invalid lookup/location reference while updating own profile for {SchoolId}", schoolId);
+                return Fail(400, InvalidSelectionMessage);
+            }
+            catch (Exception ex) { return Error(ex, "updating school profile"); }
+        }
+
+        public Task<ApiResponse<object>> UploadMyLogoAsync(string? schoolId, Stream content, string fileName, long length, CancellationToken ct) =>
+            string.IsNullOrWhiteSpace(schoolId)
+                ? Task.FromResult(Fail(400, NoSchoolMessage))
+                : UploadLogoAsync(schoolId, content, fileName, length, ct);
+
+        public Task<ApiResponse<object>> RemoveMyLogoAsync(string? schoolId) =>
+            string.IsNullOrWhiteSpace(schoolId) ? Task.FromResult(Fail(400, NoSchoolMessage)) : RemoveLogoAsync(schoolId);
+
         // ---------------- TOGGLE STATUS ----------------
         public async Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId)
         {

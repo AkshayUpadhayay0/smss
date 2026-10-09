@@ -40,7 +40,7 @@ export class SchoolListComponent {
   private readonly router = inject(Router);
 
   protected readonly columns: TableColumn<SchoolRow>[] = [
-    { key: 'schoolCode', label: 'School Code', sortable: true, width: '150px' },
+    { key: 'schoolCode', label: 'UDISE Code', sortable: true, width: '150px' },
     { key: 'schoolName', label: 'School Name', sortable: true },
     { key: 'email', label: 'Email', sortable: true },
     { key: 'mobileNumber', label: 'Mobile', sortable: true, width: '140px' },

@@ -49,5 +49,35 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> CreateRoleAsync(CreateRoleRequestDto request);
         Task<ApiResponse<object>> UpdateRoleAsync(long id, UpdateRoleRequestDto request);
         Task<ApiResponse<object>> ToggleRoleStatusAsync(long id);
+
+        // RELIGION CATEGORYS
+        Task<ApiResponse<object>> GetReligionCategoriesAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateReligionCategoryAsync(CreateReligionCategoryRequestDto request);
+        Task<ApiResponse<object>> UpdateReligionCategoryAsync(long id, UpdateReligionCategoryRequestDto request);
+        Task<ApiResponse<object>> ToggleReligionCategoryStatusAsync(long id);
+
+        // BLOOD GROUPS
+        Task<ApiResponse<object>> GetBloodGroupsAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateBloodGroupAsync(CreateBloodGroupRequestDto request);
+        Task<ApiResponse<object>> UpdateBloodGroupAsync(long id, UpdateBloodGroupRequestDto request);
+        Task<ApiResponse<object>> ToggleBloodGroupStatusAsync(long id);
+
+        // GENDERS
+        Task<ApiResponse<object>> GetGendersAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateGenderAsync(CreateGenderRequestDto request);
+        Task<ApiResponse<object>> UpdateGenderAsync(long id, UpdateGenderRequestDto request);
+        Task<ApiResponse<object>> ToggleGenderStatusAsync(long id);
+
+        // DOCUMENT TYPES
+        Task<ApiResponse<object>> GetDocumentTypesAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateDocumentTypeAsync(CreateDocumentTypeRequestDto request);
+        Task<ApiResponse<object>> UpdateDocumentTypeAsync(long id, UpdateDocumentTypeRequestDto request);
+        Task<ApiResponse<object>> ToggleDocumentTypeStatusAsync(long id);
+
+        // STUDENT CATEGORYS
+        Task<ApiResponse<object>> GetStudentCategoriesAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateStudentCategoryAsync(CreateStudentCategoryRequestDto request);
+        Task<ApiResponse<object>> UpdateStudentCategoryAsync(long id, UpdateStudentCategoryRequestDto request);
+        Task<ApiResponse<object>> ToggleStudentCategoryStatusAsync(long id);
     }
 }

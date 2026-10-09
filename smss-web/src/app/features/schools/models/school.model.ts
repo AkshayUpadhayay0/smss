@@ -53,6 +53,12 @@ export interface UpdateSchoolRequest extends SchoolBase {
   contacts: SchoolContact[]; // no schoolCode field
 }
 
+/** A School Admin editing their own school: no subscription, status, code, logo or contacts. */
+export type UpdateMySchoolProfileRequest = Omit<
+  SchoolBase,
+  'subscriptionPlanId' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'subscriptionStatusId'
+>;
+
 export interface SchoolsListModel extends SchoolBase {
   schoolId: string; // e.g. "sch2026001"
   schoolCode: string;

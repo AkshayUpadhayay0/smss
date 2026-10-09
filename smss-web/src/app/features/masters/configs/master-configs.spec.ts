@@ -5,11 +5,16 @@ import { ToastService } from '../../../core/services/toast.service';
 import { API, envelope, setupHttp } from '../../schools/testing/school-test-utils';
 import { MasterConfig, MasterItem } from '../models/master.model';
 import { MasterListComponent } from '../pages/master-list/master-list.component';
+import { BLOOD_GROUP_CONFIG } from './blood-group.config';
 import { BOARD_TYPE_CONFIG } from './board-type.config';
+import { DOCUMENT_TYPE_CONFIG } from './document-type.config';
+import { GENDER_CONFIG } from './gender.config';
+import { RELIGION_CATEGORY_CONFIG } from './religion-category.config';
 import { ROLE_CONFIG } from './role.config';
 import { SCHOOL_LEVEL_CONFIG } from './school-level.config';
 import { SCHOOL_TYPE_CONFIG } from './school-type.config';
 import { STATUS_CONFIG } from './status.config';
+import { STUDENT_CATEGORY_CONFIG } from './student-category.config';
 
 const ALL: [string, MasterConfig][] = [
   ['Board Type', BOARD_TYPE_CONFIG],
@@ -17,6 +22,11 @@ const ALL: [string, MasterConfig][] = [
   ['School Level', SCHOOL_LEVEL_CONFIG],
   ['Status', STATUS_CONFIG],
   ['Role', ROLE_CONFIG],
+  ['Religion/Caste Category', RELIGION_CATEGORY_CONFIG],
+  ['Blood Group', BLOOD_GROUP_CONFIG],
+  ['Gender', GENDER_CONFIG],
+  ['Document Type', DOCUMENT_TYPE_CONFIG],
+  ['Student Category', STUDENT_CATEGORY_CONFIG],
 ];
 
 /** A plausible API record for any config, built from its own field list. */
@@ -92,7 +102,7 @@ describe('master configs', () => {
       // fill required text fields; leave optional ones blank
       const inputs = [...modal.querySelectorAll<HTMLInputElement>('input')];
       const textFields = cfg.fields.filter((f) => f.type === 'text');
-      textFields.forEach((f, i) => type(inputs[i], `ZZ ${f.key}`));
+      textFields.forEach((f, i) => type(inputs[i], `ZZ ${f.key}`.slice(0, f.maxLength ?? 999)));
       for (const f of cfg.fields.filter((f) => f.type === 'select')) {
         const select = modal.querySelector<HTMLSelectElement>('select')!;
         select.value = f.options![0].value;

@@ -1,0 +1,64 @@
+<app-page-header
+  title="Class-Subject Mapping"
+  subtitle="Choose which subjects are taught in each class"
+  icon="graduation-cap"
+  [breadcrumbs]="breadcrumbs"
+/>
+
+@if (loading()) {
+  <app-card><p class="status-note">Loading classes and subjects…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="status-note">
+      <p>Classes and subjects could not be loaded.</p>
+      <app-button variant="secondary" (click)="loadLookups()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  <div class="sections">
+    <app-card title="Class">
+      <div class="picker">
+        <app-select label="Select class" placeholder="Select a class…" [options]="classOptions()" [formControl]="classControl" />
+      </div>
+      @if (classOptions().length === 0) {
+        <p class="hint">No active classes yet. Add a class under School Setup → Class first.</p>
+      }
+    </app-card>
+
+    @if (hasClass()) {
+      <app-card title="Subjects">
+        @if (loadingMappings()) {
+          <p class="status-note">Loading subjects for this class…</p>
+        } @else if (visibleSubjects().length === 0) {
+          <p class="status-note">No active subjects yet. Add subjects under School Setup → Subject first.</p>
+        } @else {
+          <p class="hint top">Tick the subjects taught in this class, then save.</p>
+          <ul class="checklist">
+            @for (s of visibleSubjects(); track s.id) {
+              <li>
+                <label class="item" [class.checked]="ticked().has(s.id)">
+                  <input type="checkbox" [checked]="ticked().has(s.id)" [disabled]="saving()" (change)="toggle(s.id, $any($event.target).checked)" />
+                  <span class="name">{{ s.name }}</span>
+                  @if (s.code) {
+                    <span class="code">{{ s.code }}</span>
+                  }
+                  @if (s.inactive) {
+                    <span class="inactive">Inactive</span>
+                  }
+                </label>
+              </li>
+            }
+          </ul>
+
+          <div class="footer">
+            @if (dirty()) {
+              <span class="unsaved"><app-icon name="circle-alert" [size]="16" />Unsaved changes</span>
+            }
+            <app-button variant="secondary" [disabled]="saving() || !dirty()" (click)="reset()">Reset</app-button>
+            <app-button [disabled]="saving() || !dirty()" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</app-button>
+          </div>
+        }
+      </app-card>
+    }
+  </div>
+}

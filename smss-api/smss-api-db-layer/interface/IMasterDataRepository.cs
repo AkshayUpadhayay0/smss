@@ -55,5 +55,40 @@ namespace smss_api_db_layer.@interface
         Task<bool> AddRoleAsync(LutRole entity);       // false = unique constraint violation
         Task<bool> UpdateRoleAsync(LutRole entity);    // false = unique constraint violation
         Task<int> CountRoleAssignmentsAsync(long roleId);
+
+        // RELIGION CATEGORYS
+        Task<List<LutReligionCategory>> GetReligionCategoriesAsync(bool includeInactive = false);
+        Task<LutReligionCategory?> GetReligionCategoryByIdAsync(long id);
+        Task<bool> ReligionCategoryExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddReligionCategoryAsync(LutReligionCategory entity);      // false = unique constraint violation
+        Task<bool> UpdateReligionCategoryAsync(LutReligionCategory entity);   // false = unique constraint violation
+
+        // BLOOD GROUPS
+        Task<List<LutBloodGroup>> GetBloodGroupsAsync(bool includeInactive = false);
+        Task<LutBloodGroup?> GetBloodGroupByIdAsync(long id);
+        Task<bool> BloodGroupExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddBloodGroupAsync(LutBloodGroup entity);      // false = unique constraint violation
+        Task<bool> UpdateBloodGroupAsync(LutBloodGroup entity);   // false = unique constraint violation
+
+        // GENDERS
+        Task<List<LutGender>> GetGendersAsync(bool includeInactive = false);
+        Task<LutGender?> GetGenderByIdAsync(long id);
+        Task<bool> GenderExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddGenderAsync(LutGender entity);      // false = unique constraint violation
+        Task<bool> UpdateGenderAsync(LutGender entity);   // false = unique constraint violation
+
+        // DOCUMENT TYPES
+        Task<List<LutDocumentType>> GetDocumentTypesAsync(bool includeInactive = false);
+        Task<LutDocumentType?> GetDocumentTypeByIdAsync(long id);
+        Task<bool> DocumentTypeExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddDocumentTypeAsync(LutDocumentType entity);      // false = unique constraint violation
+        Task<bool> UpdateDocumentTypeAsync(LutDocumentType entity);   // false = unique constraint violation
+
+        // STUDENT CATEGORYS
+        Task<List<LutStudentCategory>> GetStudentCategoriesAsync(bool includeInactive = false);
+        Task<LutStudentCategory?> GetStudentCategoryByIdAsync(long id);
+        Task<bool> StudentCategoryExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddStudentCategoryAsync(LutStudentCategory entity);      // false = unique constraint violation
+        Task<bool> UpdateStudentCategoryAsync(LutStudentCategory entity);   // false = unique constraint violation
     }
 }

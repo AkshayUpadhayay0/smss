@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 // Feature route files are mounted at the ROOT path (e.g. /schools, /masters/board-type).
 export const routes: Routes = [
@@ -17,10 +18,13 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [authGuard],
+    canActivateChild: [roleGuard], // per-page role check, re-run on every child navigation
     loadComponent: () => import('./layouts/main-layout/main-layout.component').then((m) => m.MainLayoutComponent),
     children: [
       { path: '', loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES) },
       { path: '', loadChildren: () => import('./features/schools/schools.routes').then((m) => m.SCHOOLS_ROUTES) },
+      { path: '', loadChildren: () => import('./features/school-profile/school-profile.routes').then((m) => m.SCHOOL_PROFILE_ROUTES) },
+      { path: '', loadChildren: () => import('./features/school-setup/school-setup.routes').then((m) => m.SCHOOL_SETUP_ROUTES) },
       { path: '', loadChildren: () => import('./features/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
       {
         path: 'change-password',

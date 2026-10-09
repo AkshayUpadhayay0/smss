@@ -1,0 +1,54 @@
+<app-page-header title="Section" subtitle="Manage the sections within each of your classes" icon="graduation-cap" [breadcrumbs]="breadcrumbs">
+  <app-button (click)="openCreate()"><app-icon name="plus" [size]="16" />Add Section</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input placeholder="Search sections…" prefixIcon="search" (input)="onSearch($event)" />
+    </div>
+    <span class="count">{{ total() }} {{ total() === 1 ? 'record' : 'records' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="pageRows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [sortKey]="sortKey()"
+    [sortDirection]="sortDirection()"
+    [emptyMessage]="loadFailed() ? 'Could not load sections.' : search() ? 'Nothing matches your search.' : 'No sections yet. Add classes first, then add sections to them.'"
+    (sortChange)="onSort($event)"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
+        <app-icon name="pencil" [size]="14" />
+      </app-button>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="busyId() === row.sectionId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-left" [size]="14" />Deactivate
+        </app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.sectionId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-right" [size]="14" />Activate
+        </app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="page.set($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (modal(); as m) {
+  <app-section-form-modal [section]="m.section" (saved)="onSaved($event)" (closed)="modal.set(null)" />
+}

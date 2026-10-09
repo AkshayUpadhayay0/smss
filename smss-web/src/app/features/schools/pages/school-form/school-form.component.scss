@@ -77,3 +77,11 @@
   gap: var(--space-3);
   padding-bottom: var(--space-6);
 }
+
+.required-note {
+  margin: 0 0 var(--space-4);
+}
+
+.req {
+  color: var(--color-danger);
+}

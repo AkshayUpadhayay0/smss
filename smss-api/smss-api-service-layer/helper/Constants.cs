@@ -18,6 +18,10 @@ namespace smss_api_service_layer.helper
         public const string SchoolAdmin = "School Admin";
         public const string SuperAdmin = "Super Admin";
     }
+    public static class TenantMessages
+    {
+        public const string NoSchool = "This account is not linked to a school.";
+    }
     public static class StatusNames
     {
         public const string Active = "Active";

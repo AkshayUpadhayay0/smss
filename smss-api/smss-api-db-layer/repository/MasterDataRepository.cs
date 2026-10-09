@@ -369,5 +369,295 @@ namespace smss_api_db_layer.repository
                 .SingleAsync();
         }
 
+
+        // =========================================================
+        // GET ACTIVE RELIGION CATEGORYS
+        // =========================================================
+
+        public async Task<List<LutReligionCategory>> GetReligionCategoriesAsync(bool includeInactive = false)
+        {
+            IQueryable<LutReligionCategory> query = _dbContext.LutReligionCategories.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.ReligionName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutReligionCategory?> GetReligionCategoryByIdAsync(long id)
+        {
+            return await _dbContext.LutReligionCategories.FirstOrDefaultAsync(x => x.ReligionCategoryId == id);
+        }
+
+        public async Task<bool> ReligionCategoryExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutReligionCategories.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.ReligionCategoryId != excludeId) &&
+                (x.ReligionCode.ToUpper() == upperCode || x.ReligionName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddReligionCategoryAsync(LutReligionCategory entity)
+        {
+            try
+            {
+                _dbContext.LutReligionCategories.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateReligionCategoryAsync(LutReligionCategory entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // =========================================================
+        // GET ACTIVE BLOOD GROUPS
+        // =========================================================
+
+        public async Task<List<LutBloodGroup>> GetBloodGroupsAsync(bool includeInactive = false)
+        {
+            IQueryable<LutBloodGroup> query = _dbContext.LutBloodGroups.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.BloodGroupName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutBloodGroup?> GetBloodGroupByIdAsync(long id)
+        {
+            return await _dbContext.LutBloodGroups.FirstOrDefaultAsync(x => x.BloodGroupId == id);
+        }
+
+        public async Task<bool> BloodGroupExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutBloodGroups.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.BloodGroupId != excludeId) &&
+                (x.BloodGroupCode.ToUpper() == upperCode || x.BloodGroupName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddBloodGroupAsync(LutBloodGroup entity)
+        {
+            try
+            {
+                _dbContext.LutBloodGroups.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateBloodGroupAsync(LutBloodGroup entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // =========================================================
+        // GET ACTIVE GENDERS
+        // =========================================================
+
+        public async Task<List<LutGender>> GetGendersAsync(bool includeInactive = false)
+        {
+            IQueryable<LutGender> query = _dbContext.LutGenders.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.GenderName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutGender?> GetGenderByIdAsync(long id)
+        {
+            return await _dbContext.LutGenders.FirstOrDefaultAsync(x => x.GenderId == id);
+        }
+
+        public async Task<bool> GenderExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutGenders.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.GenderId != excludeId) &&
+                (x.GenderCode.ToUpper() == upperCode || x.GenderName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddGenderAsync(LutGender entity)
+        {
+            try
+            {
+                _dbContext.LutGenders.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateGenderAsync(LutGender entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // =========================================================
+        // GET ACTIVE DOCUMENT TYPES
+        // =========================================================
+
+        public async Task<List<LutDocumentType>> GetDocumentTypesAsync(bool includeInactive = false)
+        {
+            IQueryable<LutDocumentType> query = _dbContext.LutDocumentTypes.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.DocumentTypeName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutDocumentType?> GetDocumentTypeByIdAsync(long id)
+        {
+            return await _dbContext.LutDocumentTypes.FirstOrDefaultAsync(x => x.DocumentTypeId == id);
+        }
+
+        public async Task<bool> DocumentTypeExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutDocumentTypes.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.DocumentTypeId != excludeId) &&
+                (x.DocumentTypeCode.ToUpper() == upperCode || x.DocumentTypeName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddDocumentTypeAsync(LutDocumentType entity)
+        {
+            try
+            {
+                _dbContext.LutDocumentTypes.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateDocumentTypeAsync(LutDocumentType entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
+
+        // =========================================================
+        // GET ACTIVE STUDENT CATEGORYS
+        // =========================================================
+
+        public async Task<List<LutStudentCategory>> GetStudentCategoriesAsync(bool includeInactive = false)
+        {
+            IQueryable<LutStudentCategory> query = _dbContext.LutStudentCategories.AsNoTracking();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query.OrderBy(x => x.CategoryName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutStudentCategory?> GetStudentCategoryByIdAsync(long id)
+        {
+            return await _dbContext.LutStudentCategories.FirstOrDefaultAsync(x => x.StudentCategoryId == id);
+        }
+
+        public async Task<bool> StudentCategoryExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+
+            return await _dbContext.LutStudentCategories.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.StudentCategoryId != excludeId) &&
+                (x.CategoryCode.ToUpper() == upperCode || x.CategoryName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddStudentCategoryAsync(LutStudentCategory entity)
+        {
+            try
+            {
+                _dbContext.LutStudentCategories.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateStudentCategoryAsync(LutStudentCategory entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
     }
 }

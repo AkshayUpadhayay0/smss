@@ -3,7 +3,7 @@
 </div>
 
 <nav class="nav" aria-label="Main navigation">
-  @for (item of items; track item.label) {
+  @for (item of items(); track item.label) {
     @if (item.children) {
       <div class="group" [class.open]="isOpen(item)">
         <button type="button" class="link group-toggle" [attr.aria-expanded]="isOpen(item)" [title]="collapsed() ? item.label : ''" (click)="toggleGroup(item)">

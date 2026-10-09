@@ -705,5 +705,545 @@ namespace smss_api_service_layer.service
 
 
 
+
+        // =========================================================
+        // RELIGION CATEGORYS
+        // =========================================================
+
+        public async Task<ApiResponse<object>> GetReligionCategoriesAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutReligionCategory> items = await _masterDataRepository.GetReligionCategoriesAsync(includeInactive);
+
+                // Dropdown callers keep the old 404 behaviour; the admin grid gets an empty list.
+                if (!includeInactive && (items == null || !items.Any()))
+                    return Result(false, 404, "No religion category records found", null);
+
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch religion category records.");
+                return Result(false, 500, "Unable to fetch religion category records.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateReligionCategoryAsync(CreateReligionCategoryRequestDto request)
+        {
+            try
+            {
+                string code = request.ReligionCode.Trim().ToUpperInvariant();
+                string name = request.ReligionName.Trim();
+
+                if (await _masterDataRepository.ReligionCategoryExistsAsync(code, name))
+                    return Result(false, 409, "A religion category with the same code or name already exists.", null);
+
+                var entity = new LutReligionCategory
+                {
+                    ReligionCode = code,
+                    ReligionName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddReligionCategoryAsync(entity))
+                    return Result(false, 409, "A religion category with the same code or name already exists.", null);
+
+                _logger.LogInformation("Religion category {Code} created.", code);
+                return Result(true, 201, "Religion category created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create religion category.");
+                return Result(false, 500, "Unable to create religion category.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateReligionCategoryAsync(long id, UpdateReligionCategoryRequestDto request)
+        {
+            try
+            {
+                LutReligionCategory? entity = await _masterDataRepository.GetReligionCategoryByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Religion category not found.", null);
+
+                string name = request.ReligionName.Trim();
+
+                if (await _masterDataRepository.ReligionCategoryExistsAsync(entity.ReligionCode, name, excludeId: id))
+                    return Result(false, 409, "Another religion category with the same name already exists.", null);
+
+                entity.ReligionName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateReligionCategoryAsync(entity))
+                    return Result(false, 409, "Another religion category with the same name already exists.", null);
+
+                _logger.LogInformation("Religion category {Id} updated.", id);
+                return Result(true, 200, "Religion category updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update religion category {Id}.", id);
+                return Result(false, 500, "Unable to update religion category.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ToggleReligionCategoryStatusAsync(long id)
+        {
+            try
+            {
+                LutReligionCategory? entity = await _masterDataRepository.GetReligionCategoryByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Religion category not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateReligionCategoryAsync(entity);
+
+                _logger.LogInformation("Religion category {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Religion category activated." : "Religion category deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle religion category {Id}.", id);
+                return Result(false, 500, "Unable to change religion category status.", null);
+            }
+        }
+
+        // =========================================================
+        // BLOOD GROUPS
+        // =========================================================
+
+        public async Task<ApiResponse<object>> GetBloodGroupsAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutBloodGroup> items = await _masterDataRepository.GetBloodGroupsAsync(includeInactive);
+
+                // Dropdown callers keep the old 404 behaviour; the admin grid gets an empty list.
+                if (!includeInactive && (items == null || !items.Any()))
+                    return Result(false, 404, "No blood group records found", null);
+
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch blood group records.");
+                return Result(false, 500, "Unable to fetch blood group records.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateBloodGroupAsync(CreateBloodGroupRequestDto request)
+        {
+            try
+            {
+                string code = request.BloodGroupCode.Trim().ToUpperInvariant();
+                string name = request.BloodGroupName.Trim();
+
+                if (await _masterDataRepository.BloodGroupExistsAsync(code, name))
+                    return Result(false, 409, "A blood group with the same code or name already exists.", null);
+
+                var entity = new LutBloodGroup
+                {
+                    BloodGroupCode = code,
+                    BloodGroupName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddBloodGroupAsync(entity))
+                    return Result(false, 409, "A blood group with the same code or name already exists.", null);
+
+                _logger.LogInformation("Blood group {Code} created.", code);
+                return Result(true, 201, "Blood group created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create blood group.");
+                return Result(false, 500, "Unable to create blood group.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateBloodGroupAsync(long id, UpdateBloodGroupRequestDto request)
+        {
+            try
+            {
+                LutBloodGroup? entity = await _masterDataRepository.GetBloodGroupByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Blood group not found.", null);
+
+                string name = request.BloodGroupName.Trim();
+
+                if (await _masterDataRepository.BloodGroupExistsAsync(entity.BloodGroupCode, name, excludeId: id))
+                    return Result(false, 409, "Another blood group with the same name already exists.", null);
+
+                entity.BloodGroupName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateBloodGroupAsync(entity))
+                    return Result(false, 409, "Another blood group with the same name already exists.", null);
+
+                _logger.LogInformation("Blood group {Id} updated.", id);
+                return Result(true, 200, "Blood group updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update blood group {Id}.", id);
+                return Result(false, 500, "Unable to update blood group.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ToggleBloodGroupStatusAsync(long id)
+        {
+            try
+            {
+                LutBloodGroup? entity = await _masterDataRepository.GetBloodGroupByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Blood group not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateBloodGroupAsync(entity);
+
+                _logger.LogInformation("Blood group {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Blood group activated." : "Blood group deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle blood group {Id}.", id);
+                return Result(false, 500, "Unable to change blood group status.", null);
+            }
+        }
+
+        // =========================================================
+        // GENDERS
+        // =========================================================
+
+        public async Task<ApiResponse<object>> GetGendersAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutGender> items = await _masterDataRepository.GetGendersAsync(includeInactive);
+
+                // Dropdown callers keep the old 404 behaviour; the admin grid gets an empty list.
+                if (!includeInactive && (items == null || !items.Any()))
+                    return Result(false, 404, "No gender records found", null);
+
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch gender records.");
+                return Result(false, 500, "Unable to fetch gender records.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateGenderAsync(CreateGenderRequestDto request)
+        {
+            try
+            {
+                string code = request.GenderCode.Trim().ToUpperInvariant();
+                string name = request.GenderName.Trim();
+
+                if (await _masterDataRepository.GenderExistsAsync(code, name))
+                    return Result(false, 409, "A gender with the same code or name already exists.", null);
+
+                var entity = new LutGender
+                {
+                    GenderCode = code,
+                    GenderName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddGenderAsync(entity))
+                    return Result(false, 409, "A gender with the same code or name already exists.", null);
+
+                _logger.LogInformation("Gender {Code} created.", code);
+                return Result(true, 201, "Gender created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create gender.");
+                return Result(false, 500, "Unable to create gender.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateGenderAsync(long id, UpdateGenderRequestDto request)
+        {
+            try
+            {
+                LutGender? entity = await _masterDataRepository.GetGenderByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Gender not found.", null);
+
+                string name = request.GenderName.Trim();
+
+                if (await _masterDataRepository.GenderExistsAsync(entity.GenderCode, name, excludeId: id))
+                    return Result(false, 409, "Another gender with the same name already exists.", null);
+
+                entity.GenderName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateGenderAsync(entity))
+                    return Result(false, 409, "Another gender with the same name already exists.", null);
+
+                _logger.LogInformation("Gender {Id} updated.", id);
+                return Result(true, 200, "Gender updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update gender {Id}.", id);
+                return Result(false, 500, "Unable to update gender.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ToggleGenderStatusAsync(long id)
+        {
+            try
+            {
+                LutGender? entity = await _masterDataRepository.GetGenderByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Gender not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateGenderAsync(entity);
+
+                _logger.LogInformation("Gender {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Gender activated." : "Gender deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle gender {Id}.", id);
+                return Result(false, 500, "Unable to change gender status.", null);
+            }
+        }
+
+        // =========================================================
+        // DOCUMENT TYPES
+        // =========================================================
+
+        public async Task<ApiResponse<object>> GetDocumentTypesAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutDocumentType> items = await _masterDataRepository.GetDocumentTypesAsync(includeInactive);
+
+                // Dropdown callers keep the old 404 behaviour; the admin grid gets an empty list.
+                if (!includeInactive && (items == null || !items.Any()))
+                    return Result(false, 404, "No document type records found", null);
+
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch document type records.");
+                return Result(false, 500, "Unable to fetch document type records.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateDocumentTypeAsync(CreateDocumentTypeRequestDto request)
+        {
+            try
+            {
+                string code = request.DocumentTypeCode.Trim().ToUpperInvariant();
+                string name = request.DocumentTypeName.Trim();
+
+                if (await _masterDataRepository.DocumentTypeExistsAsync(code, name))
+                    return Result(false, 409, "A document type with the same code or name already exists.", null);
+
+                var entity = new LutDocumentType
+                {
+                    DocumentTypeCode = code,
+                    DocumentTypeName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddDocumentTypeAsync(entity))
+                    return Result(false, 409, "A document type with the same code or name already exists.", null);
+
+                _logger.LogInformation("Document type {Code} created.", code);
+                return Result(true, 201, "Document type created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create document type.");
+                return Result(false, 500, "Unable to create document type.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateDocumentTypeAsync(long id, UpdateDocumentTypeRequestDto request)
+        {
+            try
+            {
+                LutDocumentType? entity = await _masterDataRepository.GetDocumentTypeByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Document type not found.", null);
+
+                string name = request.DocumentTypeName.Trim();
+
+                if (await _masterDataRepository.DocumentTypeExistsAsync(entity.DocumentTypeCode, name, excludeId: id))
+                    return Result(false, 409, "Another document type with the same name already exists.", null);
+
+                entity.DocumentTypeName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateDocumentTypeAsync(entity))
+                    return Result(false, 409, "Another document type with the same name already exists.", null);
+
+                _logger.LogInformation("Document type {Id} updated.", id);
+                return Result(true, 200, "Document type updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update document type {Id}.", id);
+                return Result(false, 500, "Unable to update document type.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ToggleDocumentTypeStatusAsync(long id)
+        {
+            try
+            {
+                LutDocumentType? entity = await _masterDataRepository.GetDocumentTypeByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Document type not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateDocumentTypeAsync(entity);
+
+                _logger.LogInformation("Document type {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Document type activated." : "Document type deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle document type {Id}.", id);
+                return Result(false, 500, "Unable to change document type status.", null);
+            }
+        }
+
+        // =========================================================
+        // STUDENT CATEGORYS
+        // =========================================================
+
+        public async Task<ApiResponse<object>> GetStudentCategoriesAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutStudentCategory> items = await _masterDataRepository.GetStudentCategoriesAsync(includeInactive);
+
+                // Dropdown callers keep the old 404 behaviour; the admin grid gets an empty list.
+                if (!includeInactive && (items == null || !items.Any()))
+                    return Result(false, 404, "No student category records found", null);
+
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch student category records.");
+                return Result(false, 500, "Unable to fetch student category records.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateStudentCategoryAsync(CreateStudentCategoryRequestDto request)
+        {
+            try
+            {
+                string code = request.CategoryCode.Trim().ToUpperInvariant();
+                string name = request.CategoryName.Trim();
+
+                if (await _masterDataRepository.StudentCategoryExistsAsync(code, name))
+                    return Result(false, 409, "A student category with the same code or name already exists.", null);
+
+                var entity = new LutStudentCategory
+                {
+                    CategoryCode = code,
+                    CategoryName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddStudentCategoryAsync(entity))
+                    return Result(false, 409, "A student category with the same code or name already exists.", null);
+
+                _logger.LogInformation("Student category {Code} created.", code);
+                return Result(true, 201, "Student category created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create student category.");
+                return Result(false, 500, "Unable to create student category.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateStudentCategoryAsync(long id, UpdateStudentCategoryRequestDto request)
+        {
+            try
+            {
+                LutStudentCategory? entity = await _masterDataRepository.GetStudentCategoryByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Student category not found.", null);
+
+                string name = request.CategoryName.Trim();
+
+                if (await _masterDataRepository.StudentCategoryExistsAsync(entity.CategoryCode, name, excludeId: id))
+                    return Result(false, 409, "Another student category with the same name already exists.", null);
+
+                entity.CategoryName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateStudentCategoryAsync(entity))
+                    return Result(false, 409, "Another student category with the same name already exists.", null);
+
+                _logger.LogInformation("Student category {Id} updated.", id);
+                return Result(true, 200, "Student category updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update student category {Id}.", id);
+                return Result(false, 500, "Unable to update student category.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ToggleStudentCategoryStatusAsync(long id)
+        {
+            try
+            {
+                LutStudentCategory? entity = await _masterDataRepository.GetStudentCategoryByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Student category not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateStudentCategoryAsync(entity);
+
+                _logger.LogInformation("Student category {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Student category activated." : "Student category deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle student category {Id}.", id);
+                return Result(false, 500, "Unable to change student category status.", null);
+            }
+        }
     }
 }

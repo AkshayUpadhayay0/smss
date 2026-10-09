@@ -115,6 +115,49 @@ namespace smss_api_service_layer.dto
         }
     }
 
+    // A School Admin editing their own school. Deliberately standalone (not a SchoolBaseRequest) so it can
+    // never carry subscription or status fields, and has no contacts.
+    public class UpdateMySchoolProfileRequest : IValidatableObject
+    {
+        [Required, StringLength(250)] public string SchoolName { get; set; } = null!;
+        [StringLength(100)] public string? SchoolShortName { get; set; }
+
+        public long? SchoolTypeId { get; set; }
+        public long? SchoolLevelId { get; set; }
+        public long? BoardTypeId { get; set; }
+        [Range(1800, 32767)] public short? SchoolEstablishYear { get; set; }
+
+        [RegularExpression(Rx.Gstin, ErrorMessage = "Invalid GSTIN.")] public string? SchoolGstin { get; set; }
+        [RegularExpression(Rx.Pan, ErrorMessage = "Invalid PAN.")] public string? SchoolPan { get; set; }
+
+        public int? CountryId { get; set; }
+        public int? StateId { get; set; }
+        public int? DistrictId { get; set; }
+        public int? CityId { get; set; }
+
+        [StringLength(250)] public string? AddressLine1 { get; set; }
+        [StringLength(250)] public string? AddressLine2 { get; set; }
+        [RegularExpression(Rx.Pincode, ErrorMessage = "Invalid pincode.")] public string? Pincode { get; set; }
+
+        [EmailAddress, StringLength(150)] public string? Email { get; set; }
+        [RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")]
+        public string? MobileNumber { get; set; }
+        [Url, StringLength(200)] public string? Website { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext context)
+        {
+            if (SchoolEstablishYear > DateTime.UtcNow.Year)
+                yield return new ValidationResult("Establish year cannot be in the future.", new[] { nameof(SchoolEstablishYear) });
+
+            if (StateId.HasValue && !CountryId.HasValue)
+                yield return new ValidationResult("CountryId is required when StateId is given.", new[] { nameof(CountryId) });
+            if (DistrictId.HasValue && !StateId.HasValue)
+                yield return new ValidationResult("StateId is required when DistrictId is given.", new[] { nameof(StateId) });
+            if (CityId.HasValue && !DistrictId.HasValue)
+                yield return new ValidationResult("DistrictId is required when CityId is given.", new[] { nameof(DistrictId) });
+        }
+    }
+
     public class UpdateSchoolRequest : SchoolBaseRequest
     {
         public List<SchoolContactUpdateRequest> Contacts { get; set; } = new();

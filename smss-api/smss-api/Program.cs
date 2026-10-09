@@ -31,6 +31,23 @@ builder.Services.AddSingleton<JwtTokenGenerator>();
 builder.Services.AddScoped<ISchoolRegistrationRepository, SchoolRegistrationRepository>();
 builder.Services.AddScoped<ISchoolRegistrationService, SchoolRegistrationService>();
 
+builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
+builder.Services.AddScoped<IAcademicYearService, AcademicYearService>();
+builder.Services.AddScoped<IClassRepository, ClassRepository>();
+builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<ISectionRepository, SectionRepository>();
+builder.Services.AddScoped<ISectionService, SectionService>();
+builder.Services.AddScoped<IClassSubjectRepository, ClassSubjectRepository>();
+builder.Services.AddScoped<IClassSubjectService, ClassSubjectService>();
+builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
+builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IEmployeeDesignationRepository, EmployeeDesignationRepository>();
+builder.Services.AddScoped<IEmployeeDesignationService, EmployeeDesignationService>();
+builder.Services.AddScoped<IEmployeeDepartmentRepository, EmployeeDepartmentRepository>();
+builder.Services.AddScoped<IEmployeeDepartmentService, EmployeeDepartmentService>();
+builder.Services.AddScoped<IAdmissionTypeRepository, AdmissionTypeRepository>();
+builder.Services.AddScoped<IAdmissionTypeService, AdmissionTypeService>();
+
 builder.Services.AddScoped<ISystemSetupRepository, SystemSetupRepository>();
 builder.Services.AddScoped<ISystemSetupService, SystemSetupService>();
 

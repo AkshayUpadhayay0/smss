@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -27,12 +27,25 @@ namespace smss_api_db_layer.context
         public DbSet<LutSchoolType> LutSchoolTypes { get; set; } = null!;
 
         public DbSet<LutSchoolLevel> LutSchoolLevels { get; set; } = null!;
+        public DbSet<LutStudentCategory> LutStudentCategories { get; set; } = null!;
+        public DbSet<LutReligionCategory> LutReligionCategories { get; set; } = null!;
+        public DbSet<LutBloodGroup> LutBloodGroups { get; set; } = null!;
+        public DbSet<LutGender> LutGenders { get; set; } = null!;
+        public DbSet<LutDocumentType> LutDocumentTypes { get; set; } = null!;
         public DbSet<LutRole> LutRoles { get; set; } = null!;
         public DbSet<TbSchools> Schools { get; set; } = null!;
         public DbSet<TbUsers> Users { get; set; } = null!; 
         public DbSet<TbUserRoles> UserRoles { get; set; } = null!;
         public DbSet<TbRefreshTokens> RefreshTokens { get; set; } = null!;
         public DbSet<TbSchoolContacts> SchoolContacts { get; set; } = null!;
+        public DbSet<TbAcademicYears> AcademicYears { get; set; } = null!;
+        public DbSet<TbClasses> Classes { get; set; } = null!;
+        public DbSet<TbSections> Sections { get; set; } = null!;
+        public DbSet<TbClassSubjects> ClassSubjects { get; set; } = null!;
+        public DbSet<TbSubjects> Subjects { get; set; } = null!;
+        public DbSet<TbEmployeeDesignations> EmployeeDesignations { get; set; } = null!;
+        public DbSet<TbEmployeeDepartments> EmployeeDepartments { get; set; } = null!;
+        public DbSet<TbAdmissionTypes> AdmissionTypes { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

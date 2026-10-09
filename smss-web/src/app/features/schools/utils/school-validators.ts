@@ -5,7 +5,8 @@ export const MOBILE_RE = /^[6-9][0-9]{9}$/;
 export const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i;
 export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
 export const PINCODE_RE = /^[1-9][0-9]{5}$/;
-export const SCHOOL_CODE_RE = /^[A-Za-z0-9_-]+$/;
+/** UDISE+ code: exactly 11 digits (leading zeros are valid, so it is kept as text). */
+export const UDISE_RE = /^[0-9]{11}$/;
 
 /** Custom validators put their message in the error value so the UI can show it directly. */
 export function pattern(re: RegExp, message: string): ValidatorFn {
@@ -13,6 +14,11 @@ export function pattern(re: RegExp, message: string): ValidatorFn {
     const v = String(c.value ?? '').trim();
     return v === '' || re.test(v) ? null : { pattern: message };
   };
+}
+
+/** Like Validators.required, but whitespace-only counts as empty (the value is trimmed before it is sent). */
+export function requiredTrimmed(c: AbstractControl): ValidationErrors | null {
+  return String(c.value ?? '').trim() === '' ? { required: true } : null;
 }
 
 export const mobileValidator = pattern(MOBILE_RE, 'Enter a valid 10-digit mobile number');
@@ -44,10 +50,10 @@ export function endDateValidator(c: AbstractControl): ValidationErrors | null {
   return end && start && end < start ? { range: 'End date cannot be before start date' } : null;
 }
 
-/** Exactly one primary contact whenever contacts exist. */
+/** A primary contact is mandatory: at least one contact, and exactly one of them marked primary. */
 export function primaryContactValidator(array: AbstractControl): ValidationErrors | null {
   const rows = (array.value ?? []) as { isPrimary: boolean }[];
-  if (rows.length === 0) return null;
+  if (rows.length === 0) return { primary: 'Add a contact and mark it as the primary contact' };
   return rows.filter((r) => r.isPrimary).length === 1 ? null : { primary: 'Mark exactly one contact as the primary contact' };
 }
 

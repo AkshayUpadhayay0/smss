@@ -264,5 +264,205 @@ namespace smss_api.Controllers
         }
 
 
+
+        // =========================================================
+        // RELIGION CATEGORYS
+        // =========================================================
+
+        // GET: api/MasterData/religion-categories?includeInactive=true
+        [HttpGet("religion-categories")]
+        public async Task<IActionResult> GetReligionCategories([FromQuery] bool includeInactive = false)
+        {
+            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
+            var response = await _masterDataService.GetReligionCategoriesAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/religion-categories
+        [HttpPost("religion-categories")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> CreateReligionCategory([FromBody] CreateReligionCategoryRequestDto request)
+        {
+            var response = await _masterDataService.CreateReligionCategoryAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/religion-categories/{id}
+        [HttpPut("religion-categories/{id:long}")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> UpdateReligionCategory(long id, [FromBody] UpdateReligionCategoryRequestDto request)
+        {
+            var response = await _masterDataService.UpdateReligionCategoryAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/religion-categories/{id}/toggle-status
+        [HttpPost("religion-categories/{id:long}/toggle-status")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> ToggleReligionCategoryStatus(long id)
+        {
+            var response = await _masterDataService.ToggleReligionCategoryStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // =========================================================
+        // BLOOD GROUPS
+        // =========================================================
+
+        // GET: api/MasterData/blood-groups?includeInactive=true
+        [HttpGet("blood-groups")]
+        public async Task<IActionResult> GetBloodGroups([FromQuery] bool includeInactive = false)
+        {
+            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
+            var response = await _masterDataService.GetBloodGroupsAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/blood-groups
+        [HttpPost("blood-groups")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> CreateBloodGroup([FromBody] CreateBloodGroupRequestDto request)
+        {
+            var response = await _masterDataService.CreateBloodGroupAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/blood-groups/{id}
+        [HttpPut("blood-groups/{id:long}")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> UpdateBloodGroup(long id, [FromBody] UpdateBloodGroupRequestDto request)
+        {
+            var response = await _masterDataService.UpdateBloodGroupAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/blood-groups/{id}/toggle-status
+        [HttpPost("blood-groups/{id:long}/toggle-status")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> ToggleBloodGroupStatus(long id)
+        {
+            var response = await _masterDataService.ToggleBloodGroupStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // =========================================================
+        // GENDERS
+        // =========================================================
+
+        // GET: api/MasterData/genders?includeInactive=true
+        [HttpGet("genders")]
+        public async Task<IActionResult> GetGenders([FromQuery] bool includeInactive = false)
+        {
+            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
+            var response = await _masterDataService.GetGendersAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/genders
+        [HttpPost("genders")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> CreateGender([FromBody] CreateGenderRequestDto request)
+        {
+            var response = await _masterDataService.CreateGenderAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/genders/{id}
+        [HttpPut("genders/{id:long}")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> UpdateGender(long id, [FromBody] UpdateGenderRequestDto request)
+        {
+            var response = await _masterDataService.UpdateGenderAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/genders/{id}/toggle-status
+        [HttpPost("genders/{id:long}/toggle-status")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> ToggleGenderStatus(long id)
+        {
+            var response = await _masterDataService.ToggleGenderStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // =========================================================
+        // DOCUMENT TYPES
+        // =========================================================
+
+        // GET: api/MasterData/document-types?includeInactive=true
+        [HttpGet("document-types")]
+        public async Task<IActionResult> GetDocumentTypes([FromQuery] bool includeInactive = false)
+        {
+            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
+            var response = await _masterDataService.GetDocumentTypesAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/document-types
+        [HttpPost("document-types")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> CreateDocumentType([FromBody] CreateDocumentTypeRequestDto request)
+        {
+            var response = await _masterDataService.CreateDocumentTypeAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/document-types/{id}
+        [HttpPut("document-types/{id:long}")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> UpdateDocumentType(long id, [FromBody] UpdateDocumentTypeRequestDto request)
+        {
+            var response = await _masterDataService.UpdateDocumentTypeAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/document-types/{id}/toggle-status
+        [HttpPost("document-types/{id:long}/toggle-status")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> ToggleDocumentTypeStatus(long id)
+        {
+            var response = await _masterDataService.ToggleDocumentTypeStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // =========================================================
+        // STUDENT CATEGORYS
+        // =========================================================
+
+        // GET: api/MasterData/student-categories?includeInactive=true
+        [HttpGet("student-categories")]
+        public async Task<IActionResult> GetStudentCategories([FromQuery] bool includeInactive = false)
+        {
+            // TODO (auth): restore the SUPER_ADMIN check for includeInactive.
+            var response = await _masterDataService.GetStudentCategoriesAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/student-categories
+        [HttpPost("student-categories")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> CreateStudentCategory([FromBody] CreateStudentCategoryRequestDto request)
+        {
+            var response = await _masterDataService.CreateStudentCategoryAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/student-categories/{id}
+        [HttpPut("student-categories/{id:long}")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> UpdateStudentCategory(long id, [FromBody] UpdateStudentCategoryRequestDto request)
+        {
+            var response = await _masterDataService.UpdateStudentCategoryAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/student-categories/{id}/toggle-status
+        [HttpPost("student-categories/{id:long}/toggle-status")]
+        // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
+        public async Task<IActionResult> ToggleStudentCategoryStatus(long id)
+        {
+            var response = await _masterDataService.ToggleStudentCategoryStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
     }
 }

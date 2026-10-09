@@ -1,0 +1,75 @@
+<app-page-header
+  title="School Profile"
+  subtitle="View and update your school's details"
+  icon="building-2"
+  [breadcrumbs]="breadcrumbs"
+>
+  @if (!loading() && !loadFailed() && !editing()) {
+    <app-button (click)="startEdit()"><app-icon name="pencil" [size]="16" />Edit</app-button>
+  }
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="status-note">Loading school profile…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="status-note">
+      <p>Your school profile could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-card title="School Logo">
+      <!-- Re-created after each save so its pending-file state resets -->
+      @for (v of [logoVersion()]; track v) {
+        <app-logo-upload [currentUrl]="logoUrl()" [disabled]="!editing()" (changed)="onLogoChanged($event)" />
+      }
+    </app-card>
+
+    <app-card title="School Identity">
+      <div class="grid">
+        <app-input label="School name" [required]="true" placeholder="Full school name" formControlName="schoolName" [errorText]="err('schoolName')" />
+        <app-input label="Short name" placeholder="Optional" formControlName="schoolShortName" [errorText]="err('schoolShortName')" />
+        <app-select label="School type" [options]="schoolTypeOptions()" formControlName="schoolTypeId" />
+        <app-select label="School level" [options]="schoolLevelOptions()" formControlName="schoolLevelId" />
+        <app-select label="Board type" [options]="boardTypeOptions()" formControlName="boardTypeId" />
+        <app-input label="Established year" type="number" placeholder="e.g. 1998" formControlName="schoolEstablishYear" [errorText]="err('schoolEstablishYear')" />
+      </div>
+    </app-card>
+
+    <app-card title="Tax &amp; Legal">
+      <div class="grid">
+        <app-input label="GSTIN" placeholder="15-character GSTIN" formControlName="schoolGstin" [errorText]="err('schoolGstin')" helpText="Optional. Saved in uppercase." />
+        <app-input label="PAN" placeholder="10-character PAN" formControlName="schoolPan" [errorText]="err('schoolPan')" helpText="Optional. Saved in uppercase." />
+      </div>
+    </app-card>
+
+    <app-card title="Location">
+      <div class="grid">
+        <app-select label="Country" placeholder="Select country…" [options]="countryOptions()" formControlName="countryId" />
+        <app-select label="State" placeholder="Select state…" [options]="stateOptions()" formControlName="stateId" />
+        <app-select label="District" placeholder="Select district…" [options]="districtOptions()" formControlName="districtId" />
+        <app-select label="City" placeholder="Select city…" [options]="cityOptions()" formControlName="cityId" />
+        <app-input label="Address line 1" placeholder="Street, building" formControlName="addressLine1" [errorText]="err('addressLine1')" />
+        <app-input label="Address line 2" placeholder="Area, landmark" formControlName="addressLine2" [errorText]="err('addressLine2')" />
+        <app-input label="Pincode" placeholder="6-digit pincode" formControlName="pincode" [errorText]="err('pincode')" />
+      </div>
+    </app-card>
+
+    <app-card title="Contact Details">
+      <div class="grid">
+        <app-input label="Email" type="email" placeholder="school@example.com" prefixIcon="mail" formControlName="email" [errorText]="err('email')" />
+        <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
+        <app-input label="Website" type="url" placeholder="https://example.com" formControlName="website" [errorText]="err('website')" />
+      </div>
+    </app-card>
+
+    @if (editing()) {
+      <div class="footer">
+        <app-button variant="secondary" [disabled]="saving()" (click)="cancelEdit()">Cancel</app-button>
+        <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save changes' }}</app-button>
+      </div>
+    }
+  </form>
+}
