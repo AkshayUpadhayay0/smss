@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using smss_api.Helpers;
 using smss_api_service_layer.dto;
+using smss_api_service_layer.helper;
 using smss_api_service_layer.@interface;
 using smss_api_service_layer.service;
 
@@ -101,7 +102,7 @@ namespace smss_api.Controllers
         }
 
 
-        private const long MaxLogoRequestBytes = 3 * 1024 * 1024;   // a little above the 2 MB rule to allow multipart overhead
+        private const long MaxLogoRequestBytes = LogoRules.MaxRequestBytes;
 
         // POST api/SchoolRegistration/schools/sch2026001/logo   (multipart/form-data, field name: file)
         [HttpPost("schools/{schoolId}/logo")]

@@ -1,0 +1,96 @@
+<app-page-header
+  [title]="student()?.fullName ?? 'Student'"
+  [subtitle]="student() ? 'Admission number ' + student()!.admissionNumber : 'Student profile'"
+  icon="user"
+  [breadcrumbs]="breadcrumbs()"
+>
+  @if (student(); as s) {
+    <span class="status" [class.active]="s.statusName === 'Active'">{{ s.statusName }}</span>
+  }
+  <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />Back to Students</app-button>
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="note">Loading student…</p></app-card>
+} @else if (loadFailed() || !student()) {
+  <app-card>
+    <div class="note">
+      <p>This student could not be loaded.</p>
+      <app-button variant="secondary" (click)="back()">Back to Students</app-button>
+    </div>
+  </app-card>
+} @else {
+  @if (student(); as s) {
+    <div class="sections">
+      <app-card>
+        <div class="hero">
+          <span class="photo">
+            @if (photoUrl(); as src) {
+              <img [src]="src" [alt]="s.fullName + ' photo'" />
+            } @else {
+              {{ initials() }}
+            }
+          </span>
+          <div class="who">
+            <h2>{{ s.fullName }}</h2>
+            <p>{{ s.admissionNumber }}@if (s.className) { · {{ s.className }}{{ s.sectionName ? ' – ' + s.sectionName : '' }} }</p>
+          </div>
+          <app-button variant="secondary" (click)="photoDialogOpen.set(true)">
+            <app-icon name="upload" [size]="16" />{{ photoUrl() ? 'Update Photo' : 'Add Photo' }}
+          </app-button>
+        </div>
+      </app-card>
+
+      <app-card title="Personal Info">
+        <dl class="grid">
+          <div><dt>Date of birth</dt><dd>{{ fmt(s.dateOfBirth) }}</dd></div>
+          <div><dt>Gender</dt><dd>{{ s.genderName || '—' }}</dd></div>
+          <div><dt>Blood group</dt><dd>{{ s.bloodGroupName || '—' }}</dd></div>
+          <div><dt>Student category</dt><dd>{{ s.studentCategoryName || '—' }}</dd></div>
+          <div><dt>Aadhaar number</dt><dd>{{ s.aadharNumberMasked || '—' }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="Admission &amp; Enrollment">
+        <dl class="grid">
+          <div><dt>Admission number</dt><dd>{{ s.admissionNumber }}</dd></div>
+          <div><dt>Admission date</dt><dd>{{ fmt(s.admissionDate) }}</dd></div>
+          <div><dt>Admission type</dt><dd>{{ s.admissionTypeName || '—' }}</dd></div>
+          <div><dt>Academic year</dt><dd>{{ s.academicYearName || '—' }}</dd></div>
+          <div><dt>Class</dt><dd>{{ s.className || '—' }}</dd></div>
+          <div><dt>Section</dt><dd>{{ s.sectionName || '—' }}</dd></div>
+          <div><dt>Roll number</dt><dd>{{ s.rollNumber || '—' }}</dd></div>
+          <div><dt>Enrollment status</dt><dd>{{ s.enrollmentStatusName || '—' }}</dd></div>
+        </dl>
+        @if (!hasEnrollment()) {
+          <p class="hint">This student is not enrolled in any class yet.</p>
+        }
+      </app-card>
+
+      <app-card title="Contact">
+        <dl class="grid">
+          <div><dt>Email</dt><dd>{{ s.email || '—' }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ s.mobileNumber || '—' }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="Guardians" [noPadding]="true">
+        <app-table
+          [columns]="guardianColumns"
+          [rows]="guardianRows()"
+          emptyMessage="No guardians on record."
+        />
+      </app-card>
+    </div>
+
+    @if (photoDialogOpen()) {
+      <app-student-photo-dialog
+        [studentId]="s.studentId"
+        [studentName]="s.fullName"
+        [currentUrl]="photoUrl()"
+        (saved)="onPhotoSaved($event)"
+        (closed)="photoDialogOpen.set(false)"
+      />
+    }
+  }
+}

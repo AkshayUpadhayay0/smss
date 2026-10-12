@@ -99,9 +99,22 @@ describe('app routes', () => {
     describe('School Admin', () => {
       beforeEach(asSchoolAdmin);
 
-      it('sees Dashboard, School Profile and School Setup in the menu — no Registered Schools, no Masters', async () => {
+      it('/students/onboard-existing opens the onboarding form, not a student profile (route order)', async () => {
+        const { harness, url } = await go('/students/onboard-existing');
+        expect(url).toBe('/students/onboard-existing');
+        expect(heading(harness)).toBe('Add Existing Student');
+      });
+
+      it('/students/:studentId opens a student profile', async () => {
+        const { harness, url } = await go('/students/42');
+        expect(url).toBe('/students/42');
+        expect(heading(harness)).not.toBe('Add Existing Student');
+        expect(harness.routeNativeElement?.querySelector('app-student-profile')).not.toBeNull();
+      });
+
+      it('sees Dashboard, School Profile, Students, Admissions, Add Existing Student and School Setup in the menu — no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | School Profile | School Setup');
+        expect(nav(harness)).toBe('Dashboard | School Profile | Students | Admissions | Add Existing Student | School Setup');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(

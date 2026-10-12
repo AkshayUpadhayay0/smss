@@ -1,0 +1,64 @@
+<app-page-header title="New Application" subtitle="Record a new admission application" icon="user" [breadcrumbs]="breadcrumbs">
+  <app-button variant="secondary" (click)="cancel()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
+</app-page-header>
+
+<form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <app-card title="Applicant Details">
+    <div class="grid">
+      <app-input label="First name" [required]="true" formControlName="applicantFirstName" [errorText]="err('applicantFirstName')" />
+      <app-input label="Middle name" formControlName="applicantMiddleName" [errorText]="err('applicantMiddleName')" />
+      <app-input label="Last name" [required]="true" formControlName="applicantLastName" [errorText]="err('applicantLastName')" />
+      <app-input label="Date of birth" type="date" [required]="true" formControlName="dateOfBirth" [errorText]="err('dateOfBirth')" />
+      <app-select label="Gender" placeholder="Select…" [options]="genderOptions()" formControlName="genderId" />
+      <app-select label="Blood group" placeholder="Select…" [options]="bloodGroupOptions()" formControlName="bloodGroupId" />
+      <app-select label="Student category" placeholder="Select…" [options]="studentCategoryOptions()" formControlName="studentCategoryId" />
+    </div>
+
+    <h4 class="subsection">Identity (optional)</h4>
+    <div class="grid">
+      <app-input label="Aadhaar number" placeholder="12 digits" formControlName="aadharNumber" [errorText]="err('aadharNumber')" helpText="Shown masked everywhere after saving." />
+      <app-input label="Student nation ID" formControlName="studentNationId" [errorText]="err('studentNationId')" />
+    </div>
+  </app-card>
+
+  <app-card title="Applied For">
+    @if (setupLoaded() && setupMissing()) {
+      <p class="warn">
+        Add at least one active academic year, class and admission type under School Setup before taking applications.
+      </p>
+    }
+    <div class="grid">
+      <app-select label="Academic year" [required]="true" placeholder="Select…" [options]="yearOptions()" formControlName="academicYearId" [errorText]="err('academicYearId')" />
+      <app-select label="Applied class" [required]="true" placeholder="Select…" [options]="classOptions()" formControlName="appliedClassId" [errorText]="err('appliedClassId')" />
+      <app-select label="Admission type" [required]="true" placeholder="Select…" [options]="admissionTypeOptions()" formControlName="admissionTypeId" [errorText]="err('admissionTypeId')" />
+    </div>
+  </app-card>
+
+  <app-card title="Contact &amp; Address">
+    <div class="grid">
+      <app-input label="Email" type="email" prefixIcon="mail" formControlName="email" [errorText]="err('email')" />
+      <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
+      <app-input label="Address line 1" formControlName="addressLine1" [errorText]="err('addressLine1')" />
+      <app-input label="Address line 2" formControlName="addressLine2" [errorText]="err('addressLine2')" />
+      <app-select label="Country" placeholder="Select country…" [options]="countryOptions()" formControlName="countryId" />
+      <app-select label="State" placeholder="Select state…" [options]="stateOptions()" formControlName="stateId" />
+      <app-select label="District" placeholder="Select district…" [options]="districtOptions()" formControlName="districtId" />
+      <app-select label="City" placeholder="Select city…" [options]="cityOptions()" formControlName="cityId" />
+      <app-input label="Pincode" placeholder="6-digit pincode" formControlName="pincode" [errorText]="err('pincode')" />
+    </div>
+  </app-card>
+
+  <app-card title="Guardian Details">
+    <div class="grid">
+      <app-input label="Guardian name" [required]="true" formControlName="guardianName" [errorText]="err('guardianName')" />
+      <app-select label="Relationship" [required]="true" placeholder="Select…" [options]="relationshipOptions" formControlName="guardianRelationship" [errorText]="err('guardianRelationship')" />
+      <app-input label="Guardian mobile" type="tel" [required]="true" placeholder="10-digit mobile" formControlName="guardianMobileNumber" [errorText]="err('guardianMobileNumber')" />
+      <app-input label="Guardian email" type="email" prefixIcon="mail" formControlName="guardianEmail" [errorText]="err('guardianEmail')" />
+    </div>
+  </app-card>
+
+  <div class="footer">
+    <app-button variant="secondary" [disabled]="saving()" (click)="cancel()">Cancel</app-button>
+    <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Submitting…' : 'Submit Application' }}</app-button>
+  </div>
+</form>

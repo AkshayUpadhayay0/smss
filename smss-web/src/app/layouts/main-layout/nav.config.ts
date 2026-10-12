@@ -11,6 +11,9 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
+  { label: 'Students', icon: 'graduation-cap', route: '/students' },
+  { label: 'Admissions', icon: 'user', route: '/admissions' },
+  { label: 'Add Existing Student', icon: 'inbox', route: '/students/onboard-existing' },
   {
     label: 'School Setup',
     icon: 'graduation-cap',

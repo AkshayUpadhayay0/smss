@@ -34,6 +34,24 @@ namespace smss_api_service_layer.service
             return $"{_requestPath}/{schoolCode}/logo/{fileName}";
         }
 
+        public async Task<string> SaveStudentPhotoAsync(string schoolCode, long studentId, Stream content, string extension, CancellationToken ct)
+        {
+            if (!SchoolCodeRules.IsFolderSafe(schoolCode))
+                throw new InvalidOperationException("School code is not a valid folder name.");
+
+            var studentFolder = studentId.ToString();   // a number, so always folder-safe
+            var folder = Path.Combine(_rootPath, schoolCode, "students", studentFolder);
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"photo_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+            var fullPath = Path.Combine(folder, fileName);
+
+            await using var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{_requestPath}/{schoolCode}/students/{studentFolder}/{fileName}";
+        }
+
         public void Delete(string relativeUrl)
         {
             try

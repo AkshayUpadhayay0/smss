@@ -1,0 +1,98 @@
+<app-page-header
+  [title]="admission()?.applicationNumber ?? 'Admission Application'"
+  [subtitle]="admission()?.applicantFullName ?? 'Application details'"
+  icon="user"
+  [breadcrumbs]="breadcrumbs()"
+>
+  <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
+  @if (admission(); as a) {
+    <app-admission-actions [admission]="a" (changed)="onChanged($event)" />
+  }
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="status-note">Loading application…</p></app-card>
+} @else if (loadFailed() || !admission()) {
+  <app-card>
+    <div class="status-note">
+      <p>This application could not be loaded.</p>
+      <app-button variant="secondary" (click)="back()">Back to list</app-button>
+    </div>
+  </app-card>
+} @else {
+  @if (admission(); as a) {
+    <div class="sections">
+      <app-card title="Progress">
+        <ol class="stepper">
+          @for (step of steps(); track step.label) {
+            <li class="step" [class]="'step ' + step.state">
+              <span class="dot">
+                @if (step.state === 'done') {
+                  <app-icon name="check" [size]="14" />
+                } @else if (step.state === 'failed') {
+                  <app-icon name="x" [size]="14" />
+                }
+              </span>
+              <span class="label">{{ step.label }}</span>
+              @if (step.date) {
+                <span class="date">{{ fmt(step.date) }}</span>
+              }
+            </li>
+          }
+        </ol>
+
+        @if (remarkText(); as r) {
+          <div class="remarks" [class.negative]="a.statusName === 'REJECTED'">
+            <strong>{{ r.label }}</strong>
+            <p>{{ r.text || 'No reason recorded.' }}</p>
+          </div>
+        }
+
+        @if (a.statusName === 'ADMITTED') {
+          <div class="admitted">
+            <app-icon name="circle-check" [size]="18" />
+            <span>Student ID: <strong>{{ a.studentId }}</strong>@if (a.enrollmentId) { · Enrollment ID: <strong>{{ a.enrollmentId }}</strong> }</span>
+          </div>
+        }
+      </app-card>
+
+      <app-card title="Applicant Details">
+        <dl class="grid">
+          <div><dt>Full name</dt><dd>{{ a.applicantFullName }}</dd></div>
+          <div><dt>Date of birth</dt><dd>{{ fmt(a.dateOfBirth) }}</dd></div>
+          <div><dt>Gender</dt><dd>{{ a.genderName || '—' }}</dd></div>
+          <div><dt>Blood group</dt><dd>{{ a.bloodGroupName || '—' }}</dd></div>
+          <div><dt>Student category</dt><dd>{{ a.studentCategoryName || '—' }}</dd></div>
+          <div><dt>Aadhaar number</dt><dd>{{ a.aadharNumberMasked || '—' }}</dd></div>
+          <div><dt>Student nation ID</dt><dd>{{ a.studentNationId || '—' }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="Applied For">
+        <dl class="grid">
+          <div><dt>Academic year</dt><dd>{{ a.academicYearName || '—' }}</dd></div>
+          <div><dt>Applied class</dt><dd>{{ a.appliedClassName || '—' }}</dd></div>
+          <div><dt>Admission type</dt><dd>{{ a.admissionTypeName || '—' }}</dd></div>
+          <div><dt>Application date</dt><dd>{{ fmt(a.applicationDate) }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="Contact &amp; Address">
+        <dl class="grid">
+          <div><dt>Email</dt><dd>{{ a.email || '—' }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ a.mobileNumber || '—' }}</dd></div>
+          <div class="wide"><dt>Address</dt><dd>{{ address() || '—' }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="Guardian Details">
+        <dl class="grid">
+          <div><dt>Name</dt><dd>{{ a.guardianName }}</dd></div>
+          <div><dt>Relationship</dt><dd>{{ guardianRelationship() }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ a.guardianMobileNumber }}</dd></div>
+          <div><dt>Email</dt><dd>{{ a.guardianEmail || '—' }}</dd></div>
+        </dl>
+      </app-card>
+    </div>
+  }
+}

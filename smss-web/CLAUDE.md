@@ -228,3 +228,32 @@ Build these as the foundation BEFORE any feature screens:
   {schoolId} (frontend takes it from the session via AuthService), but the controller REFUSES (403) any id that is not the JWT school_id and always
   uses the token value. TODO: drop {schoolId} from the routes. The global lut_document_type version was removed (the table itself still exists, unused).
   The shared table got a `type: 'badge'` column kind (pill, highlighted when the value is "Yes").
+- Admissions (status-driven workflow, `features/admissions/`, routes `/admissions`, `/admissions/new`, `/admissions/:admissionId`, School Admin only;
+  API `/api/Admission/{schoolId}[/submit|/{id}|/{id}/start-review|approve|reject|cancel|confirm]`). Statuses (lut_status stype ADMISSION_STATUS):
+  APPLICATION_SUBMITTED -> UNDER_REVIEW -> APPROVED -> ADMITTED, with REJECTED (from review, reason required) and CANCELLED (from submitted/review).
+  The valid actions per status live in ONE place on the client (`ACTIONS_BY_STATUS`) and mirror the server's state machine. `AdmissionActionsComponent`
+  renders the buttons + dialogs for both the list rows and the detail page. Confirm Admission creates student + enrollment + guardian + link in ONE
+  transaction; `classSectionId` is tb_sections.section_id (the dialog offers active sections of the applied class). Like Document Type, the routes
+  carry {schoolId} but the controller refuses (403) anything but the JWT school_id; reviewer/approver ids come from the JWT (NameIdentifier), never the client.
+  Aadhaar is masked server-side and never unmasked in the UI. No Student module/route exists yet: the detail page shows "Student ID: n" as plain text.
+  The shared table's `type: 'badge'` column accepts a `tone(value)` function (gray|blue|green|red|violet|gray-strike).
+- Existing Student Onboarding (`features/student-onboarding/`, route `/students/onboard-existing`, nav "Add Existing Student", School Admin only; API
+  `POST /api/StudentOnboarding/{schoolId}/existing-student`). Direct entry into tb_students + tb_student_enrollments + tb_guardians (+ link), NO tb_admissions
+  row and no review stage. The student's admission type is the school's own Admission Type NAMED "Existing Student" (tb_admission_types has no code
+  column, so it is found by name, case-insensitive; never auto-created — the page shows a banner linking to /school-setup/admission-types when it is
+  missing or inactive). Admission number: the school's own if supplied, else ADMNO{admission year}{4-digit seq} per school (same running number as
+  Confirm Admission). Admission/enrollment dates are the historical admission date, not today. Needs Docs/smss-students-aadhar-number.sql
+  (tb_students.aadhar_number + a per-school partial unique index) — the TbStudent entity maps that column, so RUN THE MIGRATION BEFORE DEPLOYING the API
+  build, or every tb_students query/insert (including Confirm Admission) fails.
+- Students (`features/students/`, routes `/students` and `/students/:studentId`, nav "Students", School Admin only; read-only — NO edit affordance until a
+  student-update backend exists; API `GET /api/Student/{schoolId}?academicYearId=&classSectionId=` and `GET /api/Student/{schoolId}/{studentId}`).
+  There is NO separate Class-Section mapping table/service: a section belongs to one class (tb_sections.class_id), and an enrollment's `class_section_id`
+  is a tb_sections.section_id. So the list's Section dropdown = active sections of the chosen class (sections are NOT academic-year scoped). The list needs
+  Year + Class + Section before it queries. Aadhaar is masked server-side. The profile's "current enrollment" = the enrollment in the school's current
+  academic year, else an Active one, else the most recent year (then highest enrollment id) — see StudentService. `students.routes` must be mounted AFTER
+  `student-onboarding.routes` in app.routes.ts (so /students/onboard-existing isn't read as a :studentId); a spec guards that.
+- Student photos: `POST /api/Student/{schoolId}/{studentId}/photo` (multipart "file") and `.../photo/remove`; `profilePhotoUrl` on the list + profile DTOs
+  (relative `/uploads/{schoolCode}/students/{studentId}/photo_<ts>.<ext>`; use `toUploadUrl()` from core/utils). Same rules and storage as the school logo:
+  ONE validator `ImageUploadValidator` (helper/UploadRules.cs: 2 MB, PNG/JPG/WEBP, magic-byte check) shared by logo + photo, and the same
+  IFileStorageService (`SaveStudentPhotoAsync`). The frontend reuses `LogoUploadComponent` (inputs noun='photo', icon='user'); the student is created
+  first, then the photo is uploaded as a best-effort follow-up (a failure only warns). Table has a `type: 'avatar'` column kind.

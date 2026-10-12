@@ -1,0 +1,129 @@
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.status-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+}
+
+// ── Status stepper ──────────────────────────────────────────────
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 120px;
+
+  .dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border-strong);
+    background: var(--color-surface);
+    color: var(--color-on-primary);
+  }
+
+  .label {
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-muted);
+  }
+
+  .date {
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+
+  &.done .dot {
+    background: var(--color-success);
+    border-color: var(--color-success);
+  }
+
+  &.done .label,
+  &.current .label {
+    color: var(--color-text);
+  }
+
+  &.current .dot {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px var(--color-primary-soft);
+  }
+
+  &.failed .dot {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+
+  &.failed .label {
+    color: var(--color-danger);
+  }
+}
+
+.remarks {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+
+  p {
+    margin: var(--space-2) 0 0;
+    white-space: pre-wrap;
+  }
+
+  &.negative {
+    background: var(--color-danger-soft);
+  }
+}
+
+.admitted {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-800);
+}

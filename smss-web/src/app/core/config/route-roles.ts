@@ -34,6 +34,12 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
 
   // School-side page: the API resolves the school from the token (400 for accounts without one, e.g. Super Admin).
   '/school-profile': [ROLES.SCHOOL_ADMIN],
+  '/students': [ROLES.SCHOOL_ADMIN],
+  '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
+  '/students/:studentId': [ROLES.SCHOOL_ADMIN],
+  '/admissions': [ROLES.SCHOOL_ADMIN],
+  '/admissions/new': [ROLES.SCHOOL_ADMIN],
+  '/admissions/:admissionId': [ROLES.SCHOOL_ADMIN],
   '/school-setup/academic-year': [ROLES.SCHOOL_ADMIN],
   '/school-setup/classes': [ROLES.SCHOOL_ADMIN],
   '/school-setup/sections': [ROLES.SCHOOL_ADMIN],

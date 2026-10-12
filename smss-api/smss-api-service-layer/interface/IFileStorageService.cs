@@ -9,6 +9,9 @@ namespace smss_api_service_layer.@interface
         // Saves a school logo and returns its relative public URL
         Task<string> SaveSchoolLogoAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
 
+        // Saves a student's profile photo under {schoolCode}/students/{studentId}/ and returns its relative public URL
+        Task<string> SaveStudentPhotoAsync(string schoolCode, long studentId, Stream content, string extension, CancellationToken ct);
+
         // Best-effort delete by the URL returned from Save. Never throws.
         void Delete(string relativeUrl);
     }

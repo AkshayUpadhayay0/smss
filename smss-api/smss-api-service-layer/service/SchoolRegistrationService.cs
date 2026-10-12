@@ -334,29 +334,16 @@ namespace smss_api_service_layer.service
             var committed = false;
             try
             {
-                if (length <= 0) return Fail(400, "Logo file is empty.");
-                if (length > LogoRules.MaxBytes) return Fail(400, "Logo must be 2 MB or smaller.");
-
-                var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                if (!LogoRules.AllowedExtensions.Contains(extension))
-                    return Fail(400, "Only PNG, JPG or WEBP images are allowed.");
+                var (image, error) = await ImageUploadValidator.ValidateAsync(content, fileName, length, "Logo", ct);
+                if (image == null) return Fail(400, error!);
+                using var _ = image;
 
                 var school = await _repo.GetSchoolByIdAsync(schoolId, track: true);
                 if (school == null) return Fail(404, "School not found");
                 if (!SchoolCodeRules.IsFolderSafe(school.SchoolCode))
                     return Fail(400, "This school's code can't be used as a folder name. Please contact support.");
 
-                // Buffer (max 2 MB) so we check the real size and signature, not just the claimed ones
-                using var buffer = new MemoryStream();
-                await content.CopyToAsync(buffer, ct);
-                if (buffer.Length > LogoRules.MaxBytes) return Fail(400, "Logo must be 2 MB or smaller.");
-
-                var header = buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 12)).ToArray();
-                if (!LogoRules.SignatureMatches(extension, header))
-                    return Fail(400, "The file is not a valid PNG, JPG or WEBP image.");
-                buffer.Position = 0;
-
-                savedUrl = await _storage.SaveSchoolLogoAsync(school.SchoolCode, buffer, extension, ct);
+                savedUrl = await _storage.SaveSchoolLogoAsync(school.SchoolCode, image.Content, image.Extension, ct);
 
                 var oldUrl = school.LogoUrl;
                 school.LogoUrl = savedUrl;

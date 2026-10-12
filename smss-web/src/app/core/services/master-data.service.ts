@@ -94,6 +94,23 @@ export class MasterDataService {
     return this.getSchoolLevels().pipe(map((l) => l.map((s) => ({ label: this.label(s.schoolLevelName, s.isActive), value: s.schoolLevelId.toString() }))));
   }
 
+  // Global lookups used by school-side forms. The API returns active rows only by default.
+  getGenderOptions(): Observable<SelectOption[]> {
+    return this.cached<{ genderId: number; genderName: string }[]>('genders', 'genders').pipe(
+      map((l) => l.map((g) => ({ label: g.genderName, value: g.genderId.toString() }))),
+    );
+  }
+  getBloodGroupOptions(): Observable<SelectOption[]> {
+    return this.cached<{ bloodGroupId: number; bloodGroupName: string }[]>('blood-groups', 'blood-groups').pipe(
+      map((l) => l.map((g) => ({ label: g.bloodGroupName, value: g.bloodGroupId.toString() }))),
+    );
+  }
+  getStudentCategoryOptions(): Observable<SelectOption[]> {
+    return this.cached<{ studentCategoryId: number; categoryName: string }[]>('student-categories', 'student-categories').pipe(
+      map((l) => l.map((c) => ({ label: c.categoryName, value: c.studentCategoryId.toString() }))),
+    );
+  }
+
   /** General status (Active / Inactive …) — used to display a school's status badge. */
   getGeneralStatusOptions(): Observable<SelectOption[]> {
     return this.getStatusesByType('general status').pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));

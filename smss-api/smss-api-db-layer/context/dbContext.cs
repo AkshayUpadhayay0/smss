@@ -42,6 +42,11 @@ namespace smss_api_db_layer.context
         public DbSet<TbSections> Sections { get; set; } = null!;
         public DbSet<TbClassSubjects> ClassSubjects { get; set; } = null!;
         public DbSet<TbDocumentType> DocumentTypes { get; set; } = null!;
+        public DbSet<TbAdmission> Admissions { get; set; } = null!;
+        public DbSet<TbStudent> Students { get; set; } = null!;
+        public DbSet<TbStudentEnrollment> StudentEnrollments { get; set; } = null!;
+        public DbSet<TbGuardian> Guardians { get; set; } = null!;
+        public DbSet<TbStudentGuardian> StudentGuardians { get; set; } = null!;
         public DbSet<TbSubjects> Subjects { get; set; } = null!;
         public DbSet<TbEmployeeDesignations> EmployeeDesignations { get; set; } = null!;
         public DbSet<TbEmployeeDepartments> EmployeeDepartments { get; set; } = null!;

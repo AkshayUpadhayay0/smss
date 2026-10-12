@@ -22,9 +22,9 @@ export interface LogoChange {
     <div class="logo-upload">
       <div class="preview" [class.empty]="!shownUrl()">
         @if (shownUrl(); as url) {
-          <img [src]="url" alt="School logo" />
+          <img [src]="url" [alt]="alt()" />
         } @else {
-          <app-icon name="building-2" [size]="32" />
+          <app-icon [name]="icon()" [size]="32" />
         }
       </div>
 
@@ -32,7 +32,7 @@ export interface LogoChange {
         @if (!disabled()) {
           <div class="buttons">
             <app-button variant="secondary" size="sm" (click)="fileInput.click()">
-              <app-icon name="upload" [size]="14" />{{ shownUrl() ? 'Change logo' : 'Upload logo' }}
+              <app-icon name="upload" [size]="14" />{{ shownUrl() ? 'Change ' + noun() : 'Upload ' + noun() }}
             </app-button>
             @if (pendingFile()) {
               <app-button variant="danger-ghost" size="sm" (click)="clearPending()"><app-icon name="x" [size]="14" />Discard</app-button>
@@ -48,13 +48,13 @@ export interface LogoChange {
         @if (error(); as e) {
           <span class="error">{{ e }}</span>
         } @else if (pendingFile()) {
-          <span class="hint">New logo will be uploaded when you save.</span>
+          <span class="hint">New {{ noun() }} will be uploaded when you save.</span>
         } @else if (removed()) {
-          <span class="hint">Logo will be removed when you save.</span>
+          <span class="hint">{{ noun() === 'logo' ? 'Logo' : 'Photo' }} will be removed when you save.</span>
         } @else if (!disabled()) {
           <span class="hint">PNG, JPG or WEBP, up to 2 MB.</span>
         } @else if (!currentUrl()) {
-          <span class="hint">No logo uploaded.</span>
+          <span class="hint">No {{ noun() }} uploaded.</span>
         }
       </div>
     </div>
@@ -64,6 +64,10 @@ export class LogoUploadComponent {
   /** Absolute URL of the saved logo, if any. */
   readonly currentUrl = input<string | null>(null);
   readonly disabled = input(false);
+  /** What is being picked, for the wording: 'logo' (default) or 'photo'. */
+  readonly noun = input<'logo' | 'photo'>('logo');
+  readonly icon = input<'building-2' | 'user'>('building-2');
+  protected readonly alt = computed(() => (this.noun() === 'logo' ? 'School logo' : 'Student photo'));
   readonly changed = output<LogoChange>();
 
   protected readonly accept = LOGO_ACCEPT;

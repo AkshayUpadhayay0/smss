@@ -1,0 +1,40 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
+
+namespace smss_api_db_layer.entity
+{
+    [Table("tb_students", Schema = "public")]
+    public class TbStudent
+    {
+        [Key][Column("student_id")] public long StudentId { get; set; }
+        [Column("school_id")] public string SchoolId { get; set; } = null!;
+        [Column("admission_number")] public string AdmissionNumber { get; set; } = null!;
+        [Column("first_name")] public string FirstName { get; set; } = null!;
+        [Column("middle_name")] public string? MiddleName { get; set; }
+        [Column("last_name")] public string LastName { get; set; } = null!;
+        [Column("date_of_birth", TypeName = "date")] public DateTime DateOfBirth { get; set; }
+        [Column("gender_id")] public int? GenderId { get; set; }
+        [Column("blood_group_id")] public int? BloodGroupId { get; set; }
+        [Column("student_category_id")] public int? StudentCategoryId { get; set; }
+        [Column("admission_type_id")] public long AdmissionTypeId { get; set; }
+        [Column("admission_date", TypeName = "date")] public DateTime AdmissionDate { get; set; }
+        [Column("email")] public string? Email { get; set; }
+        [Column("mobile_number")] public string? MobileNumber { get; set; }
+        [Column("address_line1")] public string? AddressLine1 { get; set; }
+        [Column("address_line2")] public string? AddressLine2 { get; set; }
+        [Column("country_id")] public int? CountryId { get; set; }
+        [Column("state_id")] public int? StateId { get; set; }
+        [Column("district_id")] public int? DistrictId { get; set; }
+        [Column("city_id")] public int? CityId { get; set; }
+        [Column("pincode")] public string? Pincode { get; set; }
+        [Column("profile_photo_url")] public string? ProfilePhotoUrl { get; set; }
+        // Only set by direct-entry onboarding (no application row to hold it); needs Docs/smss-students-aadhar-number.sql
+        [Column("aadhar_number")] public string? AadharNumber { get; set; }
+        [Column("status_id")] public int StatusId { get; set; }
+        [Column("created_at")] public DateTime CreatedAt { get; set; }
+        [Column("updated_at")] public DateTime UpdatedAt { get; set; }
+    }
+}

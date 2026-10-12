@@ -1,0 +1,113 @@
+<app-page-header
+  title="Add Existing Student"
+  subtitle="Enter a student your school already had before using SMSS. This is not a new admission."
+  icon="inbox"
+  [breadcrumbs]="breadcrumbs"
+/>
+
+@if (created(); as r) {
+  <app-card>
+    <div class="success">
+      <app-icon name="circle-check" [size]="40" />
+      <h3>{{ r.fullName }} has been added</h3>
+      <dl>
+        <div><dt>Admission number</dt><dd>{{ r.admissionNumber }}</dd></div>
+        <!-- No Student profile page exists yet, so the id is shown as plain text -->
+        <div><dt>Student ID</dt><dd>{{ r.studentId }}</dd></div>
+        @if (r.aadharNumberMasked) {
+          <div><dt>Aadhaar number</dt><dd>{{ r.aadharNumberMasked }}</dd></div>
+        }
+      </dl>
+      <div class="actions">
+        <app-button (click)="addAnother()"><app-icon name="plus" [size]="16" />Add another student</app-button>
+      </div>
+    </div>
+  </app-card>
+} @else {
+  @if (showTypeBanner()) {
+    <div class="banner" role="alert">
+      <app-icon name="triangle-alert" [size]="20" />
+      <div class="text">
+        <strong>The "Existing Student" admission type isn't set up.</strong>
+        <span>Add an Admission Type named "Existing Student" (and keep it Active) before onboarding existing students.</span>
+      </div>
+      <app-button size="sm" (click)="goToAdmissionTypes()">Add it now</app-button>
+    </div>
+  }
+
+  <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-card title="Admission Record">
+      <div class="grid">
+        <app-input
+          label="Admission number"
+          placeholder="Leave blank to auto-generate"
+          helpText="Use the number your school already gave this student, if there is one."
+          formControlName="admissionNumber"
+          [errorText]="err('admissionNumber')"
+        />
+        <app-input
+          label="Admission date"
+          type="date"
+          [required]="true"
+          helpText="The date the school actually admitted the student."
+          formControlName="admissionDate"
+          [errorText]="err('admissionDate')"
+        />
+      </div>
+    </app-card>
+
+    <app-card title="Academic Placement">
+      <div class="grid">
+        <app-select label="Academic year" [required]="true" placeholder="Select…" [options]="yearOptions()" formControlName="academicYearId" [errorText]="err('academicYearId')" />
+        <app-select label="Class – Section" [required]="true" placeholder="Select…" [options]="sectionOptions()" formControlName="classSectionId" [errorText]="err('classSectionId')" />
+        <app-input label="Roll number" placeholder="Optional" formControlName="rollNumber" [errorText]="err('rollNumber')" />
+      </div>
+      @if (sectionOptions().length === 0) {
+        <p class="hint">No active sections yet. Add classes and sections under School Setup first.</p>
+      }
+    </app-card>
+
+    <app-card title="Student Details">
+      <div class="grid">
+        <app-input label="First name" [required]="true" formControlName="firstName" [errorText]="err('firstName')" />
+        <app-input label="Middle name" formControlName="middleName" [errorText]="err('middleName')" />
+        <app-input label="Last name" [required]="true" formControlName="lastName" [errorText]="err('lastName')" />
+        <app-input label="Date of birth" type="date" [required]="true" formControlName="dateOfBirth" [errorText]="err('dateOfBirth')" />
+        <app-select label="Gender" placeholder="Select…" [options]="genderOptions()" formControlName="genderId" />
+        <app-select label="Blood group" placeholder="Select…" [options]="bloodGroupOptions()" formControlName="bloodGroupId" />
+        <app-select label="Student category" placeholder="Select…" [options]="studentCategoryOptions()" formControlName="studentCategoryId" />
+      </div>
+
+      <h4 class="subsection">Photo (optional)</h4>
+      <!-- Re-created after each save so its pending file resets -->
+      @for (v of [photoVersion()]; track v) {
+        <app-logo-upload noun="photo" icon="user" (changed)="onPhotoChanged($event)" />
+      }
+
+      <h4 class="subsection">Identity (optional)</h4>
+      <div class="grid">
+        <app-input label="Aadhaar number" placeholder="12 digits" formControlName="aadharNumber" [errorText]="err('aadharNumber')" helpText="Shown masked everywhere after saving." />
+      </div>
+    </app-card>
+
+    <app-card title="Contact">
+      <div class="grid">
+        <app-input label="Email" type="email" prefixIcon="mail" formControlName="email" [errorText]="err('email')" />
+        <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
+      </div>
+    </app-card>
+
+    <app-card title="Guardian">
+      <div class="grid">
+        <app-input label="Guardian name" [required]="true" formControlName="guardianName" [errorText]="err('guardianName')" />
+        <app-select label="Relationship" [required]="true" placeholder="Select…" [options]="relationshipOptions" formControlName="guardianRelationship" [errorText]="err('guardianRelationship')" />
+        <app-input label="Guardian mobile" type="tel" [required]="true" placeholder="10-digit mobile" formControlName="guardianMobileNumber" [errorText]="err('guardianMobileNumber')" />
+        <app-input label="Guardian email" type="email" prefixIcon="mail" formControlName="guardianEmail" [errorText]="err('guardianEmail')" />
+      </div>
+    </app-card>
+
+    <div class="footer">
+      <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Add Student' }}</app-button>
+    </div>
+  </form>
+}

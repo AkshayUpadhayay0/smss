@@ -1,0 +1,64 @@
+<app-page-header title="Students" subtitle="Students enrolled in each class and section" icon="graduation-cap" [breadcrumbs]="breadcrumbs" />
+
+<app-card>
+  <div class="filters">
+    <app-select label="Academic year" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
+    <app-select label="Class" placeholder="Select class…" [options]="classOptions()" [formControl]="classControl" />
+    <app-select
+      label="Section"
+      [placeholder]="classControl.value ? 'Select section…' : 'Select a class first'"
+      [options]="sectionOptions()"
+      [formControl]="sectionControl"
+    />
+  </div>
+  @if (!setupLoading() && (yearOptions().length === 0 || classOptions().length === 0)) {
+    <p class="hint">Add an active academic year and class under School Setup to start browsing students.</p>
+  }
+</app-card>
+
+@if (!ready()) {
+  <app-card>
+    <div class="empty">
+      <app-icon name="inbox" [size]="36" />
+      <p>Select a class and section to view students</p>
+    </div>
+  </app-card>
+} @else {
+  <app-card [noPadding]="true">
+    <div class="toolbar">
+      <div class="search">
+        <app-input placeholder="Search by name, number…" prefixIcon="search" (input)="onSearch($event)" />
+      </div>
+      <span class="count">{{ total() }} {{ total() === 1 ? 'student' : 'students' }}</span>
+    </div>
+
+    <app-table
+      [columns]="columns"
+      [rows]="pageRows()"
+      [loading]="loading()"
+      [hasActions]="true"
+      [sortKey]="sortKey()"
+      [sortDirection]="sortDirection()"
+      [emptyMessage]="emptyMessage()"
+      (sortChange)="onSort($event)"
+    >
+      <ng-template #rowActions let-row>
+        <app-button variant="secondary" size="sm" aria-label="View" title="View" (click)="view(row)">
+          <app-icon name="eye" [size]="14" />View
+        </app-button>
+      </ng-template>
+    </app-table>
+
+    @if (loadFailed()) {
+      <div class="retry"><app-button variant="secondary" size="sm" (click)="retry()">Try again</app-button></div>
+    }
+
+    <app-pagination
+      [currentPage]="page()"
+      [totalItems]="total()"
+      [pageSize]="pageSize()"
+      (pageChange)="page.set($event)"
+      (pageSizeChange)="onPageSize($event)"
+    />
+  </app-card>
+}

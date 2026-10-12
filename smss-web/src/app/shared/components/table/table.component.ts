@@ -13,7 +13,11 @@ export interface TableColumn<T> {
    * 'status' renders the value as an Active/Inactive pill (boolean, or a string such as "Active").
    * 'badge' renders the text in the same pill shape, highlighted only when it is "Yes" (e.g. Required: Yes / No).
    */
-  type?: 'text' | 'status' | 'badge';
+  type?: 'text' | 'status' | 'badge' | 'avatar';
+  /** For 'avatar': the cell value is an absolute image URL (or empty); this gives the text for the initials fallback. */
+  avatarLabel?: (row: T) => string;
+  /** For 'badge': picks the pill colour (gray | blue | green | red | violet | gray-strike) from the cell value. */
+  tone?: (value: unknown) => string;
 }
 
 export interface SortChange {
@@ -73,8 +77,21 @@ export interface SortChange {
                       <span class="pill" [class.active]="isActive(cell(row, col.key))">
                         {{ statusLabel(cell(row, col.key)) }}
                       </span>
+                    } @else if (col.type === 'avatar') {
+                      <span class="avatar">
+                        @if (cell(row, col.key); as src) {
+                          <img [src]="src" alt="" />
+                        } @else {
+                          {{ initials(col.avatarLabel ? col.avatarLabel(row) : '') }}
+                        }
+                      </span>
                     } @else if (col.type === 'badge') {
-                      <span class="pill" [class.active]="cell(row, col.key) === 'Yes'">{{ cell(row, col.key) }}</span>
+                      <span
+                        class="pill"
+                        [class.active]="!col.tone && cell(row, col.key) === 'Yes'"
+                        [class]="col.tone ? 'pill tone-' + col.tone(cell(row, col.key)) : null"
+                        >{{ cell(row, col.key) }}</span
+                      >
                     } @else {
                       {{ cell(row, col.key) }}
                     }
@@ -120,6 +137,12 @@ export class TableComponent<T> {
 
   protected cell(row: T, key: string): unknown {
     return (row as Record<string, unknown>)[key];
+  }
+
+  protected initials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
   }
 
   protected isActive(v: unknown): boolean {
