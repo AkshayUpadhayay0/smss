@@ -111,5 +111,16 @@ namespace smss_api_db_layer.repository
         public async Task AddStudentGuardianAsync(TbStudentGuardian entity, CancellationToken ct) => await _db.StudentGuardians.AddAsync(entity, ct);
 
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+
+        public void ClearTracking() => _db.ChangeTracker.Clear();
+
+        public Task<SchoolIdentity?> GetSchoolIdentityAsync(string schoolId, CancellationToken ct) =>
+            _db.Schools.AsNoTracking()
+                .Where(s => s.SchoolId == schoolId)
+                .Select(s => new SchoolIdentity(s.SchoolName, s.SchoolShortCode))
+                .FirstOrDefaultAsync(ct);
+
+        public Task<int> CountStudentsAsync(string schoolId, CancellationToken ct) =>
+            _db.Students.CountAsync(s => s.SchoolId == schoolId, ct);
     }
 }

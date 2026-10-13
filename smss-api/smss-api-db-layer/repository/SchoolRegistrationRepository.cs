@@ -39,6 +39,25 @@ namespace smss_api_db_layer.repository
                 .SingleAsync();
         }
 
+        // An explicit UTC range, not `created_at::date`: the ::date cast uses the database session time zone
+        // (Asia/Calcutta here), which would disagree with the UTC date that goes into the school id for 5.5 hours a day.
+        // "DPS" must not count "DPSX001", so the digits-only remainder is checked after the prefix match
+        public async Task<int> GetSchoolCountForShortCodePrefixAsync(string prefix, CancellationToken ct)
+        {
+            var codes = await _dbContext.Schools.AsNoTracking()
+                .Where(s => s.SchoolShortCode != null && s.SchoolShortCode.StartsWith(prefix))
+                .Select(s => s.SchoolShortCode!)
+                .ToListAsync(ct);
+            return codes.Count(c => c.Length > prefix.Length && c.Skip(prefix.Length).All(char.IsAsciiDigit));
+        }
+
+        public Task<int> GetSchoolCountForDateAsync(DateOnly date, CancellationToken ct)
+        {
+            var start = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var end = start.AddDays(1);
+            return _dbContext.Schools.AsNoTracking().CountAsync(s => s.CreatedAt >= start && s.CreatedAt < end, ct);
+        }
+
         public async Task<long?> GetRoleIdByNameAsync(string roleName)
         {
             return await _dbContext.LutRoles
@@ -70,9 +89,11 @@ namespace smss_api_db_layer.repository
             await _dbContext.SaveChangesAsync();
         }
 
+        // The school's admin login is the row whose login id IS the school id. Student logins carry the same school_id,
+        // so filtering on school_id alone would pick an arbitrary one of them.
         public async Task<TbUsers?> GetUserBySchoolIdAsync(string schoolId, bool track = false)
         {
-            IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.SchoolId == schoolId);
+            IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.SchoolId == schoolId && u.OrgUserId == schoolId);
             if (!track) query = query.AsNoTracking();
             return await query.FirstOrDefaultAsync();
         }

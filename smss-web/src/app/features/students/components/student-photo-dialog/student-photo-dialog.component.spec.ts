@@ -23,9 +23,9 @@ describe('StudentPhotoDialogComponent', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(StudentPhotoDialogComponent);
-    fixture.componentRef.setInput('studentId', 5);
+    fixture.componentRef.setInput('studentId', 'DPS001ST005');
     fixture.componentRef.setInput('studentName', 'Asha Verma');
-    fixture.componentRef.setInput('currentUrl', `${API}/uploads/1/students/5/photo_1.png`);
+    fixture.componentRef.setInput('currentUrl', `${API}/uploads/1/students/DPS001ST005/photo_1.png`);
     saved = [];
     closed = 0;
     fixture.componentInstance.saved.subscribe((p) => saved.push(p));
@@ -48,28 +48,28 @@ describe('StudentPhotoDialogComponent', () => {
     expect(saveButton().disabled).toBe(false);
 
     cmp()['save']();
-    const req = http.expectOne(`${API}/api/Student/sch2026006/5/photo`);
+    const req = http.expectOne(`${API}/api/Student/sch2026006/DPS001ST005/photo`);
     expect(req.request.method).toBe('POST');
     expect((req.request.body as FormData).get('file')).toBeInstanceOf(File);
-    req.flush(env({ studentId: 5, profilePhotoUrl: '/uploads/1/students/5/photo_2.png' }));
+    req.flush(env({ studentId: 'DPS001ST005', profilePhotoUrl: '/uploads/FTS001/students/DPS001ST005/photo_2.png' }));
 
-    expect(saved).toEqual([{ studentId: 5, profilePhotoUrl: '/uploads/1/students/5/photo_2.png' }]);
+    expect(saved).toEqual([{ studentId: 'DPS001ST005', profilePhotoUrl: '/uploads/FTS001/students/DPS001ST005/photo_2.png' }]);
   });
 
   it('removes the photo through the remove endpoint', () => {
     cmp()['change'].set({ file: null, remove: true });
     cmp()['save']();
-    const req = http.expectOne(`${API}/api/Student/sch2026006/5/photo/remove`);
+    const req = http.expectOne(`${API}/api/Student/sch2026006/DPS001ST005/photo/remove`);
     expect(req.request.method).toBe('POST');
-    req.flush(env({ studentId: 5, profilePhotoUrl: null }));
-    expect(saved).toEqual([{ studentId: 5, profilePhotoUrl: null }]);
+    req.flush(env({ studentId: 'DPS001ST005', profilePhotoUrl: null }));
+    expect(saved).toEqual([{ studentId: 'DPS001ST005', profilePhotoUrl: null }]);
   });
 
   it('stays open and emits nothing when the server rejects the file', () => {
     cmp()['change'].set({ file: new File([new Uint8Array([1])], 'x.png'), remove: false });
     cmp()['save']();
     http
-      .expectOne(`${API}/api/Student/sch2026006/5/photo`)
+      .expectOne(`${API}/api/Student/sch2026006/DPS001ST005/photo`)
       .flush({ status: false, statusCode: 400, message: 'The file is not a valid PNG, JPG or WEBP image.', data: null }, { status: 400, statusText: 'Bad Request' });
     expect(saved).toEqual([]);
     expect(closed).toBe(0);

@@ -9,7 +9,7 @@ namespace smss_api_service_layer.@interface
     {
         Task<ApiResponse<object>> GetSchoolsAsync();
         Task<ApiResponse<object>> GetSchoolByIdAsync(string schoolId);
-        Task<ApiResponse<object>> RegisterSchoolAsync(CreateSchoolRequest request);
+        Task<ApiResponse<object>> RegisterSchoolAsync(CreateSchoolRequest request, CancellationToken ct = default);
         Task<ApiResponse<object>> UpdateSchoolAsync(string schoolId, UpdateSchoolRequest request);
         Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId);
 

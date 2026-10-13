@@ -31,7 +31,8 @@ export interface DirectStudentEntryRequest {
 
 /** Mirrors StudentOnboardingResponseDto. The Aadhaar comes back already masked. */
 export interface StudentOnboardingResult {
-  studentId: number;
+  /** Business id string, e.g. DPS001ST001. */
+  studentId: string;
   admissionNumber: string;
   fullName: string;
   enrollmentId: number;

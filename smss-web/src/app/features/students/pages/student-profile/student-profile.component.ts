@@ -4,9 +4,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { GuardianRow, StudentPhoto, StudentProfile } from '../../models/student.model';
+import { GuardianRow, StudentLoginCreated, StudentPhoto, StudentProfile } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
 const GUARDIAN_COLUMNS: TableColumn<GuardianRow>[] = [
@@ -24,7 +25,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentPhotoDialogComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -80,6 +81,14 @@ export class StudentProfileComponent implements OnInit {
   protected readonly initials = computed(() => initialsOf(this.student()?.fullName));
   protected readonly photoDialogOpen = signal(false);
 
+  protected readonly loginDialogOpen = signal(false);
+
+  /** The user has seen the credentials: close the dialog and show the Login ID on the profile. */
+  protected onLoginCreated(login: StudentLoginCreated): void {
+    this.student.update((s) => (s ? { ...s, loginId: login.orgUserId } : s));
+    this.loginDialogOpen.set(false);
+  }
+
   protected onPhotoSaved(photo: StudentPhoto): void {
     this.student.update((s) => (s ? { ...s, profilePhotoUrl: photo.profilePhotoUrl } : s));
     this.photoDialogOpen.set(false);
@@ -90,8 +99,9 @@ export class StudentProfileComponent implements OnInit {
   }
 
   protected load(): void {
-    const id = Number(this.studentId());
-    if (!Number.isFinite(id)) {
+    // The route param IS the student id (a string like DPS001ST001): never convert it to a number
+    const id = this.studentId().trim();
+    if (!id) {
       this.loadFailed.set(true);
       this.loading.set(false);
       return;

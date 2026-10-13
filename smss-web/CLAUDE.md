@@ -257,3 +257,29 @@ Build these as the foundation BEFORE any feature screens:
   ONE validator `ImageUploadValidator` (helper/UploadRules.cs: 2 MB, PNG/JPG/WEBP, magic-byte check) shared by logo + photo, and the same
   IFileStorageService (`SaveStudentPhotoAsync`). The frontend reuses `LogoUploadComponent` (inputs noun='photo', icon='user'); the student is created
   first, then the photo is uploaded as a best-effort follow-up (a failure only warns). Table has a `type: 'avatar'` column kind.
+- school_id generation (backend, `SchoolIdHelper` + `RegisterSchoolAsync`): `{PREFIX}{yyMMdd}{seq:D3}`, e.g. FIRS261013001. PREFIX = first 4 of A-Z/0-9 from the
+  short name (else the school name; "SCHL" if neither leaves anything), yyMMdd = the UTC date, seq = schools created that UTC day + 1 (counted with an explicit
+  UTC range, NOT `created_at::date`, because the DB session time zone is Asia/Calcutta). The id is also the login username. Legacy ids (sch2026xxx,
+  SUAD0000001) are untouched. Two registrations in the same moment compute the same seq: the loser gets 409 "Registration ID collision — please submit again."
+  and nothing is saved. Frontend assumes no id format.
+- LOGIN ID vs DISPLAY NAME (2026-10-13): `tb_users.org_user_id` is the ONLY login credential (login request field `loginId`);
+  `tb_users.display_name` (was `username`) is a non-unique label. The login/me `user` has `displayName` + `orgUserId` (no
+  `username`). Needs `Docs/smss-users-login-id-and-school-short-code.sql` run BEFORE the API build is started.
+  School admin login id = the school id (e.g. DPS261013001); `tb_schools.school_short_code` (DPS001, immutable, counted per
+  prefix) is the base for student ids. STUDENT ID (2026-10-13): `tb_students.student_id` is the varchar business id
+  `{short code}ST{nnn}` (DPS001ST001), generated ONCE by the app when the student record is created (confirm admission /
+  existing-student onboarding: count of the school's students + 1; retried on a primary-key collision), and reused as the
+  login's `org_user_id` — `POST /api/Student/{schoolId}/{studentId}/create-login` does no id generation; temp password =
+  first 4 letters of the first name (A-Z, padded with X) + DOB `ddMM`, `is_first_login = true`. studentId is a STRING
+  everywhere in the web app (never `Number()` a route param). Schools without a short code (registered before it existed)
+  get "no short code configured" when admitting / onboarding. Emails (submitted / approved / id assigned / credentials)
+  all go through `INotificationService`: own email, else guardian's, else skipped. Needs `Docs/smss-student-id-varchar.sql`. A
+  `isFirstLogin` user is held on `/change-password` by `roleGuard` (it re-runs on every child navigation). The API does NOT yet
+  reject a first-login token on other endpoints — UI only.
+- IMPORT MASTERS (2026-10-13): `/school-setup/import-masters` (first item of School Setup, School Admin only; also where a new
+  School Admin lands after replacing the temporary password). `GET /api/MasterImport/catalog` returns the ready-made choices
+  (classes Nursery..Class 12, subjects, designations, departments, admission types incl. "Existing Student", document types)
+  flagged `alreadyAdded`; `POST /api/MasterImport/import` with the picked keys per group creates only what is missing, in one
+  transaction, always for the token's school. Each imported class gets Section "A" (an existing class that already has
+  sections is left alone). Matching is case-insensitive; unknown keys -> 400. The catalog lives in
+  `smss-api-service-layer/helper/MasterImportCatalog.cs` — add new choices there.

@@ -41,7 +41,7 @@ namespace smss_api_service_layer.dto
 
     public class StudentOnboardingResponseDto
     {
-        public long StudentId { get; set; }
+        public string StudentId { get; set; } = null!;
         public string AdmissionNumber { get; set; } = null!;
         public string FullName { get; set; } = null!;
         public long EnrollmentId { get; set; }

@@ -21,11 +21,13 @@ namespace smss_api_service_layer.service
         private const string Cancelled = "CANCELLED";
 
         private readonly IAdmissionRepository _repo;
+        private readonly INotificationService _notify;
         private readonly ILogger<AdmissionService> _logger;
 
-        public AdmissionService(IAdmissionRepository repo, ILogger<AdmissionService> logger)
+        public AdmissionService(IAdmissionRepository repo, INotificationService notify, ILogger<AdmissionService> logger)
         {
             _repo = repo;
+            _notify = notify;
             _logger = logger;
         }
 
@@ -126,7 +128,11 @@ namespace smss_api_service_layer.service
                     {
                         await _repo.AddAdmissionAsync(entity, ct);
                         await _repo.SaveChangesAsync(ct);
-                        return Result(201, "Admission application submitted.", await ToDetailAsync(entity, ct));
+                        var detail = await ToDetailAsync(entity, ct);
+                        await NotifyAsync(schoolId, entity.Email, entity.GuardianEmail,
+                            name => EmailTemplates.ApplicationSubmitted(detail.ApplicantFullName, detail.ApplicationNumber, name),
+                            $"application submitted {detail.ApplicationNumber}", ct);
+                        return Result(201, "Admission application submitted.", detail);
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == "uq_tb_admissions_school_aadhar")
                     {
@@ -151,13 +157,23 @@ namespace smss_api_service_layer.service
                 a.ReviewedAt = DateTime.UtcNow;
             }, "Application moved to review.", ct);
 
-        public Task<ApiResponse<AdmissionDetailDto>> ApproveAsync(string schoolId, long admissionId, long approvedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct) =>
-            TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Approved, a =>
+        public async Task<ApiResponse<AdmissionDetailDto>> ApproveAsync(string schoolId, long admissionId, long approvedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct)
+        {
+            var result = await TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Approved, a =>
             {
                 a.ApprovedBy = approvedByUserId;
                 a.ApprovedAt = DateTime.UtcNow;
                 a.DecisionRemarks = Clean(req.Remarks);
             }, "Application approved.", ct);
+
+            if (result.Status && result.Data is { } d)
+            {
+                await NotifyAsync(schoolId, d.Email, d.GuardianEmail,
+                    name => EmailTemplates.ApplicationApproved(d.ApplicantFullName, d.ApplicationNumber, name),
+                    $"application approved {d.ApplicationNumber}", ct);
+            }
+            return result;
+        }
 
         public Task<ApiResponse<AdmissionDetailDto>> RejectAsync(string schoolId, long admissionId, AdmissionDecisionRequestDto req, CancellationToken ct)
         {
@@ -194,96 +210,146 @@ namespace smss_api_service_layer.service
                 if (admittedId == null || activeId == null)
                     return ConfigError<AdmissionDetailDto>("'ADMITTED' admission status or 'Active' general status missing from lut_status");
 
-                var now = DateTime.UtcNow;
-                await using var tx = await _repo.BeginTransactionAsync(ct);
+                // The student id ({short code}ST{nnn}) is built from the school's short code, so the school must have one
+                var school = await _repo.GetSchoolIdentityAsync(schoolId, ct);
+                if (school == null) return Result<AdmissionDetailDto>(404, "School not found.", null);
+                if (string.IsNullOrWhiteSpace(school.ShortCode))
+                    return Result<AdmissionDetailDto>(409, StudentIdHelper.NoShortCodeMessage, null);
 
-                var prefix = $"ADMNO{now.Year}";
-                var student = new TbStudent
+                // The id is known before anything is saved (count + 1), so the whole graph goes in ONE SaveChanges.
+                // Two confirmations at the same moment can compute the same id; the primary key rejects the second one
+                // and it simply tries again with a fresh count.
+                for (var attempt = 0; attempt < 3; attempt++)
                 {
-                    SchoolId = schoolId,
-                    AdmissionNumber = $"{prefix}{await _repo.GetMaxAdmissionNumberSequenceAsync(schoolId, prefix, ct) + 1:D4}",
-                    FirstName = admission.ApplicantFirstName,
-                    MiddleName = admission.ApplicantMiddleName,
-                    LastName = admission.ApplicantLastName,
-                    DateOfBirth = admission.DateOfBirth,
-                    GenderId = admission.GenderId,
-                    BloodGroupId = admission.BloodGroupId,
-                    StudentCategoryId = admission.StudentCategoryId,
-                    AdmissionTypeId = admission.AdmissionTypeId,
-                    AdmissionDate = now.Date,
-                    Email = admission.Email,
-                    MobileNumber = admission.MobileNumber,
-                    AddressLine1 = admission.AddressLine1,
-                    AddressLine2 = admission.AddressLine2,
-                    CountryId = admission.CountryId,
-                    StateId = admission.StateId,
-                    DistrictId = admission.DistrictId,
-                    CityId = admission.CityId,
-                    Pincode = admission.Pincode,
-                    StatusId = activeId.Value,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                await _repo.AddStudentAsync(student, ct);
-                await _repo.SaveChangesAsync(ct);   // need student.StudentId for the dependent rows
+                    if (attempt > 0)
+                    {
+                        _repo.ClearTracking();   // forget the rows of the failed attempt
+                        admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
+                        if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
+                    }
 
-                var enrollment = new TbStudentEnrollment
-                {
-                    SchoolId = schoolId,
-                    StudentId = student.StudentId,
-                    AcademicYearId = admission.AcademicYearId,
-                    ClassSectionId = req.ClassSectionId,
-                    RollNumber = Clean(req.RollNumber),
-                    EnrollmentDate = now.Date,
-                    AdmissionTypeId = admission.AdmissionTypeId,
-                    StatusId = activeId.Value,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                var guardian = new TbGuardian
-                {
-                    SchoolId = schoolId,
-                    FirstName = admission.GuardianName,
-                    Relationship = admission.GuardianRelationship,
-                    MobileNumber = admission.GuardianMobileNumber,
-                    Email = admission.GuardianEmail,
-                    StatusId = activeId.Value,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                await _repo.AddEnrollmentAsync(enrollment, ct);
-                await _repo.AddGuardianAsync(guardian, ct);
-                await _repo.SaveChangesAsync(ct);   // need enrollment.EnrollmentId and guardian.GuardianId
+                    await using var tx = await _repo.BeginTransactionAsync(ct);
+                    try
+                    {
+                        var now = DateTime.UtcNow;
+                        var prefix = $"ADMNO{now.Year}";
+                        var studentId = StudentIdHelper.Build(school.ShortCode!, await _repo.CountStudentsAsync(schoolId, ct) + 1);
 
-                await _repo.AddStudentGuardianAsync(new TbStudentGuardian
-                {
-                    StudentId = student.StudentId,
-                    GuardianId = guardian.GuardianId,
-                    Relationship = admission.GuardianRelationship,
-                    IsPrimary = true,
-                    IsEmergencyContact = true,
-                    CanPickupStudent = true,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                }, ct);
+                        var student = new TbStudent
+                        {
+                            StudentId = studentId,
+                            SchoolId = schoolId,
+                            AdmissionNumber = $"{prefix}{await _repo.GetMaxAdmissionNumberSequenceAsync(schoolId, prefix, ct) + 1:D4}",
+                            FirstName = admission.ApplicantFirstName,
+                            MiddleName = admission.ApplicantMiddleName,
+                            LastName = admission.ApplicantLastName,
+                            DateOfBirth = admission.DateOfBirth,
+                            GenderId = admission.GenderId,
+                            BloodGroupId = admission.BloodGroupId,
+                            StudentCategoryId = admission.StudentCategoryId,
+                            AdmissionTypeId = admission.AdmissionTypeId,
+                            AdmissionDate = now.Date,
+                            Email = admission.Email,
+                            MobileNumber = admission.MobileNumber,
+                            AddressLine1 = admission.AddressLine1,
+                            AddressLine2 = admission.AddressLine2,
+                            CountryId = admission.CountryId,
+                            StateId = admission.StateId,
+                            DistrictId = admission.DistrictId,
+                            CityId = admission.CityId,
+                            Pincode = admission.Pincode,
+                            StatusId = activeId.Value,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
+                        var enrollment = new TbStudentEnrollment
+                        {
+                            SchoolId = schoolId,
+                            StudentId = studentId,
+                            AcademicYearId = admission.AcademicYearId,
+                            ClassSectionId = req.ClassSectionId,
+                            RollNumber = Clean(req.RollNumber),
+                            EnrollmentDate = now.Date,
+                            AdmissionTypeId = admission.AdmissionTypeId,
+                            StatusId = activeId.Value,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
+                        var guardian = new TbGuardian
+                        {
+                            SchoolId = schoolId,
+                            FirstName = admission.GuardianName,
+                            Relationship = admission.GuardianRelationship,
+                            MobileNumber = admission.GuardianMobileNumber,
+                            Email = admission.GuardianEmail,
+                            StatusId = activeId.Value,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
+                        var link = new TbStudentGuardian
+                        {
+                            StudentId = studentId,
+                            Guardian = guardian,          // GuardianId is filled in from the identity value on save
+                            Relationship = admission.GuardianRelationship,
+                            IsPrimary = true,
+                            IsEmergencyContact = true,
+                            CanPickupStudent = true,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
 
-                admission.StudentId = student.StudentId;
-                admission.EnrollmentId = enrollment.EnrollmentId;
-                admission.StatusId = admittedId.Value;
-                admission.UpdatedAt = now;
-                await _repo.SaveChangesAsync(ct);
+                        await _repo.AddStudentAsync(student, ct);
+                        await _repo.AddEnrollmentAsync(enrollment, ct);
+                        await _repo.AddGuardianAsync(guardian, ct);
+                        await _repo.AddStudentGuardianAsync(link, ct);
 
-                await tx.CommitAsync(ct);
-                return Result(200, "Admission confirmed. Student and enrollment created.", await ToDetailAsync(admission, ct));
+                        admission.StudentId = studentId;
+                        admission.Enrollment = enrollment;   // EnrollmentId is filled in from the identity value on save
+                        admission.StatusId = admittedId.Value;
+                        admission.UpdatedAt = now;
+
+                        await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
+                        await tx.CommitAsync(ct);
+
+                        await NotifyAsync(schoolId, student.Email, admission.GuardianEmail,
+                            name => EmailTemplates.StudentIdAssigned(FullName(student), studentId, name),
+                            $"student id assigned {studentId}", ct);
+
+                        return Result(200, "Admission confirmed. Student and enrollment created.", await ToDetailAsync(admission, ct));
+                    }
+                    catch (DbUpdateException ex) when (IsUniqueViolation(ex) && attempt < 2)
+                    {
+                        _logger.LogWarning(ex, "Student id / admission number collision for school {SchoolId}; retrying.", schoolId);   // tx rolls back on dispose
+                    }
+                }
+                return Result<AdmissionDetailDto>(409, "Could not allocate a student ID — please try again.", null);
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                return Result<AdmissionDetailDto>(409, "Admission number collision — please try again.", null);   // the transaction rolled back
+                return Result<AdmissionDetailDto>(409, "Student ID or admission number collision — please try again.", null);   // the transaction rolled back
             }
             catch (Exception ex) { return Error<AdmissionDetailDto>(ex, "confirming admission"); }
         }
 
         // ---------------- helpers ----------------
+        private static string FullName(TbStudent s) =>
+            string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+        // Own email, else the guardian's, else nothing — the shared resolver lives in INotificationService. Never throws.
+        private async Task NotifyAsync(string schoolId, string? ownEmail, string? guardianEmail,
+            Func<string, (string Subject, string Html)> template, string context, CancellationToken ct)
+        {
+            try
+            {
+                var school = await _repo.GetSchoolIdentityAsync(schoolId, ct);
+                await _notify.SendAsync(ownEmail, guardianEmail, template(school?.SchoolName ?? "your school"), context, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not send '{Context}' notification", context);
+            }
+        }
+
         private async Task<ApiResponse<AdmissionDetailDto>> TransitionAsync(
             string schoolId, long admissionId, string[] allowedFrom, string toStatus,
             Action<TbAdmission> apply, string successMessage, CancellationToken ct)

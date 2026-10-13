@@ -59,7 +59,7 @@ namespace smss_api_service_layer.dto
         public string StatusName { get; set; } = null!;
         public string? AadharNumberMasked { get; set; }
         public DateTime ApplicationDate { get; set; }
-        public long? StudentId { get; set; }
+        public string? StudentId { get; set; }
         public long? EnrollmentId { get; set; }
 
         public long AcademicYearId { get; set; }

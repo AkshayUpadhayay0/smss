@@ -111,6 +111,7 @@ namespace smss_api_db_layer.context
                 e.HasIndex(x => x.SchoolCode).IsUnique();
                 e.HasIndex(x => x.SchoolGstin).IsUnique();
                 e.HasIndex(x => x.SchoolPan).IsUnique();
+                e.HasIndex(x => x.SchoolShortCode).IsUnique();
                 e.HasMany(x => x.Contacts)
                  .WithOne()
                  .HasForeignKey(c => c.SchoolId)
@@ -122,7 +123,8 @@ namespace smss_api_db_layer.context
                 e.ToTable("tb_users");
                 e.HasKey(x => x.UserId);
                 e.Property(x => x.UserId).UseIdentityAlwaysColumn();
-                e.HasIndex(x => x.Username).IsUnique();
+                // display_name is deliberately NOT unique; the login id (org_user_id) is guarded by the partial unique
+                // indexes uq_tb_users_school_org_user / uq_tb_users_superadmin_org_user and uq_tb_users_student
 
 
                 e.HasOne<TbSchools>().WithMany().HasForeignKey(x => x.SchoolId);

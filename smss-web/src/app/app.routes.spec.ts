@@ -90,8 +90,30 @@ describe('app routes', () => {
     });
   });
 
+  describe('first login (temporary password)', () => {
+    beforeEach(() => seedSession({ user: makeUser({ isFirstLogin: true }) }));
+
+    it.each(['/dashboard', '/schools', '/masters/board-type', '/nope'])('%s is redirected to /change-password', async (from) => {
+      const { url, harness } = await go(from);
+      expect(url).toBe('/change-password');
+      expect(heading(harness)).toBe('Change Password');
+    });
+
+    it('stays blocked when navigating from the change-password page to another page', async () => {
+      const { harness } = await go('/change-password');
+      await harness.navigateByUrl('/schools');
+      expect(TestBed.inject(Router).url).toBe('/change-password');
+    });
+
+    it('is not blocked once the flag is cleared', async () => {
+      clearSessions();
+      seedSession({ user: makeUser({ isFirstLogin: false }) });
+      expect((await go('/dashboard')).url).toBe('/dashboard');
+    });
+  });
+
   describe('role-based access', () => {
-    const asSchoolAdmin = () => seedSession({ user: makeUser({ username: 'sch2026007', userType: 'School Id', schoolName: 'ZZ Role Test School', schoolCode: '99999999901', roles: ['School Admin'] }) });
+    const asSchoolAdmin = () => seedSession({ user: makeUser({ displayName: 'ZZ Role Test School', orgUserId: 'sch2026007', userType: 'School Id', schoolName: 'ZZ Role Test School', schoolCode: '99999999901', roles: ['School Admin'] }) });
     /** Visible menu labels, in order, e.g. "Dashboard | Registered Schools | Masters". */
     const nav = (h: RouterTestingHarness) =>
       [...(h.routeNativeElement?.querySelectorAll('app-sidebar nav a, app-sidebar nav button') ?? [])].map((e) => e.textContent?.replace(/\s+/g, ' ').trim()).join(' | ');
@@ -103,6 +125,18 @@ describe('app routes', () => {
         const { harness, url } = await go('/students/onboard-existing');
         expect(url).toBe('/students/onboard-existing');
         expect(heading(harness)).toBe('Add Existing Student');
+      });
+
+      it('highlights only "Add Existing Student" (not "Students") on /students/onboard-existing', async () => {
+        const { harness } = await go('/students/onboard-existing');
+        const active = [...(harness.routeNativeElement?.querySelectorAll('app-sidebar nav a.active') ?? [])].map((e) => e.textContent?.replace(/\s+/g, ' ').trim());
+        expect(active).toEqual(['Add Existing Student']);
+      });
+
+      it.each(['/students', '/students/DPS001ST001'])('highlights only "Students" on %s', async (path) => {
+        const { harness } = await go(path);
+        const active = [...(harness.routeNativeElement?.querySelectorAll('app-sidebar nav a.active') ?? [])].map((e) => e.textContent?.replace(/\s+/g, ' ').trim());
+        expect(active).toEqual(['Students']);
       });
 
       it('/students/:studentId opens a student profile', async () => {

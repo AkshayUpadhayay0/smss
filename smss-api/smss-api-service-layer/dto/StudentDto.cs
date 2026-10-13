@@ -2,7 +2,7 @@ namespace smss_api_service_layer.dto
 {
     public class StudentListItemDto
     {
-        public long StudentId { get; set; }
+        public string StudentId { get; set; } = null!;
         public string AdmissionNumber { get; set; } = null!;
         public string FullName { get; set; } = null!;
         public string? RollNumber { get; set; }          // from the enrollment, not the student
@@ -26,13 +26,13 @@ namespace smss_api_service_layer.dto
 
     public class StudentPhotoDto
     {
-        public long StudentId { get; set; }
+        public string StudentId { get; set; } = null!;
         public string? ProfilePhotoUrl { get; set; }
     }
 
     public class StudentProfileDto
     {
-        public long StudentId { get; set; }
+        public string StudentId { get; set; } = null!;
         public string AdmissionNumber { get; set; } = null!;
         public string FullName { get; set; } = null!;
         public DateTime DateOfBirth { get; set; }
@@ -54,6 +54,9 @@ namespace smss_api_service_layer.dto
         public string? SectionName { get; set; }
         public string? RollNumber { get; set; }
         public string? EnrollmentStatusName { get; set; }
+
+        /// <summary>The student's login id once a login exists (null before); the password is never returned again.</summary>
+        public string? LoginId { get; set; }
 
         public List<GuardianSummaryDto> Guardians { get; set; } = new();
     }

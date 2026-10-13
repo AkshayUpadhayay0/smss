@@ -37,12 +37,12 @@ describe('AuthService', () => {
   it('login posts the credentials, keeps the session and exposes the user', () => {
     const auth = setup();
     let user: unknown;
-    auth.login({ username: 'SUAD001', password: 'pw', rememberMe: false }).subscribe((u) => (user = u));
+    auth.login({ loginId: 'SUAD001', password: 'pw', rememberMe: false }).subscribe((u) => (user = u));
     const req = http.expectOne(`${API}/api/Auth/login`);
-    expect(req.request.body).toEqual({ username: 'SUAD001', password: 'pw', rememberMe: false });
+    expect(req.request.body).toEqual({ loginId: 'SUAD001', password: 'pw', rememberMe: false });
     req.flush(envelope(makeLoginResponse({ token: 'tok' })));
 
-    expect(user).toMatchObject({ username: 'Akshay Upadhayay' });
+    expect(user).toMatchObject({ displayName: 'Akshay Upadhayay' });
     expect(auth.accessToken()).toBe('tok');
     expect(auth.hasValidSession()).toBe(true);
     expect(auth.user()?.roles).toEqual(['Super Admin']);
@@ -50,12 +50,12 @@ describe('AuthService', () => {
 
   it('"remember me" decides where the session is stored', () => {
     const auth = setup();
-    auth.login({ username: 'a', password: 'b', rememberMe: true }).subscribe();
+    auth.login({ loginId: 'a', password: 'b', rememberMe: true }).subscribe();
     http.expectOne(`${API}/api/Auth/login`).flush(envelope(makeLoginResponse()));
     expect(localStorage.getItem(SESSION_KEY)).not.toBeNull();
     expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
 
-    auth.login({ username: 'a', password: 'b', rememberMe: false }).subscribe();
+    auth.login({ loginId: 'a', password: 'b', rememberMe: false }).subscribe();
     http.expectOne(`${API}/api/Auth/login`).flush(envelope(makeLoginResponse()));
     expect(sessionStorage.getItem(SESSION_KEY)).not.toBeNull();
     expect(localStorage.getItem(SESSION_KEY)).toBeNull(); // never both
@@ -64,9 +64,9 @@ describe('AuthService', () => {
   it('a failed login leaves the user signed out and does not toast (the form shows it inline)', () => {
     const auth = setup();
     let error: { error: { message: string } } | undefined;
-    auth.login({ username: 'a', password: 'b', rememberMe: false }).subscribe({ error: (e) => (error = e) });
-    http.expectOne(`${API}/api/Auth/login`).flush({ status: false, statusCode: 401, message: 'Invalid username or password.', data: null }, { status: 401, statusText: 'Unauthorized' });
-    expect(error?.error.message).toBe('Invalid username or password.');
+    auth.login({ loginId: 'a', password: 'b', rememberMe: false }).subscribe({ error: (e) => (error = e) });
+    http.expectOne(`${API}/api/Auth/login`).flush({ status: false, statusCode: 401, message: 'Invalid login ID or password.', data: null }, { status: 401, statusText: 'Unauthorized' });
+    expect(error?.error.message).toBe('Invalid login ID or password.');
     expect(auth.hasValidSession()).toBe(false);
   });
 

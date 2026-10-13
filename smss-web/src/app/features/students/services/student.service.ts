@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { StudentListItem, StudentPhoto, StudentProfile } from '../models/student.model';
+import { StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
 
@@ -20,20 +20,25 @@ export class StudentService {
     return this.withSchool((s) => this.api.get<StudentListItem[]>(`${BASE}/${s}`, { academicYearId, classSectionId })).pipe(map((l) => l ?? []));
   }
 
-  getProfile(studentId: number): Observable<StudentProfile> {
-    return this.withSchool((s) => this.api.get<StudentProfile>(`${BASE}/${s}/${studentId}`));
+  getProfile(studentId: string): Observable<StudentProfile> {
+    return this.withSchool((s) => this.api.get<StudentProfile>(`${BASE}/${s}/${encodeURIComponent(studentId)}`));
   }
 
   /**
    * Same two-step pattern as the school logo: the student is created first, then the photo is sent on its own.
    * Callers handle a failure themselves (the student is already saved), so no global error toast.
    */
-  uploadPhoto(studentId: number, file: File): Observable<StudentPhoto> {
-    return this.withSchool((s) => this.api.upload<StudentPhoto>(`${BASE}/${s}/${studentId}/photo`, file, 'file', { skipErrorToast: true }));
+  uploadPhoto(studentId: string, file: File): Observable<StudentPhoto> {
+    return this.withSchool((s) => this.api.upload<StudentPhoto>(`${BASE}/${s}/${encodeURIComponent(studentId)}/photo`, file, 'file', { skipErrorToast: true }));
   }
 
-  removePhoto(studentId: number): Observable<StudentPhoto> {
-    return this.withSchool((s) => this.api.post<StudentPhoto>(`${BASE}/${s}/${studentId}/photo/remove`, {}, { skipErrorToast: true }));
+  removePhoto(studentId: string): Observable<StudentPhoto> {
+    return this.withSchool((s) => this.api.post<StudentPhoto>(`${BASE}/${s}/${encodeURIComponent(studentId)}/photo/remove`, {}, { skipErrorToast: true }));
+  }
+
+  /** Creates the student's login; the response carries the generated Login ID and temporary password (shown once). */
+  createLogin(studentId: string): Observable<StudentLoginCreated> {
+    return this.withSchool((s) => this.api.post<StudentLoginCreated>(`${BASE}/${s}/${encodeURIComponent(studentId)}/create-login`, {}));
   }
 
   private withSchool<T>(call: (schoolId: string) => Observable<T>): Observable<T> {

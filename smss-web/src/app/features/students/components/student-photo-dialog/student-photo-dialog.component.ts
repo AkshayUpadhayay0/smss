@@ -36,7 +36,7 @@ export class StudentPhotoDialogComponent {
   private readonly students = inject(StudentService);
   private readonly toast = inject(ToastService);
 
-  readonly studentId = input.required<number>();
+  readonly studentId = input.required<string>();
   readonly studentName = input<string>('');
   /** Absolute URL of the current photo, or null. */
   readonly currentUrl = input<string | null>(null);

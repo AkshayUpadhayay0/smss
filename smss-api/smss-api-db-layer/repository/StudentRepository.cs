@@ -12,6 +12,12 @@ namespace smss_api_db_layer.repository
         private readonly dbContext _db;
         public StudentRepository(dbContext db) => _db = db;
 
+        public Task<string?> GetStudentLoginIdAsync(string schoolId, string studentId, CancellationToken ct) =>
+            _db.Users.AsNoTracking()
+                .Where(u => u.SchoolId == schoolId && u.OrgUserId == studentId)
+                .Select(u => u.OrgUserId)
+                .FirstOrDefaultAsync(ct);
+
         public Task<bool> AcademicYearBelongsToSchoolAsync(string schoolId, long academicYearId, CancellationToken ct) =>
             _db.AcademicYears.AnyAsync(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId, ct);
 
@@ -36,10 +42,10 @@ namespace smss_api_db_layer.repository
                 r.RollNumber, r.GenderId, r.StatusId, r.EnrollmentId, r.ProfilePhotoUrl)).ToList();
         }
 
-        public Task<TbStudent?> GetStudentAsync(string schoolId, long studentId, CancellationToken ct) =>
+        public Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 
-        public Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, long studentId, CancellationToken ct) =>
+        public Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.Where(s => s.SchoolId == schoolId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 
         public Task<string?> GetSchoolCodeAsync(string schoolId, CancellationToken ct) =>
@@ -47,7 +53,7 @@ namespace smss_api_db_layer.repository
 
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 
-        public async Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, long studentId, CancellationToken ct)
+        public async Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, string studentId, CancellationToken ct)
         {
             var rows = await (
                 from e in _db.StudentEnrollments.AsNoTracking()
@@ -66,7 +72,7 @@ namespace smss_api_db_layer.repository
                 r.StartDate, r.IsCurrent, r.ClassName, r.SectionName)).ToList();
         }
 
-        public async Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, long studentId, CancellationToken ct)
+        public async Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, string studentId, CancellationToken ct)
         {
             var rows = await (
                 from sg in _db.StudentGuardians.AsNoTracking()

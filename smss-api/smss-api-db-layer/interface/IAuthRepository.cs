@@ -7,7 +7,7 @@ namespace smss_api_db_layer.@interface
 {
     public interface IAuthRepository
     {
-        Task<TbUsers?> GetUserByUsernameAsync(string username, bool track = false);
+        Task<TbUsers?> GetUserByLoginIdAsync(string loginId, bool track = false);
         Task<TbUsers?> GetUserByIdAsync(long userId, bool track = false);
         Task<List<LutRole>> GetRolesByUserIdAsync(long userId);
         Task<TbSchools?> GetSchoolByIdAsync(string schoolId);

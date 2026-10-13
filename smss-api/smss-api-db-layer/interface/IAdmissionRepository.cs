@@ -3,6 +3,9 @@ using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.@interface
 {
+    /// <summary>What student ids and notification emails need to know about a school.</summary>
+    public record SchoolIdentity(string SchoolName, string? ShortCode);
+
     // Every method that reads or changes a school's data takes the school id.
     public interface IAdmissionRepository
     {
@@ -38,6 +41,10 @@ namespace smss_api_db_layer.@interface
         Task<int> GetMaxApplicationSequenceAsync(string schoolId, string prefix, CancellationToken ct);
         Task<int> GetMaxAdmissionNumberSequenceAsync(string schoolId, string prefix, CancellationToken ct);
 
+        Task<SchoolIdentity?> GetSchoolIdentityAsync(string schoolId, CancellationToken ct);
+        /// <summary>How many students the school has (any status): the next student id is this + 1.</summary>
+        Task<int> CountStudentsAsync(string schoolId, CancellationToken ct);
+
         // Confirm-admission writes
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         Task AddStudentAsync(TbStudent entity, CancellationToken ct);
@@ -46,5 +53,7 @@ namespace smss_api_db_layer.@interface
         Task AddStudentGuardianAsync(TbStudentGuardian entity, CancellationToken ct);
 
         Task<int> SaveChangesAsync(CancellationToken ct);
+        /// <summary>Forgets every pending / failed entity so a retry after a failed save starts from a clean context.</summary>
+        void ClearTracking();
     }
 }

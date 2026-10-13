@@ -54,7 +54,7 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<List<StudentListItemDto>>(ex, "fetching students"); }
         }
 
-        public async Task<ApiResponse<StudentProfileDto>> GetStudentProfileAsync(string schoolId, long studentId, CancellationToken ct)
+        public async Task<ApiResponse<StudentProfileDto>> GetStudentProfileAsync(string schoolId, string studentId, CancellationToken ct)
         {
             try
             {
@@ -69,6 +69,7 @@ namespace smss_api_service_layer.service
 
                 var dto = new StudentProfileDto
                 {
+                    LoginId = await _repo.GetStudentLoginIdAsync(schoolId, studentId, ct),
                     StudentId = s.StudentId,
                     AdmissionNumber = s.AdmissionNumber,
                     FullName = FullName(s.FirstName, s.MiddleName, s.LastName),
@@ -124,7 +125,7 @@ namespace smss_api_service_layer.service
 
         // ---------------- photo ----------------
         // Same rules and the same storage service as the school logo (ImageUploadValidator / IFileStorageService).
-        public async Task<ApiResponse<StudentPhotoDto>> UploadPhotoAsync(string schoolId, long studentId, Stream content, string fileName, long length, CancellationToken ct)
+        public async Task<ApiResponse<StudentPhotoDto>> UploadPhotoAsync(string schoolId, string studentId, Stream content, string fileName, long length, CancellationToken ct)
         {
             string? savedUrl = null;
             var committed = false;
@@ -161,7 +162,7 @@ namespace smss_api_service_layer.service
             }
         }
 
-        public async Task<ApiResponse<StudentPhotoDto>> RemovePhotoAsync(string schoolId, long studentId, CancellationToken ct)
+        public async Task<ApiResponse<StudentPhotoDto>> RemovePhotoAsync(string schoolId, string studentId, CancellationToken ct)
         {
             try
             {

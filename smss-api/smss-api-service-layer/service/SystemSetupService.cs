@@ -36,11 +36,12 @@ namespace smss_api_service_layer.service
                 if (await _repo.SuperAdminExistsAsync())
                     return Fail(409, "A Super Admin already exists. This endpoint only creates the first one.");
 
-                var username = req.Username.Trim();
+                var displayName = req.DisplayName.Trim();
                 var email = req.Email.Trim();
 
-                if (await _repo.UsernameOrEmailExistsAsync(username, email))
-                    return Fail(409, "Username or email is already in use.");
+                // The name is only a label (not unique); the login id is generated below
+                if (await _repo.EmailExistsAsync(email))
+                    return Fail(409, "Email is already in use.");
 
                 var roleId = await _repo.GetRoleIdByNameAsync(RoleNames.SuperAdmin);
                 if (roleId == null)
@@ -57,8 +58,8 @@ namespace smss_api_service_layer.service
                 {
                     SchoolId = null,                      // Super Admin belongs to no tenant
                     UserType = UserTypes.SuperAdmin,       // "SuperAdminId"
-                    OrgUserId = orgUserId,                 // "SUAD001"
-                    Username = username,
+                    OrgUserId = orgUserId,                 // "SUAD001" — the login id
+                    DisplayName = displayName,
                     Email = email,
                     MobileNumber = req.MobileNumber,
                     PasswordHash = PasswordHelper.Hash(req.Password),
@@ -73,7 +74,7 @@ namespace smss_api_service_layer.service
 
                 try
                 {
-                    var (subject, html) = EmailTemplates.SuperAdminWelcome(user.Username!, user.OrgUserId!, _config["Email:LoginUrl"]);
+                    var (subject, html) = EmailTemplates.SuperAdminWelcome(user.DisplayName!, user.OrgUserId!, _config["Email:LoginUrl"]);
                     await _emailService.SendAsync(user.Email!, subject, html);
                 }
                 catch (Exception ex)
@@ -85,7 +86,7 @@ namespace smss_api_service_layer.service
                 {
                     UserId = user.UserId,
                     OrgUserId = user.OrgUserId!,
-                    Username = user.Username!,
+                    DisplayName = user.DisplayName!,
                     Email = user.Email!,
                     MobileNumber = user.MobileNumber,
                     CreatedAt = user.CreatedAt
@@ -93,7 +94,7 @@ namespace smss_api_service_layer.service
             }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                return Fail(409, "Username, email or org user id is already in use.");
+                return Fail(409, "Email or login id is already in use.");
             }
             catch (Exception ex)
             {

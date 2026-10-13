@@ -1,5 +1,6 @@
 export interface LoginRequest {
-  username: string;
+  /** The user's org user id (SUAD001, FIRS261013001, DPS001ST001) — NOT their display name. */
+  loginId: string;
   password: string;
   rememberMe: boolean;
 }
@@ -11,7 +12,10 @@ export interface ChangePasswordRequest {
 
 export interface AuthUser {
   userId: number;
-  username: string;
+  /** The person's / school's name, for display only. */
+  displayName: string;
+  /** The login id. */
+  orgUserId: string;
   userType: string;
   email?: string | null;
   schoolId?: string | null;

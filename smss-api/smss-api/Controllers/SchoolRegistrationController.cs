@@ -41,7 +41,7 @@ namespace smss_api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> RegisterSchool([FromBody] CreateSchoolRequest request)
         {
-            var response = await _schoolRegistrationService.RegisterSchoolAsync(request);
+            var response = await _schoolRegistrationService.RegisterSchoolAsync(request, HttpContext.RequestAborted);
             return StatusCode(response.StatusCode, response);
         }
 

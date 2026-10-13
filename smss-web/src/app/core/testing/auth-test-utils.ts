@@ -5,7 +5,8 @@ export const SESSION_KEY = 'smss.session';
 export function makeUser(overrides: Partial<AuthUser> = {}): AuthUser {
   return {
     userId: 1,
-    username: 'Akshay Upadhayay',
+    displayName: 'Akshay Upadhayay',
+    orgUserId: 'SUAD001',
     userType: 'Super Admin',
     email: 'admin@example.com',
     schoolId: 'SUAD0000001',

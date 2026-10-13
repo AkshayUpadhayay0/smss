@@ -65,7 +65,8 @@ namespace smss_api_service_layer.dto
     public class SchoolRegistrationResponse
     {
         public SchoolResponse School { get; set; } = null!;
-        public string Username { get; set; } = null!;
+        /// <summary>The login id (org_user_id) to sign in with — the same value as the school id.</summary>
+        public string LoginId { get; set; } = null!;
         public string TemporaryPassword { get; set; } = null!;
         public bool EmailSent { get; set; }
         public string? EmailSentTo { get; set; }

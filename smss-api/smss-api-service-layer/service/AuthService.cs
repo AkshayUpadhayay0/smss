@@ -9,7 +9,7 @@ namespace smss_api_service_layer.service
 {
     public class AuthService : IAuthService
     {
-        private const string InvalidCredentials = "Invalid username or password.";
+        private const string InvalidCredentials = "Invalid login ID or password.";
         private const string SessionExpired = "Your session has expired. Please sign in again.";
         private const string InactiveAccount = "Your account is inactive. Please contact support.";
 
@@ -17,7 +17,7 @@ namespace smss_api_service_layer.service
         // race is rejected but must not be treated as token theft.
         private static readonly TimeSpan ReuseGracePeriod = TimeSpan.FromSeconds(10);
 
-        // Verified against when the username doesn't exist, so response time doesn't reveal valid usernames
+        // Verified against when the login id doesn't exist, so response time doesn't reveal valid login ids
         private static readonly string DummyHash = PasswordHelper.Hash("smss-dummy-password");
 
         private readonly IAuthRepository _repo;
@@ -35,8 +35,9 @@ namespace smss_api_service_layer.service
         {
             try
             {
-                var username = req.Username.Trim();
-                var user = await _repo.GetUserByUsernameAsync(username, track: true);
+                // The login credential is tb_users.org_user_id (SUAD001, FIRS261013001, DPS001ST001); display_name is only a label
+                var loginId = req.LoginId.Trim();
+                var user = await _repo.GetUserByLoginIdAsync(loginId, track: true);
 
                 if (user == null || string.IsNullOrEmpty(user.PasswordHash))
                 {
@@ -173,7 +174,7 @@ namespace smss_api_service_layer.service
         private async Task<LoginResponse> IssueTokensAsync(TbUsers user, TbSchools? school, bool rememberMe, TbRefreshTokens? rotateFrom = null)
         {
             var roles = (await _repo.GetRolesByUserIdAsync(user.UserId)).Select(r => r.RoleName).ToList();
-            var (accessToken, accessExpires) = _jwt.Generate(user.UserId, user.Username!, user.UserType, user.SchoolId, roles);
+            var (accessToken, accessExpires) = _jwt.Generate(user.UserId, user.DisplayName ?? user.OrgUserId ?? string.Empty, user.UserType, user.SchoolId, roles);
             var refresh = _jwt.GenerateRefreshToken(rememberMe);
 
             var now = DateTime.UtcNow;
@@ -212,7 +213,8 @@ namespace smss_api_service_layer.service
         private static AuthUserResponse ToUserResponse(TbUsers user, TbSchools? school, List<string> roles) => new()
         {
             UserId = user.UserId,
-            Username = user.Username!,
+            DisplayName = user.DisplayName ?? user.OrgUserId ?? string.Empty,
+            OrgUserId = user.OrgUserId ?? string.Empty,
             UserType = user.UserType,
             Email = user.Email,
             SchoolId = user.SchoolId,

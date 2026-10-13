@@ -16,8 +16,10 @@ namespace smss_api_db_layer.entity
 
         [Column("school_id")][StringLength(100)] public string? SchoolId { get; set; }
         [Column("user_type")][StringLength(30)] public string UserType { get; set; } = null!;
+        // The login credential. For a STUDENT login it is the student's own id (tb_students.student_id), e.g. DPS001ST001
         [Column("org_user_id")][StringLength(50)] public string? OrgUserId { get; set; }
-        [Column("username")][StringLength(100)] public string? Username { get; set; }
+        // A label only (school name / person name) — NOT unique and NOT used to log in; the login credential is OrgUserId
+        [Column("display_name")][StringLength(100)] public string? DisplayName { get; set; }
         [Column("email")][StringLength(150)] public string? Email { get; set; }
         [Column("mobile_number")][StringLength(20)] public string? MobileNumber { get; set; }
         [Column("password_hash")] public string? PasswordHash { get; set; }

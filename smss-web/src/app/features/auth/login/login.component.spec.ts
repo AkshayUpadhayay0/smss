@@ -35,8 +35,8 @@ describe('LoginComponent', () => {
     el().querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     fixture.detectChanges();
   };
-  function fill(username = 'SUAD001', password = 'secret') {
-    type('input[type="text"]', username);
+  function fill(loginId = 'SUAD001', password = 'secret') {
+    type('input[type="text"]', loginId);
     type('input[type="password"]', password);
   }
 
@@ -63,16 +63,16 @@ describe('LoginComponent', () => {
     create();
     submit();
     http.expectNone(LOGIN);
-    expect(el().textContent).toContain('Enter your username');
+    expect(el().textContent).toContain('Enter your login ID');
     expect(el().textContent).toContain('Enter your password');
   });
 
-  it('signs in, sends the trimmed username and goes to the dashboard', () => {
+  it('signs in, sends the trimmed login ID and goes to the dashboard', () => {
     create();
     fill('  SUAD001 ', 'secret');
     submit();
     const req = http.expectOne(LOGIN);
-    expect(req.request.body).toEqual({ username: 'SUAD001', password: 'secret', rememberMe: false });
+    expect(req.request.body).toEqual({ loginId: 'SUAD001', password: 'secret', rememberMe: false });
     req.flush({ status: true, statusCode: 200, message: 'ok', data: makeLoginResponse() });
     expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
     expect(sessionStorage.getItem(SESSION_KEY)).not.toBeNull();
@@ -123,10 +123,10 @@ describe('LoginComponent', () => {
     submit();
     http
       .expectOne(LOGIN)
-      .flush({ status: false, statusCode: 401, message: 'Invalid username or password.', data: null }, { status: 401, statusText: 'Unauthorized' });
+      .flush({ status: false, statusCode: 401, message: 'Invalid login ID or password.', data: null }, { status: 401, statusText: 'Unauthorized' });
     fixture.detectChanges();
 
-    expect(el().querySelector('[role="alert"]')?.textContent).toContain('Invalid username or password.');
+    expect(el().querySelector('[role="alert"]')?.textContent).toContain('Invalid login ID or password.');
     expect(el().querySelector<HTMLInputElement>('input[type="password"]')!.value).toBe('');
     expect(toast.toasts()).toHaveLength(0);
     expect(navigateByUrl).not.toHaveBeenCalled();

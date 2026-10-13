@@ -38,7 +38,8 @@ export interface Admission {
   /** Already masked by the server (XXXX XXXX 1234); never unmask client-side. */
   aadharNumberMasked?: string | null;
   applicationDate: string;
-  studentId?: number | null;
+  /** Business id string (e.g. DPS001ST001), set once the application is ADMITTED. */
+  studentId?: string | null;
   enrollmentId?: number | null;
   academicYearId: number;
   academicYearName?: string | null;

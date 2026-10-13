@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'School Setup',
     icon: 'graduation-cap',
     children: [
+      { label: 'Import Masters', route: '/school-setup/import-masters' },
       { label: 'Academic Year', route: '/school-setup/academic-year' },
       { label: 'Class', route: '/school-setup/classes' },
       { label: 'Section', route: '/school-setup/sections' },

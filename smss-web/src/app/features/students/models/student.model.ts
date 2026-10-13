@@ -1,7 +1,8 @@
 // Mirrors StudentListItemDto / StudentProfileDto / GuardianSummaryDto.
+// studentId is the business id string (e.g. DPS001ST001), never a number.
 
 export interface StudentListItem {
-  studentId: number;
+  studentId: string;
   admissionNumber: string;
   fullName: string;
   /** From the enrollment, not the student. */
@@ -25,7 +26,7 @@ export interface GuardianSummary {
 }
 
 export interface StudentProfile {
-  studentId: number;
+  studentId: string;
   admissionNumber: string;
   fullName: string;
   dateOfBirth: string;
@@ -50,12 +51,15 @@ export interface StudentProfile {
   rollNumber?: string | null;
   enrollmentStatusName?: string | null;
 
+  /** The student's login id once a login exists; null before. The password is never returned again. */
+  loginId?: string | null;
+
   guardians: GuardianSummary[];
 }
 
 /** Table row for the list page. */
 export interface StudentRow extends Record<string, unknown> {
-  studentId: number;
+  studentId: string;
   /** Absolute image URL, or '' (the avatar falls back to initials). */
   photoUrl: string;
   rollNumber: string;
@@ -67,8 +71,20 @@ export interface StudentRow extends Record<string, unknown> {
 
 /** Mirrors StudentPhotoDto. */
 export interface StudentPhoto {
-  studentId: number;
+  studentId: string;
   profilePhotoUrl: string | null;
+}
+
+/** Mirrors StudentLoginCreatedDto — returned once, right after the login is created. */
+export interface StudentLoginCreated {
+  studentId: string;
+  displayName: string;
+  /** The Login ID to sign in with (e.g. DPS001ST001). */
+  orgUserId: string;
+  /** Shown once; the server cannot return it again. */
+  temporaryPassword: string;
+  emailSent: boolean;
+  emailSentTo?: string | null;
 }
 
 /** Table row for the guardians list on the profile page. */

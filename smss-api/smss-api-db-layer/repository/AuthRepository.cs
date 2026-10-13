@@ -13,10 +13,10 @@ namespace smss_api_db_layer.repository
         private readonly dbContext _dbContext;
         public AuthRepository(dbContext dbContext) => _dbContext = dbContext;
 
-        // Case-insensitive match so "SCH2026001" and "sch2026001" both work
-        public async Task<TbUsers?> GetUserByUsernameAsync(string username, bool track = false)
+        // The login id is org_user_id. Case-insensitive match so "SCH2026001" and "sch2026001" both work.
+        public async Task<TbUsers?> GetUserByLoginIdAsync(string loginId, bool track = false)
         {
-            var key = username.ToLower();
+            var key = loginId.ToLower();
             IQueryable<TbUsers> query = _dbContext.Users.Where(u => u.OrgUserId != null && u.OrgUserId.ToLower() == key);
             if (!track) query = query.AsNoTracking();
             return await query.FirstOrDefaultAsync();

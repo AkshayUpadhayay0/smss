@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
@@ -8,7 +10,7 @@ import { NAV_ITEMS, NavItem } from '../nav.config';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive, IconComponent, LogoComponent],
+  imports: [RouterLink, IconComponent, LogoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './sidebar.component.scss',
   host: { '[class.is-collapsed]': 'collapsed()' },
@@ -17,6 +19,19 @@ import { NAV_ITEMS, NavItem } from '../nav.config';
 export class SidebarComponent {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+
+  /** Current URL path (no query / fragment), kept in a signal so the active highlight follows every navigation. */
+  private readonly path = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      startWith(null),
+      map(() => this.router.url.split(/[?#]/)[0]),
+    ),
+    { initialValue: this.router.url.split(/[?#]/)[0] },
+  );
+
+  /** Every route in the menu, leaves and group children. */
+  private static readonly ALL_ROUTES: string[] = NAV_ITEMS.flatMap((i) => (i.children ? i.children.map((c) => c.route) : i.route ? [i.route] : []));
 
   readonly collapsed = input(false);
   /** Emitted when a link is followed (lets the mobile drawer close itself). */
@@ -41,6 +56,18 @@ export class SidebarComponent {
   private readonly openGroups = signal<Set<string>>(
     new Set(NAV_ITEMS.filter((i) => this.containsUrl(i, this.router.url)).map((i) => i.label)),
   );
+
+  /**
+   * A link is active for its own URL and anything below it (/students/DPS001ST001 keeps "Students" lit), unless a MORE
+   * specific menu item also matches: /students/onboard-existing belongs to "Add Existing Student", not to "Students".
+   */
+  protected isActive(route: string | undefined): boolean {
+    if (!route) return false;
+    const path = this.path();
+    const matches = (r: string) => path === r || path.startsWith(r + '/');
+    if (!matches(route)) return false;
+    return !SidebarComponent.ALL_ROUTES.some((r) => r.length > route.length && matches(r));
+  }
 
   protected isOpen(item: NavItem): boolean {
     return this.openGroups().has(item.label);

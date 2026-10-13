@@ -58,7 +58,7 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- INSERT ----------------
-        public async Task<ApiResponse<object>> RegisterSchoolAsync(CreateSchoolRequest req)
+        public async Task<ApiResponse<object>> RegisterSchoolAsync(CreateSchoolRequest req, CancellationToken ct = default)
         {
             try
             {
@@ -80,12 +80,20 @@ namespace smss_api_service_layer.service
                     return ConfigError($"Status '{StatusNames.Active}' ({StatusNames.GeneralType}) is missing in lut_status");
 
                 var now = DateTime.UtcNow;
-                var schoolId = $"sch{now.Year}{await _repo.GetNextSchoolNumberAsync():D3}";
+                // {prefix}{yyMMdd}{seq}: prefix from the short name (or name), seq = how many schools registered today + 1
+                var prefix = SchoolIdHelper.GenerateSchoolIdPrefix(req.SchoolShortName, req.SchoolName);
+                var seq = await _repo.GetSchoolCountForDateAsync(DateOnly.FromDateTime(now), ct) + 1;
+                var schoolId = SchoolIdHelper.Build(prefix, now, seq);
+                // {prefix}{seq:D3}, counted per prefix over all time (DPS001, DPS002, ...): the building block for
+                // student/employee login ids, so it is unique across schools and never changes afterwards
+                var shortSeq = await _repo.GetSchoolCountForShortCodePrefixAsync(prefix, ct) + 1;
+                var shortCode = SchoolIdHelper.BuildShortCode(prefix, shortSeq);
 
                 var school = new TbSchools
                 {
                     SchoolId = schoolId,
                     SchoolCode = code,
+                    SchoolShortCode = shortCode,
                     SchoolStatusId = activeStatusId,     // set here, never taken from the client
                     CreatedAt = now
                 };
@@ -105,8 +113,8 @@ namespace smss_api_service_layer.service
                 {
                     SchoolId = schoolId,
                     UserType = UserTypes.SchoolId,
-                    OrgUserId = schoolId,
-                    Username = schoolId,
+                    OrgUserId = schoolId,                // the login id; display_name is only a label
+                    DisplayName = school.SchoolName,
                     Email = school.Email,
                     MobileNumber = school.MobileNumber,
                     PasswordHash = PasswordHelper.Hash(tempPassword),
@@ -127,7 +135,7 @@ namespace smss_api_service_layer.service
                     try
                     {
                         var (subject, html) = EmailTemplates.SchoolAdminCredentials(
-                            school.SchoolName, school.SchoolId, user.Username!, tempPassword, _config["Email:LoginUrl"]);
+                            school.SchoolName, school.SchoolId, user.OrgUserId!, tempPassword, _config["Email:LoginUrl"]);
                         await _emailService.SendAsync(recipientEmail, subject, html);
                         emailSent = true;
                     }
@@ -145,11 +153,18 @@ namespace smss_api_service_layer.service
                 return Ok(201, "School registered successfully", new SchoolRegistrationResponse
                 {
                     School = SchoolMapper.ToResponse(school),
-                    Username = user.Username!,
+                    LoginId = user.OrgUserId!,
                     TemporaryPassword = tempPassword,
                     EmailSent = emailSent,
                     EmailSentTo = emailSent ? recipientEmail : null
                 });
+            }
+            catch (DbUpdateException ex) when (IsSchoolIdCollision(ex))
+            {
+                // Two registrations on the same day computed the same sequence number. Nothing was saved, and
+                // nothing the admin typed is wrong, so the right move is simply to submit again.
+                _logger.LogWarning(ex, "school_id collision while registering a school; the request should be retried");
+                return Fail(409, "Registration ID collision — please submit again.");
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
@@ -428,6 +443,13 @@ namespace smss_api_service_layer.service
 
         private static bool IsUniqueViolation(DbUpdateException ex) =>
             ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+        // The school id is the school's primary key and (as the login id) the user's org_user_id, and the short code is
+        // derived from the same day-independent count, so a colliding id shows up as one of these constraints rather
+        // than as the school code / GSTIN / PAN ones.
+        private static bool IsSchoolIdCollision(DbUpdateException ex) =>
+            ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg
+            && pg.ConstraintName is "tb_schools_pkey" or "uq_tb_schools_short_code" or "uq_tb_users_school_org_user";
 
         private static bool IsForeignKeyViolation(DbUpdateException ex) =>
             ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation };

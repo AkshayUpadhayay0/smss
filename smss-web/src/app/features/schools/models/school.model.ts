@@ -71,7 +71,8 @@ export interface SchoolsListModel extends SchoolBase {
 
 export interface SchoolRegistrationResponse {
   school: SchoolsListModel;
-  username: string;
+  /** The login id (org user id) the school signs in with — same value as the school id. */
+  loginId: string;
   temporaryPassword: string; // shown once, never fetchable again
   emailSent: boolean;
   emailSentTo?: string | null;

@@ -25,7 +25,7 @@ export class LoginComponent {
   readonly returnUrl = input<string>();
 
   protected readonly form = new FormGroup({
-    username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    loginId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     rememberMe: new FormControl(false, { nonNullable: true }),
   });
@@ -33,10 +33,10 @@ export class LoginComponent {
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected fieldError(name: 'username' | 'password'): string | undefined {
+  protected fieldError(name: 'loginId' | 'password'): string | undefined {
     const c = this.form.controls[name];
     if (!c.invalid || !(c.touched || this.submitted())) return undefined;
-    return name === 'username' ? 'Enter your username' : 'Enter your password';
+    return name === 'loginId' ? 'Enter your login ID' : 'Enter your password';
   }
 
   protected submit(): void {
@@ -48,10 +48,10 @@ export class LoginComponent {
       return;
     }
 
-    const { username, password, rememberMe } = this.form.getRawValue();
+    const { loginId, password, rememberMe } = this.form.getRawValue();
     this.loading.set(true);
     this.auth
-      .login({ username: username.trim(), password, rememberMe })
+      .login({ loginId: loginId.trim(), password, rememberMe })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (user) => {

@@ -40,6 +40,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/admissions': [ROLES.SCHOOL_ADMIN],
   '/admissions/new': [ROLES.SCHOOL_ADMIN],
   '/admissions/:admissionId': [ROLES.SCHOOL_ADMIN],
+  '/school-setup/import-masters': [ROLES.SCHOOL_ADMIN],
   '/school-setup/academic-year': [ROLES.SCHOOL_ADMIN],
   '/school-setup/classes': [ROLES.SCHOOL_ADMIN],
   '/school-setup/sections': [ROLES.SCHOOL_ADMIN],

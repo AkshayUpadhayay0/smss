@@ -18,6 +18,9 @@ namespace smss_api_db_layer.entity
         [Column("school_code")][StringLength(100)] public string SchoolCode { get; set; } = null!;
         [Column("school_name")][StringLength(250)] public string SchoolName { get; set; } = null!;
         [Column("school_short_name")][StringLength(100)] public string? SchoolShortName { get; set; }
+        // Immutable, unique building block for student/employee login ids (DPS001 -> DPS001ST001); null for schools
+        // registered before it existed
+        [Column("school_short_code")][StringLength(10)] public string? SchoolShortCode { get; set; }
 
         [Column("school_type_id")] public long? SchoolTypeId { get; set; }
         [Column("school_level_id")] public long? SchoolLevelId { get; set; }

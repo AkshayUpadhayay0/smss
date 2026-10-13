@@ -16,6 +16,10 @@ const lookup = (path: string, config: SchoolLookupConfig): Route => ({ path: `sc
 export const SCHOOL_SETUP_ROUTES: Routes = [
   { path: 'school-setup', pathMatch: 'full', redirectTo: 'school-setup/academic-year' },
   {
+    path: 'school-setup/import-masters',
+    loadComponent: () => import('./pages/import-masters/import-masters.component').then((m) => m.ImportMastersComponent),
+  },
+  {
     path: 'school-setup/academic-year',
     loadComponent: () => import('./pages/academic-year-list/academic-year-list.component').then((m) => m.AcademicYearListComponent),
   },

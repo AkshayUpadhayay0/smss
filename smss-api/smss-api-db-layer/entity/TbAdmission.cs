@@ -45,8 +45,11 @@ namespace smss_api_db_layer.entity
         [Column("rejection_reason")] public string? RejectionReason { get; set; }
         [Column("approved_by")] public long? ApprovedBy { get; set; }
         [Column("approved_at")] public DateTime? ApprovedAt { get; set; }
-        [Column("student_id")] public long? StudentId { get; set; }
+        [Column("student_id")][StringLength(20)] public string? StudentId { get; set; }
+        [ForeignKey(nameof(StudentId))] public TbStudent? Student { get; set; }
         [Column("enrollment_id")] public long? EnrollmentId { get; set; }
+        // Lets confirm-admission save the enrollment and this link in ONE SaveChanges
+        [ForeignKey(nameof(EnrollmentId))] public TbStudentEnrollment? Enrollment { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }

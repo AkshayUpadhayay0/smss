@@ -27,9 +27,9 @@ import { SchoolRegistrationResponse } from '../../models/school.model';
 
         <dl class="credentials">
           <div class="row">
-            <dt>Username</dt>
-            <dd><code>{{ result().username }}</code></dd>
-            <app-button variant="secondary" size="sm" aria-label="Copy username" (click)="copy(result().username, 'Username')">
+            <dt>Login ID</dt>
+            <dd><code>{{ result().loginId }}</code></dd>
+            <app-button variant="secondary" size="sm" aria-label="Copy login ID" (click)="copy(result().loginId, 'Login ID')">
               <app-icon name="copy" [size]="14" />Copy
             </app-button>
           </div>

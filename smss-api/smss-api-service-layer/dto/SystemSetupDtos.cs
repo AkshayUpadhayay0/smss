@@ -10,8 +10,9 @@ namespace smss_api_service_layer.dto
     }
     public class CreateSuperAdminRequest
     {
+        /// <summary>The admin's name, stored as display_name. The login id is the generated SUADnnn, not this.</summary>
         [Required, StringLength(100, MinimumLength = 3)]
-        public string Username { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
 
         [Required, EmailAddress, StringLength(150)]
         public string Email { get; set; } = null!;
@@ -26,8 +27,8 @@ namespace smss_api_service_layer.dto
     public class SuperAdminResponse
     {
         public long UserId { get; set; }
-        public string OrgUserId { get; set; } = null!;     // new: e.g. SUAD001
-        public string Username { get; set; } = null!;
+        public string OrgUserId { get; set; } = null!;     // the login id, e.g. SUAD001
+        public string DisplayName { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string? MobileNumber { get; set; }
         public DateTime CreatedAt { get; set; }

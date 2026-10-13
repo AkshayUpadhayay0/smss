@@ -3,7 +3,7 @@ using smss_api_db_layer.entity;
 namespace smss_api_db_layer.@interface
 {
     /// <summary>One student of a class-section for a year (enrollment fields included).</summary>
-    public record StudentListRow(long StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
+    public record StudentListRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
         string? RollNumber, int? GenderId, int StatusId, long EnrollmentId, string? ProfilePhotoUrl);
 
     /// <summary>A student's enrollment joined to its year, class and section.</summary>
@@ -20,13 +20,15 @@ namespace smss_api_db_layer.@interface
         Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct);
 
         Task<List<StudentListRow>> GetEnrolledStudentsAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
-        Task<TbStudent?> GetStudentAsync(string schoolId, long studentId, CancellationToken ct);
+        Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>The student, tracked, for changing their photo.</summary>
-        Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, long studentId, CancellationToken ct);
+        Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, string studentId, CancellationToken ct);
         Task<string?> GetSchoolCodeAsync(string schoolId, CancellationToken ct);
+        /// <summary>The student's login id (their own student id, as tb_users.org_user_id), or null when no login exists yet.</summary>
+        Task<string?> GetStudentLoginIdAsync(string schoolId, string studentId, CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);
-        Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, long studentId, CancellationToken ct);
-        Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, long studentId, CancellationToken ct);
+        Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, string studentId, CancellationToken ct);
+        Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, string studentId, CancellationToken ct);
 
         // display names
         Task<Dictionary<int, string>> GetGeneralStatusNamesAsync(CancellationToken ct);

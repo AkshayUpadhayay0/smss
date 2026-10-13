@@ -19,13 +19,16 @@ namespace smss_api_service_layer.service
 
         private const string AdmissionNumberConstraint = "uq_tb_students_school_admno";
         private const string AadharConstraint = "uq_tb_students_school_aadhar";
+        private const string StudentIdConstraint = "tb_students_pkey";
 
         private readonly IAdmissionRepository _repo;
+        private readonly INotificationService _notify;
         private readonly ILogger<StudentOnboardingService> _logger;
 
-        public StudentOnboardingService(IAdmissionRepository repo, ILogger<StudentOnboardingService> logger)
+        public StudentOnboardingService(IAdmissionRepository repo, INotificationService notify, ILogger<StudentOnboardingService> logger)
         {
             _repo = repo;
+            _notify = notify;
             _logger = logger;
         }
 
@@ -60,20 +63,28 @@ namespace smss_api_service_layer.service
                 if (req.AdmissionDate.Date > today) return Result(400, "Admission date cannot be in the future.", null);
                 if (req.AdmissionDate.Date < req.DateOfBirth.Date) return Result(400, "Admission date cannot be before the date of birth.", null);
 
+                // The student id ({short code}ST{nnn}) is built from the school's short code, so the school must have one
+                var school = await _repo.GetSchoolIdentityAsync(schoolId, ct);
+                if (school == null) return Result(404, "School not found.", null);
+                if (string.IsNullOrWhiteSpace(school.ShortCode)) return Result(409, StudentIdHelper.NoShortCodeMessage, null);
+
                 var suppliedNumber = Clean(req.AdmissionNumber);
 
-                // A generated number can collide with a concurrent request: take the next free one and retry.
-                // A number the school typed in is never silently changed.
+                // A generated admission number or student id can collide with a concurrent request: take the next free
+                // one and retry. A number the school typed in is never silently changed.
                 for (var attempt = 0; attempt < 3; attempt++)
                 {
+                    _repo.ClearTracking();   // nothing from a failed attempt may be saved again
                     await using var tx = await _repo.BeginTransactionAsync(ct);
                     try
                     {
                         var now = DateTime.UtcNow;
                         var number = suppliedNumber ?? await NextAdmissionNumberAsync(schoolId, req.AdmissionDate.Year, ct);
+                        var studentId = StudentIdHelper.Build(school.ShortCode!, await _repo.CountStudentsAsync(schoolId, ct) + 1);
 
                         var student = new TbStudent
                         {
+                            StudentId = studentId,
                             SchoolId = schoolId,
                             AdmissionNumber = number,
                             FirstName = req.FirstName.Trim(),
@@ -92,13 +103,10 @@ namespace smss_api_service_layer.service
                             CreatedAt = now,
                             UpdatedAt = now
                         };
-                        await _repo.AddStudentAsync(student, ct);
-                        await _repo.SaveChangesAsync(ct);   // need student.StudentId for the dependent rows
-
                         var enrollment = new TbStudentEnrollment
                         {
                             SchoolId = schoolId,
-                            StudentId = student.StudentId,
+                            StudentId = studentId,
                             AcademicYearId = req.AcademicYearId,
                             ClassSectionId = req.ClassSectionId,
                             RollNumber = Clean(req.RollNumber),
@@ -119,29 +127,36 @@ namespace smss_api_service_layer.service
                             CreatedAt = now,
                             UpdatedAt = now
                         };
-                        await _repo.AddEnrollmentAsync(enrollment, ct);
-                        await _repo.AddGuardianAsync(guardian, ct);
-                        await _repo.SaveChangesAsync(ct);   // need enrollment.EnrollmentId and guardian.GuardianId
-
-                        await _repo.AddStudentGuardianAsync(new TbStudentGuardian
+                        var link = new TbStudentGuardian
                         {
-                            StudentId = student.StudentId,
-                            GuardianId = guardian.GuardianId,
+                            StudentId = studentId,
+                            Guardian = guardian,          // GuardianId is filled in from the identity value on save
                             Relationship = req.GuardianRelationship,
                             IsPrimary = true,
                             IsEmergencyContact = true,
                             CanPickupStudent = true,
                             CreatedAt = now,
                             UpdatedAt = now
-                        }, ct);
-                        await _repo.SaveChangesAsync(ct);
+                        };
+
+                        await _repo.AddStudentAsync(student, ct);
+                        await _repo.AddEnrollmentAsync(enrollment, ct);
+                        await _repo.AddGuardianAsync(guardian, ct);
+                        await _repo.AddStudentGuardianAsync(link, ct);
+
+                        await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
                         await tx.CommitAsync(ct);
+
+                        var fullName = string.Join(' ', new[] { student.FirstName, student.MiddleName, student.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                        await _notify.SendAsync(student.Email, guardian.Email,
+                            EmailTemplates.StudentIdAssigned(fullName, studentId, school.SchoolName),
+                            $"student id assigned {studentId}", ct);
 
                         return Result(201, "Student onboarded successfully.", new StudentOnboardingResponseDto
                         {
                             StudentId = student.StudentId,
                             AdmissionNumber = student.AdmissionNumber,
-                            FullName = string.Join(' ', new[] { student.FirstName, student.MiddleName, student.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))),
+                            FullName = fullName,
                             EnrollmentId = enrollment.EnrollmentId,
                             AadharNumberMasked = Mask(student.AadharNumber)
                         });
@@ -150,6 +165,10 @@ namespace smss_api_service_layer.service
                     {
                         return Result(409, "A student with this Aadhaar number already exists in this school.", null);
                     }
+                    catch (DbUpdateException ex) when (ConstraintOf(ex) == StudentIdConstraint)
+                    {
+                        _logger.LogWarning(ex, "Generated student id collided for school {SchoolId}; retrying.", schoolId);   // tx rolls back on dispose
+                    }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == AdmissionNumberConstraint)
                     {
                         if (suppliedNumber != null)
@@ -157,7 +176,7 @@ namespace smss_api_service_layer.service
                         _logger.LogWarning(ex, "Generated admission number collided for school {SchoolId}; retrying.", schoolId);   // tx rolls back on dispose
                     }
                 }
-                return Result(409, "Could not allocate an admission number. Please try again.", null);
+                return Result(409, "Could not allocate a student ID or admission number. Please try again.", null);
             }
             catch (Exception ex)
             {

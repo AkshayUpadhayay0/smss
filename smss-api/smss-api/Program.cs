@@ -46,6 +46,8 @@ builder.Services.AddScoped<IAdmissionService, AdmissionService>();
 builder.Services.AddScoped<IStudentOnboardingService, StudentOnboardingService>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentLoginRepository, StudentLoginRepository>();
+builder.Services.AddScoped<IStudentLoginService, StudentLoginService>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IEmployeeDesignationRepository, EmployeeDesignationRepository>();
@@ -55,11 +57,14 @@ builder.Services.AddScoped<IEmployeeDepartmentService, EmployeeDepartmentService
 builder.Services.AddScoped<IAdmissionTypeRepository, AdmissionTypeRepository>();
 builder.Services.AddScoped<IAdmissionTypeService, AdmissionTypeService>();
 
+builder.Services.AddScoped<IMasterImportRepository, MasterImportRepository>();
+builder.Services.AddScoped<IMasterImportService, MasterImportService>();
 builder.Services.AddScoped<ISystemSetupRepository, SystemSetupRepository>();
 builder.Services.AddScoped<ISystemSetupService, SystemSetupService>();
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // File storage: relative paths resolve against the project folder
 var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";

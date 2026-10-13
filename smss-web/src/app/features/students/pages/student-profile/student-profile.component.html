@@ -74,6 +74,21 @@
         </dl>
       </app-card>
 
+      <app-card title="Login">
+        @if (s.loginId) {
+          <dl class="grid">
+            <div><dt>Login ID</dt><dd>{{ s.loginId }}</dd></div>
+          </dl>
+        } @else {
+          <div class="login-empty">
+            <p class="hint">This student does not have a login yet.</p>
+            <app-button variant="secondary" (click)="loginDialogOpen.set(true)">
+              <app-icon name="user" [size]="16" />Create Login
+            </app-button>
+          </div>
+        }
+      </app-card>
+
       <app-card title="Guardians" [noPadding]="true">
         <app-table
           [columns]="guardianColumns"
@@ -82,6 +97,15 @@
         />
       </app-card>
     </div>
+
+    @if (loginDialogOpen()) {
+      <app-student-login-dialog
+        [studentId]="s.studentId"
+        [studentName]="s.fullName"
+        (created)="onLoginCreated($event)"
+        (closed)="loginDialogOpen.set(false)"
+      />
+    }
 
     @if (photoDialogOpen()) {
       <app-student-photo-dialog

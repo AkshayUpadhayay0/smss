@@ -28,12 +28,12 @@ export class TopbarComponent {
   /** Signed-in user's organization (their school) and identity, from the login session. */
   protected readonly org = computed(() => {
     const u = this.auth.user();
-    return { name: u?.schoolName ?? u?.username ?? '', code: u?.schoolCode ?? u?.username ?? '' };
+    return { name: u?.schoolName ?? u?.displayName ?? '', code: u?.schoolCode ?? u?.orgUserId ?? '' };
   });
   protected readonly user = computed(() => {
     const u = this.auth.user();
-    // `username` in the login response is the person's display name; the login ID is the org user id.
-    return { name: u?.username ?? '', role: u?.roles?.[0] ?? u?.userType ?? '' };
+    // displayName is the person's name; the login ID is orgUserId.
+    return { name: u?.displayName ?? '', role: u?.roles?.[0] ?? u?.userType ?? '' };
   });
   protected readonly notifications = PLACEHOLDER_NOTIFICATIONS;
 

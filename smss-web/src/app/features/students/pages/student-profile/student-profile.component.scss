@@ -95,3 +95,16 @@
     }
   }
 }
+
+.login-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+
+  .hint {
+    margin: 0;
+    color: var(--color-text-muted);
+  }
+}

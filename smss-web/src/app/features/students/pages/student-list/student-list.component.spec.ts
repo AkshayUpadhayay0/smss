@@ -22,7 +22,7 @@ const SECTIONS = [
   { sectionId: 20, classId: 7, className: 'Class 1', sectionName: 'B', statusName: 'Active' },
 ];
 const STUDENTS = [
-  { studentId: 2, admissionNumber: 'ADMNO20260001', fullName: 'Akshay Upadhayay', rollNumber: '1', genderName: 'Male', statusName: 'Active', enrollmentId: 5 },
+  { studentId: 'DPS001ST002', admissionNumber: 'ADMNO20260001', fullName: 'Akshay Upadhayay', rollNumber: '1', genderName: 'Male', statusName: 'Active', enrollmentId: 5 },
 ];
 
 describe('StudentListComponent', () => {

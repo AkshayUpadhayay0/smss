@@ -215,7 +215,7 @@ describe('SchoolFormComponent', () => {
       expect(body.contacts[0].contactId).toBeUndefined();
       expect(body).not.toHaveProperty('schoolStatusId');
       expect(body).not.toHaveProperty('logoUrl');
-      req.flush(envelope({ school: makeSchool(), username: 'sch2026001', temporaryPassword: 'Tmp#1234', emailSent: false }, 201));
+      req.flush(envelope({ school: makeSchool(), loginId: 'sch2026001', temporaryPassword: 'Tmp#1234', emailSent: false }, 201));
       http.expectNone((r) => r.url.endsWith('/logo'));
     });
 
@@ -223,7 +223,7 @@ describe('SchoolFormComponent', () => {
       fillValid();
       cmp.submit();
       http.expectOne(`${API}/api/SchoolRegistration/register`).flush(
-        envelope({ school: makeSchool(), username: 'sch2026001', temporaryPassword: 'Tmp#1234', emailSent: true, emailSentTo: 'a@example.com' }, 201),
+        envelope({ school: makeSchool(), loginId: 'sch2026001', temporaryPassword: 'Tmp#1234', emailSent: true, emailSentTo: 'a@example.com' }, 201),
       );
       fixture.detectChanges();
       const el: HTMLElement = fixture.nativeElement;
@@ -240,7 +240,7 @@ describe('SchoolFormComponent', () => {
       cmp.onLogoChanged({ file: new File([new Uint8Array(10)], 'logo.png', { type: 'image/png' }), remove: false });
       cmp.submit();
       http.expectOne(`${API}/api/SchoolRegistration/register`).flush(
-        envelope({ school: makeSchool(), username: 'u', temporaryPassword: 'p', emailSent: false }, 201),
+        envelope({ school: makeSchool(), loginId: 'u', temporaryPassword: 'p', emailSent: false }, 201),
       );
       const upload = http.expectOne(`${API}/api/SchoolRegistration/schools/sch2026001/logo`);
       expect(upload.request.body.get('file')).toBeInstanceOf(File);

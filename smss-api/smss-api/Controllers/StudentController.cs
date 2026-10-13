@@ -13,7 +13,13 @@ namespace smss_api.Controllers
     public class StudentController : ControllerBase
     {
         private readonly IStudentService _service;
-        public StudentController(IStudentService service) => _service = service;
+        private readonly IStudentLoginService _loginService;
+
+        public StudentController(IStudentService service, IStudentLoginService loginService)
+        {
+            _service = service;
+            _loginService = loginService;
+        }
 
         // The routes carry {schoolId}, but it is never trusted: the caller can only reach their OWN school (the JWT
         // "school_id" claim) and the service is always called with the token's value. TODO: drop {schoolId} from the
@@ -43,9 +49,9 @@ namespace smss_api.Controllers
         }
 
         // POST api/Student/{schoolId}/{studentId}/photo   (multipart/form-data, field name: file)
-        [HttpPost("{schoolId}/{studentId:long}/photo")]
+        [HttpPost("{schoolId}/{studentId:length(1,20)}/photo")]
         [RequestSizeLimit(LogoRules.MaxRequestBytes)]
-        public async Task<IActionResult> UploadPhoto(string schoolId, long studentId, IFormFile? file, CancellationToken ct)
+        public async Task<IActionResult> UploadPhoto(string schoolId, string studentId, IFormFile? file, CancellationToken ct)
         {
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (file == null) return Respond(400, "Photo file is required.");
@@ -56,17 +62,27 @@ namespace smss_api.Controllers
         }
 
         // POST api/Student/{schoolId}/{studentId}/photo/remove
-        [HttpPost("{schoolId}/{studentId:long}/photo/remove")]
-        public async Task<IActionResult> RemovePhoto(string schoolId, long studentId, CancellationToken ct)
+        [HttpPost("{schoolId}/{studentId:length(1,20)}/photo/remove")]
+        public async Task<IActionResult> RemovePhoto(string schoolId, string studentId, CancellationToken ct)
         {
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.RemovePhotoAsync(own, studentId, ct);
             return StatusCode(response.StatusCode, response);
         }
 
+        // POST api/Student/{schoolId}/{studentId}/create-login
+        // Returns the generated login id + temporary password ONCE (it is never stored in plain text).
+        [HttpPost("{schoolId}/{studentId:length(1,20)}/create-login")]
+        public async Task<IActionResult> CreateLogin(string schoolId, string studentId, CancellationToken ct)
+        {
+            if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
+            var response = await _loginService.CreateStudentLoginAsync(own, studentId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
         // GET api/Student/{schoolId}/{studentId}
-        [HttpGet("{schoolId}/{studentId:long}")]
-        public async Task<IActionResult> GetStudentProfile(string schoolId, long studentId, CancellationToken ct)
+        [HttpGet("{schoolId}/{studentId:length(1,20)}")]
+        public async Task<IActionResult> GetStudentProfile(string schoolId, string studentId, CancellationToken ct)
         {
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.GetStudentProfileAsync(own, studentId, ct);

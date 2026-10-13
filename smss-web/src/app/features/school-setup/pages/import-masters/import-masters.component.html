@@ -1,0 +1,101 @@
+<app-page-header
+  title="Import Masters"
+  subtitle="Pick what your school uses and import it all at once."
+  icon="layers"
+  [breadcrumbs]="breadcrumbs"
+/>
+
+@if (loading() && !catalog()) {
+  <app-card><p class="note">Loading…</p></app-card>
+} @else if (loadFailed() || !catalog()) {
+  <app-card>
+    <div class="note">
+      <p>The list of available masters could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  @if (result(); as r) {
+    <app-card>
+      <div class="result" role="status">
+        <div class="result-head">
+          <span class="badge"><app-icon name="circle-check" [size]="22" /></span>
+          <div>
+            <h3>{{ r.totalCreated > 0 ? 'Import complete' : 'Nothing new to add' }}</h3>
+            <p class="muted">
+              {{ r.totalCreated > 0 ? r.totalCreated + ' item' + (r.totalCreated === 1 ? '' : 's') + ' added to your masters.' : 'Everything you selected was already set up.' }}
+            </p>
+          </div>
+          <app-button variant="secondary" size="sm" (click)="dismissResult()">Dismiss</app-button>
+        </div>
+        <dl class="result-grid">
+          @for (row of resultRows(); track row.label) {
+            <div>
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.created }} added@if (row.skipped) { <span class="muted"> · {{ row.skipped }} already there</span> }</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </app-card>
+  }
+
+  <div class="groups">
+    @for (group of groups; track group.key) {
+      <app-card>
+        <section class="group" [attr.aria-label]="group.title">
+          <header class="group-head">
+            <div>
+              <h3>{{ group.title }}</h3>
+              <p class="muted">{{ group.hint }}</p>
+            </div>
+            <div class="group-actions">
+              <span class="count">{{ selectedIn(group) }} of {{ selectableCount(group) }} selected</span>
+              <app-button variant="secondary" size="sm" [disabled]="selectableCount(group) === 0" (click)="toggleAll(group)">
+                {{ allSelected(group) ? 'Clear' : 'Select all' }}
+              </app-button>
+            </div>
+          </header>
+
+          <div class="choices">
+            @for (item of items(group); track item.key) {
+              <label class="choice" [class.selected]="isSelected(group, item)" [class.disabled]="item.alreadyAdded">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(group, item) || item.alreadyAdded"
+                  [disabled]="item.alreadyAdded || importing()"
+                  (change)="toggle(group, item)"
+                />
+                <span class="choice-text">
+                  <span class="choice-name">{{ item.name }}</span>
+                  @if (docMeta(item); as meta) {
+                    <span class="choice-meta">{{ meta }}</span>
+                  }
+                </span>
+                @if (item.alreadyAdded) {
+                  <span class="added">Already added</span>
+                }
+              </label>
+            }
+          </div>
+        </section>
+      </app-card>
+    }
+  </div>
+
+  <div class="bar" role="region" aria-label="Import">
+    <span class="bar-text">
+      @if (totalSelected() > 0) {
+        <strong>{{ totalSelected() }}</strong> item{{ totalSelected() === 1 ? '' : 's' }} selected
+      } @else {
+        Tick the items you want, then import.
+      }
+    </span>
+    <span class="bar-actions">
+      <app-button variant="secondary" [disabled]="totalSelected() === 0 || importing()" (click)="clearAll()">Clear selection</app-button>
+      <app-button [disabled]="totalSelected() === 0 || importing()" (click)="runImport()">
+        <app-icon name="upload" [size]="16" />{{ importing() ? 'Importing…' : 'Import selected' }}
+      </app-button>
+    </span>
+  </div>
+}

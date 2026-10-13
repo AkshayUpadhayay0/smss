@@ -15,7 +15,7 @@ namespace smss_api_service_layer.helper
         public JwtTokenGenerator(IOptions<JwtSettings> settings) => _settings = settings.Value;
 
         public (string Token, DateTime ExpiresAtUtc) Generate(
-            long userId, string username, string userType, string? schoolId, IEnumerable<string> roles)
+            long userId, string displayName, string userType, string? schoolId, IEnumerable<string> roles)
         {
             var expires = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes);
 
@@ -24,7 +24,7 @@ namespace smss_api_service_layer.helper
                 new(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(ClaimTypes.NameIdentifier, userId.ToString()),
-                new(ClaimTypes.Name, username),
+                new(ClaimTypes.Name, displayName),
                 new("user_type", userType)
             };
             if (!string.IsNullOrEmpty(schoolId)) claims.Add(new Claim("school_id", schoolId));

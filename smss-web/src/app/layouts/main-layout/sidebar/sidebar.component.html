@@ -14,7 +14,7 @@
         @if (isOpen(item) && !collapsed()) {
           <div class="children">
             @for (child of item.children; track child.route) {
-              <a class="link child" [routerLink]="child.route" routerLinkActive="active" (click)="navigated.emit()">
+              <a class="link child" [routerLink]="child.route" [class.active]="isActive(child.route)" [attr.aria-current]="isActive(child.route) ? 'page' : null" (click)="navigated.emit()">
                 <span class="dot"></span>
                 <span class="label">{{ child.label }}</span>
               </a>
@@ -23,7 +23,7 @@
         }
       </div>
     } @else {
-      <a class="link" [routerLink]="item.route" routerLinkActive="active" [title]="collapsed() ? item.label : ''" (click)="navigated.emit()">
+      <a class="link" [routerLink]="item.route" [class.active]="isActive(item.route)" [attr.aria-current]="isActive(item.route) ? 'page' : null" [title]="collapsed() ? item.label : ''" (click)="navigated.emit()">
         <app-icon [name]="item.icon" [size]="20" />
         <span class="label">{{ item.label }}</span>
       </a>

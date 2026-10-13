@@ -8,7 +8,7 @@
     <p class="alert" role="alert"><app-icon name="circle-alert" [size]="16" />{{ message }}</p>
   }
 
-  <app-input label="Username" placeholder="Your username" prefixIcon="user" formControlName="username" [errorText]="fieldError('username')" />
+  <app-input label="Login ID" placeholder="Your login ID" prefixIcon="user" formControlName="loginId" [errorText]="fieldError('loginId')" />
   <app-input label="Password" type="password" placeholder="Your password" prefixIcon="lock" formControlName="password" [errorText]="fieldError('password')" />
 
   <label class="remember">

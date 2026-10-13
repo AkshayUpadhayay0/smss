@@ -20,10 +20,9 @@ namespace smss_api_db_layer.repository
                 .AnyAsync(r => r.RoleName == "Super Admin");
         }
 
-        public async Task<bool> UsernameOrEmailExistsAsync(string username, string? email)
+        public async Task<bool> EmailExistsAsync(string email)
         {
-            return await _dbContext.Users.AnyAsync(u =>
-                u.Username == username || (email != null && u.Email == email));
+            return await _dbContext.Users.AnyAsync(u => u.Email == email);
         }
 
         public async Task<long?> GetRoleIdByNameAsync(string roleName)

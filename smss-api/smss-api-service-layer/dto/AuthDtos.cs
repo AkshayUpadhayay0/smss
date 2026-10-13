@@ -7,8 +7,9 @@ namespace smss_api_service_layer.dto
 {
     public class LoginRequest
     {
-        [Required(ErrorMessage = "Username is required."), StringLength(100)]
-        public string Username { get; set; } = null!;
+        /// <summary>The user's org_user_id, e.g. SUAD001, FIRS261013001 or DPS001ST001 (matched case-insensitively).</summary>
+        [Required(ErrorMessage = "Login ID is required."), StringLength(100)]
+        public string LoginId { get; set; } = null!;
 
         [Required(ErrorMessage = "Password is required."), StringLength(200)]
         public string Password { get; set; } = null!;
@@ -32,7 +33,10 @@ namespace smss_api_service_layer.dto
     public class AuthUserResponse
     {
         public long UserId { get; set; }
-        public string Username { get; set; } = null!;
+        /// <summary>The person's / school's name, for display only.</summary>
+        public string DisplayName { get; set; } = null!;
+        /// <summary>The login id (org_user_id).</summary>
+        public string OrgUserId { get; set; } = null!;
         public string UserType { get; set; } = null!;
         public string? Email { get; set; }
         public string? SchoolId { get; set; }

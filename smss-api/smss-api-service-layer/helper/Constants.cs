@@ -11,12 +11,14 @@ namespace smss_api_service_layer.helper
     {
         public const string SchoolId = "School Id";
         public const string SuperAdmin = "Super Admin";
+        public const string Student = "Student";
     }
 
     public static class RoleNames
     {
         public const string SchoolAdmin = "School Admin";
         public const string SuperAdmin = "Super Admin";
+        public const string Student = "Student";
     }
     public static class TenantMessages
     {
