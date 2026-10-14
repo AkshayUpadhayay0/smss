@@ -1,0 +1,163 @@
+@if (loading() && !fees()) {
+  <app-card><p class="note">Loading fees…</p></app-card>
+} @else if (loadFailed() || !fees()) {
+  <app-card>
+    <div class="note">
+      <p>The fees could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  @if (fees(); as f) {
+    <div class="sections">
+      <!-- no enrollment: there is no class or academic year to charge fees for -->
+      @if (!f.academicYearId) {
+        <app-card title="Fee structure">
+          <p class="empty">
+            <app-icon name="info" [size]="16" />
+            This student is not enrolled in any class yet, so there is no academic year to assign fees for.
+          </p>
+        </app-card>
+      } @else {
+        <app-card title="Fee structure">
+          <div class="head">
+            <div>
+              @if (f.structureName) {
+                <h3 class="structure">{{ f.structureName }}</h3>
+                @if (!f.structureIsActive) {
+                  <span class="chip warn">Inactive structure</span>
+                }
+              } @else {
+                <h3 class="structure muted">No fee structure assigned</h3>
+              }
+              <p class="meta">{{ f.className }} · {{ f.academicYearName }}</p>
+            </div>
+            <app-button [variant]="f.structureName ? 'secondary' : 'primary'" [disabled]="busy()" (click)="openAssign()">
+              <app-icon name="file-text" [size]="16" />{{ f.structureName ? 'Change Fee Structure' : 'Assign Fee Structure' }}
+            </app-button>
+          </div>
+
+          @if (!f.structureName) {
+            <p class="empty">
+              <app-icon name="triangle-alert" [size]="16" />
+              No fee structure was assigned automatically for {{ f.className }}, AY {{ f.academicYearName }}.
+              @if (f.availableStructures.length === 0) {
+                Create one under Fee Setup → Fee Structures, then assign it here.
+              } @else {
+                Choose one to assign it now.
+              }
+            </p>
+          }
+        </app-card>
+
+        @if (f.structureName) {
+          <app-card title="Fee heads" [noPadding]="true">
+            <app-table [columns]="lineColumns" [rows]="lineRows()" emptyMessage="This fee structure has no fee heads." />
+          </app-card>
+
+          <app-card title="Concessions">
+            <div class="head">
+              <p class="meta">Concessions reduce the amounts above.</p>
+              <app-button variant="secondary" [disabled]="busy() || f.availableConcessions.length === 0" (click)="openConcession()">
+                <app-icon name="plus" [size]="16" />Add Concession
+              </app-button>
+            </div>
+
+            @if (f.concessions.length === 0) {
+              <p class="empty">No concessions applied.@if (f.availableConcessions.length === 0) { There are no active concessions that fit this fee structure. }</p>
+            } @else {
+              <ul class="concessions">
+                @for (c of f.concessions; track c.studentFeeConcessionId) {
+                  <li>
+                    <div class="c-main">
+                      <strong>{{ c.concessionName }}</strong>
+                      <span class="chip">{{ describeValue(c.concessionType, c.value) }}</span>
+                      <span class="meta">on {{ appliesTo(c) }}</span>
+                      @if (!c.isApplicable) {
+                        <span class="chip warn">Not in this structure — no effect</span>
+                      }
+                    </div>
+                    @if (c.remarks) {
+                      <div class="meta">“{{ c.remarks }}”</div>
+                    }
+                    @if (c.approvedByName) {
+                      <div class="meta">Added by {{ c.approvedByName }}</div>
+                    }
+                    <app-button class="c-remove" variant="danger-ghost" size="sm" [disabled]="busy()" [attr.aria-label]="'Remove ' + c.concessionName" (click)="removeConcession(c)">
+                      <app-icon name="trash-2" [size]="14" />Remove
+                    </app-button>
+                  </li>
+                }
+              </ul>
+            }
+          </app-card>
+
+          <app-card title="Net payable">
+            <div class="totals" role="table" aria-label="Net payable per frequency">
+              <div class="t-row t-head" role="row"><span role="columnheader">Frequency</span><span role="columnheader">Fees</span><span role="columnheader">Concession</span><span role="columnheader">Net payable</span></div>
+              @for (t of totals(); track t.frequencyName) {
+                <div class="t-row" role="row">
+                  <span role="cell">{{ t.frequencyName }}</span>
+                  <span role="cell">{{ t.gross }}</span>
+                  <span role="cell">{{ t.concession }}</span>
+                  <strong role="cell">{{ t.net }}</strong>
+                </div>
+              }
+            </div>
+            @if (totals().length > 1) {
+              <p class="meta">Shown per frequency: fees charged at different intervals are not added together.</p>
+            }
+          </app-card>
+        }
+      }
+    </div>
+
+    @if (assignOpen()) {
+      <app-modal title="Assign fee structure" [dismissible]="!busy()" (closed)="assignOpen.set(false)">
+        <div class="dialog">
+          <app-select
+            label="Fee structure"
+            [required]="true"
+            [options]="structureOptions()"
+            [formControl]="structureControl"
+            [errorText]="structureError()"
+            placeholder="Select a fee structure…"
+          />
+          @if (structureOptions().length === 0) {
+            <p class="meta">There is no active fee structure for {{ f.className }}, AY {{ f.academicYearName }}. Create one under Fee Setup → Fee Structures.</p>
+          }
+          @if (hasOtherClassStructures()) {
+            <label class="check">
+              <input type="checkbox" [checked]="showOtherClasses()" (change)="showOtherClasses.set(!showOtherClasses())" />
+              Show structures of other classes (e.g. the student moved class)
+            </label>
+          }
+        </div>
+        <ng-container modal-footer>
+          <app-button variant="secondary" [disabled]="busy()" (click)="assignOpen.set(false)">Cancel</app-button>
+          <app-button [disabled]="busy()" (click)="submitAssign()">{{ busy() ? 'Saving…' : 'Assign' }}</app-button>
+        </ng-container>
+      </app-modal>
+    }
+
+    @if (concessionOpen()) {
+      <app-modal title="Add concession" [dismissible]="!busy()" (closed)="concessionOpen.set(false)">
+        <div class="dialog">
+          <app-select
+            label="Concession"
+            [required]="true"
+            [options]="concessionOptions()"
+            [formControl]="concessionControl"
+            [errorText]="concessionError()"
+            placeholder="Select a concession…"
+          />
+          <app-textarea label="Remarks" placeholder="Optional, e.g. second child in the school" [maxLength]="500" [formControl]="remarksControl" />
+        </div>
+        <ng-container modal-footer>
+          <app-button variant="secondary" [disabled]="busy()" (click)="concessionOpen.set(false)">Cancel</app-button>
+          <app-button [disabled]="busy()" (click)="submitConcession()">{{ busy() ? 'Saving…' : 'Add Concession' }}</app-button>
+        </ng-container>
+      </app-modal>
+    }
+  }
+}

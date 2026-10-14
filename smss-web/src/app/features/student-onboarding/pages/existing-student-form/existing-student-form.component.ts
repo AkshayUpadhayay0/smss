@@ -214,6 +214,7 @@ export class ExistingStudentFormComponent implements OnInit {
         next: ({ result, photoError }) => {
           this.created.set(result);
           this.toast.success(`${result.fullName} added with admission number ${result.admissionNumber}.`);
+          for (const w of result.warnings ?? []) this.toast.warning(w, 'Fee structure not assigned');
           if (photoError) this.toast.warning(`${photoError} You can add the photo later from the student's profile.`, 'Student added, but the photo was not uploaded');
           window.scrollTo({ top: 0 });
         },

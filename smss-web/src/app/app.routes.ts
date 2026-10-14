@@ -29,6 +29,7 @@ export const routes: Routes = [
       // after student-onboarding: '/students/onboard-existing' must match before '/students/:studentId'
       { path: '', loadChildren: () => import('./features/students/students.routes').then((m) => m.STUDENTS_ROUTES) },
       { path: '', loadChildren: () => import('./features/school-setup/school-setup.routes').then((m) => m.SCHOOL_SETUP_ROUTES) },
+      { path: '', loadChildren: () => import('./features/fee-setup/fee-setup.routes').then((m) => m.FEE_SETUP_ROUTES) },
       { path: '', loadChildren: () => import('./features/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
       {
         path: 'change-password',

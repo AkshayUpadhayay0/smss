@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
 import { formatDate } from '../../../admissions/models/admission.model';
@@ -25,7 +26,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -80,6 +81,15 @@ export class StudentProfileComponent implements OnInit {
   protected readonly photoUrl = computed(() => toUploadUrl(this.student()?.profilePhotoUrl));
   protected readonly initials = computed(() => initialsOf(this.student()?.fullName));
   protected readonly photoDialogOpen = signal(false);
+
+  /** Profile (default) or Fees. The Fees tab is created only when first opened, so it loads on demand. */
+  protected readonly tab = signal<'profile' | 'fees'>('profile');
+  protected readonly feesOpened = signal(false);
+
+  protected selectTab(tab: 'profile' | 'fees'): void {
+    this.tab.set(tab);
+    if (tab === 'fees') this.feesOpened.set(true);
+  }
 
   protected readonly loginDialogOpen = signal(false);
 

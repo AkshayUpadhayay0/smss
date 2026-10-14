@@ -1,0 +1,116 @@
+<app-page-header
+  [title]="isEdit() ? 'Edit Fee Structure' : 'Add Fee Structure'"
+  subtitle="Choose the class and academic year, then list the fee heads and their amounts"
+  icon="file-text"
+  [breadcrumbs]="breadcrumbs()"
+/>
+
+@if (loading()) {
+  <app-card><p class="note">Loading…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="note">
+      <p>This page could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate class="builder">
+    <app-card title="Structure">
+      <div class="grid">
+        <app-select
+          label="Academic year"
+          [required]="true"
+          [options]="yearOptions()"
+          formControlName="academicYearId"
+          [errorText]="error(form.controls.academicYearId)"
+        />
+        <app-select label="Class" [required]="true" [options]="classOptions()" formControlName="classId" [errorText]="error(form.controls.classId)" />
+        <app-input
+          class="wide"
+          label="Structure name"
+          [required]="true"
+          placeholder="e.g. Class 1 Fees 2026-27"
+          formControlName="structureName"
+          [errorText]="error(form.controls.structureName)"
+        />
+      </div>
+      @if (isEdit()) {
+        <p class="hint">The academic year and class of a fee structure can't be changed. Add a new structure for a different class or year.</p>
+      }
+    </app-card>
+
+    <app-card title="Fee heads">
+      @if (hasNoFeeTypes()) {
+        <p class="warn" role="alert">
+          <app-icon name="triangle-alert" [size]="16" />
+          You have no active fee types yet. Add them under Fee Setup → Fee Types first.
+        </p>
+      }
+
+      <div class="rows" formArrayName="lines">
+        @for (row of lines.controls; track row; let i = $index) {
+          <div class="row" [formGroup]="row">
+            <app-select
+              label="Fee type"
+              [required]="true"
+              [options]="feeTypeOptions()[i] ?? []"
+              formControlName="feeTypeId"
+              [errorText]="lineError(i, 'feeTypeId')"
+            />
+            <app-select
+              label="Frequency"
+              [required]="true"
+              [options]="frequencyOptions()"
+              formControlName="frequencyId"
+              [errorText]="lineError(i, 'frequencyId')"
+            />
+            <app-input
+              label="Amount (₹)"
+              type="number"
+              [required]="true"
+              placeholder="0.00"
+              formControlName="amount"
+              [errorText]="lineError(i, 'amount')"
+            />
+            <app-button
+              class="remove"
+              variant="danger-ghost"
+              [disabled]="lines.length === 1 || saving()"
+              [attr.aria-label]="'Remove fee head ' + (i + 1)"
+              title="Remove"
+              (click)="removeLine(i)"
+            >
+              <app-icon name="trash-2" [size]="16" />
+            </app-button>
+          </div>
+        }
+      </div>
+
+      <div class="add-row">
+        <app-button variant="secondary" [disabled]="saving()" (click)="addLine()"><app-icon name="plus" [size]="16" />Add Fee Head</app-button>
+      </div>
+
+      <div class="totals" aria-live="polite">
+        <h4>Total</h4>
+        @if (totals().length) {
+          <ul>
+            @for (t of totals(); track t.frequency) {
+              <li><span>{{ t.frequency }}</span><strong>{{ t.amount }}</strong></li>
+            }
+          </ul>
+          @if (totals().length > 1) {
+            <p class="hint">Shown per frequency: amounts that are charged at different intervals are not added together.</p>
+          }
+        } @else {
+          <p class="hint">Add amounts to see the total.</p>
+        }
+      </div>
+    </app-card>
+
+    <div class="actions">
+      <app-button variant="secondary" [disabled]="saving()" (click)="cancel()">Cancel</app-button>
+      <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : isEdit() ? 'Update Fee Structure' : 'Save Fee Structure' }}</app-button>
+    </div>
+  </form>
+}

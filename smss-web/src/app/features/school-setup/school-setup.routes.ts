@@ -3,6 +3,7 @@ import {
   ADMISSION_TYPE_CONFIG,
   EMPLOYEE_DEPARTMENT_CONFIG,
   EMPLOYEE_DESIGNATION_CONFIG,
+  FEE_TYPE_CONFIG,
   SUBJECT_CONFIG,
 } from './configs/school-lookups.config';
 import { SchoolLookupConfig } from './models/school-lookup.model';
@@ -39,6 +40,9 @@ export const SCHOOL_SETUP_ROUTES: Routes = [
     path: 'school-setup/document-types',
     loadComponent: () => import('./pages/document-type-list/document-type-list.component').then((m) => m.DocumentTypeListComponent),
   },
+  // Fee Setup (its own sidebar group, mounted at /fee-setup): same generic list as the masters above
+  { path: 'fee-setup', pathMatch: 'full', redirectTo: 'fee-setup/fee-types' },
+  { path: 'fee-setup/fee-types', loadComponent: lookupList, data: { config: FEE_TYPE_CONFIG } },
   lookup('subjects', SUBJECT_CONFIG),
   lookup('employee-designations', EMPLOYEE_DESIGNATION_CONFIG),
   lookup('employee-departments', EMPLOYEE_DEPARTMENT_CONFIG),

@@ -216,6 +216,18 @@ namespace smss_api_service_layer.service
                 if (string.IsNullOrWhiteSpace(school.ShortCode))
                     return Result<AdmissionDetailDto>(409, StudentIdHelper.NoShortCodeMessage, null);
 
+                // Fee structure for this class + academic year (automatic assignment). Not finding one never blocks the admission.
+                var sectionClass = await _repo.GetSectionClassAsync(schoolId, req.ClassSectionId, ct);
+                var feeStructure = sectionClass == null
+                    ? null
+                    : await _repo.FindActiveFeeStructureAsync(schoolId, sectionClass.ClassId, admission.AcademicYearId, ct);
+                string? feeWarning = null;
+                if (feeStructure == null)
+                {
+                    var yearName = (await _repo.GetAcademicYearNamesAsync(schoolId, new[] { admission.AcademicYearId }, ct)).GetValueOrDefault(admission.AcademicYearId, "this academic year");
+                    feeWarning = FeeAssignmentWarning(sectionClass?.ClassName ?? "this class", yearName);
+                }
+
                 // The id is known before anything is saved (count + 1), so the whole graph goes in ONE SaveChanges.
                 // Two confirmations at the same moment can compute the same id; the primary key rejects the second one
                 // and it simply tries again with a fresh count.
@@ -302,6 +314,18 @@ namespace smss_api_service_layer.service
                         await _repo.AddEnrollmentAsync(enrollment, ct);
                         await _repo.AddGuardianAsync(guardian, ct);
                         await _repo.AddStudentGuardianAsync(link, ct);
+                        if (feeStructure != null)
+                        {
+                            await _repo.AddStudentFeeStructureAsync(new TbStudentFeeStructure
+                            {
+                                StudentId = studentId,
+                                FeeStructureId = feeStructure.FeeStructureId,
+                                SchoolId = schoolId,
+                                AcademicYearId = admission.AcademicYearId,
+                                CreatedAt = now,
+                                UpdatedAt = now
+                            }, ct);
+                        }
 
                         admission.StudentId = studentId;
                         admission.Enrollment = enrollment;   // EnrollmentId is filled in from the identity value on save
@@ -315,7 +339,10 @@ namespace smss_api_service_layer.service
                             name => EmailTemplates.StudentIdAssigned(FullName(student), studentId, name),
                             $"student id assigned {studentId}", ct);
 
-                        return Result(200, "Admission confirmed. Student and enrollment created.", await ToDetailAsync(admission, ct));
+                        var detail = await ToDetailAsync(admission, ct);
+                        detail.FeeStructureName = feeStructure?.StructureName;
+                        if (feeWarning != null) detail.Warnings.Add(feeWarning);
+                        return Result(200, "Admission confirmed. Student and enrollment created.", detail);
                     }
                     catch (DbUpdateException ex) when (IsUniqueViolation(ex) && attempt < 2)
                     {
@@ -332,6 +359,9 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- helpers ----------------
+        private static string FeeAssignmentWarning(string className, string yearName) =>
+            $"No fee structure found for {className}, AY {yearName} — assign manually from the student's Fees tab.";
+
         private static string FullName(TbStudent s) =>
             string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(p => !string.IsNullOrWhiteSpace(p)));
 

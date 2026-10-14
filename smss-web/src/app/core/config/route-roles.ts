@@ -50,6 +50,11 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-setup/employee-designations': [ROLES.SCHOOL_ADMIN],
   '/school-setup/employee-departments': [ROLES.SCHOOL_ADMIN],
   '/school-setup/admission-types': [ROLES.SCHOOL_ADMIN],
+  '/fee-setup/fee-types': [ROLES.SCHOOL_ADMIN],
+  '/fee-setup/fee-structures': [ROLES.SCHOOL_ADMIN],
+  '/fee-setup/fee-concessions': [ROLES.SCHOOL_ADMIN],
+  '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
+  '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
 
   '/schools': [ROLES.SUPER_ADMIN],
   '/schools/add': [ROLES.SUPER_ADMIN],

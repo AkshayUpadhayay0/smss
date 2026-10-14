@@ -6,6 +6,8 @@ import { IconComponent } from '../icon/icon.component';
 export interface SelectOption {
   label: string;
   value: string;
+  /** Shown but not selectable (e.g. already picked in another row). */
+  disabled?: boolean;
 }
 
 let nextId = 0;
@@ -34,7 +36,7 @@ let nextId = 0;
             <option value="" [selected]="selected().length === 0">{{ placeholder() }}</option>
           }
           @for (opt of options(); track opt.value) {
-            <option [value]="opt.value" [selected]="selected().includes(opt.value)">{{ opt.label }}</option>
+            <option [value]="opt.value" [disabled]="!!opt.disabled" [selected]="selected().includes(opt.value)">{{ opt.label }}</option>
           }
         </select>
         @if (!multiple()) {

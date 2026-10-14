@@ -22,7 +22,13 @@ import { SchoolLookupService } from '../../services/school-lookup.service';
           [errorText]="error('name')"
         />
         @if (config().codeKey) {
-          <app-input [label]="config().codeLabel ?? 'Code'" placeholder="Optional" formControlName="code" [errorText]="error('code')" />
+          <app-input
+            [label]="config().codeLabel ?? 'Code'"
+            [required]="!!config().codeRequired"
+            [placeholder]="config().codeRequired ? (config().codePlaceholder ?? '') : 'Optional'"
+            formControlName="code"
+            [errorText]="error('code')"
+          />
         }
         <app-textarea label="Description" placeholder="Optional" [maxLength]="250" formControlName="description" [errorText]="error('description')" />
         <!-- lets Enter submit; the visible button lives in the modal footer -->
@@ -65,9 +71,14 @@ export class SchoolLookupFormModalComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const cfg = this.config();
+    // A required code is validated like the name; the length limit comes from the config
+    const code = this.form.controls.code;
+    code.setValidators([...(cfg.codeRequired ? [Validators.required, notBlank] : []), Validators.maxLength(cfg.codeMaxLength ?? 20)]);
+    code.updateValueAndValidity();
+
     const item = this.item();
     if (!item) return;
-    const cfg = this.config();
     this.form.patchValue({
       name: String(item[cfg.nameKey] ?? ''),
       code: cfg.codeKey ? String(item[cfg.codeKey] ?? '') : '',

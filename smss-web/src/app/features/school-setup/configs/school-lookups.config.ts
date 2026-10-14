@@ -38,6 +38,24 @@ export const EMPLOYEE_DEPARTMENT_CONFIG: SchoolLookupConfig = {
   namePlaceholder: 'e.g. Administration, Science',
 };
 
+export const FEE_TYPE_CONFIG: SchoolLookupConfig = {
+  path: 'FeeType',
+  title: 'Fee Type',
+  singular: 'fee type',
+  subtitle: 'Manage the kinds of fee your school collects (tuition, transport, exam ...)',
+  icon: 'file-text',
+  idKey: 'feeTypeId',
+  nameKey: 'feeTypeName',
+  nameLabel: 'Fee type name',
+  namePlaceholder: 'e.g. Tuition Fee',
+  codeKey: 'feeTypeCode',
+  codeLabel: 'Fee type code',
+  codePlaceholder: 'e.g. TUITION',
+  codeRequired: true,
+  codeMaxLength: 30,
+  group: 'Fee Setup',
+};
+
 export const ADMISSION_TYPE_CONFIG: SchoolLookupConfig = {
   path: 'AdmissionTypes',
   title: 'Admission Type',

@@ -30,6 +30,15 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Document Types', route: '/school-setup/document-types' },
     ],
   },
+  {
+    label: 'Fee Setup',
+    icon: 'file-text',
+    children: [
+      { label: 'Fee Types', route: '/fee-setup/fee-types' },
+      { label: 'Fee Structures', route: '/fee-setup/fee-structures' },
+      { label: 'Fee Concessions', route: '/fee-setup/fee-concessions' },
+    ],
+  },
   { label: 'Registered Schools', icon: 'building-2', route: '/schools' },
   {
     label: 'Masters',

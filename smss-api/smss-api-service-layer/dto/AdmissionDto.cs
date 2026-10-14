@@ -73,6 +73,11 @@ namespace smss_api_service_layer.dto
     // Everything submitted, plus the decision trail. Aadhaar stays masked.
     public class AdmissionDetailDto : AdmissionResponseDto
     {
+        /// <summary>Set by confirm-admission: the fee structure the new student was automatically assigned to.</summary>
+        public string? FeeStructureName { get; set; }
+        /// <summary>Things that did not block the operation but need attention (e.g. no fee structure found for the class).</summary>
+        public List<string> Warnings { get; set; } = new();
+
         public string ApplicantFirstName { get; set; } = null!;
         public string? ApplicantMiddleName { get; set; }
         public string ApplicantLastName { get; set; } = null!;

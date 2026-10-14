@@ -31,6 +31,10 @@ export class ApiService {
     return this.unwrap(this.http.put<ApiResponse<T>>(this.url(path), body ?? {}));
   }
 
+  delete<T>(path: string): Observable<T> {
+    return this.unwrap(this.http.delete<ApiResponse<T>>(this.url(path)));
+  }
+
   /** Multipart upload, e.g. school logo (field name "file"). */
   upload<T>(path: string, file: File, field = 'file', options?: ApiRequestOptions): Observable<T> {
     const form = new FormData();

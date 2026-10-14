@@ -210,3 +210,8 @@ generic master-list pattern.
 - When changing API responses or DTO shapes, check smss-web for every
   place that shape is consumed — keep both sides in sync in the same
   change, don't let them drift
+
+
+Reference docs/roles-workflow.md for the complete role/workflow baseline (roles, permissions, 
+module sequencing). Every new table, API, or screen should map back to it. Section 27 has the 
+Fee Setup module schema.

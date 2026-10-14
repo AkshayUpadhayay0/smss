@@ -68,6 +68,18 @@ namespace smss_api_service_layer.service
                 if (school == null) return Result(404, "School not found.", null);
                 if (string.IsNullOrWhiteSpace(school.ShortCode)) return Result(409, StudentIdHelper.NoShortCodeMessage, null);
 
+                // Fee structure for this class + academic year (automatic assignment). Not finding one never blocks onboarding.
+                var sectionClass = await _repo.GetSectionClassAsync(schoolId, req.ClassSectionId, ct);
+                var feeStructure = sectionClass == null
+                    ? null
+                    : await _repo.FindActiveFeeStructureAsync(schoolId, sectionClass.ClassId, req.AcademicYearId, ct);
+                string? feeWarning = null;
+                if (feeStructure == null)
+                {
+                    var yearName = (await _repo.GetAcademicYearNamesAsync(schoolId, new[] { req.AcademicYearId }, ct)).GetValueOrDefault(req.AcademicYearId, "this academic year");
+                    feeWarning = $"No fee structure found for {sectionClass?.ClassName ?? "this class"}, AY {yearName} — assign manually from the student's Fees tab.";
+                }
+
                 var suppliedNumber = Clean(req.AdmissionNumber);
 
                 // A generated admission number or student id can collide with a concurrent request: take the next free
@@ -143,6 +155,18 @@ namespace smss_api_service_layer.service
                         await _repo.AddEnrollmentAsync(enrollment, ct);
                         await _repo.AddGuardianAsync(guardian, ct);
                         await _repo.AddStudentGuardianAsync(link, ct);
+                        if (feeStructure != null)
+                        {
+                            await _repo.AddStudentFeeStructureAsync(new TbStudentFeeStructure
+                            {
+                                StudentId = studentId,
+                                FeeStructureId = feeStructure.FeeStructureId,
+                                SchoolId = schoolId,
+                                AcademicYearId = req.AcademicYearId,
+                                CreatedAt = now,
+                                UpdatedAt = now
+                            }, ct);
+                        }
 
                         await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
                         await tx.CommitAsync(ct);
@@ -158,7 +182,9 @@ namespace smss_api_service_layer.service
                             AdmissionNumber = student.AdmissionNumber,
                             FullName = fullName,
                             EnrollmentId = enrollment.EnrollmentId,
-                            AadharNumberMasked = Mask(student.AadharNumber)
+                            AadharNumberMasked = Mask(student.AadharNumber),
+                            FeeStructureName = feeStructure?.StructureName,
+                            Warnings = feeWarning == null ? new List<string>() : new List<string> { feeWarning }
                         });
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == AadharConstraint)

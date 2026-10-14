@@ -51,7 +51,7 @@ export class SchoolLookupListComponent {
   protected readonly page = signal(1);
   protected readonly pageSize = signal(10);
 
-  protected readonly breadcrumbs = computed(() => [{ label: 'School Setup' }, { label: this.config().title }]);
+  protected readonly breadcrumbs = computed(() => [{ label: this.config().group ?? 'School Setup' }, { label: this.config().title }]);
 
   protected readonly columns = computed<TableColumn<SchoolLookupRow>[]>(() => {
     const c = this.config();

@@ -20,9 +20,16 @@ export interface SchoolLookupConfig {
   nameKey: string;
   nameLabel: string;
   namePlaceholder: string;
-  /** Present only for masters that have a code (Subject). */
+  /** Present only for masters that have a code (Subject, Fee Type). */
   codeKey?: string;
   codeLabel?: string;
+  codePlaceholder?: string;
+  /** The code must be filled in (Fee Type); otherwise it is optional. */
+  codeRequired?: boolean;
+  /** Longest code the API accepts (default 20). */
+  codeMaxLength?: number;
+  /** First breadcrumb, e.g. 'Fee Setup' (default 'School Setup'). */
+  group?: string;
 }
 
 /** One record as the API returns it: the master-specific id/name/code keys plus the shared fields. */

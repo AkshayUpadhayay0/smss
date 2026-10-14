@@ -6,6 +6,12 @@ namespace smss_api_db_layer.@interface
     /// <summary>What student ids and notification emails need to know about a school.</summary>
     public record SchoolIdentity(string SchoolName, string? ShortCode);
 
+    /// <summary>The class a section belongs to.</summary>
+    public record SectionClassInfo(long ClassId, string ClassName);
+
+    /// <summary>A fee structure picked for automatic assignment.</summary>
+    public record FeeStructureRef(long FeeStructureId, string StructureName);
+
     // Every method that reads or changes a school's data takes the school id.
     public interface IAdmissionRepository
     {
@@ -42,6 +48,11 @@ namespace smss_api_db_layer.@interface
         Task<int> GetMaxAdmissionNumberSequenceAsync(string schoolId, string prefix, CancellationToken ct);
 
         Task<SchoolIdentity?> GetSchoolIdentityAsync(string schoolId, CancellationToken ct);
+        /// <summary>The class of one of this school's sections (null when the section is not this school's).</summary>
+        Task<SectionClassInfo?> GetSectionClassAsync(string schoolId, long sectionId, CancellationToken ct);
+        /// <summary>This school's ACTIVE fee structure for the class + academic year, or null when there is none.</summary>
+        Task<FeeStructureRef?> FindActiveFeeStructureAsync(string schoolId, long classId, long academicYearId, CancellationToken ct);
+        Task AddStudentFeeStructureAsync(TbStudentFeeStructure entity, CancellationToken ct);
         /// <summary>How many students the school has (any status): the next student id is this + 1.</summary>
         Task<int> CountStudentsAsync(string schoolId, CancellationToken ct);
 

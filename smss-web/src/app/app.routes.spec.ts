@@ -146,9 +146,9 @@ describe('app routes', () => {
         expect(harness.routeNativeElement?.querySelector('app-student-profile')).not.toBeNull();
       });
 
-      it('sees Dashboard, School Profile, Students, Admissions, Add Existing Student and School Setup in the menu — no Registered Schools, no Masters', async () => {
+      it('sees Dashboard, School Profile, Students, Admissions, Add Existing Student, School Setup and Fee Setup in the menu — no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | School Profile | Students | Admissions | Add Existing Student | School Setup');
+        expect(nav(harness)).toBe('Dashboard | School Profile | Students | Admissions | Add Existing Student | School Setup | Fee Setup');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(

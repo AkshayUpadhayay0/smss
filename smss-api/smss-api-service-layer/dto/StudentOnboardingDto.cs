@@ -46,5 +46,9 @@ namespace smss_api_service_layer.dto
         public string FullName { get; set; } = null!;
         public long EnrollmentId { get; set; }
         public string? AadharNumberMasked { get; set; }
+        /// <summary>The fee structure the student was automatically assigned to, when one matched.</summary>
+        public string? FeeStructureName { get; set; }
+        /// <summary>Things that did not block the operation but need attention (e.g. no fee structure found for the class).</summary>
+        public List<string> Warnings { get; set; } = new();
     }
 }

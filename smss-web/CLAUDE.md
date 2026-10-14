@@ -283,3 +283,22 @@ Build these as the foundation BEFORE any feature screens:
   transaction, always for the token's school. Each imported class gets Section "A" (an existing class that already has
   sections is left alone). Matching is case-insensitive; unknown keys -> 400. The catalog lives in
   `smss-api-service-layer/helper/MasterImportCatalog.cs` — add new choices there.
+- FEE SETUP (2026-10-14, Docs/roles-workflow.md section 27; needs `Docs/smss-fee-setup.sql`): backend is complete for Fee Types, Fee Structures and
+  Fee Concessions (`/api/FeeType`, `/api/FeeStructure`, `/api/FeeConcession`; all scoped to the token's school, POST toggle-status, 404 for another
+  school's row). `isactive` is a BOOLEAN on these tables (not lut_status); responses also carry `statusName` so the generic school lookup list works
+  unchanged. `GET /api/FeeStructure/{id}` returns the header plus its lines (fee type + frequency names joined); `GET /api/FeeStructure/frequencies`
+  is the global lut_fee_frequency list. Structure = one per school + academic year + class (year/class are fixed after create); PUT replaces the
+  lines (matched on fee type). Frontend so far: ONLY Fee Types, `/fee-setup/fee-types`, sidebar group "Fee Setup", via `FEE_TYPE_CONFIG` in
+  `school-lookups.config.ts` (config got `codeRequired`, `codeMaxLength`, `group`). Fee Structures screens built (`features/fee-setup/`): list `/fee-setup/fee-structures`, builder `/fee-setup/fee-structures/new` and `/:feeStructureId/edit` (one dedicated
+  FormArray page: year + class + name, then fee head rows; fee types already used in another row are disabled via `SelectOption.disabled`; totals are per
+  frequency; year/class are locked when editing). Fee Concessions built (`/fee-setup/fee-concessions`, dedicated list + form modal in the class-list style because it has type/value/applies-to fields the generic
+  name/code/description modal can't hold; `formatConcessionValue` gives "15%" / "₹2,000"). Unique (school_id, concession_code); value rules: PERCENTAGE 0<v<=100, FIXED v>0.
+  Student Fee Assignment is a later module (needs the Student module).
+- STUDENT FEE ASSIGNMENT (2026-10-14; needs `Docs/smss-student-fee-assignment.sql`): a student's class and academic year are NOT on tb_students — they live on
+  tb_student_enrollments (academic_year_id + class_section_id -> tb_sections.class_id). `tb_student_fee_structure` (one per student per academic year) and
+  `tb_student_fee_concessions` (unique student + concession). Confirm Admission and Existing-Student onboarding auto-assign the ACTIVE structure for
+  school + class + year inside the same save; no match never blocks — the response carries `warnings` (shown as toasts) and `feeStructureName`.
+  API (token school, no school id in the route): `GET /api/StudentFee/{studentId}`, `PUT .../structure`, `POST .../concessions`, `DELETE .../concessions/{concessionId}`;
+  GET returns lines + concessions + net payable per frequency + `availableStructures` / `availableConcessions` in one response. Discount rules (StudentFeeService.Discounts):
+  PERCENTAGE = % of each line it applies to; FIXED on a fee head = off that line; FIXED on the whole structure is spread over the lines in proportion to their
+  amounts; stacked, capped at each line. Student profile has Profile | Fees tabs (`features/students/components/student-fees-tab`). Fee Collection / receipts are a later module.

@@ -178,6 +178,7 @@ export class AdmissionActionsComponent {
       next: (updated) => {
         this.dialog.set(null);
         this.toast.success(successMessage);
+        for (const w of updated.warnings ?? []) this.toast.warning(w, 'Fee structure not assigned');
         this.changed.emit(updated);
       },
       // The server's refusal (e.g. the status changed meanwhile) is already toasted by the interceptor

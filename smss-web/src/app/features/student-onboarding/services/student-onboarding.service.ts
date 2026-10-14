@@ -37,6 +37,10 @@ export interface StudentOnboardingResult {
   fullName: string;
   enrollmentId: number;
   aadharNumberMasked?: string | null;
+  /** The fee structure the student was automatically assigned to, when one matched. */
+  feeStructureName?: string | null;
+  /** Things that did not block the operation (e.g. no fee structure found for the class). */
+  warnings?: string[];
 }
 
 /**

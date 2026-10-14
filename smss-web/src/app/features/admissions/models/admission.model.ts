@@ -50,6 +50,10 @@ export interface Admission {
 }
 
 export interface AdmissionDetail extends Admission {
+  /** Set by confirm-admission: the fee structure the student was automatically assigned to. */
+  feeStructureName?: string | null;
+  /** Things that did not block the operation (e.g. no fee structure found for the class). */
+  warnings?: string[];
   applicantFirstName: string;
   applicantMiddleName?: string | null;
   applicantLastName: string;

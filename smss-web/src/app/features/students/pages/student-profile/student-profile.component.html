@@ -21,7 +21,18 @@
   </app-card>
 } @else {
   @if (student(); as s) {
-    <div class="sections">
+    <div class="tabs" role="tablist" aria-label="Student sections">
+      <button type="button" role="tab" id="tab-profile" [attr.aria-selected]="tab() === 'profile'" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
+      <button type="button" role="tab" id="tab-fees" [attr.aria-selected]="tab() === 'fees'" [class.active]="tab() === 'fees'" (click)="selectTab('fees')">Fees</button>
+    </div>
+
+    @if (feesOpened()) {
+      <div class="tab-panel" role="tabpanel" aria-labelledby="tab-fees" [hidden]="tab() !== 'fees'">
+        <app-student-fees-tab [studentId]="s.studentId" />
+      </div>
+    }
+
+    <div class="sections" role="tabpanel" aria-labelledby="tab-profile" [hidden]="tab() !== 'profile'">
       <app-card>
         <div class="hero">
           <span class="photo">

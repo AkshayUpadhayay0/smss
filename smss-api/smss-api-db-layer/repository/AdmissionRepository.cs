@@ -120,6 +120,28 @@ namespace smss_api_db_layer.repository
                 .Select(s => new SchoolIdentity(s.SchoolName, s.SchoolShortCode))
                 .FirstOrDefaultAsync(ct);
 
+        public async Task<SectionClassInfo?> GetSectionClassAsync(string schoolId, long sectionId, CancellationToken ct)
+        {
+            var row = await (
+                from s in _db.Sections.AsNoTracking()
+                join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
+                where s.SectionId == sectionId && s.SchoolId == schoolId && c.SchoolId == schoolId
+                select new { c.ClassId, c.ClassName }).FirstOrDefaultAsync(ct);
+            return row == null ? null : new SectionClassInfo(row.ClassId, row.ClassName);
+        }
+
+        public async Task<FeeStructureRef?> FindActiveFeeStructureAsync(string schoolId, long classId, long academicYearId, CancellationToken ct)
+        {
+            var row = await _db.FeeStructures.AsNoTracking()
+                .Where(f => f.SchoolId == schoolId && f.ClassId == classId && f.AcademicYearId == academicYearId && f.IsActive)
+                .Select(f => new { f.FeeStructureId, f.StructureName })
+                .FirstOrDefaultAsync(ct);
+            return row == null ? null : new FeeStructureRef(row.FeeStructureId, row.StructureName);
+        }
+
+        public async Task AddStudentFeeStructureAsync(TbStudentFeeStructure entity, CancellationToken ct) =>
+            await _db.StudentFeeStructures.AddAsync(entity, ct);
+
         public Task<int> CountStudentsAsync(string schoolId, CancellationToken ct) =>
             _db.Students.CountAsync(s => s.SchoolId == schoolId, ct);
     }

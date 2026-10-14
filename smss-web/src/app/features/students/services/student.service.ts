@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { StudentFees } from '../models/student-fees.model';
 import { StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
@@ -39,6 +40,23 @@ export class StudentService {
   /** Creates the student's login; the response carries the generated Login ID and temporary password (shown once). */
   createLogin(studentId: string): Observable<StudentLoginCreated> {
     return this.withSchool((s) => this.api.post<StudentLoginCreated>(`${BASE}/${s}/${encodeURIComponent(studentId)}/create-login`, {}));
+  }
+
+  // ---- fees (the server takes the school from the token; no school id in these routes)
+  getFees(studentId: string): Observable<StudentFees> {
+    return this.api.get<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}`);
+  }
+
+  assignFeeStructure(studentId: string, feeStructureId: number): Observable<StudentFees> {
+    return this.api.put<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/structure`, { feeStructureId });
+  }
+
+  applyConcession(studentId: string, concessionId: number, remarks: string | null): Observable<StudentFees> {
+    return this.api.post<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/concessions`, { concessionId, remarks });
+  }
+
+  removeConcession(studentId: string, concessionId: number): Observable<StudentFees> {
+    return this.api.delete<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/concessions/${concessionId}`);
   }
 
   private withSchool<T>(call: (schoolId: string) => Observable<T>): Observable<T> {
