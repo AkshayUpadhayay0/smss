@@ -91,6 +91,8 @@ namespace smss_api_service_layer.dto
         public string? ClassName { get; set; }
 
         public long? FeeStructureId { get; set; }
+        /// <summary>False is a normal state (nothing assigned yet): the fee sections are then empty, never an error.</summary>
+        public bool HasFeeStructure => FeeStructureId != null;
         public string? StructureName { get; set; }
         public bool StructureIsActive { get; set; }
 

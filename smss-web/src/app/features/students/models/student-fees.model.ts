@@ -64,6 +64,8 @@ export interface StudentFees {
   classId?: number | null;
   className?: string | null;
   feeStructureId?: number | null;
+  /** False is a normal state (nothing assigned yet): lines / concessions / totals are then empty lists. */
+  hasFeeStructure?: boolean;
   structureName?: string | null;
   structureIsActive: boolean;
   lines: StudentFeeLine[];

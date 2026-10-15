@@ -302,3 +302,5 @@ Build these as the foundation BEFORE any feature screens:
   GET returns lines + concessions + net payable per frequency + `availableStructures` / `availableConcessions` in one response. Discount rules (StudentFeeService.Discounts):
   PERCENTAGE = % of each line it applies to; FIXED on a fee head = off that line; FIXED on the whole structure is spread over the lines in proportion to their
   amounts; stacked, capped at each line. Student profile has Profile | Fees tabs (`features/students/components/student-fees-tab`). Fee Collection / receipts are a later module.
+  The automatic assignment runs AFTER the student is saved (`FeeAutoAssignment`): if it cannot be written the student stays and a warning is returned. Every request
+  is wrapped by `GlobalExceptionMiddleware` (ApiResponse 500, full error in the log). RUN THE SQL FILES BEFORE DEPLOYING A BUILD THAT MAPS NEW TABLES.

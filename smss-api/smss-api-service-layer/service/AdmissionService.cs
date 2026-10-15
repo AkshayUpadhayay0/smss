@@ -225,7 +225,7 @@ namespace smss_api_service_layer.service
                 if (feeStructure == null)
                 {
                     var yearName = (await _repo.GetAcademicYearNamesAsync(schoolId, new[] { admission.AcademicYearId }, ct)).GetValueOrDefault(admission.AcademicYearId, "this academic year");
-                    feeWarning = FeeAssignmentWarning(sectionClass?.ClassName ?? "this class", yearName);
+                    feeWarning = FeeAutoAssignment.NoStructureWarning(sectionClass?.ClassName ?? "this class", yearName);
                 }
 
                 // The id is known before anything is saved (count + 1), so the whole graph goes in ONE SaveChanges.
@@ -314,18 +314,6 @@ namespace smss_api_service_layer.service
                         await _repo.AddEnrollmentAsync(enrollment, ct);
                         await _repo.AddGuardianAsync(guardian, ct);
                         await _repo.AddStudentGuardianAsync(link, ct);
-                        if (feeStructure != null)
-                        {
-                            await _repo.AddStudentFeeStructureAsync(new TbStudentFeeStructure
-                            {
-                                StudentId = studentId,
-                                FeeStructureId = feeStructure.FeeStructureId,
-                                SchoolId = schoolId,
-                                AcademicYearId = admission.AcademicYearId,
-                                CreatedAt = now,
-                                UpdatedAt = now
-                            }, ct);
-                        }
 
                         admission.StudentId = studentId;
                         admission.Enrollment = enrollment;   // EnrollmentId is filled in from the identity value on save
@@ -335,12 +323,20 @@ namespace smss_api_service_layer.service
                         await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
                         await tx.CommitAsync(ct);
 
+                        // Only now that the student is safely saved: a problem assigning the fee structure must never undo or fail the admission
+                        var assignedStructure = feeStructure;
+                        if (feeStructure != null)
+                        {
+                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _logger, schoolId, studentId, admission.AcademicYearId, feeStructure.FeeStructureId, now, ct);
+                            if (feeWarning != null) assignedStructure = null;
+                        }
+
                         await NotifyAsync(schoolId, student.Email, admission.GuardianEmail,
                             name => EmailTemplates.StudentIdAssigned(FullName(student), studentId, name),
                             $"student id assigned {studentId}", ct);
 
                         var detail = await ToDetailAsync(admission, ct);
-                        detail.FeeStructureName = feeStructure?.StructureName;
+                        detail.FeeStructureName = assignedStructure?.StructureName;
                         if (feeWarning != null) detail.Warnings.Add(feeWarning);
                         return Result(200, "Admission confirmed. Student and enrollment created.", detail);
                     }
@@ -359,9 +355,6 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- helpers ----------------
-        private static string FeeAssignmentWarning(string className, string yearName) =>
-            $"No fee structure found for {className}, AY {yearName} — assign manually from the student's Fees tab.";
-
         private static string FullName(TbStudent s) =>
             string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(p => !string.IsNullOrWhiteSpace(p)));
 

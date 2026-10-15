@@ -77,7 +77,7 @@ namespace smss_api_service_layer.service
                 if (feeStructure == null)
                 {
                     var yearName = (await _repo.GetAcademicYearNamesAsync(schoolId, new[] { req.AcademicYearId }, ct)).GetValueOrDefault(req.AcademicYearId, "this academic year");
-                    feeWarning = $"No fee structure found for {sectionClass?.ClassName ?? "this class"}, AY {yearName} — assign manually from the student's Fees tab.";
+                    feeWarning = FeeAutoAssignment.NoStructureWarning(sectionClass?.ClassName ?? "this class", yearName);
                 }
 
                 var suppliedNumber = Clean(req.AdmissionNumber);
@@ -155,21 +155,17 @@ namespace smss_api_service_layer.service
                         await _repo.AddEnrollmentAsync(enrollment, ct);
                         await _repo.AddGuardianAsync(guardian, ct);
                         await _repo.AddStudentGuardianAsync(link, ct);
-                        if (feeStructure != null)
-                        {
-                            await _repo.AddStudentFeeStructureAsync(new TbStudentFeeStructure
-                            {
-                                StudentId = studentId,
-                                FeeStructureId = feeStructure.FeeStructureId,
-                                SchoolId = schoolId,
-                                AcademicYearId = req.AcademicYearId,
-                                CreatedAt = now,
-                                UpdatedAt = now
-                            }, ct);
-                        }
 
                         await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
                         await tx.CommitAsync(ct);
+
+                        // Only now that the student is safely saved: a problem assigning the fee structure must never undo or fail it
+                        var assignedStructure = feeStructure;
+                        if (feeStructure != null)
+                        {
+                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _logger, schoolId, studentId, req.AcademicYearId, feeStructure.FeeStructureId, now, ct);
+                            if (feeWarning != null) assignedStructure = null;
+                        }
 
                         var fullName = string.Join(' ', new[] { student.FirstName, student.MiddleName, student.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
                         await _notify.SendAsync(student.Email, guardian.Email,
@@ -183,7 +179,7 @@ namespace smss_api_service_layer.service
                             FullName = fullName,
                             EnrollmentId = enrollment.EnrollmentId,
                             AadharNumberMasked = Mask(student.AadharNumber),
-                            FeeStructureName = feeStructure?.StructureName,
+                            FeeStructureName = assignedStructure?.StructureName,
                             Warnings = feeWarning == null ? new List<string>() : new List<string> { feeWarning }
                         });
                     }

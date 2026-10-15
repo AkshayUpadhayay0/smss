@@ -147,7 +147,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// A failure on a background thread or an unobserved task is not tied to any request and cannot be turned into a 500,
+// so at least leave the real cause in the log (without this, a dead process leaves no trace of why).
+app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogWarning("API is stopping"));
+AppDomain.CurrentDomain.UnhandledException += (_, e) => app.Logger.LogCritical(e.ExceptionObject as Exception, "Unhandled exception outside a request (terminating: {Terminating})", e.IsTerminating);
+TaskScheduler.UnobservedTaskException += (_, e) => app.Logger.LogError(e.Exception, "Unobserved task exception");
+
 // Configure the HTTP request pipeline.
+// First, so it sees everything below it (in Development too: a JSON ApiResponse instead of an HTML error page)
+app.UseMiddleware<smss_api.Helpers.GlobalExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
