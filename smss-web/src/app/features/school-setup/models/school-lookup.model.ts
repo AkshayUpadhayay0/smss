@@ -28,6 +28,8 @@ export interface SchoolLookupConfig {
   codeRequired?: boolean;
   /** Longest code the API accepts (default 20). */
   codeMaxLength?: number;
+  /** Show the "This fee is optional" checkbox and an Optional column (Fee Types only). */
+  optionalFlag?: boolean;
   /** First breadcrumb, e.g. 'Fee Setup' (default 'School Setup'). */
   group?: string;
 }

@@ -7,6 +7,8 @@ import { MasterDataService } from '../../../../core/services/master-data.service
 import { ToastService } from '../../../../core/services/toast.service';
 import { Breadcrumb, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { GUARDIAN_RELATIONSHIPS } from '../../../admissions/models/admission.model';
+import { FeeConfigurationComponent } from '../../../students/components/fee-configuration/fee-configuration.component';
+import { FeeItemSelection } from '../../../students/models/student-billing.model';
 import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
@@ -36,7 +38,7 @@ function pastDate(c: AbstractControl): ValidationErrors | null {
 /** Direct entry of a student the school already has: no application, review or approval stage. */
 @Component({
   selector: 'app-existing-student-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './existing-student-form.component.scss',
   templateUrl: './existing-student-form.component.html',
@@ -99,6 +101,26 @@ export class ExistingStudentFormComponent implements OnInit {
   protected readonly yearOptions = signal<SelectOption[]>([]);
   protected readonly sectionOptions = signal<SelectOption[]>([]);
 
+  // ── Fee configuration (needs the academic year and the class of the chosen section) ──
+  private readonly sectionClass = signal<Record<string, number>>({});
+  protected readonly feeYearId = signal<number | null>(null);
+  protected readonly feeClassId = signal<number | null>(null);
+  protected readonly feeStartDate = signal<string | null>(null);
+  /** The frequency choices from the Fee Configuration section; sent with the request. */
+  private feeSelections: FeeItemSelection[] = [];
+
+  protected onFeeSelections(selections: FeeItemSelection[]): void {
+    this.feeSelections = selections;
+  }
+
+  private syncFeePlacement(): void {
+    const year = this.form.controls.academicYearId.value;
+    const section = this.form.controls.classSectionId.value;
+    this.feeYearId.set(year ? Number(year) : null);
+    this.feeStartDate.set(this.form.controls.admissionDate.value || null);
+    this.feeClassId.set(section ? (this.sectionClass()[section] ?? null) : null);
+  }
+
   /** null = still checking; false = the school has no active "Existing Student" admission type yet. */
   protected readonly typeReady = signal<boolean | null>(null);
   protected readonly typeMissing = computed(() => this.typeReady() === false);
@@ -107,6 +129,10 @@ export class ExistingStudentFormComponent implements OnInit {
   protected readonly showTypeBanner = computed(() => this.typeMissing() || this.serverSaysTypeMissing());
 
   ngOnInit(): void {
+    // The fee heads depend on the class (via the section) and the academic year
+    this.form.controls.academicYearId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
+    this.form.controls.classSectionId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
+    this.form.controls.admissionDate.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
     this.loadSchoolOptions();
   }
 
@@ -117,12 +143,16 @@ export class ExistingStudentFormComponent implements OnInit {
       this.yearOptions.set(active(list).map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
       const current = active(list).find((y) => y.isCurrent);
       if (current && !this.form.controls.academicYearId.value) this.form.controls.academicYearId.setValue(String(current.academicYearId));
+      this.syncFeePlacement();
     });
 
     // The API returns sections ordered by class, then name
-    this.sections.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) =>
-      this.sectionOptions.set(list.filter((s) => s.statusName === 'Active').map((s) => ({ label: `${s.className} – ${s.sectionName}`, value: String(s.sectionId) }))),
-    );
+    this.sections.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
+      const active = list.filter((s) => s.statusName === 'Active');
+      this.sectionClass.set(Object.fromEntries(active.map((s) => [String(s.sectionId), s.classId])));
+      this.sectionOptions.set(active.map((s) => ({ label: `${s.className} – ${s.sectionName}`, value: String(s.sectionId) })));
+      this.syncFeePlacement();
+    });
 
     this.lookups.list('AdmissionTypes').pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
       if (list === null) return; // couldn't check: let the server decide on submit
@@ -192,6 +222,7 @@ export class ExistingStudentFormComponent implements OnInit {
       guardianRelationship: v.guardianRelationship,
       guardianMobileNumber: v.guardianMobileNumber.trim(),
       guardianEmail: str(v.guardianEmail),
+      feeItems: this.feeSelections.length ? this.feeSelections : null,
     };
 
     this.saving.set(true);

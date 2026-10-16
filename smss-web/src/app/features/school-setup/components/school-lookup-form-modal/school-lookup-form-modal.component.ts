@@ -31,6 +31,13 @@ import { SchoolLookupService } from '../../services/school-lookup.service';
           />
         }
         <app-textarea label="Description" placeholder="Optional" [maxLength]="250" formControlName="description" [errorText]="error('description')" />
+        @if (config().optionalFlag) {
+          <label class="check">
+            <input type="checkbox" formControlName="isOptional" />
+            <span>This fee is optional</span>
+          </label>
+          <p class="check-help">Optional fees (e.g. Transport) are chosen per student at admission. Other fees always apply.</p>
+        }
         <!-- lets Enter submit; the visible button lives in the modal footer -->
         <button type="submit" hidden tabindex="-1"></button>
       </form>
@@ -46,6 +53,20 @@ import { SchoolLookupService } from '../../services/school-lookup.service';
       display: flex;
       flex-direction: column;
       gap: var(--space-5);
+    }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      cursor: pointer;
+      input {
+        accent-color: var(--color-primary);
+      }
+    }
+    .check-help {
+      margin: calc(-1 * var(--space-3)) 0 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
     }
   `,
 })
@@ -68,6 +89,7 @@ export class SchoolLookupFormModalComponent implements OnInit {
     name: new FormControl('', { nonNullable: true, validators: [Validators.required, notBlank, Validators.maxLength(100)] }),
     code: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(20)] }),
     description: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(250)] }),
+    isOptional: new FormControl(false, { nonNullable: true }),
   });
 
   ngOnInit(): void {
@@ -83,6 +105,7 @@ export class SchoolLookupFormModalComponent implements OnInit {
       name: String(item[cfg.nameKey] ?? ''),
       code: cfg.codeKey ? String(item[cfg.codeKey] ?? '') : '',
       description: item.description ?? '',
+      isOptional: item['isOptional'] === true,
     });
   }
 
@@ -104,6 +127,7 @@ export class SchoolLookupFormModalComponent implements OnInit {
     const v = this.form.getRawValue();
     const body: Record<string, unknown> = { [cfg.nameKey]: v.name.trim(), description: v.description.trim() || null };
     if (cfg.codeKey) body[cfg.codeKey] = v.code.trim() || null;
+    if (cfg.optionalFlag) body['isOptional'] = v.isOptional;
     const editing = this.item();
 
     this.saving.set(true);

@@ -15,9 +15,40 @@ namespace smss_api.Controllers
     public class StudentFeeController : ControllerBase
     {
         private readonly IStudentFeeService _service;
-        public StudentFeeController(IStudentFeeService service) => _service = service;
+        private readonly IStudentFeeBillingService _billing;
+
+        public StudentFeeController(IStudentFeeService service, IStudentFeeBillingService billing)
+        {
+            _service = service;
+            _billing = billing;
+        }
 
         private IActionResult Reply<T>(ApiResponse<T> response) => StatusCode(response.StatusCode, response);
+
+        // GET api/StudentFee/preview?academicYearId=1&classId=2
+        // The fee heads a new student of that class + year would get (with the frequencies each may be paid at), for the admission form.
+        [HttpGet("preview")]
+        public async Task<IActionResult> Preview([FromQuery] long? academicYearId, [FromQuery] long? classId, [FromQuery] DateOnly? startDate, CancellationToken ct)
+        {
+            if (academicYearId is null or <= 0 || classId is null or <= 0)
+                return StatusCode(400, new ApiResponse<object> { Status = false, StatusCode = 400, Message = "academicYearId and classId are required.", Data = null });
+            return Reply(await _billing.PreviewAsync(User.GetSchoolId(), academicYearId.Value, classId.Value, startDate, ct));
+        }
+
+        // GET api/StudentFee/{studentId}/fee-items
+        [HttpGet("{studentId:length(1,20)}/fee-items")]
+        public async Task<IActionResult> GetFeeItems(string studentId, CancellationToken ct) =>
+            Reply(await _billing.GetItemsAsync(User.GetSchoolId(), studentId, ct));
+
+        // PUT api/StudentFee/{studentId}/fee-items/{itemId}   (change the frequency and/or whether the fee head applies)
+        [HttpPut("{studentId:length(1,20)}/fee-items/{itemId:long}")]
+        public async Task<IActionResult> UpdateFeeItem(string studentId, long itemId, [FromBody] UpdateFeeItemRequest request, CancellationToken ct) =>
+            Reply(await _billing.UpdateItemAsync(User.GetSchoolId(), studentId, itemId, request, ct));
+
+        // GET api/StudentFee/{studentId}/fee-dues   (every installment with its computed status)
+        [HttpGet("{studentId:length(1,20)}/fee-dues")]
+        public async Task<IActionResult> GetFeeDues(string studentId, CancellationToken ct) =>
+            Reply(await _billing.GetDuesAsync(User.GetSchoolId(), studentId, ct));
 
         // GET api/StudentFee/{studentId}
         // The assigned structure's lines, applied concessions, net payable per frequency, and what can still be assigned / applied.

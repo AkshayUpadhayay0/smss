@@ -125,6 +125,7 @@ tbody tr:hover:not(.skeleton) {
   &.tone-gray-strike { background: var(--color-status-inactive-bg); color: var(--color-status-inactive-fg); text-decoration: line-through; }
   &.tone-blue { background: var(--color-info-soft); color: var(--color-info); }
   &.tone-green { background: var(--color-success-soft); color: var(--color-status-active-fg); }
+  &.tone-yellow { background: var(--color-warning-soft); color: var(--color-warning); }
   &.tone-red { background: var(--color-danger-soft); color: var(--color-danger); }
   &.tone-violet { background: var(--color-primary-soft); color: var(--color-primary-700); }
 }

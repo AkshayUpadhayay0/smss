@@ -14,11 +14,13 @@ namespace smss_api_service_layer.service
         private const string Percentage = "PERCENTAGE";
 
         private readonly IStudentFeeRepository _repo;
+        private readonly IStudentFeeBillingService _billing;
         private readonly ILogger<StudentFeeService> _logger;
 
-        public StudentFeeService(IStudentFeeRepository repo, ILogger<StudentFeeService> logger)
+        public StudentFeeService(IStudentFeeRepository repo, IStudentFeeBillingService billing, ILogger<StudentFeeService> logger)
         {
             _repo = repo;
+            _billing = billing;
             _logger = logger;
         }
 
@@ -69,6 +71,7 @@ namespace smss_api_service_layer.service
                     assignment.UpdatedAt = now;
                 }
                 await _repo.SaveChangesAsync(ct);
+                await _billing.SyncAsync(schoolId, studentId, enrollment.AcademicYearId, null, ct);   // items + installments follow the new structure
 
                 return Result(200, "Fee structure assigned.", await BuildAsync(schoolId, student, ct));
             }
@@ -114,6 +117,7 @@ namespace smss_api_service_layer.service
                     UpdatedAt = now
                 }, ct);
                 await _repo.SaveChangesAsync(ct);
+                await _billing.SyncAsync(schoolId, studentId, enrollment!.AcademicYearId, null, ct);   // net amounts and unpaid installments follow the concession
 
                 return Result(201, "Concession applied.", await BuildAsync(schoolId, student, ct));
             }
@@ -135,6 +139,8 @@ namespace smss_api_service_layer.service
 
                 _repo.RemoveAppliedConcession(applied);
                 await _repo.SaveChangesAsync(ct);
+                var enrollment = await CurrentEnrollmentAsync(schoolId, studentId, ct);
+                if (enrollment != null) await _billing.SyncAsync(schoolId, studentId, enrollment.AcademicYearId, null, ct);
 
                 return Result(200, "Concession removed.", await BuildAsync(schoolId, student, ct));
             }
@@ -235,7 +241,11 @@ namespace smss_api_service_layer.service
         ///    gets the fixed amount off (a whole-structure FIXED value is not applied once per line).
         /// Several concessions add up, capped at the line's amount.
         /// </summary>
-        public static decimal[] Discounts(IReadOnlyList<StudentFeeLineRow> lines, IReadOnlyList<AppliedConcessionRow> concessions)
+        public static decimal[] Discounts(IReadOnlyList<StudentFeeLineRow> lines, IReadOnlyList<AppliedConcessionRow> concessions) =>
+            Discounts(lines.Select(l => (l.FeeTypeId, l.Amount)).ToList(), concessions);
+
+        /// <summary>The same rules for any list of (fee head, amount) pairs, e.g. a student's fee items.</summary>
+        public static decimal[] Discounts(IReadOnlyList<(long FeeTypeId, decimal Amount)> lines, IReadOnlyList<AppliedConcessionRow> concessions)
         {
             var discount = new decimal[lines.Count];
             var grossAll = lines.Sum(l => l.Amount);

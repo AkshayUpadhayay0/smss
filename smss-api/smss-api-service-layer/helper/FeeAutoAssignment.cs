@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
+using smss_api_service_layer.dto;
+using smss_api_service_layer.@interface;
 
 namespace smss_api_service_layer.helper
 {
@@ -14,12 +16,16 @@ namespace smss_api_service_layer.helper
         public static string NoStructureWarning(string className, string yearName) =>
             $"No fee structure found for {className}, AY {yearName} — assign manually from the student's Fees tab.";
 
+        public const string ItemsFailedWarning =
+            "The fee structure was assigned, but the fee items and due dates could not be generated — open the student's Fees tab to retry.";
+
         public const string AssignFailedWarning =
             "The student was added, but the fee structure could not be assigned automatically — assign it from the student's Fees tab.";
 
         /// <summary>Null when the assignment was saved; otherwise the warning to show.</summary>
         public static async Task<string?> TryAssignAsync(
-            IAdmissionRepository repo, ILogger logger, string schoolId, string studentId, long academicYearId, long feeStructureId, DateTime now, CancellationToken ct)
+            IAdmissionRepository repo, IStudentFeeBillingService billing, IReadOnlyList<FeeItemSelection>? selections,
+            ILogger logger, string schoolId, string studentId, long academicYearId, long feeStructureId, DateTime now, CancellationToken ct)
         {
             try
             {
@@ -33,13 +39,25 @@ namespace smss_api_service_layer.helper
                     UpdatedAt = now
                 }, ct);
                 await repo.SaveChangesAsync(ct);
-                return null;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Student {StudentId} was created but its fee structure {FeeStructureId} could not be assigned", studentId, feeStructureId);
                 repo.ClearTracking();   // forget the row that failed to save
                 return AssignFailedWarning;
+            }
+
+            // The student's own fee items (frequency / applicability choices made at admission) and their installments
+            try
+            {
+                await billing.SyncAsync(schoolId, studentId, academicYearId, selections, ct);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Student {StudentId}: fee structure assigned but fee items / dues could not be generated", studentId);
+                repo.ClearTracking();
+                return ItemsFailedWarning;
             }
         }
     }

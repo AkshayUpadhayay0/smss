@@ -17,7 +17,19 @@ const MAX_AMOUNT = 9_999_999_999.99;
 interface LineControls {
   feeTypeId: FormControl<string>;
   frequencyId: FormControl<string>;
+  /** Day of the month (1-31); only enabled (and required) for a recurring frequency. */
+  dueDay: FormControl<string>;
   amount: FormControl<string>;
+}
+
+/** Frequencies that fall due on a day of the month. One Time and Annual are a single charge and need no due day. */
+const RECURRING_CODES = ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY'];
+
+function dueDayValidator(c: AbstractControl): ValidationErrors | null {
+  const raw = String(c.value ?? '').trim();
+  if (raw === '') return null; // `required` reports the empty case
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 31 ? null : { amount: 'Enter a day from 1 to 31' };
 }
 type LineGroup = FormGroup<LineControls>;
 
@@ -82,7 +94,7 @@ export class FeeStructureBuilderComponent implements OnInit {
   private readonly loaded = signal<FeeStructure | null>(null);
 
   /** The form's current values, re-read on every change (rows added/removed/edited). */
-  private readonly value = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue()), startWith(this.form.getRawValue())), {
+  protected readonly value = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue()), startWith(this.form.getRawValue())), {
     requireSync: true,
   });
 
@@ -184,7 +196,7 @@ export class FeeStructureBuilderComponent implements OnInit {
             this.loaded.set(s);
             this.lines.clear();
             this.form.patchValue({ academicYearId: String(s.academicYearId), classId: String(s.classId), structureName: s.structureName });
-            for (const d of s.details) this.lines.push(this.newLine(String(d.feeTypeId), String(d.frequencyId), String(d.amount)));
+            for (const d of s.details) this.lines.push(this.newLine(String(d.feeTypeId), String(d.frequencyId), String(d.amount), d.dueDay == null ? '' : String(d.dueDay)));
             // A structure belongs to ONE class and year; changing them would be a different structure
             this.form.controls.academicYearId.disable();
             this.form.controls.classId.disable();
@@ -196,12 +208,34 @@ export class FeeStructureBuilderComponent implements OnInit {
       });
   }
 
-  private newLine(feeTypeId = '', frequencyId = '', amount = ''): LineGroup {
-    return new FormGroup<LineControls>({
+  private newLine(feeTypeId = '', frequencyId = '', amount = '', dueDay = ''): LineGroup {
+    const group = new FormGroup<LineControls>({
       feeTypeId: new FormControl(feeTypeId, { nonNullable: true, validators: [Validators.required] }),
       frequencyId: new FormControl(frequencyId, { nonNullable: true, validators: [Validators.required] }),
+      dueDay: new FormControl(dueDay, { nonNullable: true, validators: [Validators.required, dueDayValidator] }),
       amount: new FormControl(amount, { nonNullable: true, validators: [Validators.required, amountValidator] }),
     });
+    // The due day only applies to a recurring frequency: enable / require it for those, switch it off (and clear it) otherwise
+    const sync = () => {
+      const recurring = this.isRecurring(group.controls.frequencyId.value);
+      if (recurring && group.controls.dueDay.disabled) group.controls.dueDay.enable({ emitEvent: false });
+      if (!recurring && group.controls.dueDay.enabled) {
+        group.controls.dueDay.setValue('', { emitEvent: false });
+        group.controls.dueDay.disable({ emitEvent: false });
+      }
+    };
+    sync();
+    group.controls.frequencyId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      sync();
+      this.form.updateValueAndValidity(); // so the totals / validity pick up the enabled state
+    });
+    return group;
+  }
+
+  /** True when the frequency (by id) is Monthly, Quarterly or Half-Yearly. */
+  protected isRecurring(frequencyId: string): boolean {
+    const f = this.frequencies().find((x) => String(x.frequencyId) === frequencyId);
+    return !!f && RECURRING_CODES.includes(f.frequencyCode);
   }
 
   protected addLine(): void {
@@ -239,6 +273,7 @@ export class FeeStructureBuilderComponent implements OnInit {
       feeTypeId: Number(l.feeTypeId),
       frequencyId: Number(l.frequencyId),
       amount: Number(l.amount),
+      dueDay: this.isRecurring(l.frequencyId) ? Number(l.dueDay) : null,
     }));
     const structureName = v.structureName.trim();
 

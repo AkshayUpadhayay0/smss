@@ -25,6 +25,13 @@
           <p class="warn">No active sections for {{ admission().appliedClassName }} yet. Add one under School Setup → Section first.</p>
         }
         <app-input label="Roll number" placeholder="Optional" [formControl]="rollNumber" />
+        <app-fee-configuration
+          [framed]="false"
+          [academicYearId]="admission().academicYearId"
+          [classId]="admission().appliedClassId"
+          [startDate]="today"
+          (selectionsChange)="onFeeSelections($event)"
+        />
         <div>
           <p class="photo-label">Student photo (optional)</p>
           <app-logo-upload noun="photo" icon="user" (changed)="onPhotoChanged($event)" />

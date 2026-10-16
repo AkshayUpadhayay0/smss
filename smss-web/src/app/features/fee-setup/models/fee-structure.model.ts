@@ -26,6 +26,8 @@ export interface FeeStructureLine {
   frequencyId: number;
   frequencyName: string;
   amount: number;
+  /** Day of the month a recurring fee falls due (1-31); null for One Time / Annual. */
+  dueDay?: number | null;
 }
 
 /** The header together with its lines (GET by id). */
@@ -37,6 +39,8 @@ export interface FeeStructureLineRequest {
   feeTypeId: number;
   frequencyId: number;
   amount: number;
+  /** Required for Monthly / Quarterly / Half-Yearly; null otherwise. */
+  dueDay: number | null;
 }
 
 export interface CreateFeeStructureRequest {

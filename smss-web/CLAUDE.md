@@ -304,3 +304,37 @@ Build these as the foundation BEFORE any feature screens:
   amounts; stacked, capped at each line. Student profile has Profile | Fees tabs (`features/students/components/student-fees-tab`). Fee Collection / receipts are a later module.
   The automatic assignment runs AFTER the student is saved (`FeeAutoAssignment`): if it cannot be written the student stays and a warning is returned. Every request
   is wrapped by `GlobalExceptionMiddleware` (ApiResponse 500, full error in the log). RUN THE SQL FILES BEFORE DEPLOYING A BUILD THAT MAPS NEW TABLES.
+- STUDENT FEE BILLING, STAGE 2 (2026-10-16, Docs/roles-workflow.md section 28; needs `Docs/smss-student-fee-items.sql`, after the assignment SQL): `tb_fee_structure_details.due_day`
+  (required for Monthly/Quarterly/Half-Yearly lines, null otherwise), `tb_student_fee_items` (per student per year per fee head: the frequency THIS student pays at,
+  is_applicable, base/concession/net PER PERIOD of the structure line) and `tb_student_fee_dues` (generated installments; `amount_paid` is written only by payments, a later
+  stage). student_id is varchar(20) (section 28 says bigint). `StudentFeeBillingService.SyncAsync` is the one place that materialises items + dues; it runs after admission,
+  assign/re-assign, concession add/remove, item edit and structure edit, and GET fee-items/fee-dues heal a student that has a structure but no items. Rules: year total of an item =
+  net x periods of the STRUCTURE frequency, split over the student's frequency (Monthly 12, Quarterly 4, Half-Yearly 2, Annual/One Time 1; dates start in the academic year's start month,
+  day = due day cut to the month length); One Time/Annual fees stay single charges, recurring ones can be paid Monthly/Quarterly/Half-Yearly/Annual (`FeeSchedule`). Regeneration keeps any
+  installment with a payment or already past its date and re-spreads the rest over the unpaid future slots (slots = months, so a due-day change never makes a second installment).
+  Status (Paid / Partially Paid / Pending / Overdue) is COMPUTED, never stored: Overdue = something owed and date passed (beats Partially Paid), due today is Pending; "today" is IST (`SchoolClock`).
+  API: `GET /api/StudentFee/preview?academicYearId=&classId=` (admission form), `GET .../{studentId}/fee-items`, `PUT .../fee-items/{itemId}` {frequencyId?, isApplicable?}, `GET .../fee-dues`;
+  Confirm Admission / existing-student requests take optional `feeItems: [{feeTypeId, frequencyId?, isApplicable?}]`. UI: `FeeConfigurationComponent` (existing-student form + confirm dialog),
+  Fees tab shows items (edit frequency/applicability) and the due schedule with status pills (table tone `yellow` added). NO is_optional flag exists on tb_fee_types: the
+  admission-time include/exclude checkbox is intentionally NOT built (waiting on a decision); applicability is editable per item from the Fees tab.
+  UPDATE 2026-10-16 (needs `Docs/smss-fee-types-optional.sql`): `tb_fee_types.is_optional` (default false; "This fee is optional" checkbox on the Fee Types form + an Optional column). Only OPTIONAL
+  heads get an include/exclude checkbox on the admission forms and are opt-in (unticked by default; also when `feeItems` is omitted); NON-optional heads always apply, the server ignores an
+  attempt to switch one off at admission and `PUT fee-items` returns 400 for it. Mid-year admissions: installments are generated only from the student's start month (their
+  enrollment date for that academic year, else the year start) for Monthly / Quarterly / Half-Yearly - same amount per installment, fewer of them; a single charge (One Time / Annual) is still
+  billed in full but dated from the start date, never earlier. Schedules created before this rule are left alone (Sync does not count pre-start installments against what is owed).
+  The preview endpoint takes `startDate` and reports `remainingInstallments` per frequency.
+- STUDENT FEE BILLING, STAGE 3 - PAYMENT COLLECTION (2026-10-16; needs `Docs/smss-fee-payments.sql`): `tb_fee_payments` + `tb_fee_payment_allocations`; the ONLY thing that moves `tb_student_fee_dues.amount_paid`.
+  API `/api/FeePayment`: `POST students/{studentId}` {amount, paymentMode, allocations?: [{feeDueId, amount}], remarks} (explicit split, or none = oldest installment first), `GET students/{studentId}` (history, newest first),
+  `GET {paymentId}/receipt`. Rules: modes Cash/Cheque/UPI/Card/Bank Transfer/Online; allocations must add up to the amount exactly; every due must be this student's and this school's; an allocation above an installment's
+  outstanding is refused (no overpayment, no silent loss); auto mode refuses an amount above the total outstanding. ONE transaction: installments are locked `FOR UPDATE` (two simultaneous payments can't both pay the same
+  installment), payment + allocations + amount_paid are one SaveChanges. Receipt number `RCP-{yyyy}-{nnnn}`: per school per (IST) calendar year, max+1 under the unique (school_id, receipt_number) index with a 3-try
+  retry. Collector comes from the token. NO void/reverse yet - waiting on a decision (see the report; `DELETE` is deliberately not mapped). Mid-year floor is now "first due date ON OR AFTER the admission date" (a student
+  admitted 15 Oct with due day 1 first owes 1 Nov); a Quarterly/Half-Yearly fee whose remaining slots are all before the admission date leaves NO installment for that fee (flagged, not changed).
+  UI: Fees tab -> "Collect Payment" (`CollectPaymentDialogComponent`: typing an amount splits it oldest-first, edits override, submit only when the split equals the amount, money compared in paise) -> receipt
+  (`FeeReceiptDialogComponent`, Print / Save as PDF via a standalone escaped page in `utils/receipt-print.ts`), and a Payment history card with "Receipt".
+
+## Stage 3 closing — void payment + due-date gap fix
+- Payments are SOFT-voided (`POST /api/FeePayment/{id}/void`, body `{voidReason}`): row + allocations kept, `status='Voided'`, voided_by/at/reason set, allocated amounts subtracted from `tb_student_fee_dues.amount_paid` in one transaction. Receipt numbers are never reused. Only School Admin / Accountant (`User.CanManageFees()` on the API, `FEE_MANAGER_ROLES` in `fee-payment.model.ts`); already-voided or other-school payment → 404.
+- Installment status is computed live, so a voided Paid installment reads Overdue/Pending again with no extra work.
+- Voided receipts still open/print, with a VOID banner + watermark (`receipt-print.ts`, `fee-receipt-dialog`).
+- `FeeSchedule.OwedSchedule`: if no configured due date is left on/after the start date, ONE installment dated at the start date for the normal per-period amount (no proration).

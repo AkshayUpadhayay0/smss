@@ -16,6 +16,8 @@ namespace smss_api_db_layer.entity
         [Column("fee_type_name")][StringLength(100)] public string FeeTypeName { get; set; } = null!;
         [Column("fee_type_code")][StringLength(30)] public string FeeTypeCode { get; set; } = null!;
         [Column("description")] public string? Description { get; set; }
+        /// <summary>An optional fee (e.g. Transport) is opted into per student; a non-optional one is always applied.</summary>
+        [Column("is_optional")] public bool IsOptional { get; set; }
         [Column("isactive")] public bool IsActive { get; set; } = true;
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }

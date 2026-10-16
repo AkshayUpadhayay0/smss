@@ -66,6 +66,15 @@
               [errorText]="lineError(i, 'frequencyId')"
             />
             <app-input
+              label="Due day"
+              type="number"
+              [required]="isRecurring(value().lines[i]?.frequencyId ?? '')"
+              placeholder="1-31"
+              formControlName="dueDay"
+              [errorText]="lineError(i, 'dueDay')"
+              [helpText]="isRecurring(value().lines[i]?.frequencyId ?? '') ? 'Day of the month' : 'Not needed'"
+            />
+            <app-input
               label="Amount (₹)"
               type="number"
               [required]="true"

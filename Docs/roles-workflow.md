@@ -317,7 +317,7 @@ School → Fee Structure → Student Fee Assignment → Fee Due → Payment → 
 Other income: `Other Income → Transaction → Ledger`
 Expenses: `Expense → Approval → Payment → Transaction → Ledger`
 
-See section 28 for the Fee Due / Payment / Receipt schema. Ledger/Other Income/Expenses are a separate future module, not yet designed.
+See section 28 for the Fee Due / Payment / Receipt schema. Ledger/Other Income/Expenses are a separate future module, not yet designed. Refunds of actual money paid out are also part of that future module — voiding a payment (section 28) only reverses the fee-due bookkeeping, it does not track or move cash.
 
 ## 24. Role responsibility summary
 
@@ -420,6 +420,7 @@ Setup sequence: **Fee Types → Fee Structures (per Class + Academic Year) → F
 - `fee_type_name` VARCHAR(100)
 - `fee_type_code` VARCHAR(30)
 - `description` TEXT
+- `is_optional` BOOLEAN default false — marks fee heads that can be individually included/excluded per student at admission (e.g. Transport, Hostel). Non-optional heads (e.g. Tuition, Admission Fee) are always applied and don't show an include/exclude toggle on the admission form. Enforced server-side too: a request trying to switch off a non-optional head at admission is ignored, and `PUT fee-items` on a non-optional head returns 400.
 - `isactive` BOOLEAN
 - `created_at` / `updated_at` TIMESTAMPTZ
 - Unique: `(school_id, fee_type_code)`
@@ -448,7 +449,7 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `fee_type_id` BIGINT FK → tb_fee_types
 - `frequency_id` BIGINT FK → lut_fee_frequency
 - `amount` NUMERIC(12,2)
-- `due_day` SMALLINT — default day-of-month this fee head is due for recurring frequencies (e.g. 10 = "10th of every month"); see section 28 for how this drives due-date generation and what happens when it changes
+- `due_day` SMALLINT — default day-of-month this fee head is due for recurring frequencies (e.g. 10 = "10th of every month"); built as an input per row in the Fee Structures builder, enabled/required only for Monthly/Quarterly/Half-Yearly rows. See section 28 for how this drives due-date generation and what happens when it changes. A legacy recurring line with no due_day set falls back to the 1st of the month.
 - `created_at` / `updated_at`
 - Unique: `(fee_structure_id, fee_type_id)`
 
@@ -467,6 +468,8 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `tb_student_fee_structure` — links a student to a fee structure: `student_id`, `fee_structure_id`, `school_id`, `academic_year_id`. Built and working; auto-assigned at admission based on class + academic year, with manual assignment/reassignment as fallback.
 - `tb_student_fee_concessions` — per-student concessions applied (many-to-many): `student_id`, `concession_id`, `approved_by`, `remarks`. Built and working.
 
+**Note on `student_id` type:** `tb_students.student_id` is `VARCHAR(20)` (a business-generated identifier, same pattern as `tb_schools.school_id`), not `BIGINT` as originally assumed when this section was first drafted. Every FK to `tb_students` below in section 28 uses `VARCHAR(20)` — corrected to match the real schema.
+
 ## 28. Student Fee Billing & Collection (per-student items, installments, payments)
 
 This is the layer that turns a class-level Fee Structure into actual per-student amounts owed, due dates, and recorded payments — what section 9 (Accountant workflow) and section 23 (Finance workflow) actually run on. `tb_student_fee_structure` (section 27) only says which structure governs a student; it does not say what frequency the student chose for each fee head, whether an optional fee applies to them, what's actually been paid, or what's overdue. These tables add that.
@@ -475,25 +478,25 @@ Requirements this satisfies: fee configuration at admission (per-student frequen
 
 ### `tb_student_fee_items` (per-student resolved billing lines)
 - `student_fee_item_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
-- `student_id` BIGINT FK → tb_students
+- `student_id` VARCHAR(20) FK → tb_students
 - `school_id` VARCHAR(100) FK → tb_schools
 - `academic_year_id` BIGINT FK → tb_academic_years
 - `fee_type_id` BIGINT FK → tb_fee_types
-- `frequency_id` BIGINT FK → lut_fee_frequency — the frequency **this student** chose for this fee head (e.g. a parent may choose to pay tuition quarterly even though another student in the same class pays monthly); seeded from the fee structure's default but independently stored and editable per student
-- `base_amount` NUMERIC(12,2) — from the fee structure at the time of assignment
+- `frequency_id` BIGINT FK → lut_fee_frequency — the frequency **this student** chose for this fee head (e.g. a parent may choose to pay tuition quarterly even though another student in the same class pays monthly); seeded from the fee structure's default but independently stored and editable per student. Allowed frequencies: One Time/Annual lines stay fixed; Monthly/Quarterly/Half-Yearly lines can be paid Monthly, Quarterly, Half-Yearly, or Annual (student's choice).
+- `base_amount` NUMERIC(12,2) — the **per-period** amount from the fee structure (e.g. ₹2,500/month). The year total for an item is `net_amount × periods-per-year-at-the-structure's-default-frequency`, then re-split across whatever frequency the student actually chose — so a student paying quarterly pays the full proportional share (e.g. ₹7,500/quarter for a ₹2,500/month line), never a fraction of the annual total.
 - `concession_amount` NUMERIC(12,2) default 0 — resolved from any applicable `tb_student_fee_concessions`
-- `net_amount` NUMERIC(12,2) — `base_amount - concession_amount`, what's actually billed
-- `is_applicable` BOOLEAN — lets an optional fee head (e.g. Transport) be toggled on/off per student without deleting the row or losing history
+- `net_amount` NUMERIC(12,2) — `base_amount - concession_amount`, the resolved per-period billed amount
+- `is_applicable` BOOLEAN — lets an optional fee head (`tb_fee_types.is_optional = true`) be toggled on/off per student without deleting the row or losing history. Included on the admission form only for fee types marked optional; **defaults to unticked (opt-in)**, including when an API caller omits it, so a forgotten tick never silently bills an unwanted fee.
 - `isactive` BOOLEAN
 - `created_at` / `updated_at`
 - Unique: `(student_id, academic_year_id, fee_type_id)`
 
-Seeded from `tb_fee_structure_details` for the student's class at admission time (one row per applicable fee head), with frequency and applicability editable per student afterward from the Fees tab.
+Seeded from `tb_fee_structure_details` for the student's class at admission time (one row per applicable fee head), with frequency and applicability editable per student afterward from the Fees tab. Re-synced automatically whenever the underlying fee structure, a concession, or the item itself changes.
 
 ### `tb_student_fee_dues` (generated installments)
 - `fee_due_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
 - `student_fee_item_id` BIGINT FK → tb_student_fee_items (cascade delete)
-- `student_id` BIGINT FK → tb_students (denormalized for fast list/dashboard queries without a join)
+- `student_id` VARCHAR(20) FK → tb_students (denormalized for fast list/dashboard queries without a join)
 - `school_id` VARCHAR(100) FK → tb_schools
 - `due_date` DATE
 - `amount_due` NUMERIC(12,2)
@@ -503,28 +506,38 @@ Seeded from `tb_fee_structure_details` for the student's class at admission time
 
 Generated when a `tb_student_fee_items` row is created/activated: a Monthly item gets 12 due rows across the academic year (`due_date` = each month's `due_day` from the source `tb_fee_structure_details`), Quarterly gets 4, Half-Yearly gets 2, Annual/One Time gets 1.
 
+**Mid-year admissions:** the floor for the first generated due is the **first due date on or after the student's admission date** (not the start of the admission month) — so a student admitted Oct 15 with a due day of the 1st gets their first installment due Nov 1, not an Oct 1 installment that's already overdue on day one of enrollment. A student admitted before a due date in their admission month still gets that month's installment. One Time/Annual charges are dated from the admission day instead of the academic year start, so they're never overdue for a period before the student joined.
+
+**Gap case:** for Quarterly/Half-Yearly fees, it's possible every remaining configured due date in the academic year falls before the admission date (e.g. a Half-Yearly fee due Apr 1 and Oct 1, student admitted Oct 15 — both dates have passed). In that case, generate exactly **one** installment dated at the admission date, for the normal per-period amount (no proration) — the student still owes the fee, there just wasn't a remaining scheduled date for it.
+
 **Status is never a stored column** — always computed at read time:
 - `Paid`: `amount_paid >= amount_due`
-- `Partially Paid`: `0 < amount_paid < amount_due`
+- `Partially Paid`: `0 < amount_paid < amount_due`, and `due_date` is still in the future
+- `Overdue`: `amount_paid < amount_due` and `due_date` has passed (this wins over Partially Paid — a partly-paid installment past its due date is Overdue, since that's the state needing action)
 - `Pending`: `amount_paid = 0` and `due_date` is in the future
-- `Overdue`: `amount_paid < amount_due` and `due_date` has passed
 
 This is what makes "recalculate overdue status without incorrectly marking students overdue" automatic when a due date changes — there's no stored flag to go stale.
 
-**Due date changes:** if the School Admin updates `due_day` on `tb_fee_structure_details` (e.g. extends the monthly deadline from the 10th to the 15th), only **unpaid** (`amount_paid = 0`) future `tb_student_fee_dues.due_date` values are regenerated. Any due with a payment already allocated keeps its original `due_date` — payment history is never rewritten.
+**Due date changes:** if the School Admin updates `due_day` on `tb_fee_structure_details` (e.g. extends the monthly deadline from the 10th to the 15th), only **unpaid** (`amount_paid = 0`) future `tb_student_fee_dues.due_date` values are regenerated. Any due with a payment already allocated keeps its original `due_date` — payment history is never rewritten. A concession applied to an in-progress schedule behaves the same way: installments already due keep their amount, and the full-year reduction comes off the future ones.
 
 ### `tb_fee_payments` (payment transactions — the only thing that marks something paid)
 - `payment_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
-- `student_id` BIGINT FK → tb_students
+- `student_id` VARCHAR(20) FK → tb_students
 - `school_id` VARCHAR(100) FK → tb_schools
 - `payment_date` TIMESTAMPTZ
 - `amount` NUMERIC(12,2) — total of this transaction, may cover multiple dues at once
 - `payment_mode` VARCHAR(30) — Cash, Cheque, UPI, Card, Bank Transfer, Online
-- `receipt_number` VARCHAR(50)
+- `receipt_number` VARCHAR(50) — school-scoped, sequential, human-readable (e.g. `RCP-2026-0001`, per school per year)
 - `collected_by` BIGINT FK → tb_users, nullable
 - `remarks` TEXT, nullable
+- `status` VARCHAR(20) default `Active` — `Active` or `Voided`
+- `voided_by` BIGINT FK → tb_users, nullable
+- `voided_at` TIMESTAMPTZ, nullable
+- `void_reason` TEXT, nullable — required when voiding
 - `created_at` / `updated_at`
 - Unique: `(school_id, receipt_number)`
+
+**Voiding (soft void, never hard-deleted):** `POST /FeePayment/{id}/void` (not `DELETE` — this project uses POST for actions, and DELETE implies the row disappears, which it doesn't). In one transaction: subtract each of the payment's allocations from the corresponding due's `amount_paid`, set `status = Voided` with `voided_by`/`voided_at`/`void_reason`. The payment row, its allocations, and its receipt number are never deleted or reused — a voided receipt stays printable, clearly marked VOID. Affected installment status simply recomputes from the reduced `amount_paid` (e.g. a Paid installment reverts to Overdue or Pending). Only School Admin and Accountant may void (they're the only roles with Fees:Manage, section 24); no time limit on when a void can happen — the audit trail is the control, not a deadline. Voiding does not track or move actual cash — see section 23 for why a refund concept is explicitly out of scope until the Finance/Ledger module exists.
 
 ### `tb_fee_payment_allocations` (splits one payment across one or more dues)
 - `allocation_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -534,7 +547,7 @@ This is what makes "recalculate overdue status without incorrectly marking stude
 - `created_at` TIMESTAMPTZ
 - Unique: `(payment_id, fee_due_id)`
 
-A parent paying off 3 months of tuition arrears in one transaction produces one `tb_fee_payments` row and 3 `tb_fee_payment_allocations` rows, each updating the corresponding due's `amount_paid`.
+A parent paying off 3 months of tuition arrears in one transaction produces one `tb_fee_payments` row and 3 `tb_fee_payment_allocations` rows, each updating the corresponding due's `amount_paid`. The caller can send an explicit split, or omit it for auto-allocation (oldest due first). Validated: allocations must sum to the payment amount exactly, every due must belong to the same student+school, and no allocation can push a due's `amount_paid` above its `amount_due` (overpayment against a single due is rejected, not silently absorbed — a true credit-balance concept is future scope, same as refunds).
 
 ### Read-side aggregates (no new tables — computed from the above)
 - **Student list fee status**: per student per academic year, aggregate across their `tb_student_fee_dues` — total due, total paid, outstanding, and an overall badge (Overdue if any due is overdue, else Partially Paid if some paid, else Pending if none paid, else Paid if fully settled).
@@ -542,4 +555,8 @@ A parent paying off 3 months of tuition arrears in one transaction produces one 
 - **Reports**: student-wise fee statement (all items + dues + payments for one student), class-wise collection report.
 
 ### Build status
-Schema designed 2026-10-15. Build order: (1) fix the existing crash in the existing-student load path first — it sits on this same code path, (2) `tb_student_fee_items` + due-day config + due generation, wired into the admission form, (3) `tb_fee_payments` + `tb_fee_payment_allocations` + collection UI, (4) student list fee-status column + Fees tab upgraded to show real dues/payment history, (5) dashboard + reports.
+- **Stage 1** (fix existing-student load crash): done.
+- **Stage 2** (`tb_student_fee_items`, `tb_student_fee_dues`, due-day config, due generation, admission-time fee configuration, Fees tab with due schedule + status badges): **done and deployed to `smss-db`.**
+- **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection UI, receipts): **done and deployed to `smss-db`**, except voiding — approach decided (soft void, see `tb_fee_payments` above) and queued to build next. The mid-year gap case (Quarterly/Half-Yearly with no remaining due date) is also fixed as part of this stage.
+- **Stage 4** (student list fee-status column + Fees tab shows real payment history) — after void is built.
+- **Stage 5** (dashboard + reports) — last.

@@ -1,3 +1,5 @@
+import { FeeItemSelection } from '../../students/models/student-billing.model';
+
 // Mirrors AdmissionResponseDto / AdmissionDetailDto / SubmitAdmissionRequestDto / ConfirmAdmissionRequestDto.
 
 export type AdmissionStatus = 'APPLICATION_SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'ADMITTED' | 'CANCELLED';
@@ -118,6 +120,8 @@ export interface ConfirmAdmissionRequest {
   /** tb_sections.section_id */
   classSectionId: number;
   rollNumber: string | null;
+  /** Fee configuration chosen at admission (frequency per fee head). Omitted = the fee structure's defaults. */
+  feeItems?: FeeItemSelection[] | null;
 }
 
 export const formatDate = (iso?: string | null): string => {

@@ -53,8 +53,10 @@ describe('FeeStructureBuilderComponent', () => {
     clearSessions();
   });
 
-  function fillLine(i: number, feeTypeId: string, frequencyId: string, amount: string) {
-    cmp()['lines'].at(i).setValue({ feeTypeId, frequencyId, amount });
+  function fillLine(i: number, feeTypeId: string, frequencyId: string, amount: string, dueDay = '10') {
+    const line = cmp()['lines'].at(i);
+    line.patchValue({ feeTypeId, frequencyId });   // the frequency decides whether the due day is needed
+    line.patchValue({ dueDay: line.controls.dueDay.enabled ? dueDay : '', amount });
     fixture.detectChanges();
   }
 
@@ -121,12 +123,45 @@ describe('FeeStructureBuilderComponent', () => {
       classId: 10,
       structureName: 'Class 1 Fees',
       details: [
-        { feeTypeId: 100, frequencyId: 2, amount: 2500 },
-        { feeTypeId: 101, frequencyId: 1, amount: 800 },
+        { feeTypeId: 100, frequencyId: 2, amount: 2500, dueDay: 10 },   // Monthly: due day sent
+        { feeTypeId: 101, frequencyId: 1, amount: 800, dueDay: null },  // One Time: none
       ],
     });
     req.flush(env({ feeStructureId: 7 }, 201));
     expect(navigate).toHaveBeenCalledWith(['/fee-setup/fee-structures']);
+  });
+
+  it('due day: enabled and required for a Monthly row, off for One Time / Annual, 1-31 only', () => {
+    create();
+    cmp()['addLine']();
+    const [monthly, oneTime] = [cmp()['lines'].at(0), cmp()['lines'].at(1)];
+    monthly.patchValue({ frequencyId: '2' });
+    oneTime.patchValue({ frequencyId: '1' });
+    expect(monthly.controls.dueDay.enabled).toBe(true);
+    expect(oneTime.controls.dueDay.disabled).toBe(true);
+
+    monthly.patchValue({ dueDay: '' });
+    expect(monthly.controls.dueDay.hasError('required')).toBe(true);
+    monthly.patchValue({ dueDay: '32' });
+    expect(monthly.controls.dueDay.invalid).toBe(true);
+    monthly.patchValue({ dueDay: '0' });
+    expect(monthly.controls.dueDay.invalid).toBe(true);
+    monthly.patchValue({ dueDay: '31' });
+    expect(monthly.controls.dueDay.valid).toBe(true);
+
+    // switching to a single-charge frequency switches the due day off and forgets it
+    monthly.patchValue({ frequencyId: '5' });
+    expect(monthly.controls.dueDay.disabled).toBe(true);
+    expect(monthly.controls.dueDay.value).toBe('');
+  });
+
+  it('a Monthly row without a due day blocks saving', () => {
+    create();
+    cmp()['form'].patchValue({ academicYearId: '1', classId: '10', structureName: 'X' });
+    cmp()['lines'].at(0).patchValue({ feeTypeId: '100', frequencyId: '2', amount: '2500' });
+    cmp()['save']();
+    http.expectNone(`${API}/api/FeeStructure`);
+    expect(cmp()['form'].invalid).toBe(true);
   });
 
   it('rejects a negative or 3-decimal amount before calling the API', () => {
@@ -157,7 +192,7 @@ describe('FeeStructureBuilderComponent', () => {
     http.expectOne(`${API}/api/FeeStructure/7`).flush(
       env({
         feeStructureId: 7, academicYearId: 1, academicYearName: '2026-27', classId: 10, className: 'Class 1', structureName: 'Class 1 Fees', isActive: true, statusName: 'Active', lineCount: 1,
-        details: [{ feeStructureDetailId: 1, feeTypeId: 100, feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', frequencyId: 2, frequencyName: 'Monthly', amount: 2500 }],
+        details: [{ feeStructureDetailId: 1, feeTypeId: 100, feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', frequencyId: 2, frequencyName: 'Monthly', amount: 2500, dueDay: 10 }],
       }),
     );
     fixture.detectChanges();
@@ -170,7 +205,7 @@ describe('FeeStructureBuilderComponent', () => {
     cmp()['save']();
     const req = http.expectOne(`${API}/api/FeeStructure/7`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ structureName: 'Class 1 Fees', details: [{ feeTypeId: 100, frequencyId: 2, amount: 3000 }] });
+    expect(req.request.body).toEqual({ structureName: 'Class 1 Fees', details: [{ feeTypeId: 100, frequencyId: 2, amount: 3000, dueDay: 10 }] });
     req.flush(env({ feeStructureId: 7 }));
   });
 });

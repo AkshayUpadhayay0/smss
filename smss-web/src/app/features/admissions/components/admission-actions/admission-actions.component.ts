@@ -6,6 +6,8 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent, SelectComponent, SelectOption, TextareaComponent, InputComponent } from '../../../../shared/components';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
+import { FeeConfigurationComponent } from '../../../students/components/fee-configuration/fee-configuration.component';
+import { FeeItemSelection } from '../../../students/models/student-billing.model';
 import { StudentService } from '../../../students/services/student.service';
 import { ACTIONS_BY_STATUS, Admission, AdmissionAction, AdmissionDetail } from '../../models/admission.model';
 import { AdmissionService } from '../../services/admission.service';
@@ -31,7 +33,7 @@ const ACTION_VIEWS: Record<AdmissionAction, ActionView> = {
  */
 @Component({
   selector: 'app-admission-actions',
-  imports: [ReactiveFormsModule, ButtonComponent, IconComponent, InputComponent, LogoUploadComponent, ModalComponent, SelectComponent, TextareaComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, ModalComponent, SelectComponent, TextareaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-actions.component.scss',
   templateUrl: './admission-actions.component.html',
@@ -63,6 +65,15 @@ export class AdmissionActionsComponent {
   protected readonly sectionError = signal<string | undefined>(undefined);
   /** Optional photo, uploaded right after the admission is confirmed (the student exists only then). */
   private photo: File | null = null;
+  /** Frequency choices from the Fee Configuration section of the confirm dialog. */
+  private feeSelections: FeeItemSelection[] = [];
+
+  /** Confirming admits the student today, so fees are owed from this month. */
+  protected readonly today = new Date().toLocaleDateString('en-CA');   // yyyy-MM-dd in the browser's own time zone
+
+  protected onFeeSelections(selections: FeeItemSelection[]): void {
+    this.feeSelections = selections;
+  }
 
   protected readonly dialogTitle = computed(() => {
     switch (this.dialog()) {
@@ -102,6 +113,7 @@ export class AdmissionActionsComponent {
     this.sectionControl.reset('');
     this.rollNumber.reset('');
     this.photo = null;
+    this.feeSelections = [];
     this.sectionOptions.set([]);
     this.sectionsLoading.set(true);
     const classId = this.admission().appliedClassId;
@@ -139,7 +151,7 @@ export class AdmissionActionsComponent {
       }
       const photo = this.photo;
       this.send(
-        this.service.confirmAdmission(a.admissionId, { classSectionId: Number(this.sectionControl.value), rollNumber: this.rollNumber.value.trim() || null }).pipe(
+        this.service.confirmAdmission(a.admissionId, { classSectionId: Number(this.sectionControl.value), rollNumber: this.rollNumber.value.trim() || null, feeItems: this.feeSelections.length ? this.feeSelections : null }).pipe(
           // the admission is confirmed first; the photo is a best-effort follow-up that must never undo or fail that
           switchMap((updated) =>
             photo && updated.studentId

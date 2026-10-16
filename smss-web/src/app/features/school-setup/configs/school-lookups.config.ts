@@ -53,6 +53,7 @@ export const FEE_TYPE_CONFIG: SchoolLookupConfig = {
   codePlaceholder: 'e.g. TUITION',
   codeRequired: true,
   codeMaxLength: 30,
+  optionalFlag: true,
   group: 'Fee Setup',
 };
 

@@ -16,6 +16,9 @@ namespace smss_api_service_layer.dto
 
         public string? Description { get; set; }
 
+        /// <summary>Optional fees (e.g. Transport) are opted into per student at admission; non-optional ones are always applied.</summary>
+        public bool IsOptional { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
             if (FeeTypeName != null && string.IsNullOrWhiteSpace(FeeTypeName))
@@ -33,6 +36,7 @@ namespace smss_api_service_layer.dto
         public string FeeTypeName { get; set; } = null!;
         public string FeeTypeCode { get; set; } = null!;
         public string? Description { get; set; }
+        public bool IsOptional { get; set; }
         public bool IsActive { get; set; }
         public string StatusName { get; set; } = null!;   // "Active" / "Inactive"
         public DateTime CreatedAt { get; set; }
@@ -59,6 +63,10 @@ namespace smss_api_service_layer.dto
         [Required(ErrorMessage = "Amount is required.")]
         [Range(typeof(decimal), "0", "9999999999.99", ErrorMessage = "Amount must be between 0 and 9,999,999,999.99.")]
         public decimal? Amount { get; set; }
+
+        /// <summary>Day of the month (1-31) a recurring (Monthly / Quarterly / Half-Yearly) fee head falls due. Required for those, ignored otherwise.</summary>
+        [Range(1, 31, ErrorMessage = "Due day must be between 1 and 31.")]
+        public int? DueDay { get; set; }
     }
 
     public abstract class FeeStructureRequestBase
@@ -91,6 +99,7 @@ namespace smss_api_service_layer.dto
         public long FrequencyId { get; set; }
         public string FrequencyName { get; set; } = null!;
         public decimal Amount { get; set; }
+        public int? DueDay { get; set; }
     }
 
     /// <summary>List row: the header plus how many lines it has.</summary>

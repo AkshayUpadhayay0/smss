@@ -67,6 +67,8 @@
       }
     </app-card>
 
+    <app-fee-configuration [academicYearId]="feeYearId()" [classId]="feeClassId()" [startDate]="feeStartDate()" (selectionsChange)="onFeeSelections($event)" />
+
     <app-card title="Student Details">
       <div class="grid">
         <app-input label="First name" [required]="true" formControlName="firstName" [errorText]="err('firstName')" />

@@ -12,6 +12,7 @@ namespace smss_api_db_layer.@interface
         public long FrequencyId { get; set; }
         public string FrequencyName { get; set; } = null!;
         public decimal Amount { get; set; }
+        public short? DueDay { get; set; }
     }
 
     /// <summary>A structure header with its class / year names and how many lines it has (for the list).</summary>

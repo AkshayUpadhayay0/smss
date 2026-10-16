@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { FeeItemSelection } from '../../students/models/student-billing.model';
 
 const BASE = '/api/StudentOnboarding';
 
@@ -27,6 +28,8 @@ export interface DirectStudentEntryRequest {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail: string | null;
+  /** Fee configuration chosen at admission (frequency per fee head). Omitted = the fee structure's defaults. */
+  feeItems?: FeeItemSelection[] | null;
 }
 
 /** Mirrors StudentOnboardingResponseDto. The Aadhaar comes back already masked. */

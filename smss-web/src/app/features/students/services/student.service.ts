@@ -2,7 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
+import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
 import { StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
@@ -40,6 +42,44 @@ export class StudentService {
   /** Creates the student's login; the response carries the generated Login ID and temporary password (shown once). */
   createLogin(studentId: string): Observable<StudentLoginCreated> {
     return this.withSchool((s) => this.api.post<StudentLoginCreated>(`${BASE}/${s}/${encodeURIComponent(studentId)}/create-login`, {}));
+  }
+
+  // ---- fee items and installments (the server takes the school from the token)
+  /** The fee heads a new student of this class + academic year would get, for the admission forms (nothing is created). */
+  previewFees(academicYearId: number, classId: number, startDate?: string | null): Observable<FeePreview> {
+    return this.api.get<FeePreview>('/api/StudentFee/preview', { academicYearId, classId, ...(startDate ? { startDate } : {}) });
+  }
+
+  getFeeItems(studentId: string): Observable<StudentFeeItems> {
+    return this.api.get<StudentFeeItems>(`/api/StudentFee/${encodeURIComponent(studentId)}/fee-items`);
+  }
+
+  /** Change the frequency a student pays a fee head at, and/or whether it applies to them; unpaid future installments are regenerated. */
+  updateFeeItem(studentId: string, itemId: number, request: UpdateFeeItemRequest): Observable<StudentFeeItems> {
+    return this.api.put<StudentFeeItems>(`/api/StudentFee/${encodeURIComponent(studentId)}/fee-items/${itemId}`, request);
+  }
+
+  getFeeDues(studentId: string): Observable<StudentFeeDues> {
+    return this.api.get<StudentFeeDues>(`/api/StudentFee/${encodeURIComponent(studentId)}/fee-dues`);
+  }
+
+  // ---- payments (the school and the collecting user come from the token)
+  /** Records a payment against the student's installments and returns its receipt. All or nothing on the server. */
+  recordPayment(studentId: string, request: RecordPaymentRequest): Observable<FeeReceipt> {
+    return this.api.post<FeeReceipt>(`/api/FeePayment/students/${encodeURIComponent(studentId)}`, request);
+  }
+
+  getPayments(studentId: string): Observable<PaymentSummary[]> {
+    return this.api.get<PaymentSummary[]>(`/api/FeePayment/students/${encodeURIComponent(studentId)}`).pipe(map((l) => l ?? []));
+  }
+
+  /** Soft void: the payment stays (marked Voided) and its amounts come off the installments. */
+  voidPayment(paymentId: number, voidReason: string): Observable<PaymentSummary> {
+    return this.api.post<PaymentSummary>(`/api/FeePayment/${paymentId}/void`, { voidReason });
+  }
+
+  getReceipt(paymentId: number): Observable<FeeReceipt> {
+    return this.api.get<FeeReceipt>(`/api/FeePayment/${paymentId}/receipt`);
   }
 
   // ---- fees (the server takes the school from the token; no school id in these routes)

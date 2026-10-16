@@ -92,6 +92,71 @@
             }
           </app-card>
 
+          <app-card title="Fee items &amp; payment frequency" [noPadding]="true">
+            <div class="card-note">
+              How often this student pays each fee head. Changing it regenerates the unpaid future installments; installments that already have a payment are never touched.
+            </div>
+            @if (billingFailed()) {
+              <p class="empty pad">The fee items could not be loaded. <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></p>
+            } @else {
+              <app-table
+                [columns]="itemColumns"
+                [rows]="itemRows()"
+                [hasActions]="true"
+                emptyMessage="No fee items yet."
+              >
+                <ng-template #rowActions let-row>
+                  <app-button variant="secondary" size="sm" aria-label="Change frequency or applicability" title="Edit" [disabled]="busy()" (click)="openEdit(row)">
+                    <app-icon name="pencil" [size]="14" />Edit
+                  </app-button>
+                </ng-template>
+              </app-table>
+              @if (itemRows().length) {
+                <div class="card-note total-line">Total for the year: <strong>{{ yearTotal() }}</strong></div>
+              }
+            }
+          </app-card>
+
+          <app-card title="Due schedule" [noPadding]="true">
+            <div class="collect-bar">
+              <span class="card-note">What is owed and when. Collect a payment against any installment that still has a balance.</span>
+              <app-button [disabled]="!canCollect() || busy()" (click)="openCollect()">
+                <app-icon name="plus" [size]="16" />Collect Payment
+              </app-button>
+            </div>
+            @if (dueSummary(); as s) {
+              <div class="summary">
+                <div><span>Total due</span><strong>{{ s.total }}</strong></div>
+                <div><span>Paid</span><strong>{{ s.paid }}</strong></div>
+                <div><span>Outstanding</span><strong>{{ s.outstanding }}</strong></div>
+                <div class="overdue" [class.on]="s.overdueCount > 0"><span>Overdue</span><strong>{{ s.overdue }} ({{ s.overdueCount }})</strong></div>
+              </div>
+            }
+            <app-table [columns]="dueColumns" [rows]="dueRows()" emptyMessage="No installments yet." />
+            <div class="card-note">
+              Status is worked out from today's date and what has been paid: it is never saved.
+            </div>
+          </app-card>
+
+          <app-card title="Payment history" [noPadding]="true">
+            @if (paymentsFailed()) {
+              <p class="empty pad">The payment history could not be loaded. <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></p>
+            } @else {
+              <app-table [columns]="paymentColumns" [rows]="paymentRows()" [hasActions]="true" emptyMessage="No payments recorded yet.">
+                <ng-template #rowActions let-row>
+                  <app-button variant="secondary" size="sm" [disabled]="receiptLoading() !== null" [attr.aria-label]="'View receipt ' + row.receiptNumber" (click)="viewReceipt(row)">
+                    <app-icon name="file-text" [size]="14" />{{ receiptLoading() === row.paymentId ? 'Opening…' : 'Receipt' }}
+                  </app-button>
+                  @if (canVoid() && row.status === 'Active') {
+                    <app-button variant="secondary" size="sm" [attr.aria-label]="'Void payment ' + row.receiptNumber" (click)="openVoid(row)">
+                      <app-icon name="x" [size]="14" />Void Payment
+                    </app-button>
+                  }
+                </ng-template>
+              </app-table>
+            }
+          </app-card>
+
           <app-card title="Net payable">
             <div class="totals" role="table" aria-label="Net payable per frequency">
               <div class="t-row t-head" role="row"><span role="columnheader">Frequency</span><span role="columnheader">Fees</span><span role="columnheader">Concession</span><span role="columnheader">Net payable</span></div>
@@ -136,6 +201,62 @@
         <ng-container modal-footer>
           <app-button variant="secondary" [disabled]="busy()" (click)="assignOpen.set(false)">Cancel</app-button>
           <app-button [disabled]="busy()" (click)="submitAssign()">{{ busy() ? 'Saving…' : 'Assign' }}</app-button>
+        </ng-container>
+      </app-modal>
+    }
+
+    @if (collectOpen() && dues(); as d) {
+      <app-collect-payment-dialog [studentId]="studentId()" [dues]="d.dues" (recorded)="onRecorded($event)" (closed)="collectOpen.set(false)" />
+    }
+
+    @if (voiding(); as v) {
+      <app-modal title="Void payment?" [dismissible]="!busy()" (closed)="voiding.set(null)">
+        <div class="dialog">
+          <p>
+            Receipt <strong>{{ v.receiptNumber }}</strong> ({{ v.amount }}) will be voided. The amounts it paid come off the installments, which
+            will show as unpaid again. The receipt stays in the history marked VOID, and its number is never reused. This cannot be undone.
+          </p>
+          <app-textarea label="Reason" [required]="true" placeholder="Why is this payment being voided?" [maxLength]="500" [formControl]="voidReasonControl" />
+        </div>
+        <ng-container modal-footer>
+          <app-button variant="secondary" [disabled]="busy()" (click)="voiding.set(null)">Cancel</app-button>
+          <app-button variant="danger" [disabled]="!voidReady()" (click)="submitVoid()">{{ busy() ? 'Voiding…' : 'Void Payment' }}</app-button>
+        </ng-container>
+      </app-modal>
+    }
+
+    @if (receipt(); as r) {
+      <app-fee-receipt-dialog [receipt]="r.data" [justPaid]="r.justPaid" (closed)="receipt.set(null)" />
+    }
+
+    @if (editing(); as item) {
+      <app-modal [title]="'Edit ' + item.feeTypeName" [dismissible]="!busy()" (closed)="editing.set(null)">
+        <div class="dialog">
+          <app-select
+            label="Pays"
+            [required]="true"
+            [options]="editFrequencyOptions()"
+            [formControl]="frequencyControl"
+            [disabled]="editFrequencyOptions().length <= 1"
+          />
+          @if (editFrequencyOptions().length <= 1) {
+            <p class="meta">A {{ item.structureFrequencyName }} fee is a single charge, so it can't be split into installments.</p>
+          }
+          @if (item.isOptional) {
+            <label class="check">
+              <input type="checkbox" [formControl]="applicableControl" />
+              This optional fee applies to the student
+            </label>
+            @if (!applicableControl.value) {
+              <p class="meta">Its unpaid installments will be removed. Anything already paid is kept.</p>
+            }
+          } @else {
+            <p class="meta">{{ item.feeTypeName }} is not an optional fee, so it always applies.</p>
+          }
+        </div>
+        <ng-container modal-footer>
+          <app-button variant="secondary" [disabled]="busy()" (click)="editing.set(null)">Cancel</app-button>
+          <app-button [disabled]="busy()" (click)="submitEdit()">{{ busy() ? 'Saving…' : 'Save' }}</app-button>
         </ng-container>
       </app-modal>
     }

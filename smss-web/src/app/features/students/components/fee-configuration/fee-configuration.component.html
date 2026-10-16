@@ -1,0 +1,86 @@
+@if (framed()) {
+  <app-card title="Fee Configuration">
+    <ng-container *ngTemplateOutlet="body" />
+  </app-card>
+} @else {
+  <section class="bare" aria-label="Fee configuration">
+    <h4>Fee Configuration</h4>
+    <ng-container *ngTemplateOutlet="body" />
+  </section>
+}
+
+<ng-template #body>
+  @if (!ready()) {
+    <p class="hint">Choose the academic year and class to see the fee heads.</p>
+  } @else if (loading()) {
+    <p class="hint">Loading the fee structure…</p>
+  } @else if (failed()) {
+    <p class="hint">The fee structure could not be loaded. The student can still be saved; fees can be set up from their Fees tab.</p>
+  } @else if (preview(); as p) {
+    @if (!p.hasFeeStructure) {
+      <p class="hint warn">
+        <app-icon name="triangle-alert" [size]="16" />
+        No fee structure exists for this class and academic year. The student will be saved without fees; assign a structure later from their Fees tab.
+      </p>
+    } @else {
+      <p class="hint">Fee structure: <strong>{{ p.structureName }}</strong>. Change how often a fee head is paid if the parent prefers; amounts update below.</p>
+
+      <div class="table" role="table" aria-label="Fee heads">
+        <div class="row head" role="row">
+          <span role="columnheader">Fee head</span>
+          <span role="columnheader">Pays</span>
+          <span role="columnheader">Each installment</span>
+          <span role="columnheader">Payable this year</span>
+        </div>
+        @for (r of rows(); track r.line.feeTypeId) {
+          <div class="row" role="row" [class.excluded]="!r.applies">
+            <span role="cell" class="name">
+              @if (r.line.isOptional) {
+                <label class="include">
+                  <input type="checkbox" [checked]="r.applies" [attr.aria-label]="'Include ' + r.line.feeTypeName" (change)="onInclude(r.line, $event)" />
+                  {{ r.line.feeTypeName }}
+                </label>
+                <small>Optional · {{ inr(r.line.amount) }} {{ r.line.structureFrequencyName }}</small>
+              } @else {
+                {{ r.line.feeTypeName }}
+                <small>{{ inr(r.line.amount) }} {{ r.line.structureFrequencyName }}</small>
+              }
+            </span>
+            <span role="cell">
+              <select
+                [attr.aria-label]="'Payment frequency for ' + r.line.feeTypeName"
+                [disabled]="r.locked || !r.applies"
+                (change)="onFrequency(r.line, $event)"
+              >
+                @for (f of r.line.allowedFrequencies; track f.frequencyId) {
+                  <option [value]="f.frequencyId" [selected]="f.frequencyId === r.frequencyId">{{ f.frequencyName }}</option>
+                }
+              </select>
+            </span>
+            <span role="cell">
+              @if (r.applies) {
+                {{ inr(r.perInstallment) }}@if (r.installments > 1) { <small> × {{ r.remaining }}@if (r.remaining < r.installments) { of {{ r.installments }} }</small> }
+              } @else {
+                <small>Not included</small>
+              }
+            </span>
+            <span role="cell"><strong>@if (r.applies) { {{ inr(r.payable) }} } @else { — }</strong></span>
+          </div>
+        }
+        <div class="row total" role="row">
+          <span role="cell">Total payable this year</span>
+          <span role="cell"></span>
+          <span role="cell"></span>
+          <span role="cell"><strong>{{ inr(yearTotal()) }}</strong></span>
+        </div>
+      </div>
+      @if (hasOptional()) {
+        <p class="hint">Tick an optional fee to include it for this student; it can also be changed later from their Fees tab.</p>
+      }
+      @if (isPartYear()) {
+        <p class="hint">The student joins part-way through the year, so fees are owed only from their start month.</p>
+      }
+      <p class="hint">Concessions are applied after the student is added, from their Fees tab.</p>
+    }
+  }
+</ng-template>

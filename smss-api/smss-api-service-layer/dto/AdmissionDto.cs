@@ -48,6 +48,9 @@ namespace smss_api_service_layer.dto
         // tb_sections.section_id: the section the student is placed in
         [Required, Range(1, long.MaxValue)] public long ClassSectionId { get; set; }
         [MaxLength(30)] public string? RollNumber { get; set; }
+
+        /// <summary>Fee configuration chosen at admission (frequency / applicability per fee head). Optional: omitted = the structure's defaults.</summary>
+        [MaxLength(100)] public List<FeeItemSelection>? FeeItems { get; set; }
     }
 
     // What the list shows (the joined names mean the table needs no second lookup)

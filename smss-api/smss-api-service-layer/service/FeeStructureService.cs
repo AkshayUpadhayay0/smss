@@ -14,11 +14,13 @@ namespace smss_api_service_layer.service
         private const string DuplicateMessage = "A fee structure already exists for this class and academic year.";
 
         private readonly IFeeStructureRepository _repo;
+        private readonly IStudentFeeBillingService _billing;
         private readonly ILogger<FeeStructureService> _logger;
 
-        public FeeStructureService(IFeeStructureRepository repo, ILogger<FeeStructureService> logger)
+        public FeeStructureService(IFeeStructureRepository repo, IStudentFeeBillingService billing, ILogger<FeeStructureService> logger)
         {
             _repo = repo;
+            _billing = billing;
             _logger = logger;
         }
 
@@ -115,11 +117,15 @@ namespace smss_api_service_layer.service
 
                 // Lines are matched on fee type (unique per structure): update in place, add new ones, remove dropped ones
                 _repo.RemoveDetails(entity.Details.Where(d => !wanted.ContainsKey(d.FeeTypeId)).ToList());
+                var dueDayChanges = new List<(long FeeTypeId, int NewDueDay)>();
                 foreach (var d in entity.Details.Where(d => wanted.ContainsKey(d.FeeTypeId)))
                 {
                     var l = wanted[d.FeeTypeId];
+                    var newDueDay = l.DueDay is int dd ? (short?)dd : null;
+                    if (newDueDay != null && newDueDay != d.DueDay) dueDayChanges.Add((d.FeeTypeId, newDueDay.Value));
                     d.FrequencyId = l.FrequencyId!.Value;
                     d.Amount = l.Amount!.Value;
+                    d.DueDay = newDueDay;
                     d.UpdatedAt = now;
                 }
                 foreach (var l in req.Details.Where(l => !existingIds.Contains(l.FeeTypeId!.Value))) entity.Details.Add(NewLine(l, now));
@@ -127,6 +133,12 @@ namespace smss_api_service_layer.service
                 entity.StructureName = req.StructureName.Trim();
                 entity.UpdatedAt = now;
                 await _repo.SaveChangesAsync();
+
+                // Students already on this structure: first move the unpaid future due dates for a changed due day (payment history is
+                // never rewritten), then bring their fee items and installments in line with the new lines / amounts / frequencies.
+                foreach (var (feeTypeId, newDueDay) in dueDayChanges)
+                    await _billing.ApplyDueDayChangeAsync(schoolId, entity.FeeStructureId, feeTypeId, newDueDay, default);
+                await _billing.SyncStructureAsync(schoolId, entity.FeeStructureId, default);
 
                 return Ok(200, "Fee structure updated successfully", await ToDetailAsync(entity));
             }
@@ -171,6 +183,14 @@ namespace smss_api_service_layer.service
             var valid = await _repo.GetActiveFrequencyIdsAsync(frequencyIds);
             if (frequencyIds.Any(f => !valid.Contains(f))) return "One or more fee frequencies are not valid.";
 
+            // A recurring fee falls due on a day of the month, so it needs one; a single charge does not
+            var codes = (await _repo.GetFrequenciesAsync()).ToDictionary(f => f.FrequencyId, f => f.FrequencyCode);
+            foreach (var l in lines)
+            {
+                if (FeeSchedule.IsRecurring(codes[l.FrequencyId!.Value]) && l.DueDay == null)
+                    return "A due day (1-31) is required for Monthly, Quarterly and Half-Yearly fees.";
+            }
+
             return null;
         }
 
@@ -179,6 +199,7 @@ namespace smss_api_service_layer.service
             FeeTypeId = l.FeeTypeId!.Value,
             FrequencyId = l.FrequencyId!.Value,
             Amount = l.Amount!.Value,
+            DueDay = l.DueDay is int d ? (short)d : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -193,7 +214,7 @@ namespace smss_api_service_layer.service
             dto.Details = lines.Select(l => new FeeStructureLineResponse
             {
                 FeeStructureDetailId = l.FeeStructureDetailId, FeeTypeId = l.FeeTypeId, FeeTypeName = l.FeeTypeName, FeeTypeCode = l.FeeTypeCode,
-                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount
+                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount, DueDay = l.DueDay
             }).ToList();
             return dto;
         }

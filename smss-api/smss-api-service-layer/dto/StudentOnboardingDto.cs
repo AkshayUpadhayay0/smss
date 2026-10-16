@@ -17,6 +17,9 @@ namespace smss_api_service_layer.dto
         [Required, Range(1, long.MaxValue)] public long ClassSectionId { get; set; }
         [MaxLength(30)] public string? RollNumber { get; set; }
 
+        /// <summary>Fee configuration chosen at admission (frequency / applicability per fee head). Optional: omitted = the structure's defaults.</summary>
+        [MaxLength(100)] public List<FeeItemSelection>? FeeItems { get; set; }
+
         [Required, MaxLength(100)] public string FirstName { get; set; } = null!;
         [MaxLength(100)] public string? MiddleName { get; set; }
         [Required, MaxLength(100)] public string LastName { get; set; } = null!;

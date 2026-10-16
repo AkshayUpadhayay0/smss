@@ -64,6 +64,10 @@ builder.Services.AddScoped<IFeeConcessionRepository, FeeConcessionRepository>();
 builder.Services.AddScoped<IFeeConcessionService, FeeConcessionService>();
 builder.Services.AddScoped<IStudentFeeRepository, StudentFeeRepository>();
 builder.Services.AddScoped<IStudentFeeService, StudentFeeService>();
+builder.Services.AddScoped<IStudentFeeBillingRepository, StudentFeeBillingRepository>();
+builder.Services.AddScoped<IStudentFeeBillingService, StudentFeeBillingService>();
+builder.Services.AddScoped<IFeePaymentRepository, FeePaymentRepository>();
+builder.Services.AddScoped<IFeePaymentService, FeePaymentService>();
 
 builder.Services.AddScoped<IMasterImportRepository, MasterImportRepository>();
 builder.Services.AddScoped<IMasterImportService, MasterImportService>();

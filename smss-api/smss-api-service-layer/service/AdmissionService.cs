@@ -22,12 +22,14 @@ namespace smss_api_service_layer.service
 
         private readonly IAdmissionRepository _repo;
         private readonly INotificationService _notify;
+        private readonly IStudentFeeBillingService _billing;
         private readonly ILogger<AdmissionService> _logger;
 
-        public AdmissionService(IAdmissionRepository repo, INotificationService notify, ILogger<AdmissionService> logger)
+        public AdmissionService(IAdmissionRepository repo, INotificationService notify, IStudentFeeBillingService billing, ILogger<AdmissionService> logger)
         {
             _repo = repo;
             _notify = notify;
+            _billing = billing;
             _logger = logger;
         }
 
@@ -327,7 +329,7 @@ namespace smss_api_service_layer.service
                         var assignedStructure = feeStructure;
                         if (feeStructure != null)
                         {
-                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _logger, schoolId, studentId, admission.AcademicYearId, feeStructure.FeeStructureId, now, ct);
+                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _billing, req.FeeItems, _logger, schoolId, studentId, admission.AcademicYearId, feeStructure.FeeStructureId, now, ct);
                             if (feeWarning != null) assignedStructure = null;
                         }
 

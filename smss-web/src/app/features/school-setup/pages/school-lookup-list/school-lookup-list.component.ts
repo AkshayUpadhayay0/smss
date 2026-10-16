@@ -59,12 +59,13 @@ export class SchoolLookupListComponent {
       { key: c.nameKey, label: 'Name', sortable: true },
       ...(c.codeKey ? [{ key: c.codeKey, label: 'Code', sortable: true }] : []),
       { key: 'description', label: 'Description', sortable: true },
+      ...(c.optionalFlag ? [{ key: 'optionalLabel', label: 'Optional', type: 'badge' as const, sortable: true }] : []),
       { key: 'statusName', label: 'Status', type: 'status' as const, sortable: true },
     ];
   });
 
   private readonly rows = computed<SchoolLookupRow[]>(() =>
-    this.items().map((i) => ({ ...i, description: i.description ?? '', statusName: i.statusName ?? 'Inactive', isActive: i.statusName === 'Active' })),
+    this.items().map((i) => ({ ...i, optionalLabel: i['isOptional'] === true ? 'Yes' : 'No', description: i.description ?? '', statusName: i.statusName ?? 'Inactive', isActive: i.statusName === 'Active' })),
   );
 
   private readonly filtered = computed(() => {

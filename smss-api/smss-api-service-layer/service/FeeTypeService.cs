@@ -62,6 +62,7 @@ namespace smss_api_service_layer.service
                     FeeTypeName = req.FeeTypeName.Trim(),
                     FeeTypeCode = code,
                     Description = Clean(req.Description),
+                    IsOptional = req.IsOptional,
                     IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -89,6 +90,7 @@ namespace smss_api_service_layer.service
                 entity.FeeTypeName = req.FeeTypeName.Trim();
                 entity.FeeTypeCode = code;
                 entity.Description = Clean(req.Description);
+                entity.IsOptional = req.IsOptional;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
 
@@ -125,6 +127,7 @@ namespace smss_api_service_layer.service
             FeeTypeName = x.FeeTypeName,
             FeeTypeCode = x.FeeTypeCode,
             Description = x.Description,
+            IsOptional = x.IsOptional,
             IsActive = x.IsActive,
             StatusName = x.IsActive ? StatusNames.Active : StatusNames.Inactive,
             CreatedAt = x.CreatedAt,

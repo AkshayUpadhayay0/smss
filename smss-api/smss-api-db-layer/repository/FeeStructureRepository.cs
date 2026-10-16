@@ -54,12 +54,12 @@ namespace smss_api_db_layer.repository
                 join f in _db.FeeFrequencies.AsNoTracking() on d.FrequencyId equals f.FrequencyId
                 where d.FeeStructureId == feeStructureId
                 orderby t.FeeTypeName
-                select new { d.FeeStructureDetailId, d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, d.FrequencyId, f.FrequencyName, d.Amount }).ToListAsync();
+                select new { d.FeeStructureDetailId, d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, d.FrequencyId, f.FrequencyName, d.Amount, d.DueDay }).ToListAsync();
 
             return rows.Select(r => new FeeStructureLineRow
             {
                 FeeStructureDetailId = r.FeeStructureDetailId, FeeTypeId = r.FeeTypeId, FeeTypeName = r.FeeTypeName, FeeTypeCode = r.FeeTypeCode,
-                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, Amount = r.Amount
+                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, Amount = r.Amount, DueDay = r.DueDay
             }).ToList();
         }
 

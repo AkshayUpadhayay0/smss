@@ -39,8 +39,42 @@ describe('SchoolLookupFormModalComponent', () => {
     cmp().submit();
     const req = http.expectOne(`${API}/api/FeeType`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', description: 'Monthly' });
+    expect(req.request.body).toEqual({ feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', description: 'Monthly', isOptional: false });
     req.flush({ status: true, statusCode: 201, message: 'ok', data: { feeTypeId: 1, schoolId: 'S', feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION' } });
+  });
+
+  it('Fee Type: "This fee is optional" is sent as isOptional (default false)', () => {
+    open(FEE_TYPE_CONFIG);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('This fee is optional');
+    cmp().form.patchValue({ name: 'Transport', code: 'TRN' });
+    cmp().submit();
+    const first = http.expectOne(`${API}/api/FeeType`);
+    expect(first.request.body).toEqual({ feeTypeName: 'Transport', feeTypeCode: 'TRN', description: null, isOptional: false });
+    first.flush({ status: true, statusCode: 201, message: 'ok', data: { feeTypeId: 1, schoolId: 'S' } });
+  });
+
+  it('Fee Type: ticking it sends isOptional=true', () => {
+    open(FEE_TYPE_CONFIG);
+    cmp().form.patchValue({ name: 'Transport', code: 'TRN', isOptional: true });
+    cmp().submit();
+    const req = http.expectOne(`${API}/api/FeeType`);
+    expect(req.request.body.isOptional).toBe(true);
+    req.flush({ status: true, statusCode: 201, message: 'ok', data: { feeTypeId: 1, schoolId: 'S' } });
+  });
+
+  it('Fee Type: editing an optional fee type shows the box ticked', () => {
+    open(FEE_TYPE_CONFIG, { schoolId: 'S', feeTypeId: 7, feeTypeName: 'Transport', feeTypeCode: 'TRN', description: null, isOptional: true });
+    expect(cmp().form.controls.isOptional.value).toBe(true);
+  });
+
+  it('other masters have no optional checkbox and never send isOptional', () => {
+    open(SUBJECT_CONFIG);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('This fee is optional');
+    cmp().form.patchValue({ name: 'Maths' });
+    cmp().submit();
+    const req = http.expectOne(`${API}/api/Subjects`);
+    expect('isOptional' in req.request.body).toBe(false);
+    req.flush({ status: true, statusCode: 201, message: 'ok', data: { subjectId: 1, schoolId: 'S' } });
   });
 
   it('Fee Type: accepts a 30 character code (the API limit), refuses 31', () => {
@@ -53,7 +87,7 @@ describe('SchoolLookupFormModalComponent', () => {
 
   it('Fee Type: editing fills the form from the record and PUTs to its id', () => {
     open(FEE_TYPE_CONFIG, { schoolId: 'S', feeTypeId: 7, feeTypeName: 'Exam', feeTypeCode: 'EXAM', description: null });
-    expect(cmp().form.getRawValue()).toEqual({ name: 'Exam', code: 'EXAM', description: '' });
+    expect(cmp().form.getRawValue()).toEqual({ name: 'Exam', code: 'EXAM', description: '', isOptional: false });
     cmp().submit();
     const req = http.expectOne(`${API}/api/FeeType/7`);
     expect(req.request.method).toBe('PUT');

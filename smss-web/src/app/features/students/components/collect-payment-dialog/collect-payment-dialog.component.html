@@ -1,0 +1,78 @@
+<app-modal title="Collect payment" [dismissible]="!saving()" (closed)="closed.emit()">
+  <div class="form">
+    <div class="top">
+      <app-select label="Payment mode" [required]="true" [options]="modeOptions" [formControl]="modeControl" />
+      <app-input
+        label="Amount (₹)"
+        type="number"
+        [required]="true"
+        placeholder="0.00"
+        [formControl]="amountControl"
+        [errorText]="amountError()"
+      />
+    </div>
+    <div class="quick">
+      <button type="button" class="link" (click)="payEverything()">Pay everything outstanding ({{ inr(totalOutstanding() / 100) }})</button>
+    </div>
+
+    <section aria-label="Apply to installments">
+      <div class="list-head">
+        <h4>Apply to installments</h4>
+        @if (manual()) {
+          <button type="button" class="link" (click)="allocateAgain()">Allocate oldest first again</button>
+        }
+      </div>
+
+      <ul class="dues">
+        @for (r of rows(); track r.dueId) {
+          <li [class.on]="r.checked">
+            <label class="pick">
+              <input type="checkbox" [checked]="r.checked" [attr.aria-label]="'Apply to ' + r.label + ' due ' + date(r.dueDate)" (change)="toggle(r, $event)" />
+              <span class="what">
+                <strong>{{ r.label }}</strong>
+                <small>Due {{ date(r.dueDate) }} · <span class="pill" [class]="'pill tone-' + tone(r.status)">{{ r.status }}</span> · {{ inr(r.outstanding / 100) }} outstanding</small>
+              </span>
+            </label>
+            <div class="amt">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [value]="r.amount"
+                [disabled]="!r.checked"
+                [attr.aria-label]="'Amount for ' + r.label + ' due ' + date(r.dueDate)"
+                [class.bad]="!!rowError(r)"
+                (input)="setAmount(r, $event)"
+              />
+              @if (rowError(r); as e) {
+                <span class="err" role="alert">{{ e }}</span>
+              }
+            </div>
+          </li>
+        } @empty {
+          <li class="none">Nothing is outstanding for this student.</li>
+        }
+      </ul>
+
+      <div class="running" [class.ok]="difference() === 0 && amountPaise() > 0" [class.bad]="difference() !== 0 && amountPaise() > 0" aria-live="polite">
+        <span>Applied <strong>{{ inr(allocatedPaise() / 100) }}</strong> of <strong>{{ inr(amountPaise() / 100) }}</strong></span>
+        @if (amountPaise() > 0) {
+          @if (difference() === 0) {
+            <span><app-icon name="circle-check" [size]="16" /> Matches</span>
+          } @else if (difference() > 0) {
+            <span>{{ inr(difference() / 100) }} still to apply</span>
+          } @else {
+            <span>{{ inr(-difference() / 100) }} too much applied</span>
+          }
+        }
+      </div>
+    </section>
+
+    <app-textarea label="Remarks" placeholder="Optional, e.g. cheque number" [maxLength]="500" [formControl]="remarksControl" />
+  </div>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    <app-button [disabled]="!canSubmit()" (click)="submit()">{{ saving() ? 'Recording…' : 'Record payment' }}</app-button>
+  </ng-container>
+</app-modal>

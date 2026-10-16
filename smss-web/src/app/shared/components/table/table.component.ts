@@ -16,7 +16,7 @@ export interface TableColumn<T> {
   type?: 'text' | 'status' | 'badge' | 'avatar';
   /** For 'avatar': the cell value is an absolute image URL (or empty); this gives the text for the initials fallback. */
   avatarLabel?: (row: T) => string;
-  /** For 'badge': picks the pill colour (gray | blue | green | red | violet | gray-strike) from the cell value. */
+  /** For 'badge': picks the pill colour (gray | blue | green | yellow | red | violet | gray-strike) from the cell value. */
   tone?: (value: unknown) => string;
 }
 
