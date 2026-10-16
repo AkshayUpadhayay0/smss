@@ -155,7 +155,7 @@ School Setup Wizard
 
 Recommended setup sequence: School Profile → Academic Year → Classes → Sections → Subjects → Departments → Designations → Employees → Teachers → **Fee Setup (Fee Types → Fee Structures → Fee Concessions)** → Students → Guardians → Examination Configuration → Timetable.
 
-Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema.
+Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, and section 28 for Student Fee Billing & Collection (the actual per-student items, installments, and payments).
 
 ## 7. Principal workflow
 
@@ -204,6 +204,8 @@ Finance
 ```
 
 **Fee collection workflow:** `Student → Fee Due → Accountant → Collect Payment → Record Transaction → Generate Receipt → Update Student Fee Balance`
+
+See section 28 for the schema behind this workflow (`tb_fee_payments`, `tb_fee_payment_allocations`, `tb_student_fee_dues`).
 
 Accountant should not be able to modify academic marks, attendance, or student academic records unless explicitly authorized.
 
@@ -315,6 +317,8 @@ School → Fee Structure → Student Fee Assignment → Fee Due → Payment → 
 Other income: `Other Income → Transaction → Ledger`
 Expenses: `Expense → Approval → Payment → Transaction → Ledger`
 
+See section 28 for the Fee Due / Payment / Receipt schema. Ledger/Other Income/Expenses are a separate future module, not yet designed.
+
 ## 24. Role responsibility summary
 
 | Module | Super Admin | School Admin | Principal | Teacher | Accountant | Admission | Student | Guardian |
@@ -408,7 +412,7 @@ This is far more flexible than hard-coding permissions directly into roles.
 
 Mirrors School Setup: a sequence of fee masters the School Admin configures once per school, then reuses when students are admitted. All tables are school-owned (carry `school_id`, not global `lut_` masters) because fee types, amounts, and concessions vary school to school.
 
-Setup sequence: **Fee Types → Fee Structures (per Class + Academic Year) → Fee Concessions/Discounts**. Depends only on Academic Year and Class masters (already earlier in the setup wizard) — does not depend on the Student module, so it can be built and tested before Students/Admissions exist. Student Fee Assignment (below) is the one piece that does depend on Students and is deferred until that module exists.
+Setup sequence: **Fee Types → Fee Structures (per Class + Academic Year) → Fee Concessions/Discounts**. Depends only on Academic Year and Class masters — does not depend on the Student module, so it was built and tested before Students/Admissions existed. Status: **complete** (Fee Types, Fee Structures, Fee Concessions all built and tested, backend + Angular UI).
 
 ### `tb_fee_types` (school-owned master)
 - `fee_type_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -444,6 +448,7 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `fee_type_id` BIGINT FK → tb_fee_types
 - `frequency_id` BIGINT FK → lut_fee_frequency
 - `amount` NUMERIC(12,2)
+- `due_day` SMALLINT — default day-of-month this fee head is due for recurring frequencies (e.g. 10 = "10th of every month"); see section 28 for how this drives due-date generation and what happens when it changes
 - `created_at` / `updated_at`
 - Unique: `(fee_structure_id, fee_type_id)`
 
@@ -458,8 +463,83 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `isactive` BOOLEAN
 - `created_at` / `updated_at`
 
-### Deferred — depends on Student module (not yet built)
-- `tb_student_fee_structure` — assigns a student to a fee structure: `student_id`, `fee_structure_id`, `school_id`, `academic_year_id`
-- `tb_student_fee_concessions` — per-student concessions applied (many-to-many, a student can have more than one): `student_id`, `concession_id`, `approved_by`, `remarks`
+### Student-level linkage (built, see section 28 for the full billing/payment layer on top)
+- `tb_student_fee_structure` — links a student to a fee structure: `student_id`, `fee_structure_id`, `school_id`, `academic_year_id`. Built and working; auto-assigned at admission based on class + academic year, with manual assignment/reassignment as fallback.
+- `tb_student_fee_concessions` — per-student concessions applied (many-to-many): `student_id`, `concession_id`, `approved_by`, `remarks`. Built and working.
 
-These two tables are designed now so the schema is already accounted for when the Student/Admission module is built, but are not created until `tb_students` exists.
+## 28. Student Fee Billing & Collection (per-student items, installments, payments)
+
+This is the layer that turns a class-level Fee Structure into actual per-student amounts owed, due dates, and recorded payments — what section 9 (Accountant workflow) and section 23 (Finance workflow) actually run on. `tb_student_fee_structure` (section 27) only says which structure governs a student; it does not say what frequency the student chose for each fee head, whether an optional fee applies to them, what's actually been paid, or what's overdue. These tables add that.
+
+Requirements this satisfies: fee configuration at admission (per-student frequency choice and optional-fee opt-in/out), fee status in the student list (Paid/Partially Paid/Pending/Overdue with amounts), configurable monthly due dates per fee head, automatic overdue detection that recalculates cleanly when a due date changes, and a fee dashboard/reports. Payment history is authoritative — status is always derived from recorded `tb_fee_payments`/`tb_fee_payment_allocations` rows, never a manually settable flag.
+
+### `tb_student_fee_items` (per-student resolved billing lines)
+- `student_fee_item_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `student_id` BIGINT FK → tb_students
+- `school_id` VARCHAR(100) FK → tb_schools
+- `academic_year_id` BIGINT FK → tb_academic_years
+- `fee_type_id` BIGINT FK → tb_fee_types
+- `frequency_id` BIGINT FK → lut_fee_frequency — the frequency **this student** chose for this fee head (e.g. a parent may choose to pay tuition quarterly even though another student in the same class pays monthly); seeded from the fee structure's default but independently stored and editable per student
+- `base_amount` NUMERIC(12,2) — from the fee structure at the time of assignment
+- `concession_amount` NUMERIC(12,2) default 0 — resolved from any applicable `tb_student_fee_concessions`
+- `net_amount` NUMERIC(12,2) — `base_amount - concession_amount`, what's actually billed
+- `is_applicable` BOOLEAN — lets an optional fee head (e.g. Transport) be toggled on/off per student without deleting the row or losing history
+- `isactive` BOOLEAN
+- `created_at` / `updated_at`
+- Unique: `(student_id, academic_year_id, fee_type_id)`
+
+Seeded from `tb_fee_structure_details` for the student's class at admission time (one row per applicable fee head), with frequency and applicability editable per student afterward from the Fees tab.
+
+### `tb_student_fee_dues` (generated installments)
+- `fee_due_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `student_fee_item_id` BIGINT FK → tb_student_fee_items (cascade delete)
+- `student_id` BIGINT FK → tb_students (denormalized for fast list/dashboard queries without a join)
+- `school_id` VARCHAR(100) FK → tb_schools
+- `due_date` DATE
+- `amount_due` NUMERIC(12,2)
+- `amount_paid` NUMERIC(12,2) default 0 — a cached running total, kept in sync transactionally whenever a `tb_fee_payment_allocations` row is written against this due; never edited directly
+- `created_at` / `updated_at`
+- Unique: `(student_fee_item_id, due_date)`
+
+Generated when a `tb_student_fee_items` row is created/activated: a Monthly item gets 12 due rows across the academic year (`due_date` = each month's `due_day` from the source `tb_fee_structure_details`), Quarterly gets 4, Half-Yearly gets 2, Annual/One Time gets 1.
+
+**Status is never a stored column** — always computed at read time:
+- `Paid`: `amount_paid >= amount_due`
+- `Partially Paid`: `0 < amount_paid < amount_due`
+- `Pending`: `amount_paid = 0` and `due_date` is in the future
+- `Overdue`: `amount_paid < amount_due` and `due_date` has passed
+
+This is what makes "recalculate overdue status without incorrectly marking students overdue" automatic when a due date changes — there's no stored flag to go stale.
+
+**Due date changes:** if the School Admin updates `due_day` on `tb_fee_structure_details` (e.g. extends the monthly deadline from the 10th to the 15th), only **unpaid** (`amount_paid = 0`) future `tb_student_fee_dues.due_date` values are regenerated. Any due with a payment already allocated keeps its original `due_date` — payment history is never rewritten.
+
+### `tb_fee_payments` (payment transactions — the only thing that marks something paid)
+- `payment_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `student_id` BIGINT FK → tb_students
+- `school_id` VARCHAR(100) FK → tb_schools
+- `payment_date` TIMESTAMPTZ
+- `amount` NUMERIC(12,2) — total of this transaction, may cover multiple dues at once
+- `payment_mode` VARCHAR(30) — Cash, Cheque, UPI, Card, Bank Transfer, Online
+- `receipt_number` VARCHAR(50)
+- `collected_by` BIGINT FK → tb_users, nullable
+- `remarks` TEXT, nullable
+- `created_at` / `updated_at`
+- Unique: `(school_id, receipt_number)`
+
+### `tb_fee_payment_allocations` (splits one payment across one or more dues)
+- `allocation_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `payment_id` BIGINT FK → tb_fee_payments (cascade delete)
+- `fee_due_id` BIGINT FK → tb_student_fee_dues
+- `allocated_amount` NUMERIC(12,2)
+- `created_at` TIMESTAMPTZ
+- Unique: `(payment_id, fee_due_id)`
+
+A parent paying off 3 months of tuition arrears in one transaction produces one `tb_fee_payments` row and 3 `tb_fee_payment_allocations` rows, each updating the corresponding due's `amount_paid`.
+
+### Read-side aggregates (no new tables — computed from the above)
+- **Student list fee status**: per student per academic year, aggregate across their `tb_student_fee_dues` — total due, total paid, outstanding, and an overall badge (Overdue if any due is overdue, else Partially Paid if some paid, else Pending if none paid, else Paid if fully settled).
+- **Fee Dashboard**: total collected, total outstanding, overdue count/amount, upcoming deadlines — filterable by academic year, class, section, student, status.
+- **Reports**: student-wise fee statement (all items + dues + payments for one student), class-wise collection report.
+
+### Build status
+Schema designed 2026-10-15. Build order: (1) fix the existing crash in the existing-student load path first — it sits on this same code path, (2) `tb_student_fee_items` + due-day config + due generation, wired into the admission form, (3) `tb_fee_payments` + `tb_fee_payment_allocations` + collection UI, (4) student list fee-status column + Fees tab upgraded to show real dues/payment history, (5) dashboard + reports.
