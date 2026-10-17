@@ -39,6 +39,14 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Fee Concessions', route: '/fee-setup/fee-concessions' },
     ],
   },
+  {
+    label: 'Fees',
+    icon: 'layout-dashboard',
+    children: [
+      { label: 'Fee Dashboard', route: '/fee-dashboard' },
+      { label: 'Class-wise Report', route: '/fee-reports/class' },
+    ],
+  },
   { label: 'Registered Schools', icon: 'building-2', route: '/schools' },
   {
     label: 'Masters',

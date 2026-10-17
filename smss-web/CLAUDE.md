@@ -345,3 +345,14 @@ Build these as the foundation BEFORE any feature screens:
 - Fees tab fee-items table has Paid / Outstanding columns; payments and voids reload the items.
 - Receipt numbers: `FeePaymentRepository.LockReceiptNumbersAsync` (pg advisory xact lock per school) serializes number allocation; the unique-violation retry stays as a backstop.
 - Fee status (closeout): `FeeSchedule.Overall(hasItems, ...)`: Not Set ONLY when no fee items exist for the year; items with nothing owed (optional heads off, full concession) = Paid. List endpoint takes optional `feeStatus` (All/blank = none; unknown = 400), filtered server-side; the list's Fee status dropdown reloads from the server and rides along in the Back-to-Students query params.
+
+## Stage 5 — Fee dashboard + class report (read-only)
+- API: `GET /api/FeeDashboard?academicYearId&classId&sectionId&days=7` and `GET /api/FeeReports/class/{classId}?academicYearId&sectionId`. Access = `User.CanViewFees()` (School Admin, Accountant, Principal); responses carry `canManage` (= `CanManageFees()`), false for the Principal, whose UI hides drill-down + CSV export. First view-vs-manage split in the project: just these two helpers in ClaimsPrincipalExtensions.
+- Dashboard = 4 SQL statements (year, class check, one aggregate over dues, one monthly sum over Active allocations); class report reuses `IStudentRepository.GetFeeAggregatesAsync` (same rule as the student list).
+- Collected = money on Active payments' allocations to in-scope installments (equals sum of amount_paid; voided excluded). Month trend = by payment date, IST.
+- No student-wise report endpoint: the student's Fees tab (fee-items + fee-dues + payments) IS the statement.
+- Frontend: `features/fee-reports` (/fee-dashboard, /fee-reports/class), nav group "Fees"; month trend is a plain table with CSS bars (no chart lib); CSV export is a Blob, no library.
+
+## Accountant access to the student record
+- `/students/:studentId` is open to School Admin + Accountant. For an Accountant the page shows the student summary header and the Fees tab ONLY (Profile tab with photo / student-login actions is School Admin only); "Back" goes to the class report. Inside the Fees tab, structure assign / concessions / per-item edit are School Admin only (UI-only: the API has no role checks on those endpoints yet); collect + void are available to both.
+- The Accountant reaches a student via Fee Reports → Class-wise Report → "Fees". `/students` (the list) stays School Admin only.

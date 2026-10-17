@@ -1,0 +1,61 @@
+<app-page-header title="Class-wise Fee Report" subtitle="Who has paid, and who still owes, in a class" icon="file-text" [breadcrumbs]="breadcrumbs" />
+
+<app-card>
+  <div class="filters">
+    <app-select label="Academic year" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
+    <app-select label="Class" placeholder="Select class…" [options]="classOptions()" [formControl]="classControl" />
+    <app-select
+      label="Section"
+      [placeholder]="classControl.value ? 'All sections' : 'Select a class first'"
+      [options]="sectionOptions()"
+      [formControl]="sectionControl"
+    />
+  </div>
+</app-card>
+
+@if (!classControl.value) {
+  <app-card><div class="state"><p>Select a class to see its fee report</p></div></app-card>
+} @else {
+  <app-card [noPadding]="true">
+    <div class="toolbar">
+      <span class="count">
+        {{ sortedRows().length }} {{ sortedRows().length === 1 ? 'student' : 'students' }}
+        @for (c of counts(); track c.status) {
+          <span class="chip">{{ c.status }}: {{ c.n }}</span>
+        }
+      </span>
+      @if (canExport()) {
+        <app-button variant="secondary" size="sm" (click)="exportCsv()"><app-icon name="file-text" [size]="14" />Export CSV</app-button>
+      }
+    </div>
+
+    <app-table
+      [columns]="columns"
+      [rows]="sortedRows()"
+      [loading]="loading()"
+      [hasActions]="canDrillDown()"
+      [sortKey]="sortKey()"
+      [sortDirection]="sortDirection()"
+      [emptyMessage]="emptyMessage()"
+      (sortChange)="onSort($event)"
+    >
+      <ng-template #rowActions let-row>
+        <app-button variant="secondary" size="sm" aria-label="Open student fees" title="Open the student's Fees tab" (click)="view(row)">
+          <app-icon name="eye" [size]="14" />Fees
+        </app-button>
+      </ng-template>
+    </app-table>
+
+    @if (report(); as r) {
+      <div class="total" role="group" aria-label="Class total">
+        <strong>Class total</strong>
+        <span>Due <b>{{ inr(r.totalDue) }}</b></span>
+        <span>Collected <b>{{ inr(r.totalCollected) }}</b></span>
+        <span>Outstanding <b>{{ inr(r.totalOutstanding) }}</b></span>
+      </div>
+    }
+    @if (failed()) {
+      <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+    }
+  </app-card>
+}

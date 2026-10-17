@@ -1,0 +1,73 @@
+<app-page-header title="Fee Dashboard" subtitle="Collections, dues and what is coming up" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+
+<app-card>
+  <div class="filters">
+    <app-select label="Academic year" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
+    <app-select label="Class" [options]="classOptions()" [formControl]="classControl" />
+    <app-select
+      label="Section"
+      [placeholder]="classControl.value ? 'All sections' : 'Select a class first'"
+      [options]="sectionOptions()"
+      [formControl]="sectionControl"
+    />
+    <app-select label="Upcoming window" [options]="dayOptions" [formControl]="daysControl" />
+  </div>
+  @if (!setupLoading() && yearOptions().length === 0) {
+    <p class="hint">Add an active academic year under School Setup to see the fee dashboard.</p>
+  }
+</app-card>
+
+@if (failed()) {
+  <app-card>
+    <div class="state"><p>The dashboard could not be loaded.</p><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  </app-card>
+} @else if (data(); as d) {
+  <section class="cards" [class.loading]="loading()" aria-label="Fee summary">
+    <article class="stat collected">
+      <span class="label">Collected</span>
+      <strong>{{ inr(d.totalCollected) }}</strong>
+      <small>of {{ inr(d.totalDue) }} billed</small>
+    </article>
+    <article class="stat outstanding">
+      <span class="label">Outstanding</span>
+      <strong>{{ inr(d.totalOutstanding) }}</strong>
+      <small>still to be collected</small>
+    </article>
+    <article class="stat overdue">
+      <span class="label">Overdue</span>
+      <strong>{{ inr(d.overdueAmount) }}</strong>
+      <small>{{ d.overdueCount }} {{ d.overdueCount === 1 ? 'installment' : 'installments' }} past due</small>
+    </article>
+    <article class="stat upcoming">
+      <span class="label">Upcoming</span>
+      <strong>{{ inr(d.upcomingAmount) }}</strong>
+      <small>{{ d.upcomingCount }} {{ d.upcomingCount === 1 ? 'installment' : 'installments' }} due in the next {{ d.upcomingDays }} days</small>
+    </article>
+  </section>
+
+  <app-card title="Collection by month">
+    <p class="asof">{{ d.academicYearName }} · as of {{ date(d.asOf) }} · money received, by payment date (voided payments excluded)</p>
+    <table class="months" aria-label="Collection by month">
+      <thead><tr><th>Month</th><th class="trend">Trend</th><th class="num">Collected</th></tr></thead>
+      <tbody>
+        @for (m of d.collectionByMonth; track m.month) {
+          <tr>
+            <td>{{ m.label }}</td>
+            <td class="trend"><span class="bar" [style.width]="barWidth(m.amount)" [class.zero]="m.amount === 0"></span></td>
+            <td class="num">{{ inr(m.amount) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </app-card>
+
+  @if (d.canManage) {
+    <div class="actions">
+      <app-button variant="secondary" (click)="openClassReport()"><app-icon name="file-text" [size]="16" />Class-wise report</app-button>
+    </div>
+  } @else {
+    <p class="readonly">You have view-only access to the fee dashboard.</p>
+  }
+} @else if (loading()) {
+  <app-card><div class="state"><p>Loading…</p></div></app-card>
+}

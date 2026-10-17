@@ -32,9 +32,11 @@
               }
               <p class="meta">{{ f.className }} · {{ f.academicYearName }}</p>
             </div>
-            <app-button [variant]="f.structureName ? 'secondary' : 'primary'" [disabled]="busy()" (click)="openAssign()">
-              <app-icon name="file-text" [size]="16" />{{ f.structureName ? 'Change Fee Structure' : 'Assign Fee Structure' }}
-            </app-button>
+            @if (canConfigure()) {
+              <app-button [variant]="f.structureName ? 'secondary' : 'primary'" [disabled]="busy()" (click)="openAssign()">
+                <app-icon name="file-text" [size]="16" />{{ f.structureName ? 'Change Fee Structure' : 'Assign Fee Structure' }}
+              </app-button>
+            }
           </div>
 
           @if (!f.structureName) {
@@ -58,9 +60,11 @@
           <app-card title="Concessions">
             <div class="head">
               <p class="meta">Concessions reduce the amounts above.</p>
-              <app-button variant="secondary" [disabled]="busy() || f.availableConcessions.length === 0" (click)="openConcession()">
-                <app-icon name="plus" [size]="16" />Add Concession
-              </app-button>
+              @if (canConfigure()) {
+                <app-button variant="secondary" [disabled]="busy() || f.availableConcessions.length === 0" (click)="openConcession()">
+                  <app-icon name="plus" [size]="16" />Add Concession
+                </app-button>
+              }
             </div>
 
             @if (f.concessions.length === 0) {
@@ -83,9 +87,11 @@
                     @if (c.approvedByName) {
                       <div class="meta">Added by {{ c.approvedByName }}</div>
                     }
-                    <app-button class="c-remove" variant="danger-ghost" size="sm" [disabled]="busy()" [attr.aria-label]="'Remove ' + c.concessionName" (click)="removeConcession(c)">
-                      <app-icon name="trash-2" [size]="14" />Remove
-                    </app-button>
+                    @if (canConfigure()) {
+                      <app-button class="c-remove" variant="danger-ghost" size="sm" [disabled]="busy()" [attr.aria-label]="'Remove ' + c.concessionName" (click)="removeConcession(c)">
+                        <app-icon name="trash-2" [size]="14" />Remove
+                      </app-button>
+                    }
                   </li>
                 }
               </ul>
@@ -102,7 +108,7 @@
               <app-table
                 [columns]="itemColumns"
                 [rows]="itemRows()"
-                [hasActions]="true"
+                [hasActions]="canConfigure()"
                 emptyMessage="No fee items yet."
               >
                 <ng-template #rowActions let-row>

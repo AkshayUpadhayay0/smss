@@ -7,7 +7,7 @@
   @if (student(); as s) {
     <span class="status" [class.active]="s.statusName === 'Active'">{{ s.statusName }}</span>
   }
-  <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />Back to Students</app-button>
+  <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />{{ backLabel() }}</app-button>
 </app-page-header>
 
 @if (loading()) {
@@ -16,13 +16,15 @@
   <app-card>
     <div class="note">
       <p>This student could not be loaded.</p>
-      <app-button variant="secondary" (click)="back()">Back to Students</app-button>
+      <app-button variant="secondary" (click)="back()">{{ backLabel() }}</app-button>
     </div>
   </app-card>
 } @else {
   @if (student(); as s) {
     <div class="tabs" role="tablist" aria-label="Student sections">
-      <button type="button" role="tab" id="tab-profile" [attr.aria-selected]="tab() === 'profile'" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
+      @if (isSchoolAdmin()) {
+        <button type="button" role="tab" id="tab-profile" [attr.aria-selected]="tab() === 'profile'" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
+      }
       <button type="button" role="tab" id="tab-fees" [attr.aria-selected]="tab() === 'fees'" [class.active]="tab() === 'fees'" (click)="selectTab('fees')">Fees</button>
     </div>
 
@@ -32,6 +34,7 @@
       </div>
     }
 
+    @if (isSchoolAdmin()) {
     <div class="sections" role="tabpanel" aria-labelledby="tab-profile" [hidden]="tab() !== 'profile'">
       <app-card>
         <div class="hero">
@@ -108,6 +111,7 @@
         />
       </app-card>
     </div>
+    }
 
     @if (loginDialogOpen()) {
       <app-student-login-dialog

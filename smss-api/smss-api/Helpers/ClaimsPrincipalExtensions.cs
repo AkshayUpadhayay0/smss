@@ -16,9 +16,15 @@ namespace smss_api.Helpers
         /// Whether the caller may manage fees (void a payment): a School Admin or an Accountant. The token carries role NAMES (the project has
         /// no permission system yet, so this stands in for a "Fees:Manage" permission). Keep this the ONE place that decides it.
         /// </summary>
-        public static bool CanManageFees(this ClaimsPrincipal user) =>
-            user.FindAll(ClaimTypes.Role).Any(r =>
-                string.Equals(r.Value?.Trim(), RoleNames.SchoolAdmin, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(r.Value?.Trim(), RoleNames.Accountant, StringComparison.OrdinalIgnoreCase));
+        public static bool CanManageFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant);
+
+        /// <summary>
+        /// Whether the caller may SEE fee figures (the dashboard and reports): everyone who can manage fees, plus the Principal, who is
+        /// view-only. This is the first view-vs-manage split in the project, deliberately just this pair: CanViewFees (read) and CanManageFees (change).
+        /// </summary>
+        public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
+
+        private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>
+            user.FindAll(ClaimTypes.Role).Any(r => roles.Any(want => string.Equals(r.Value?.Trim(), want, StringComparison.OrdinalIgnoreCase)));
     }
 }

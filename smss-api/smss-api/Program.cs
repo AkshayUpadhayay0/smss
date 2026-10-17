@@ -68,6 +68,8 @@ builder.Services.AddScoped<IStudentFeeBillingRepository, StudentFeeBillingReposi
 builder.Services.AddScoped<IStudentFeeBillingService, StudentFeeBillingService>();
 builder.Services.AddScoped<IFeePaymentRepository, FeePaymentRepository>();
 builder.Services.AddScoped<IFeePaymentService, FeePaymentService>();
+builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
+builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 
 builder.Services.AddScoped<IMasterImportRepository, MasterImportRepository>();
 builder.Services.AddScoped<IMasterImportService, MasterImportService>();

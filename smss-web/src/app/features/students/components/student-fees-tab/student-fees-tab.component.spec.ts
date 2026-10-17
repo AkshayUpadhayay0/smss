@@ -304,6 +304,23 @@ describe('StudentFeesTabComponent', () => {
       expect(text()).toContain('Receipt');   // still viewable
     });
 
+    it('Accountant: can collect and void, but cannot change how the student is billed (structure, concessions, item frequency)', () => {
+      clearSessions();
+      seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['Accountant'] }) });
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+      http = TestBed.inject(HttpTestingController);
+      fixture = TestBed.createComponent(StudentFeesTabComponent);
+      fixture.componentRef.setInput('studentId', 'DPS001ST001');
+      fixture.detectChanges();
+      http.expectOne(URL).flush(env(assigned));
+      flushBilling();
+      fixture.detectChanges();
+      const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].map((b) => b.textContent?.trim() ?? '');
+      expect(buttons.some((b) => b.includes('Collect Payment'))).toBe(true);
+      expect(voidButton()).toBeDefined();
+      for (const hidden of ['Change Fee Structure', 'Assign Fee Structure', 'Add Concession', 'Edit']) expect(buttons.some((b) => b.includes(hidden))).toBe(false);
+    });
+
     it('the Void Payment button is hidden from roles that may not void (the API refuses them too)', () => {
       clearSessions();
       seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['Principal'] }) });

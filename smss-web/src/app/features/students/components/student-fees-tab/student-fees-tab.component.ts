@@ -91,6 +91,12 @@ export class StudentFeesTabComponent implements OnInit {
   protected readonly receipt = signal<{ data: FeeReceipt; justPaid: boolean } | null>(null);
   protected readonly receiptLoading = signal<number | null>(null);
 
+  /**
+   * Changing HOW a student is billed (structure, concessions, per-item frequency / opt-out) is School Admin only. The Accountant
+   * collects and voids payments (below) and reads everything. UI-only for now: the API has no role checks on these endpoints yet.
+   */
+  protected readonly canConfigure = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === 'school admin'));
+
   // ---- void a payment
   protected readonly canVoid = computed(() => this.auth.currentUserRoles().some((r) => (FEE_MANAGER_ROLES as readonly string[]).includes(r)));
   protected readonly voiding = signal<PaymentRow | null>(null);

@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { ROLES } from '../../../../core/config/route-roles';
+import { AuthService } from '../../../../core/services/auth.service';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
@@ -36,6 +38,7 @@ export class StudentProfileComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
   /** Bound from the :studentId route param (withComponentInputBinding). */
   readonly studentId = input.required<string>();
@@ -83,8 +86,13 @@ export class StudentProfileComponent implements OnInit {
   protected readonly photoDialogOpen = signal(false);
 
   /** Profile (default) or Fees. The Fees tab is created only when first opened, so it loads on demand. */
-  protected readonly tab = signal<'profile' | 'fees'>('profile');
-  protected readonly feesOpened = signal(false);
+  /**
+   * The Profile tab has edit actions (photo, creating / resetting the student's login) and personal details: School Admin only.
+   * An Accountant, who is here to collect and void payments, gets the student summary and the Fees tab only.
+   */
+  protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
+  protected readonly tab = signal<'profile' | 'fees'>(this.isSchoolAdmin() ? 'profile' : 'fees');
+  protected readonly feesOpened = signal(!this.isSchoolAdmin());
 
   protected selectTab(tab: 'profile' | 'fees'): void {
     this.tab.set(tab);
@@ -127,7 +135,10 @@ export class StudentProfileComponent implements OnInit {
       });
   }
 
+  /** Where "back" goes: the student list for a School Admin; the class report they came from for anyone else. */
+  protected readonly backLabel = computed(() => (this.isSchoolAdmin() ? 'Back to Students' : 'Back to Class Report'));
+
   protected back(): void {
-    void this.router.navigate(['/students'], { queryParams: this.filterParams() });
+    void this.router.navigate([this.isSchoolAdmin() ? '/students' : '/fee-reports/class'], { queryParams: this.filterParams() });
   }
 }

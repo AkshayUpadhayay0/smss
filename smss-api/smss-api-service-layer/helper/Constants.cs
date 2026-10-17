@@ -17,6 +17,7 @@ namespace smss_api_service_layer.helper
     public static class RoleNames
     {
         public const string Accountant = "Accountant";
+        public const string Principal = "Principal";
         public const string SchoolAdmin = "School Admin";
         public const string SuperAdmin = "Super Admin";
         public const string Student = "Student";

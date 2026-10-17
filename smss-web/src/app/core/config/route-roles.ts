@@ -36,7 +36,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-profile': [ROLES.SCHOOL_ADMIN],
   '/students': [ROLES.SCHOOL_ADMIN],
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
-  '/students/:studentId': [ROLES.SCHOOL_ADMIN],
+  // The Accountant opens a student to collect / void payments; the page shows them the Fees tab only (no Profile tab)
+  '/students/:studentId': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT],
   '/admissions': [ROLES.SCHOOL_ADMIN],
   '/admissions/new': [ROLES.SCHOOL_ADMIN],
   '/admissions/:admissionId': [ROLES.SCHOOL_ADMIN],
@@ -55,6 +56,9 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-concessions': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
+  // Fee dashboard + reports: read-only for the Principal (the API sends canManage=false; the screens hide drill-down / export)
+  '/fee-dashboard': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
+  '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
 
   '/schools': [ROLES.SUPER_ADMIN],
   '/schools/add': [ROLES.SUPER_ADMIN],

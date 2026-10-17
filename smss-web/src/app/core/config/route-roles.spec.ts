@@ -25,12 +25,27 @@ describe('route-roles', () => {
     });
   });
 
+  describe('student record for the Accountant', () => {
+    it('may open /students/:id (Fees tab only, enforced by the page) but not the student list, onboarding or admissions', () => {
+      expect(canAccess('/students/DPS001ST001', [ROLES.ACCOUNTANT])).toBe(true);
+      for (const url of ['/students', '/students/onboard-existing', '/admissions', '/school-profile', '/fee-setup/fee-types']) expect(canAccess(url, [ROLES.ACCOUNTANT])).toBe(false);
+      for (const role of [ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT]) expect(canAccess('/students/DPS001ST001', [role])).toBe(false);
+    });
+  });
+
+  describe('fee dashboard and reports', () => {
+    it.each(['/fee-dashboard', '/fee-reports/class'])('%s: School Admin, Accountant and Principal (view-only) may open it; Teacher, Student and Guardian may not', (url) => {
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL]) expect(canAccess(url, [role])).toBe(true);
+      for (const role of [ROLES.TEACHER, ROLES.STUDENT, ROLES.GUARDIAN]) expect(canAccess(url, [role])).toBe(false);
+    });
+  });
+
   describe('canAccess', () => {
     const SUPER = [ROLES.SUPER_ADMIN];
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit'];
+      const schoolSide = ['/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-reports/class'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }

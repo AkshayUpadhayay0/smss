@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: '', loadChildren: () => import('./features/students/students.routes').then((m) => m.STUDENTS_ROUTES) },
       { path: '', loadChildren: () => import('./features/school-setup/school-setup.routes').then((m) => m.SCHOOL_SETUP_ROUTES) },
       { path: '', loadChildren: () => import('./features/fee-setup/fee-setup.routes').then((m) => m.FEE_SETUP_ROUTES) },
+      { path: '', loadChildren: () => import('./features/fee-reports/fee-reports.routes').then((m) => m.FEE_REPORTS_ROUTES) },
       { path: '', loadChildren: () => import('./features/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
       {
         path: 'change-password',

@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+
+app-card {
+  display: block;
+  margin-bottom: var(--space-6);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-5);
+}
+
+.hint {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+
+  p {
+    margin: 0;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+
+  &.loading {
+    opacity: 0.6;
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+
+  .label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  strong {
+    font-size: var(--text-2xl, 1.75rem);
+    font-weight: var(--weight-semibold);
+  }
+
+  small {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  &.collected { border-left-color: var(--color-success); }
+  &.outstanding { border-left-color: var(--color-primary); }
+  &.overdue { border-left-color: var(--color-danger); }
+  &.upcoming { border-left-color: var(--color-warning); }
+}
+
+.asof {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.months {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+
+  th {
+    text-align: left;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border-strong);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  td {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .trend {
+    width: 55%;
+  }
+
+  .bar {
+    display: block;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--color-primary);
+
+    &.zero {
+      width: 2px !important;
+      background: var(--color-border-strong);
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.readonly {
+  margin: 0;
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
