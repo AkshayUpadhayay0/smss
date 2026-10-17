@@ -7,7 +7,8 @@ using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
-    // A student's fees. The school comes from the token only (no school id in the route), and the acting user for a
+    // A student's fees. Reads: any signed-in user of the school. Changing how the student is billed: School Admin only (CanConfigureFees);
+    // collecting / voiding payments is the FeePayment controller (School Admin + Accountant). The school comes from the token only (no school id in the route), and the acting user for a
     // concession comes from the token too.
     [ApiController]
     [Route("api/[controller]")]
@@ -42,8 +43,11 @@ namespace smss_api.Controllers
 
         // PUT api/StudentFee/{studentId}/fee-items/{itemId}   (change the frequency and/or whether the fee head applies)
         [HttpPut("{studentId:length(1,20)}/fee-items/{itemId:long}")]
-        public async Task<IActionResult> UpdateFeeItem(string studentId, long itemId, [FromBody] UpdateFeeItemRequest request, CancellationToken ct) =>
-            Reply(await _billing.UpdateItemAsync(User.GetSchoolId(), studentId, itemId, request, ct));
+        public async Task<IActionResult> UpdateFeeItem(string studentId, long itemId, [FromBody] UpdateFeeItemRequest request, CancellationToken ct)
+        {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can change how a student is billed.");
+            return Reply(await _billing.UpdateItemAsync(User.GetSchoolId(), studentId, itemId, request, ct));
+        }
 
         // GET api/StudentFee/{studentId}/fee-dues   (every installment with its computed status)
         [HttpGet("{studentId:length(1,20)}/fee-dues")]
@@ -58,20 +62,27 @@ namespace smss_api.Controllers
 
         // PUT api/StudentFee/{studentId}/structure
         [HttpPut("{studentId:length(1,20)}/structure")]
-        public async Task<IActionResult> AssignStructure(string studentId, [FromBody] AssignFeeStructureRequest request, CancellationToken ct) =>
-            Reply(await _service.AssignStructureAsync(User.GetSchoolId(), studentId, request, ct));
+        public async Task<IActionResult> AssignStructure(string studentId, [FromBody] AssignFeeStructureRequest request, CancellationToken ct)
+        {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can assign a fee structure.");
+            return Reply(await _service.AssignStructureAsync(User.GetSchoolId(), studentId, request, ct));
+        }
 
         // POST api/StudentFee/{studentId}/concessions
         [HttpPost("{studentId:length(1,20)}/concessions")]
         public async Task<IActionResult> ApplyConcession(string studentId, [FromBody] ApplyConcessionRequest request, CancellationToken ct)
         {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can apply a concession.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             return Reply(await _service.ApplyConcessionAsync(User.GetSchoolId(), studentId, userId, request, ct));
         }
 
         // DELETE api/StudentFee/{studentId}/concessions/{concessionId}
         [HttpDelete("{studentId:length(1,20)}/concessions/{concessionId:long}")]
-        public async Task<IActionResult> RemoveConcession(string studentId, long concessionId, CancellationToken ct) =>
-            Reply(await _service.RemoveConcessionAsync(User.GetSchoolId(), studentId, concessionId, ct));
+        public async Task<IActionResult> RemoveConcession(string studentId, long concessionId, CancellationToken ct)
+        {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can remove a concession.");
+            return Reply(await _service.RemoveConcessionAsync(User.GetSchoolId(), studentId, concessionId, ct));
+        }
     }
 }

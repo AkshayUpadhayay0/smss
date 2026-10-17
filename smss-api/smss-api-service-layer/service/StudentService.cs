@@ -69,7 +69,7 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<List<StudentListItemDto>>(ex, "fetching students"); }
         }
 
-        public async Task<ApiResponse<StudentProfileDto>> GetStudentProfileAsync(string schoolId, string studentId, CancellationToken ct)
+        public async Task<ApiResponse<StudentProfileDto>> GetStudentProfileAsync(string schoolId, string studentId, bool limited, CancellationToken ct)
         {
             try
             {
@@ -132,6 +132,17 @@ namespace smss_api_service_layer.service
                     dto.RollNumber = current.RollNumber;
                     dto.EnrollmentStatusName = statuses.GetValueOrDefault(current.StatusId, "Unknown");
                 }
+
+                // The limited view (an Accountant): who the student is and where they are, which is all the Fees tab needs. Personal details,
+                // contact details, guardians, the photo and the login id are dropped here, on the server, never sent.
+                if (limited)
+                    dto = new StudentProfileDto
+                    {
+                        Limited = true,
+                        StudentId = dto.StudentId, AdmissionNumber = dto.AdmissionNumber, FullName = dto.FullName, StatusName = dto.StatusName,
+                        EnrollmentId = dto.EnrollmentId, AcademicYearName = dto.AcademicYearName, ClassName = dto.ClassName, SectionName = dto.SectionName,
+                        RollNumber = dto.RollNumber, EnrollmentStatusName = dto.EnrollmentStatusName
+                    };
 
                 return Result(200, "Successfully fetched", dto);
             }

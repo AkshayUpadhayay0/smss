@@ -6,7 +6,7 @@ using smss_api_service_layer.@interface;
 
 namespace smss_api.Controllers
 {
-    // Everything is scoped to the caller's own school (from the token); no school id is ever accepted.
+    // Reads: any signed-in user of the school. Writes: School Admin only (CanConfigureFees). Everything is scoped to the caller's own school (from the token); no school id is ever accepted.
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -35,6 +35,7 @@ namespace smss_api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateFeeTypeRequest request)
         {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can create fee types.");
             var response = await _service.CreateAsync(User.GetSchoolId(), request);
             return StatusCode(response.StatusCode, response);
         }
@@ -43,6 +44,7 @@ namespace smss_api.Controllers
         [HttpPut("{id:long}")]
         public async Task<IActionResult> Update(long id, [FromBody] UpdateFeeTypeRequest request)
         {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can change fee types.");
             var response = await _service.UpdateAsync(User.GetSchoolId(), id, request);
             return StatusCode(response.StatusCode, response);
         }
@@ -51,6 +53,7 @@ namespace smss_api.Controllers
         [HttpPost("{id:long}/toggle-status")]
         public async Task<IActionResult> ToggleStatus(long id)
         {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can activate or deactivate fee types.");
             var response = await _service.ToggleStatusAsync(User.GetSchoolId(), id);
             return StatusCode(response.StatusCode, response);
         }

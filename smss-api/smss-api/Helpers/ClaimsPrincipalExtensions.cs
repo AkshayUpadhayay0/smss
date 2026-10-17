@@ -22,6 +22,19 @@ namespace smss_api.Helpers
         /// Whether the caller may SEE fee figures (the dashboard and reports): everyone who can manage fees, plus the Principal, who is
         /// view-only. This is the first view-vs-manage split in the project, deliberately just this pair: CanViewFees (read) and CanManageFees (change).
         /// </summary>
+        /// <summary>
+        /// Whether the caller may CONFIGURE fees (fee types, structures, concessions, and how one student is billed: assigning a structure,
+        /// concessions, per-item frequency / opt-out): School Admin only. The Accountant collects and voids payments (CanManageFees) but
+        /// does not change what is charged, matching the frontend route rules where all of Fee Setup is School Admin only.
+        /// </summary>
+        public static bool CanConfigureFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
+
+        /// <summary>
+        /// An Accountant who is not also a School Admin: gets the limited student view (header + class/section, no personal details,
+        /// guardian contacts or credential actions). Only this role is narrowed: what every other role could already do is unchanged.
+        /// </summary>
+        public static bool IsAccountantOnly(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Accountant) && !HasAnyRole(user, RoleNames.SchoolAdmin);
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

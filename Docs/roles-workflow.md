@@ -155,7 +155,7 @@ School Setup Wizard
 
 Recommended setup sequence: School Profile → Academic Year → Classes → Sections → Subjects → Departments → Designations → Employees → Teachers → **Fee Setup (Fee Types → Fee Structures → Fee Concessions)** → Students → Guardians → Examination Configuration → Timetable.
 
-Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, and section 28 for Student Fee Billing & Collection (the actual per-student items, installments, and payments).
+Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, and section 28 for Student Fee Billing & Collection (the actual per-student items, installments, payments, dashboard, and reports — this is now complete end to end).
 
 ## 7. Principal workflow
 
@@ -164,7 +164,7 @@ Dashboard shows: Students, Teachers, Attendance, Admissions, Examinations, Acade
 **Academic:** manage academic year, monitor classes/subjects/teacher assignments, review student performance/examinations/report cards, monitor attendance/homework/timetable.
 **Staff:** view employees, review teacher attendance, approve teacher leave, monitor teacher workload, assign teachers where permitted.
 **Students:** view students, monitor attendance, review academic performance and disciplinary/student notes, approve certain student actions.
-**Administration:** notices, school calendar, events, announcements, reports.
+**Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link.
 
 ## 8. Teacher workflow
 
@@ -205,7 +205,9 @@ Finance
 
 **Fee collection workflow:** `Student → Fee Due → Accountant → Collect Payment → Record Transaction → Generate Receipt → Update Student Fee Balance`
 
-See section 28 for the schema behind this workflow (`tb_fee_payments`, `tb_fee_payment_allocations`, `tb_student_fee_dues`).
+See section 28 for the full schema and screens behind this workflow (`tb_fee_payments`, `tb_fee_payment_allocations`, `tb_student_fee_dues`, Fee Dashboard, class-wise report) — this module is now complete.
+
+**Known gap to fix:** the student record route (`/students/:id`) is currently School Admin-only in the Angular route rules, which blocks the Accountant from opening a student's Fees tab even though Accountant is the role that collects and voids payments there. Decided fix: give Accountant access to the student record scoped to the Fees tab (not full profile edit rights elsewhere on that page).
 
 Accountant should not be able to modify academic marks, attendance, or student academic records unless explicitly authorized.
 
@@ -317,7 +319,7 @@ School → Fee Structure → Student Fee Assignment → Fee Due → Payment → 
 Other income: `Other Income → Transaction → Ledger`
 Expenses: `Expense → Approval → Payment → Transaction → Ledger`
 
-See section 28 for the Fee Due / Payment / Receipt schema. Ledger/Other Income/Expenses are a separate future module, not yet designed. Refunds of actual money paid out are also part of that future module — voiding a payment (section 28) only reverses the fee-due bookkeeping, it does not track or move cash.
+See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports schema — this module is complete. Ledger/Other Income/Expenses are a separate future module, not yet designed. Refunds of actual money paid out are also part of that future module — voiding a payment (section 28) only reverses the fee-due bookkeeping, it does not track or move cash.
 
 ## 24. Role responsibility summary
 
@@ -366,7 +368,13 @@ HOMEWORK_REVIEW, EXAM_MARKS_ENTER, LEAVE_APPLY
 
 This is far more flexible than hard-coding permissions directly into roles.
 
-**Known current gap:** there is no real permission system yet — role checks in code (e.g. the Fees module's `CanManageFees` helper, section 28) currently test role **names** ("School Admin", "Accountant") directly rather than resolving permissions. This is an accepted stopgap, consistent project-wide, to be replaced once `lut_roles`/`tb_user_roles` grows real permission mapping. Do not treat each new instance of this pattern as a fresh decision — it matches existing practice. Both fee-payment endpoints (recording and voiding) now use `CanManageFees` consistently.
+**Known current gap:** there is no real permission system yet — role checks in code currently test role **names** directly rather than resolving permissions. This is an accepted stopgap, consistent project-wide, to be replaced once `lut_roles`/`tb_user_roles` grows real permission mapping. Do not treat each new instance of this pattern as a fresh decision — it matches existing practice.
+
+The Fees module (section 28) is the first place a view-vs-manage distinction was needed, and it was done as two small role-name helpers rather than a generic framework:
+- `CanManageFees()` — School Admin, Accountant. Used by payment recording and voiding.
+- `CanViewFees()` — School Admin, Accountant, Principal. Used by the Fee Dashboard and class-wise report; responses also carry a `canManage` flag so the frontend can hide manage-only actions (class-report button, per-student Fees link, CSV export) for a view-only caller (Principal).
+
+This pair is the template to reuse if another module needs the same read/write split, rather than inventing a new helper per module.
 
 ## 26. Final high-level workflow
 
@@ -472,11 +480,11 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 
 **Note on `student_id` type:** `tb_students.student_id` is `VARCHAR(20)` (a business-generated identifier, same pattern as `tb_schools.school_id`), not `BIGINT` as originally assumed when this section was first drafted. Every FK to `tb_students` below in section 28 uses `VARCHAR(20)` — corrected to match the real schema.
 
-## 28. Student Fee Billing & Collection (per-student items, installments, payments)
+## 28. Student Fee Billing & Collection (per-student items, installments, payments, dashboard, reports) — MODULE COMPLETE
 
-This is the layer that turns a class-level Fee Structure into actual per-student amounts owed, due dates, and recorded payments — what section 9 (Accountant workflow) and section 23 (Finance workflow) actually run on. `tb_student_fee_structure` (section 27) only says which structure governs a student; it does not say what frequency the student chose for each fee head, whether an optional fee applies to them, what's actually been paid, or what's overdue. These tables add that.
+This is the layer that turns a class-level Fee Structure into actual per-student amounts owed, due dates, recorded payments, and the dashboard/reports built on top — what section 9 (Accountant workflow) and section 23 (Finance workflow) actually run on. `tb_student_fee_structure` (section 27) only says which structure governs a student; it does not say what frequency the student chose for each fee head, whether an optional fee applies to them, what's actually been paid, or what's overdue. These tables add that.
 
-Requirements this satisfies: fee configuration at admission (per-student frequency choice and optional-fee opt-in/out), fee status in the student list (Paid/Partially Paid/Pending/Overdue with amounts), configurable monthly due dates per fee head, automatic overdue detection that recalculates cleanly when a due date changes, and a fee dashboard/reports. Payment history is authoritative — status is always derived from recorded `tb_fee_payments`/`tb_fee_payment_allocations` rows, never a manually settable flag.
+Requirements this satisfies: fee configuration at admission (per-student frequency choice and optional-fee opt-in/out), fee status in the student list (Paid/Partially Paid/Pending/Overdue/Not Set with amounts, filterable), configurable monthly due dates per fee head, automatic overdue detection that recalculates cleanly when a due date changes, and a fee dashboard with reports. Payment history is authoritative — status is always derived from recorded `tb_fee_payments`/`tb_fee_payment_allocations` rows, never a manually settable flag.
 
 ### `tb_student_fee_items` (per-student resolved billing lines)
 - `student_fee_item_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -510,7 +518,7 @@ Generated when a `tb_student_fee_items` row is created/activated: a Monthly item
 
 **Mid-year admissions:** the floor for the first generated due is the **first due date on or after the student's admission date** (not the start of the admission month) — so a student admitted Oct 15 with a due day of the 1st gets their first installment due Nov 1, not an Oct 1 installment that's already overdue on day one of enrollment. A student admitted before a due date in their admission month still gets that month's installment. One Time/Annual charges are dated from the admission day instead of the academic year start, so they're never overdue for a period before the student joined.
 
-**Gap case:** it's possible every remaining configured due date in the academic year falls before the admission date (most commonly for Quarterly/Half-Yearly, e.g. a Half-Yearly fee due Apr 1 and Oct 1, student admitted Oct 15 — both dates have passed; the same rule applies uniformly to Monthly too if ever admitted after the last due date in the year). In that case, generate exactly **one** installment dated at the admission date, for the normal per-period amount (no proration) — the student still owes the fee, there just wasn't a remaining scheduled date for it. **Built, tested, and confirmed** (Apr 1/Oct 1 Half-Yearly example with Oct 15 admission → single due dated Oct 15 for the full per-period amount).
+**Gap case:** it's possible every remaining configured due date in the academic year falls before the admission date (most commonly for Quarterly/Half-Yearly, e.g. a Half-Yearly fee due Apr 1 and Oct 1, student admitted Oct 15 — both dates have passed; the same rule applies uniformly to Monthly too if ever admitted after the last due date in the year). In that case, generate exactly **one** installment dated at the admission date, for the normal per-period amount (no proration) — the student still owes the fee, there just wasn't a remaining scheduled date for it. **Built, tested, and confirmed.**
 
 **Status is never a stored column** — always computed at read time:
 - `Paid`: `amount_paid >= amount_due`
@@ -529,7 +537,7 @@ This is what makes "recalculate overdue status without incorrectly marking stude
 - `payment_date` TIMESTAMPTZ
 - `amount` NUMERIC(12,2) — total of this transaction, may cover multiple dues at once
 - `payment_mode` VARCHAR(30) — Cash, Cheque, UPI, Card, Bank Transfer, Online
-- `receipt_number` VARCHAR(50) — school-scoped, sequential, human-readable (e.g. `RCP-2026-0001`, per school per year)
+- `receipt_number` VARCHAR(50) — school-scoped, sequential, human-readable (e.g. `RCP-2026-0001`, per school per year). Allocated under a per-school database lock so concurrent payments queue instead of colliding (an earlier retry-only approach could exhaust its 3 tries and 500 under load — fixed).
 - `collected_by` BIGINT FK → tb_users, nullable
 - `remarks` TEXT, nullable
 - `status` VARCHAR(20) default `Active` — `Active` or `Voided`
@@ -539,7 +547,7 @@ This is what makes "recalculate overdue status without incorrectly marking stude
 - `created_at` / `updated_at`
 - Unique: `(school_id, receipt_number)`
 
-**Voiding (soft void, never hard-deleted):** `POST /FeePayment/{id}/void` (not `DELETE` — this project uses POST for actions, and DELETE implies the row disappears, which it doesn't). Body requires a non-blank `voidReason`. In one transaction: lock the affected `tb_student_fee_dues` rows, subtract each of the payment's allocations from the corresponding due's `amount_paid`, set `status = Voided` with `voided_by`/`voided_at`/`void_reason`. The payment row, its allocations, and its receipt number are never deleted or reused — a voided receipt stays printable, clearly marked VOID (banner + watermark on screen and print). Affected installment status simply recomputes from the reduced `amount_paid` (e.g. a Paid installment reverts to Overdue or Pending) — confirmed to happen automatically with no special-case code needed, since status is always computed live. Voiding an already-voided payment returns 404 with a clear message (not 409 — accepted as-is). Only School Admin and Accountant may void or record a payment, via the shared `CanManageFees` role-name check (see section 25's noted RBAC gap — no real permission system yet; both endpoints now use it consistently). No time limit on when a void can happen — the audit trail is the control, not a deadline. Voiding does not track or move actual cash — see section 23 for why a refund concept is explicitly out of scope until the Finance/Ledger module exists. **Built and tested**: normal void, re-void rejection, cross-school 404, wrong-role 403, blank-reason 400, no-token 401, concurrent-void race (six simultaneous voids → one 200 + five 404s, installment reduced exactly once), receipt numbers never reused after a void (re-collecting the same due gets the next sequential number).
+**Voiding (soft void, never hard-deleted):** `POST /FeePayment/{id}/void` (not `DELETE`). Body requires a non-blank `voidReason`. In one transaction: lock the affected `tb_student_fee_dues` rows, subtract each of the payment's allocations from the corresponding due's `amount_paid`, set `status = Voided` with `voided_by`/`voided_at`/`void_reason`. The payment row, its allocations, and its receipt number are never deleted or reused — a voided receipt stays printable, clearly marked VOID. Affected installment status simply recomputes from the reduced `amount_paid`. Voiding an already-voided payment returns 404 (not 409 — accepted as-is). Only School Admin and Accountant may void or record a payment (`CanManageFees`, section 25). No time limit — the audit trail is the control. Voiding does not track or move actual cash (see section 23).
 
 ### `tb_fee_payment_allocations` (splits one payment across one or more dues)
 - `allocation_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -549,16 +557,36 @@ This is what makes "recalculate overdue status without incorrectly marking stude
 - `created_at` TIMESTAMPTZ
 - Unique: `(payment_id, fee_due_id)`
 
-A parent paying off 3 months of tuition arrears in one transaction produces one `tb_fee_payments` row and 3 `tb_fee_payment_allocations` rows, each updating the corresponding due's `amount_paid`. The caller can send an explicit split, or omit it for auto-allocation (oldest due first). Validated: allocations must sum to the payment amount exactly, every due must belong to the same student+school, and no allocation can push a due's `amount_paid` above its `amount_due` (overpayment against a single due is rejected, not silently absorbed — a true credit-balance concept is future scope, same as refunds).
+A parent paying off 3 months of tuition arrears in one transaction produces one `tb_fee_payments` row and 3 `tb_fee_payment_allocations` rows, each updating the corresponding due's `amount_paid`. The caller can send an explicit split, or omit it for auto-allocation (oldest due first). Validated: allocations must sum to the payment amount exactly, every due must belong to the same student+school, and no allocation can push a due's `amount_paid` above its `amount_due`.
 
-### Read-side aggregates (no new tables — computed from the above)
-- **Student list fee status**: per student per academic year, aggregate across their `tb_student_fee_dues` — total due, total paid, outstanding, and an overall badge (Overdue if any due is overdue, else Partially Paid if some paid, else Pending if none paid, else Paid if fully settled).
-- **Fee Dashboard**: total collected, total outstanding, overdue count/amount, upcoming deadlines — filterable by academic year, class, section, student, status.
-- **Reports**: student-wise fee statement (all items + dues + payments for one student), class-wise collection report.
+### Student list fee status (built)
+`GET /Student/{schoolId}` returns, per student, `feeStatus`, `feeTotalDue`, `feeTotalPaid`, `feeOutstanding` — scoped to the list's academic year, computed in one grouped query across all listed students (no N+1). Overall status priority:
+- `Overdue` — any due is Overdue
+- `Partially Paid` — else, any due has `0 < amount_paid < amount_due` (this also covers "some installments fully paid, rest untouched, none overdue")
+- `Pending` — else, no amount paid yet on anything
+- `Paid` — else (every due fully paid, **or** the student has fee items but zero amount owed — e.g. every optional fee switched off, or a 100% concession — since nothing is outstanding)
+- `Not Set` — the student has no `tb_student_fee_items` for the year at all (no fee structure assigned)
 
-### Build status
+A `feeStatus` filter is available on the same list endpoint (`All` / `Overdue` / `Partially Paid` / `Pending` / `Paid` / `Not Set`), applied server-side after status is computed; an unrecognized value returns 400.
+
+### Fee Dashboard (built)
+`GET /api/FeeDashboard?academicYearId={required}&classId=&sectionId=&days=` — scoped to one academic year (optionally narrowed to class/section), returns:
+- `totalCollected` — sum of **Active** payment allocations to installments in scope for the year (not raw `tb_fee_payments.amount`, since one payment carries no year of its own and summing the raw amount could mix years for a payment spanning two — allocations are scoped correctly)
+- `totalOutstanding` — sum of `amount_due - amount_paid` across all dues in scope
+- `overdueAmount` / `overdueCount`
+- `upcomingAmount` / `upcomingCount` — unpaid/partially-paid installments due from today through today+`days` (default 7, caller can widen), excluding anything already Overdue so nothing is double-counted
+- a month-by-month collected total for the academic year (plain table in the frontend — no new charting library was introduced)
+
+Access: `CanViewFees` (section 25) — School Admin and Accountant get full access including the `canManage`-gated actions (class-wise report, CSV export, per-student Fees link); Principal gets identical numbers read-only. Runs as 4 queries per load regardless of student count (2 validation lookups + 1 grouped installment aggregate + 1 monthly payment sum) — no per-student loop.
+
+### Reports (built)
+- **Student-wise fee statement**: not a separate endpoint — the existing student Fees tab (items, dues, payment history, void) already is this report for the student's current enrollment year, so the dashboard links into it rather than duplicating it. A past-year statement would need a year parameter added to the existing Fees tab endpoints (not yet needed/built).
+- **Class-wise collection report**: `GET /api/FeeReports/class/{classId}?academicYearId=` — per-student total due/collected/outstanding/status plus a class total row, sortable client-side (defaults to highest outstanding first), reuses the same grouped query as the student list (no N+1). CSV export is a client-side, no-dependency export, available to School Admin and Accountant only (not Principal, per `canManage`).
+
+### Build status — MODULE COMPLETE
 - **Stage 1** (fix existing-student load crash): done.
-- **Stage 2** (`tb_student_fee_items`, `tb_student_fee_dues`, due-day config, due generation, admission-time fee configuration, Fees tab with due schedule + status badges): **done and deployed to `smss-db`.**
-- **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection UI, receipts, voiding, mid-year gap fix, RBAC on both fee-payment endpoints): **fully done, deployed and confirmed against real `smss-db`** — the real API has run the new code (void migration present) with no errors. Closed.
-- **Stage 4** (student list fee-status column + Fees tab shows real payment history) — next, not yet started.
-- **Stage 5** (dashboard + reports) — last.
+- **Stage 2** (`tb_student_fee_items`, `tb_student_fee_dues`, due-day config, due generation, admission-time fee configuration, Fees tab with due schedule + status badges): done and deployed.
+- **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection, receipts, voiding, mid-year/gap fix, RBAC on both fee-payment endpoints, receipt-number concurrency lock): done and deployed, confirmed against real `smss-db`.
+- **Stage 4** (student list fee-status column + filter, Fees tab Paid/Outstanding columns): done and deployed, confirmed against real `smss-db`.
+- **Stage 5** (Fee Dashboard, class-wise report, `CanViewFees`): done and deployed, dashboard figures cross-checked to the rupee against real `smss-db` and the Fees tab.
+- **Open follow-up** (not part of the Fee module itself, a pre-existing route-access gap it surfaced): give Accountant access to the student record's Fees tab — see section 9.

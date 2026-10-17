@@ -53,6 +53,7 @@ namespace smss_api.Controllers
         [RequestSizeLimit(LogoRules.MaxRequestBytes)]
         public async Task<IActionResult> UploadPhoto(string schoolId, string studentId, IFormFile? file, CancellationToken ct)
         {
+            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot change a student's photo.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (file == null) return Respond(400, "Photo file is required.");
 
@@ -65,6 +66,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/{studentId:length(1,20)}/photo/remove")]
         public async Task<IActionResult> RemovePhoto(string schoolId, string studentId, CancellationToken ct)
         {
+            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot change a student's photo.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.RemovePhotoAsync(own, studentId, ct);
             return StatusCode(response.StatusCode, response);
@@ -75,6 +77,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/{studentId:length(1,20)}/create-login")]
         public async Task<IActionResult> CreateLogin(string schoolId, string studentId, CancellationToken ct)
         {
+            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot create a student login.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _loginService.CreateStudentLoginAsync(own, studentId, ct);
             return StatusCode(response.StatusCode, response);
@@ -85,7 +88,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> GetStudentProfile(string schoolId, string studentId, CancellationToken ct)
         {
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
-            var response = await _service.GetStudentProfileAsync(own, studentId, ct);
+            var response = await _service.GetStudentProfileAsync(own, studentId, limited: User.IsAccountantOnly(), ct);
             return StatusCode(response.StatusCode, response);
         }
     }

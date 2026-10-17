@@ -356,3 +356,8 @@ Build these as the foundation BEFORE any feature screens:
 ## Accountant access to the student record
 - `/students/:studentId` is open to School Admin + Accountant. For an Accountant the page shows the student summary header and the Fees tab ONLY (Profile tab with photo / student-login actions is School Admin only); "Back" goes to the class report. Inside the Fees tab, structure assign / concessions / per-item edit are School Admin only (UI-only: the API has no role checks on those endpoints yet); collect + void are available to both.
 - The Accountant reaches a student via Fee Reports → Class-wise Report → "Fees". `/students` (the list) stays School Admin only.
+
+## Server-side role checks on fee endpoints (closes the UI-only gap)
+- `User.CanConfigureFees()` = School Admin only: all writes of FeeType / FeeStructure / FeeConcession and the billing writes in StudentFee (fee-item change, assign structure, apply / remove concession) return 403 otherwise. Reads stay open to any signed-in user of the school. `CanManageFees()` (School Admin + Accountant) is only for collecting / voiding payments. Decision: the Accountant does NOT configure fees (matches the frontend route rules, where all of Fee Setup is School Admin only).
+- `GET /api/Student/{schoolId}/{studentId}` returns a LIMITED profile (`limited: true`: header, class/section, status only) to an Accountant who is not also a School Admin; every other role gets the full profile as before. Photo upload/remove and create-login return 403 for that Accountant. Helpers: `ClaimsPrincipalExtensions.IsAccountantOnly()`, `ControllerForbidden.Forbidden()`.
+- Still open (not fee endpoints): admissions / other modules have no role checks.

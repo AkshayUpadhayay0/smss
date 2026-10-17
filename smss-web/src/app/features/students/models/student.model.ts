@@ -34,6 +34,8 @@ export interface GuardianSummary {
 }
 
 export interface StudentProfile {
+  /** True when the API returned the limited view (an Accountant): header + class/section only, everything else empty. */
+  limited?: boolean;
   studentId: string;
   admissionNumber: string;
   fullName: string;

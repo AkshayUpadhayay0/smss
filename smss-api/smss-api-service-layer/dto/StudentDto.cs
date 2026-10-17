@@ -38,6 +38,8 @@ namespace smss_api_service_layer.dto
 
     public class StudentProfileDto
     {
+        /// <summary>True when only the limited view was returned (an Accountant): header fields and class / section; everything else is empty.</summary>
+        public bool Limited { get; set; }
         public string StudentId { get; set; } = null!;
         public string AdmissionNumber { get; set; } = null!;
         public string FullName { get; set; } = null!;
