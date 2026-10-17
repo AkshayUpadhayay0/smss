@@ -10,6 +10,7 @@
       [options]="sectionOptions()"
       [formControl]="sectionControl"
     />
+    <app-select label="Fee status" [options]="feeStatusOptions" [formControl]="feeStatusControl" />
   </div>
   @if (!setupLoading() && (yearOptions().length === 0 || classOptions().length === 0)) {
     <p class="hint">Add an active academic year and class under School Setup to start browsing students.</p>

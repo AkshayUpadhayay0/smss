@@ -30,6 +30,8 @@ const ITEM_COLUMNS: TableColumn<FeeItemRow>[] = [
   { key: 'netAmount', label: 'Net / Period' },
   { key: 'annualNet', label: 'Net / Year' },
   { key: 'dues', label: 'Installments' },
+  { key: 'paid', label: 'Paid' },
+  { key: 'outstanding', label: 'Outstanding' },
   { key: 'nextDue', label: 'Next Due' },
 ];
 
@@ -131,6 +133,9 @@ export class StudentFeesTabComponent implements OnInit {
       netAmount: `${formatInr(i.netAmount)} / ${i.structureFrequencyName}`,
       annualNet: i.isApplicable ? formatInr(i.annualNetAmount) : '—',
       dues: i.isApplicable ? String(i.dueCount) : '—',
+      // real payments: summed from the item's installments on the server, so a payment or a void shows here too
+      paid: i.dueCount > 0 || i.totalPaid > 0 ? formatInr(i.totalPaid) : '—',
+      outstanding: i.dueCount > 0 || i.totalPaid > 0 ? formatInr(Math.max(i.totalDue - i.totalPaid, 0)) : '—',
       nextDue: i.isApplicable && i.nextDueDate ? formatDate(i.nextDueDate) : '—',
     })),
   );
@@ -270,7 +275,7 @@ export class StudentFeesTabComponent implements OnInit {
     this.collectOpen.set(false);
     this.receipt.set({ data: receipt, justPaid: true });
     this.toast.success(`Payment recorded. Receipt ${receipt.receiptNumber}.`);
-    this.refreshAfterChange();   // the installments' statuses move
+    this.refreshAfterPaymentChange();   // the installments' statuses and the items' totals move
     this.loadPayments();
   }
 
@@ -304,7 +309,7 @@ export class StudentFeesTabComponent implements OnInit {
           this.voiding.set(null);
           this.toast.success(`Receipt ${row.receiptNumber} voided.`);
           this.loadPayments();
-          this.refreshAfterChange(); // the installments it had paid go back to Overdue / Pending
+          this.refreshAfterPaymentChange(); // the installments it had paid go back to Overdue / Pending
         },
         error: () => undefined, // the server's reason is toasted by the interceptor; the dialog stays open
       });
@@ -354,6 +359,15 @@ export class StudentFeesTabComponent implements OnInit {
       .getFeeDues(this.studentId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({ next: (d) => this.dues.set(d), error: () => undefined });
+  }
+
+  /** A payment or a void moves each fee item's Paid / Outstanding (summed from its installments on the server). */
+  private refreshAfterPaymentChange(): void {
+    this.refreshAfterChange();
+    this.students
+      .getFeeItems(this.studentId())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (i) => this.items.set(i), error: () => undefined });
   }
 
   protected appliesTo(c: StudentFeeConcession): string {

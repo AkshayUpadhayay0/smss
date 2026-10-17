@@ -338,3 +338,10 @@ Build these as the foundation BEFORE any feature screens:
 - Installment status is computed live, so a voided Paid installment reads Overdue/Pending again with no extra work.
 - Voided receipts still open/print, with a VOID banner + watermark (`receipt-print.ts`, `fee-receipt-dialog`).
 - `FeeSchedule.OwedSchedule`: if no configured due date is left on/after the start date, ONE installment dated at the start date for the normal per-period amount (no proration).
+
+## Stage 4 — fee status on the student list + per-item payments
+- `GET /api/Student/{schoolId}?academicYearId&classSectionId` now returns `feeStatus` (Overdue | Partially Paid | Pending | Paid | Not Set) + `feeTotalDue/Paid/Outstanding` per student, from ONE grouped query (`StudentRepository.GetFeeAggregatesAsync`) over the whole list. Rule lives in `FeeSchedule.Overall` (Not Set = no installments for that year).
+- List badge reuses `dueStatusTone` (Overdue red, Partially Paid blue, Pending yellow, Paid green, Not Set grey) so it matches the Fees tab.
+- Fees tab fee-items table has Paid / Outstanding columns; payments and voids reload the items.
+- Receipt numbers: `FeePaymentRepository.LockReceiptNumbersAsync` (pg advisory xact lock per school) serializes number allocation; the unique-violation retry stays as a backstop.
+- Fee status (closeout): `FeeSchedule.Overall(hasItems, ...)`: Not Set ONLY when no fee items exist for the year; items with nothing owed (optional heads off, full concession) = Paid. List endpoint takes optional `feeStatus` (All/blank = none; unknown = 400), filtered server-side; the list's Fee status dropdown reloads from the server and rides along in the Back-to-Students query params.

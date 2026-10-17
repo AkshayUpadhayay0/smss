@@ -51,7 +51,7 @@ export class StudentProfileComponent implements OnInit {
   private readonly filterParams = computed(() => {
     const q = this.route.snapshot.queryParamMap;
     const params: Record<string, string> = {};
-    for (const k of ['academicYearId', 'classId', 'sectionId']) {
+    for (const k of ['academicYearId', 'classId', 'sectionId', 'feeStatus']) {
       const v = q.get(k);
       if (v) params[k] = v;
     }

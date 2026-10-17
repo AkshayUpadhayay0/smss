@@ -36,15 +36,15 @@ namespace smss_api.Controllers
         private IActionResult Respond(int code, string message) =>
             StatusCode(code, new ApiResponse<object> { Status = false, StatusCode = code, Message = message, Data = null });
 
-        // GET api/Student/{schoolId}?academicYearId=1&classSectionId=5   (classSectionId = tb_sections.section_id)
+        // GET api/Student/{schoolId}?academicYearId=1&classSectionId=5&feeStatus=Overdue   (feeStatus is optional; classSectionId = tb_sections.section_id)
         [HttpGet("{schoolId}")]
-        public async Task<IActionResult> GetStudents(string schoolId, [FromQuery] long? academicYearId, [FromQuery] long? classSectionId, CancellationToken ct)
+        public async Task<IActionResult> GetStudents(string schoolId, [FromQuery] long? academicYearId, [FromQuery] long? classSectionId, [FromQuery] string? feeStatus, CancellationToken ct)
         {
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (academicYearId is null or <= 0) return Respond(400, "academicYearId is required.");
             if (classSectionId is null or <= 0) return Respond(400, "classSectionId is required.");
 
-            var response = await _service.GetStudentsAsync(own, academicYearId.Value, classSectionId.Value, ct);
+            var response = await _service.GetStudentsAsync(own, academicYearId.Value, classSectionId.Value, feeStatus, ct);
             return StatusCode(response.StatusCode, response);
         }
 

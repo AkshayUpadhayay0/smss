@@ -104,6 +104,23 @@ namespace smss_api_service_layer.helper
             return result;
         }
 
+        public const string StatusNotSet = "Not Set";
+        public static readonly string[] OverallStatuses = { StatusOverdue, StatusPartiallyPaid, StatusPending, StatusPaid, StatusNotSet };
+
+        /// <summary>
+        /// A student's overall fee state for the list, from their installment totals. In priority order:
+        /// Overdue (any installment overdue) > Partially Paid (some money in and a balance left: a part-paid installment, or some installments
+        /// paid and others not) > Pending (nothing paid yet) > Paid (nothing left, which includes "has fee items but nothing is owed": every
+        /// optional head switched off, or a full concession). Not Set only when no fee items were ever assigned for the year.
+        /// </summary>
+        public static string Overall(bool hasItems, decimal totalDue, decimal totalPaid, int overdueCount)
+        {
+            if (!hasItems) return StatusNotSet;
+            if (overdueCount > 0) return StatusOverdue;
+            if (totalPaid >= totalDue) return StatusPaid;
+            return totalPaid > 0 ? StatusPartiallyPaid : StatusPending;
+        }
+
         /// <summary>
         /// Computed, never stored. Paid when fully paid; Overdue when something is still owed and the due date has passed
         /// (a partly paid installment past its due date is Overdue: that is the state that needs action); otherwise Partially Paid

@@ -50,6 +50,9 @@ namespace smss_api_db_layer.@interface
         Task<TbFeePayment?> LockPaymentAsync(string schoolId, long paymentId, CancellationToken ct);
         Task<List<TbFeePaymentAllocation>> GetAllocationsAsync(long paymentId, CancellationToken ct);
 
+        /// <summary>Takes a transaction-scoped lock for this school's receipt numbers (released at commit/rollback), so concurrent payments queue up instead of colliding on the same number. Inside a transaction.</summary>
+        Task LockReceiptNumbersAsync(string schoolId, CancellationToken ct);
+
         /// <summary>The highest receipt sequence already used with this prefix (e.g. "RCP-2026-"), or 0.</summary>
         Task<int> GetMaxReceiptSequenceAsync(string schoolId, string prefix, CancellationToken ct);
         Task AddPaymentAsync(TbFeePayment payment, CancellationToken ct);

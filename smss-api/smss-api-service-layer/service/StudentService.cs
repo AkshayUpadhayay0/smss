@@ -19,10 +19,18 @@ namespace smss_api_service_layer.service
             _logger = logger;
         }
 
-        public async Task<ApiResponse<List<StudentListItemDto>>> GetStudentsAsync(string schoolId, long academicYearId, long classSectionId, CancellationToken ct)
+        public async Task<ApiResponse<List<StudentListItemDto>>> GetStudentsAsync(string schoolId, long academicYearId, long classSectionId, string? feeStatus, CancellationToken ct)
         {
             try
             {
+                // optional filter: one of the overall fee states ("All" / blank = no filter)
+                string? wantedFee = null;
+                if (!string.IsNullOrWhiteSpace(feeStatus) && !feeStatus.Trim().Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    wantedFee = FeeSchedule.OverallStatuses.FirstOrDefault(s => s.Equals(feeStatus.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (wantedFee == null) return Result<List<StudentListItemDto>>(400, $"feeStatus must be one of: All, {string.Join(", ", FeeSchedule.OverallStatuses)}.", null);
+                }
+
                 // ids come from the query string: they must belong to THIS school
                 if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, academicYearId, ct))
                     return Result<List<StudentListItemDto>>(400, "The selected academic year was not found for your school.", null);
@@ -32,6 +40,8 @@ namespace smss_api_service_layer.service
                 var rows = await _repo.GetEnrolledStudentsAsync(schoolId, academicYearId, classSectionId, ct);
                 var statuses = await _repo.GetGeneralStatusNamesAsync(ct);
                 var genders = await _repo.GetGenderNamesAsync(ct);
+                // fee state of every student in the list, in one query (not one per student)
+                var fees = await _repo.GetFeeAggregatesAsync(schoolId, academicYearId, rows.Select(r => r.StudentId).ToList(), SchoolClock.Today(), ct);
 
                 var items = rows
                     .Select(r => new StudentListItemDto
@@ -43,8 +53,13 @@ namespace smss_api_service_layer.service
                         GenderName = r.GenderId.HasValue ? genders.GetValueOrDefault(r.GenderId.Value) : null,
                         StatusName = statuses.GetValueOrDefault(r.StatusId, "Unknown"),
                         EnrollmentId = r.EnrollmentId,
-                        ProfilePhotoUrl = r.ProfilePhotoUrl
+                        ProfilePhotoUrl = r.ProfilePhotoUrl,
+                        FeeStatus = FeeSchedule.Overall(fees.ContainsKey(r.StudentId), fees.GetValueOrDefault(r.StudentId)?.TotalDue ?? 0, fees.GetValueOrDefault(r.StudentId)?.TotalPaid ?? 0, fees.GetValueOrDefault(r.StudentId)?.OverdueCount ?? 0),
+                        FeeTotalDue = fees.GetValueOrDefault(r.StudentId)?.TotalDue,
+                        FeeTotalPaid = fees.GetValueOrDefault(r.StudentId)?.TotalPaid,
+                        FeeOutstanding = fees.TryGetValue(r.StudentId, out var f) ? Math.Max(f.TotalDue - f.TotalPaid, 0) : null
                     })
+                    .Where(i => wantedFee == null || i.FeeStatus == wantedFee)
                     .OrderBy(i => i.RollNumber, RollNumberComparer.Instance)
                     .ThenBy(i => i.FullName, StringComparer.OrdinalIgnoreCase)
                     .ToList();

@@ -134,6 +134,8 @@ export interface FeeItemRow extends Record<string, unknown> {
   netAmount: string;
   annualNet: string;
   dues: string;
+  paid: string;
+  outstanding: string;
   nextDue: string;
 }
 

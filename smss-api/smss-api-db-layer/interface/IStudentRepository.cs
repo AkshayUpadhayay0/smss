@@ -6,6 +6,9 @@ namespace smss_api_db_layer.@interface
     public record StudentListRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
         string? RollNumber, int? GenderId, int StatusId, long EnrollmentId, string? ProfilePhotoUrl);
 
+    /// <summary>One student's installments for one academic year, added up (see IStudentRepository.GetFeeAggregatesAsync).</summary>
+    public record StudentFeeAggregate(string StudentId, decimal TotalDue, decimal TotalPaid, int OverdueCount);
+
     /// <summary>A student's enrollment joined to its year, class and section.</summary>
     public record StudentEnrollmentRow(long EnrollmentId, string? RollNumber, int StatusId, long AcademicYearId, string AcademicYearName,
         DateOnly AcademicYearStart, bool AcademicYearIsCurrent, string ClassName, string SectionName);
@@ -20,6 +23,11 @@ namespace smss_api_db_layer.@interface
         Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct);
 
         Task<List<StudentListRow>> GetEnrolledStudentsAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        /// <summary>
+        /// ONE grouped query for all the given students: each one's installments of that academic year (every fee head), summed, plus how many are
+        /// overdue (still owed and due before <paramref name="today"/>). Students with no fee items at all are simply absent from the result (a student with items but no installments is present with zero totals).
+        /// </summary>
+        Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct);
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>The student, tracked, for changing their photo.</summary>
         Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, string studentId, CancellationToken ct);

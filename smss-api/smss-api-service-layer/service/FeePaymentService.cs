@@ -101,6 +101,7 @@ namespace smss_api_service_layer.service
                         // ---- the payment, its allocations and each installment's running total: one SaveChanges, one transaction ----
                         var year = SchoolClock.Today().Year;
                         var prefix = $"RCP-{year}-";
+                        await _repo.LockReceiptNumbersAsync(schoolId, ct);   // one payment at a time per school picks its number
                         var next = await _repo.GetMaxReceiptSequenceAsync(schoolId, prefix, ct) + 1;
 
                         var payment = new TbFeePayment

@@ -42,6 +42,28 @@ namespace smss_api_db_layer.repository
                 r.RollNumber, r.GenderId, r.StatusId, r.EnrollmentId, r.ProfilePhotoUrl)).ToList();
         }
 
+        public async Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct)
+        {
+            if (studentIds.Count == 0) return new();
+            var ids = studentIds.ToArray();
+            // one round trip however many students are on the page; school id on both tables
+            // starts from the ITEMS (left join to their installments) so a student with items but no installments still shows up, with zero totals
+            var rows = await (
+                from i in _db.StudentFeeItems.AsNoTracking()
+                where i.SchoolId == schoolId && i.AcademicYearId == academicYearId && ids.Contains(i.StudentId)
+                join d in _db.StudentFeeDues.AsNoTracking() on i.StudentFeeItemId equals d.StudentFeeItemId into dg
+                from d in dg.DefaultIfEmpty()
+                group d by i.StudentId into g
+                select new
+                {
+                    StudentId = g.Key,
+                    TotalDue = g.Sum(x => x == null ? 0m : x.AmountDue),
+                    TotalPaid = g.Sum(x => x == null ? 0m : x.AmountPaid),
+                    Overdue = g.Count(x => x != null && x.AmountPaid < x.AmountDue && x.DueDate < today)
+                }).ToListAsync(ct);
+            return rows.ToDictionary(r => r.StudentId, r => new StudentFeeAggregate(r.StudentId, r.TotalDue, r.TotalPaid, r.Overdue));
+        }
+
         public Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 

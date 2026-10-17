@@ -12,7 +12,15 @@ export interface StudentListItem {
   enrollmentId: number;
   /** Relative public URL (/uploads/...); null = no photo. */
   profilePhotoUrl?: string | null;
+  /** Overdue | Partially Paid | Pending | Paid | Not Set (no fee installments for the list's academic year). */
+  feeStatus: FeeStatus;
+  /** Totals over the year's installments; null/absent when Not Set. */
+  feeTotalDue?: number | null;
+  feeTotalPaid?: number | null;
+  feeOutstanding?: number | null;
 }
+
+export type FeeStatus = 'Overdue' | 'Partially Paid' | 'Pending' | 'Paid' | 'Not Set';
 
 export interface GuardianSummary {
   guardianId: number;
@@ -67,6 +75,7 @@ export interface StudentRow extends Record<string, unknown> {
   fullName: string;
   genderName: string;
   statusName: string;
+  feeStatus: string;
 }
 
 /** Mirrors StudentPhotoDto. */

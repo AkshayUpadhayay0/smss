@@ -41,6 +41,12 @@ namespace smss_api_db_layer.repository
         public Task<List<TbFeePaymentAllocation>> GetAllocationsAsync(long paymentId, CancellationToken ct) =>
             _db.FeePaymentAllocations.AsNoTracking().Where(a => a.PaymentId == paymentId).OrderBy(a => a.AllocationId).ToListAsync(ct);
 
+        public async Task LockReceiptNumbersAsync(string schoolId, CancellationToken ct)
+        {
+            var key = "receipt:" + schoolId;
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+        }
+
         public async Task<int> GetMaxReceiptSequenceAsync(string schoolId, string prefix, CancellationToken ct)
         {
             // Fixed-width numbers sort correctly by (length, value), so the biggest is simply the last of that order

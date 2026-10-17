@@ -19,8 +19,10 @@ export class StudentService {
   private readonly auth = inject(AuthService);
 
   /** Students enrolled in a section (a tb_sections id) for an academic year. */
-  list(academicYearId: number, classSectionId: number): Observable<StudentListItem[]> {
-    return this.withSchool((s) => this.api.get<StudentListItem[]>(`${BASE}/${s}`, { academicYearId, classSectionId })).pipe(map((l) => l ?? []));
+  list(academicYearId: number, classSectionId: number, feeStatus?: string): Observable<StudentListItem[]> {
+    const params: Record<string, string | number> = { academicYearId, classSectionId };
+    if (feeStatus && feeStatus !== 'All') params['feeStatus'] = feeStatus; // filtered on the server
+    return this.withSchool((s) => this.api.get<StudentListItem[]>(`${BASE}/${s}`, params)).pipe(map((l) => l ?? []));
   }
 
   getProfile(studentId: string): Observable<StudentProfile> {

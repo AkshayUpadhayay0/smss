@@ -280,6 +280,7 @@ describe('StudentFeesTabComponent', () => {
       cmp()['onRecorded'](RECEIPT);
       http.expectOne(URL).flush(env(assigned));
       http.expectOne(DUE_URL).flush(env(DUES));
+      http.expectOne(`${URL}/fee-items`).flush(env(ITEMS));
       http.expectOne(`${API}/api/FeePayment/students/DPS001ST001`).flush(env([{ ...PAYMENTS[0] }, { ...PAYMENTS[0], paymentId: 12, receiptNumber: 'RCP-2026-0002' }]));
       fixture.detectChanges();
 
@@ -343,12 +344,22 @@ describe('StudentFeesTabComponent', () => {
       http.expectOne(`${API}/api/FeePayment/students/DPS001ST001`).flush(env([{ ...PAYMENTS[0], status: 'Voided', voidReason: 'Entered against the wrong student' }]));
       http.expectOne(URL).flush(env(assigned));
       http.expectOne(DUE_URL).flush(env({ ...DUES, dues: DUES.dues.map((d) => ({ ...d, amountPaid: 0, outstanding: d.amountDue, status: 'Overdue' })) }));
+      http.expectOne(`${URL}/fee-items`).flush(env({ ...ITEMS, items: [{ ...ITEMS.items[0], totalPaid: 0 }] }));
       fixture.detectChanges();
 
       expect(cmp()['voiding']()).toBeNull();
       expect(cmp()['dues']().dues.every((d: { status: string }) => d.status === 'Overdue')).toBe(true);   // the Paid installment flipped back
       expect(cmp()['paymentRows']()[0].status).toBe('Voided');
       expect(voidButton()).toBeUndefined();
+    });
+
+    it('per fee item, Paid and Outstanding come from the real payments (and update after a void)', () => {
+      open(assigned);
+      expect(cmp()['itemRows']()[0]).toMatchObject({ paid: '₹0.00', outstanding: '₹30,000.00' });
+      cmp()['items'].set({ ...ITEMS, items: [{ ...ITEMS.items[0], totalPaid: 7500 }] });
+      expect(cmp()['itemRows']()[0]).toMatchObject({ paid: '₹7,500.00', outstanding: '₹22,500.00' });
+      cmp()['items'].set({ ...ITEMS, items: [{ ...ITEMS.items[0], isApplicable: false, dueCount: 0, totalDue: 0, totalPaid: 0 }] });
+      expect(cmp()['itemRows']()[0]).toMatchObject({ paid: '—', outstanding: '—' });
     });
 
     it('"Receipt" in the history fetches that receipt for reprint', () => {

@@ -24,6 +24,7 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { toUploadUrl } from '../../../../core/utils/upload-url';
+import { dueStatusTone } from '../../models/student-billing.model';
 import { StudentListItem, StudentRow } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
@@ -34,7 +35,11 @@ const COLUMNS: TableColumn<StudentRow>[] = [
   { key: 'fullName', label: 'Name', sortable: true },
   { key: 'genderName', label: 'Gender', sortable: true },
   { key: 'statusName', label: 'Status', sortable: true, type: 'status', width: '120px' },
+  // same colours as the installment status badges on the Fees tab (Not Set falls to the neutral grey)
+  { key: 'feeStatus', label: 'Fee Status', sortable: true, type: 'badge', tone: dueStatusTone, width: '140px' },
 ];
+
+const FEE_STATUS_OPTIONS: SelectOption[] = ['All', 'Overdue', 'Partially Paid', 'Pending', 'Paid', 'Not Set'].map((s) => ({ label: s, value: s }));
 
 const byText = (a: unknown, b: unknown) => String(a ?? '').localeCompare(String(b ?? ''), undefined, { sensitivity: 'base', numeric: true });
 
@@ -72,6 +77,8 @@ export class StudentListComponent implements OnInit {
   protected readonly yearControl = new FormControl('', { nonNullable: true });
   protected readonly classControl = new FormControl('', { nonNullable: true });
   protected readonly sectionControl = new FormControl('', { nonNullable: true });
+  protected readonly feeStatusControl = new FormControl('All', { nonNullable: true });
+  protected readonly feeStatusOptions = FEE_STATUS_OPTIONS;
   private readonly yearValue = toSignal(this.yearControl.valueChanges, { initialValue: '' });
   private readonly classValue = toSignal(this.classControl.valueChanges, { initialValue: '' });
   private readonly sectionValue = toSignal(this.sectionControl.valueChanges, { initialValue: '' });
@@ -111,6 +118,7 @@ export class StudentListComponent implements OnInit {
       fullName: s.fullName,
       genderName: s.genderName ?? '',
       statusName: s.statusName,
+      feeStatus: s.feeStatus ?? 'Not Set',
     })),
   );
 
@@ -119,7 +127,7 @@ export class StudentListComponent implements OnInit {
     const key = this.sortKey();
     const dir = this.sortDirection() === 'asc' ? 1 : -1;
 
-    const rows = q ? this.rows().filter((r) => [r.rollNumber, r.admissionNumber, r.fullName, r.genderName, r.statusName].some((t) => t.toLowerCase().includes(q))) : this.rows();
+    const rows = q ? this.rows().filter((r) => [r.rollNumber, r.admissionNumber, r.fullName, r.genderName, r.statusName, r.feeStatus].some((t) => t.toLowerCase().includes(q))) : this.rows();
     if (!key) return rows;
     return [...rows].sort((a, b) => {
       const av = String(a[key] ?? '');
@@ -144,6 +152,7 @@ export class StudentListComponent implements OnInit {
     this.classControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.sectionControl.setValue(''));
     this.yearControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.reload());
     this.sectionControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.reload());
+    this.feeStatusControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.reload());
     this.loadSetup();
   }
 
@@ -167,6 +176,9 @@ export class StudentListComponent implements OnInit {
         // These must emit: `ready` is derived from the controls' valueChanges, so a silent set would leave it false
         if (year) this.yearControl.setValue(String(year.academicYearId));
 
+        const wantedFee = q.get('feeStatus');
+        if (wantedFee && FEE_STATUS_OPTIONS.some((o) => o.value === wantedFee)) this.feeStatusControl.setValue(wantedFee, { emitEvent: false });
+
         const wantedClass = q.get('classId');
         if (wantedClass && this.classOptions().some((o) => o.value === wantedClass)) {
           const wantedSection = q.get('sectionId');
@@ -184,7 +196,7 @@ export class StudentListComponent implements OnInit {
 
     this.loading.set(true);
     this.students
-      .list(Number(this.yearControl.value), Number(this.sectionControl.value))
+      .list(Number(this.yearControl.value), Number(this.sectionControl.value), this.feeStatusControl.value)
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (list) => this.items.set(list),
@@ -215,7 +227,7 @@ export class StudentListComponent implements OnInit {
   /** Carries the filter in the URL so the profile's "Back to Students" returns to the same list. */
   protected view(row: StudentRow): void {
     void this.router.navigate(['/students', row.studentId], {
-      queryParams: { academicYearId: this.yearControl.value, classId: this.classControl.value, sectionId: this.sectionControl.value },
+      queryParams: { academicYearId: this.yearControl.value, classId: this.classControl.value, sectionId: this.sectionControl.value, feeStatus: this.feeStatusControl.value },
     });
   }
 }

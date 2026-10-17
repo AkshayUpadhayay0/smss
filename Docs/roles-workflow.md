@@ -366,6 +366,8 @@ HOMEWORK_REVIEW, EXAM_MARKS_ENTER, LEAVE_APPLY
 
 This is far more flexible than hard-coding permissions directly into roles.
 
+**Known current gap:** there is no real permission system yet — role checks in code (e.g. the Fees module's `CanManageFees` helper, section 28) currently test role **names** ("School Admin", "Accountant") directly rather than resolving permissions. This is an accepted stopgap, consistent project-wide, to be replaced once `lut_roles`/`tb_user_roles` grows real permission mapping. Do not treat each new instance of this pattern as a fresh decision — it matches existing practice. Both fee-payment endpoints (recording and voiding) now use `CanManageFees` consistently.
+
 ## 26. Final high-level workflow
 
 ```
@@ -508,7 +510,7 @@ Generated when a `tb_student_fee_items` row is created/activated: a Monthly item
 
 **Mid-year admissions:** the floor for the first generated due is the **first due date on or after the student's admission date** (not the start of the admission month) — so a student admitted Oct 15 with a due day of the 1st gets their first installment due Nov 1, not an Oct 1 installment that's already overdue on day one of enrollment. A student admitted before a due date in their admission month still gets that month's installment. One Time/Annual charges are dated from the admission day instead of the academic year start, so they're never overdue for a period before the student joined.
 
-**Gap case:** for Quarterly/Half-Yearly fees, it's possible every remaining configured due date in the academic year falls before the admission date (e.g. a Half-Yearly fee due Apr 1 and Oct 1, student admitted Oct 15 — both dates have passed). In that case, generate exactly **one** installment dated at the admission date, for the normal per-period amount (no proration) — the student still owes the fee, there just wasn't a remaining scheduled date for it.
+**Gap case:** it's possible every remaining configured due date in the academic year falls before the admission date (most commonly for Quarterly/Half-Yearly, e.g. a Half-Yearly fee due Apr 1 and Oct 1, student admitted Oct 15 — both dates have passed; the same rule applies uniformly to Monthly too if ever admitted after the last due date in the year). In that case, generate exactly **one** installment dated at the admission date, for the normal per-period amount (no proration) — the student still owes the fee, there just wasn't a remaining scheduled date for it. **Built, tested, and confirmed** (Apr 1/Oct 1 Half-Yearly example with Oct 15 admission → single due dated Oct 15 for the full per-period amount).
 
 **Status is never a stored column** — always computed at read time:
 - `Paid`: `amount_paid >= amount_due`
@@ -537,7 +539,7 @@ This is what makes "recalculate overdue status without incorrectly marking stude
 - `created_at` / `updated_at`
 - Unique: `(school_id, receipt_number)`
 
-**Voiding (soft void, never hard-deleted):** `POST /FeePayment/{id}/void` (not `DELETE` — this project uses POST for actions, and DELETE implies the row disappears, which it doesn't). In one transaction: subtract each of the payment's allocations from the corresponding due's `amount_paid`, set `status = Voided` with `voided_by`/`voided_at`/`void_reason`. The payment row, its allocations, and its receipt number are never deleted or reused — a voided receipt stays printable, clearly marked VOID. Affected installment status simply recomputes from the reduced `amount_paid` (e.g. a Paid installment reverts to Overdue or Pending). Only School Admin and Accountant may void (they're the only roles with Fees:Manage, section 24); no time limit on when a void can happen — the audit trail is the control, not a deadline. Voiding does not track or move actual cash — see section 23 for why a refund concept is explicitly out of scope until the Finance/Ledger module exists.
+**Voiding (soft void, never hard-deleted):** `POST /FeePayment/{id}/void` (not `DELETE` — this project uses POST for actions, and DELETE implies the row disappears, which it doesn't). Body requires a non-blank `voidReason`. In one transaction: lock the affected `tb_student_fee_dues` rows, subtract each of the payment's allocations from the corresponding due's `amount_paid`, set `status = Voided` with `voided_by`/`voided_at`/`void_reason`. The payment row, its allocations, and its receipt number are never deleted or reused — a voided receipt stays printable, clearly marked VOID (banner + watermark on screen and print). Affected installment status simply recomputes from the reduced `amount_paid` (e.g. a Paid installment reverts to Overdue or Pending) — confirmed to happen automatically with no special-case code needed, since status is always computed live. Voiding an already-voided payment returns 404 with a clear message (not 409 — accepted as-is). Only School Admin and Accountant may void or record a payment, via the shared `CanManageFees` role-name check (see section 25's noted RBAC gap — no real permission system yet; both endpoints now use it consistently). No time limit on when a void can happen — the audit trail is the control, not a deadline. Voiding does not track or move actual cash — see section 23 for why a refund concept is explicitly out of scope until the Finance/Ledger module exists. **Built and tested**: normal void, re-void rejection, cross-school 404, wrong-role 403, blank-reason 400, no-token 401, concurrent-void race (six simultaneous voids → one 200 + five 404s, installment reduced exactly once), receipt numbers never reused after a void (re-collecting the same due gets the next sequential number).
 
 ### `tb_fee_payment_allocations` (splits one payment across one or more dues)
 - `allocation_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -557,6 +559,6 @@ A parent paying off 3 months of tuition arrears in one transaction produces one 
 ### Build status
 - **Stage 1** (fix existing-student load crash): done.
 - **Stage 2** (`tb_student_fee_items`, `tb_student_fee_dues`, due-day config, due generation, admission-time fee configuration, Fees tab with due schedule + status badges): **done and deployed to `smss-db`.**
-- **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection UI, receipts): **done and deployed to `smss-db`**, except voiding — approach decided (soft void, see `tb_fee_payments` above) and queued to build next. The mid-year gap case (Quarterly/Half-Yearly with no remaining due date) is also fixed as part of this stage.
-- **Stage 4** (student list fee-status column + Fees tab shows real payment history) — after void is built.
+- **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection UI, receipts, voiding, mid-year gap fix, RBAC on both fee-payment endpoints): **fully done, deployed and confirmed against real `smss-db`** — the real API has run the new code (void migration present) with no errors. Closed.
+- **Stage 4** (student list fee-status column + Fees tab shows real payment history) — next, not yet started.
 - **Stage 5** (dashboard + reports) — last.

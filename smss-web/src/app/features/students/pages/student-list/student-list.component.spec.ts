@@ -22,7 +22,7 @@ const SECTIONS = [
   { sectionId: 20, classId: 7, className: 'Class 1', sectionName: 'B', statusName: 'Active' },
 ];
 const STUDENTS = [
-  { studentId: 'DPS001ST002', admissionNumber: 'ADMNO20260001', fullName: 'Akshay Upadhayay', rollNumber: '1', genderName: 'Male', statusName: 'Active', enrollmentId: 5 },
+  { studentId: 'DPS001ST002', admissionNumber: 'ADMNO20260001', fullName: 'Akshay Upadhayay', rollNumber: '1', genderName: 'Male', statusName: 'Active', enrollmentId: 5, feeStatus: 'Pending' },
 ];
 
 describe('StudentListComponent', () => {
@@ -102,6 +102,50 @@ describe('StudentListComponent', () => {
     fixture.detectChanges();
     expect(cmp()['sectionControl'].value).toBe('');
     expect(el().textContent).toContain('Select a class and section to view students');
+  });
+
+  it('shows a Fee Status badge per student in the established colours, and a neutral "Not Set" when no fees are set up', () => {
+    create();
+    cmp()['classControl'].setValue('4');
+    cmp()['sectionControl'].setValue('13');
+    const base = STUDENTS[0];
+    const list = (['Overdue', 'Partially Paid', 'Pending', 'Paid', 'Not Set'] as const).map((feeStatus, i) => ({ ...base, studentId: `S${i}`, admissionNumber: `A${i}`, rollNumber: String(i + 1), feeStatus }));
+    studentRequests().forEach((r) => r.flush(env(list)));
+    fixture.detectChanges();
+
+    const pills = [...el().querySelectorAll('tbody .pill')].filter((p) => ['Overdue', 'Partially Paid', 'Pending', 'Paid', 'Not Set'].includes(p.textContent?.trim() ?? ''));
+    const tones = Object.fromEntries(pills.map((p) => [p.textContent!.trim(), [...p.classList].find((c) => c.startsWith('tone-'))]));
+    expect(tones).toEqual({ Overdue: 'tone-red', 'Partially Paid': 'tone-blue', Pending: 'tone-yellow', Paid: 'tone-green', 'Not Set': 'tone-gray' });
+    expect(el().textContent).toContain('Fee Status');
+  });
+
+  it('the Fee status dropdown filters on the server: All sends no param, a status is sent and reloads the list', () => {
+    create();
+    cmp()['classControl'].setValue('4');
+    cmp()['sectionControl'].setValue('13');
+    const first = studentRequests();
+    expect(first).toHaveLength(1);
+    expect(first[0].request.params.has('feeStatus')).toBe(false);
+    first[0].flush(env(STUDENTS));
+    expect((cmp()['feeStatusOptions'] as { value: string }[]).map((o) => o.value)).toEqual(['All', 'Overdue', 'Partially Paid', 'Pending', 'Paid', 'Not Set']);
+
+    cmp()['feeStatusControl'].setValue('Partially Paid');
+    const [req] = studentRequests();
+    expect(req.request.params.get('feeStatus')).toBe('Partially Paid');
+    req.flush(env([]));
+    fixture.detectChanges();
+
+    cmp()['feeStatusControl'].setValue('All');
+    const [again] = studentRequests();
+    expect(again.request.params.has('feeStatus')).toBe(false);
+    again.flush(env(STUDENTS));
+  });
+
+  it('restores the fee status it was opened with (Back to Students)', () => {
+    create({ academicYearId: '2', classId: '4', sectionId: '13', feeStatus: 'Overdue' });
+    const [req] = studentRequests();
+    expect(req.request.params.get('feeStatus')).toBe('Overdue');
+    req.flush(env(STUDENTS));
   });
 
   it('restores the filter it was opened with (Back to Students)', () => {

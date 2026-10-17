@@ -10,6 +10,12 @@ namespace smss_api_service_layer.dto
         public string StatusName { get; set; } = null!;
         public long EnrollmentId { get; set; }
         public string? ProfilePhotoUrl { get; set; }   // relative public URL; null = no photo
+        /// <summary>Overdue | Partially Paid | Pending | Paid | Not Set (no fee installments for this year), for the list's academic year.</summary>
+        public string FeeStatus { get; set; } = "Not Set";
+        /// <summary>Totals over all the student's installments for that year; null when FeeStatus is Not Set.</summary>
+        public decimal? FeeTotalDue { get; set; }
+        public decimal? FeeTotalPaid { get; set; }
+        public decimal? FeeOutstanding { get; set; }
     }
 
     public class GuardianSummaryDto
