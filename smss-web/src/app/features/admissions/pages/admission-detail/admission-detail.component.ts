@@ -5,7 +5,8 @@ import { catchError, finalize, of } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { AdmissionActionsComponent } from '../../components/admission-actions/admission-actions.component';
-import { AdmissionDetail, AdmissionStatus, GUARDIAN_RELATIONSHIPS, STATUS_META, formatDate } from '../../models/admission.model';
+import { AdmissionDocumentsComponent } from '../../components/admission-documents/admission-documents.component';
+import { AdmissionDetail, AdmissionStatus, DOCUMENT_LOCKED_STATUSES, EDITABLE_STATUSES, GUARDIAN_RELATIONSHIPS, STATUS_META, formatDate } from '../../models/admission.model';
 import { AdmissionService } from '../../services/admission.service';
 
 interface Step {
@@ -17,7 +18,7 @@ interface Step {
 
 @Component({
   selector: 'app-admission-detail',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent, AdmissionDocumentsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-detail.component.scss',
   templateUrl: './admission-detail.component.html',
@@ -45,6 +46,9 @@ export class AdmissionDetailComponent implements OnInit {
     const s = this.admission()?.statusName;
     return s ? STATUS_META[s] : null;
   });
+  /** Applicant details can be edited only before a decision. */
+  protected readonly canEdit = computed(() => EDITABLE_STATUSES.includes(this.admission()?.statusName as AdmissionStatus));
+  protected readonly documentsLocked = computed(() => DOCUMENT_LOCKED_STATUSES.includes(this.admission()?.statusName as AdmissionStatus));
   protected readonly guardianRelationship = computed(() => {
     const r = this.admission()?.guardianRelationship;
     return GUARDIAN_RELATIONSHIPS.find((g) => g.value === r)?.label ?? r ?? '';
@@ -123,6 +127,10 @@ export class AdmissionDetailComponent implements OnInit {
 
   protected back(): void {
     void this.router.navigate(['/admissions']);
+  }
+
+  protected edit(): void {
+    void this.router.navigate(['/admissions', this.admission()?.admissionId, 'edit']);
   }
 
   private resolveLocation(a: AdmissionDetail): void {

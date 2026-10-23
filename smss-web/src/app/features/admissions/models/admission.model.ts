@@ -80,8 +80,11 @@ export interface AdmissionDetail extends Admission {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail?: string | null;
+  previousSchool?: string | null;
+  reviewNotes?: string | null;
   reviewedAt?: string | null;
   approvedAt?: string | null;
+  rejectedAt?: string | null;
   decisionRemarks?: string | null;
   rejectionReason?: string | null;
   createdAt: string;
@@ -114,6 +117,7 @@ export interface SubmitAdmissionRequest {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail: string | null;
+  previousSchool: string | null;
 }
 
 export interface ConfirmAdmissionRequest {
@@ -122,6 +126,31 @@ export interface ConfirmAdmissionRequest {
   rollNumber: string | null;
   /** Fee configuration chosen at admission (frequency per fee head). Omitted = the fee structure's defaults. */
   feeItems?: FeeItemSelection[] | null;
+}
+
+/** Mirrors AdmissionDocumentDto (the file itself is only ever fetched through the authenticated download). */
+export interface AdmissionDocument {
+  applicationDocumentId: number;
+  documentTypeId: number;
+  documentTypeName: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  remarks?: string | null;
+  uploadedByName?: string | null;
+  uploadedAt: string;
+  statusName: string;
+}
+
+/** Statuses in which the applicant details can still be edited (the server enforces it too). */
+export const EDITABLE_STATUSES: readonly AdmissionStatus[] = ['APPLICATION_SUBMITTED', 'UNDER_REVIEW'];
+/** Statuses after which documents can no longer be added or removed. */
+export const DOCUMENT_LOCKED_STATUSES: readonly AdmissionStatus[] = ['REJECTED', 'CANCELLED', 'ADMITTED'];
+
+export interface AdmissionFilters {
+  status?: AdmissionStatus | '';
+  classId?: number;
+  academicYearId?: number;
 }
 
 export const formatDate = (iso?: string | null): string => {

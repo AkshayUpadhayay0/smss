@@ -12,6 +12,7 @@ export const ROLES = {
   SUPER_ADMIN: 'Super Admin',
   SCHOOL_ADMIN: 'School Admin',
   PRINCIPAL: 'Principal',
+  ADMISSION_STAFF: 'Admission Staff',
   TEACHER: 'Teacher',
   ACCOUNTANT: 'Accountant',
   STUDENT: 'Student',
@@ -38,9 +39,11 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
   // The Accountant opens a student to collect / void payments; the page shows them the Fees tab only (no Profile tab)
   '/students/:studentId': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT],
-  '/admissions': [ROLES.SCHOOL_ADMIN],
-  '/admissions/new': [ROLES.SCHOOL_ADMIN],
-  '/admissions/:admissionId': [ROLES.SCHOOL_ADMIN],
+  // Admission applications: School Admin, Principal and Admission Staff work them (the API re-checks; only School Admin / Principal see Approve / Reject).
+  '/admissions': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
+  '/admissions/new': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
+  '/admissions/:admissionId': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
+  '/admissions/:admissionId/edit': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
   '/school-setup/import-masters': [ROLES.SCHOOL_ADMIN],
   '/school-setup/academic-year': [ROLES.SCHOOL_ADMIN],
   '/school-setup/classes': [ROLES.SCHOOL_ADMIN],
@@ -57,13 +60,17 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
   // Calendar: every role of a school reads it (the page only shows Add / Edit / Delete to School Admin and Principal; the API re-checks)
-  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN],
+  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
   // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
   '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   // Homework (publish + view): a Teacher sets it for what the Timetable says they teach, a School Admin for any section; a Student reads their own section's.
   // Principal / Accountant / Guardian have no access yet. The API re-checks every action (eligibility, ownership, section).
   '/homework': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   '/homework/my': [ROLES.STUDENT],
+  // Assessments (internal class tests): a Teacher records them for what the Timetable says they teach, a School Admin for any section; a Student reads their own marks.
+  // Principal / Accountant / Admission Staff / Guardian have no access. The API re-checks every action (eligibility, ownership, section, mapping).
+  '/assessments': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
+  '/assessments/my': [ROLES.STUDENT],
   // Leave: any staff member with a login applies for their own leave; the School Admin and Principal decide staff leave; the class teacher
   // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
   '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN],

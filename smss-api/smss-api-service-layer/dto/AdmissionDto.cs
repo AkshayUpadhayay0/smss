@@ -36,6 +36,14 @@ namespace smss_api_service_layer.dto
         [Required, RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")]
         public string GuardianMobileNumber { get; set; } = null!;
         [EmailAddress, MaxLength(150)] public string? GuardianEmail { get; set; }
+        /// <summary>The school the applicant comes from, if any.</summary>
+        [MaxLength(200)] public string? PreviousSchool { get; set; }
+    }
+
+    /// <summary>Optional notes recorded when an application is moved to Under Review.</summary>
+    public class AdmissionReviewRequestDto
+    {
+        [MaxLength(2000)] public string? Notes { get; set; }
     }
 
     public class AdmissionDecisionRequestDto
@@ -51,6 +59,21 @@ namespace smss_api_service_layer.dto
 
         /// <summary>Fee configuration chosen at admission (frequency / applicability per fee head). Optional: omitted = the structure's defaults.</summary>
         [MaxLength(100)] public List<FeeItemSelection>? FeeItems { get; set; }
+    }
+
+    public class AdmissionDocumentDto
+    {
+        public long ApplicationDocumentId { get; set; }
+        public long DocumentTypeId { get; set; }
+        public string DocumentTypeName { get; set; } = null!;
+        public string FileName { get; set; } = null!;
+        public string ContentType { get; set; } = null!;
+        public long FileSize { get; set; }
+        public string? Remarks { get; set; }
+        public string? UploadedByName { get; set; }
+        public DateTime UploadedAt { get; set; }
+        /// <summary>Active / Inactive (a removed document is hidden unless asked for).</summary>
+        public string StatusName { get; set; } = null!;
     }
 
     // What the list shows (the joined names mean the table needs no second lookup)
@@ -106,8 +129,11 @@ namespace smss_api_service_layer.dto
         public string GuardianMobileNumber { get; set; } = null!;
         public string? GuardianEmail { get; set; }
 
+        public string? PreviousSchool { get; set; }
+        public string? ReviewNotes { get; set; }
         public DateTime? ReviewedAt { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        public DateTime? RejectedAt { get; set; }
         public string? DecisionRemarks { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }

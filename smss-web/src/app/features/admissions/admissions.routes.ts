@@ -12,6 +12,10 @@ export const ADMISSIONS_ROUTES: Routes = [
     loadComponent: () => import('./pages/admission-form/admission-form.component').then((m) => m.AdmissionFormComponent),
   },
   {
+    path: 'admissions/:admissionId/edit',
+    loadComponent: () => import('./pages/admission-form/admission-form.component').then((m) => m.AdmissionFormComponent),
+  },
+  {
     path: 'admissions/:admissionId',
     loadComponent: () => import('./pages/admission-detail/admission-detail.component').then((m) => m.AdmissionDetailComponent),
   },

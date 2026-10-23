@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, of, switchMap, tap } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import {
@@ -19,7 +19,7 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SchoolLookupService } from '../../../school-setup/services/school-lookup.service';
 import { PINCODE_RE, firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
-import { GUARDIAN_RELATIONSHIPS, SubmitAdmissionRequest } from '../../models/admission.model';
+import { AdmissionDetail, EDITABLE_STATUSES, GUARDIAN_RELATIONSHIPS, SubmitAdmissionRequest } from '../../models/admission.model';
 import { AdmissionService } from '../../services/admission.service';
 
 const AADHAAR_RE = /^[0-9]{12}$/;
@@ -50,7 +50,10 @@ export class AdmissionFormComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  protected readonly breadcrumbs: Breadcrumb[] = [{ label: 'Admissions', link: '/admissions' }, { label: 'New Application' }];
+  /** Bound from the :admissionId route param when editing (…/admissions/:admissionId/edit); absent for a new application. */
+  readonly admissionId = input<string>();
+  protected readonly editing = computed(() => this.admissionId() !== undefined);
+  protected readonly breadcrumbs = computed<Breadcrumb[]>(() => [{ label: 'Admissions', link: '/admissions' }, { label: this.editing() ? 'Edit Application' : 'New Application' }]);
   protected readonly relationshipOptions: SelectOption[] = GUARDIAN_RELATIONSHIPS.map((r) => ({ label: r.label, value: r.value }));
   protected readonly maxDob = new Date().toISOString().slice(0, 10);
 
@@ -70,6 +73,7 @@ export class AdmissionFormComponent implements OnInit {
     academicYearId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     appliedClassId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     admissionTypeId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    previousSchool: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
     // Contact & address
     email: new FormControl('', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
     mobileNumber: new FormControl('', { nonNullable: true, validators: [mobileValidator] }),
@@ -109,6 +113,69 @@ export class AdmissionFormComponent implements OnInit {
     this.setupLocationCascade();
     this.setChildrenEnabled({ state: false, district: false, city: false });
     this.loadSchoolOptions();
+    if (this.editing()) this.loadForEdit();
+  }
+
+  /** The application being edited. Only a Submitted or Under Review one can change: any other is sent back to its page. */
+  private loadForEdit(): void {
+    const id = Number(this.admissionId());
+    this.admissions
+      .getById(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (a) => {
+          if (!EDITABLE_STATUSES.includes(a.statusName)) {
+            this.toast.error('This application has been decided or closed, so it can no longer be edited.');
+            void this.router.navigate(['/admissions', id]);
+            return;
+          }
+          this.patchFrom(a);
+        },
+        error: () => void this.router.navigate(['/admissions']), // already toasted by the interceptor
+      });
+  }
+
+  private patchFrom(a: AdmissionDetail): void {
+    const s = (v?: string | number | null) => (v === null || v === undefined ? '' : String(v));
+    this.form.patchValue(
+      {
+        applicantFirstName: a.applicantFirstName, applicantMiddleName: s(a.applicantMiddleName), applicantLastName: a.applicantLastName, dateOfBirth: a.dateOfBirth.slice(0, 10),
+        genderId: s(a.genderId), bloodGroupId: s(a.bloodGroupId), studentCategoryId: s(a.studentCategoryId), studentNationId: s(a.studentNationId),
+        academicYearId: s(a.academicYearId), appliedClassId: s(a.appliedClassId), admissionTypeId: s(a.admissionTypeId), previousSchool: s(a.previousSchool),
+        email: s(a.email), mobileNumber: s(a.mobileNumber), addressLine1: s(a.addressLine1), addressLine2: s(a.addressLine2), pincode: s(a.pincode),
+        guardianName: a.guardianName, guardianRelationship: a.guardianRelationship, guardianMobileNumber: a.guardianMobileNumber, guardianEmail: s(a.guardianEmail),
+      },
+      { emitEvent: false },
+    );
+    // The Aadhaar number only comes back masked: the box stays empty and an empty box keeps the stored number (the server never clears it on an edit)
+    this.storedAadhaarMasked.set(a.aadharNumberMasked ?? null);
+    this.restoreLocation(a);
+  }
+
+  /** The masked Aadhaar of the application being edited (null when it has none). */
+  protected readonly storedAadhaarMasked = signal<string | null>(null);
+
+  /** The country / state / district / city selects fill in one after another; here they are filled in one go for the saved ids. */
+  private restoreLocation(a: AdmissionDetail): void {
+    const c = this.form.controls;
+    const country = a.countryId ?? null;
+    if (!country) return;
+    forkJoin({
+      states: this.safe(this.master.getStateOptions(country)),
+      districts: a.stateId ? this.safe(this.master.getDistrictOptions(country, a.stateId)) : of([] as SelectOption[]),
+      cities: a.stateId && a.districtId ? this.safe(this.master.getCityOptions(country, a.stateId, a.districtId)) : of([] as SelectOption[]),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ states, districts, cities }) => {
+        this.stateOptions.set(states);
+        this.districtOptions.set(districts);
+        this.cityOptions.set(cities);
+        this.setChildrenEnabled({ state: true, district: !!a.stateId, city: !!a.districtId });
+        c.countryId.setValue(String(country), { emitEvent: false });
+        c.stateId.setValue(a.stateId ? String(a.stateId) : '', { emitEvent: false });
+        c.districtId.setValue(a.districtId ? String(a.districtId) : '', { emitEvent: false });
+        c.cityId.setValue(a.cityId ? String(a.cityId) : '', { emitEvent: false });
+      });
   }
 
   /** Active academic years / classes / admission types of this school only (the endpoints scope to the token's school). */
@@ -118,7 +185,7 @@ export class AdmissionFormComponent implements OnInit {
     this.years.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
       this.yearOptions.set(active(list).map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
       const current = active(list).find((y) => y.isCurrent);
-      if (current) this.form.controls.academicYearId.setValue(String(current.academicYearId));
+      if (current && !this.editing()) this.form.controls.academicYearId.setValue(String(current.academicYearId));
       this.setupLoaded.set(true);
     });
     this.classes.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) =>
@@ -201,7 +268,7 @@ export class AdmissionFormComponent implements OnInit {
   }
 
   protected cancel(): void {
-    void this.router.navigate(['/admissions']);
+    void this.router.navigate(this.editing() ? ['/admissions', this.admissionId()] : ['/admissions']);
   }
 
   // ── Submit ──────────────────────────────────────────────────────────
@@ -242,9 +309,24 @@ export class AdmissionFormComponent implements OnInit {
       guardianRelationship: v.guardianRelationship,
       guardianMobileNumber: v.guardianMobileNumber.trim(),
       guardianEmail: str(v.guardianEmail),
+      previousSchool: str(v.previousSchool),
     };
 
     this.saving.set(true);
+    if (this.editing()) {
+      const id = Number(this.admissionId());
+      this.admissions
+        .update(id, payload)
+        .pipe(finalize(() => this.saving.set(false)))
+        .subscribe({
+          next: (saved) => {
+            this.toast.success(`Application ${saved.applicationNumber} updated.`);
+            void this.router.navigate(['/admissions', saved.admissionId]);
+          },
+          error: () => undefined, // already toasted by the interceptor (e.g. the 409 once a decision has been made); the form stays
+        });
+      return;
+    }
     this.admissions
       .submit(payload)
       .pipe(finalize(() => this.saving.set(false)))

@@ -85,6 +85,13 @@ export class AdmissionListComponent implements OnInit {
   /** '' = all statuses. */
   protected readonly statusFilter = signal('');
   protected readonly statusControl = new FormControl('', { nonNullable: true });
+  /** '' = all classes / years. The options are the classes and years that actually have applications. */
+  protected readonly classControl = new FormControl('', { nonNullable: true });
+  protected readonly yearControl = new FormControl('', { nonNullable: true });
+  protected readonly classFilter = signal('');
+  protected readonly yearFilter = signal('');
+  protected readonly classOptions = computed<SelectOption[]>(() => this.distinctOptions((a) => [a.appliedClassId, a.appliedClassName]));
+  protected readonly yearOptions = computed<SelectOption[]>(() => this.distinctOptions((a) => [a.academicYearId, a.academicYearName]));
   protected readonly sortKey = signal<string | null>('applicationDateText');
   protected readonly sortDirection = signal<SortDirection>('desc');
   protected readonly page = signal(1);
@@ -93,11 +100,15 @@ export class AdmissionListComponent implements OnInit {
   private readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
+    const cls = this.classFilter();
+    const year = this.yearFilter();
     const key = this.sortKey();
     const dir = this.sortDirection() === 'asc' ? 1 : -1;
 
     const rows = this.admissions()
       .filter((a) => !status || a.statusName === status)
+      .filter((a) => !cls || String(a.appliedClassId) === cls)
+      .filter((a) => !year || String(a.academicYearId) === year)
       .filter((a) => !q || [a.applicationNumber, a.applicantFullName, a.appliedClassName ?? '', a.admissionTypeName ?? ''].some((t) => t.toLowerCase().includes(q)));
 
     const sorted = [...rows];
@@ -123,7 +134,24 @@ export class AdmissionListComponent implements OnInit {
       this.statusFilter.set(v ?? '');
       this.page.set(1);
     });
+    this.classControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
+      this.classFilter.set(v ?? '');
+      this.page.set(1);
+    });
+    this.yearControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
+      this.yearFilter.set(v ?? '');
+      this.page.set(1);
+    });
     this.load();
+  }
+
+  private distinctOptions(pick: (a: Admission) => [number, string | null | undefined]): SelectOption[] {
+    const seen = new Map<number, string>();
+    for (const a of this.admissions()) {
+      const [id, name] = pick(a);
+      if (name) seen.set(id, name);
+    }
+    return [{ label: 'All', value: '' }, ...[...seen].sort((x, y) => x[1].localeCompare(y[1], undefined, { numeric: true })).map(([id, name]) => ({ label: name, value: String(id) }))];
   }
 
   protected load(): void {

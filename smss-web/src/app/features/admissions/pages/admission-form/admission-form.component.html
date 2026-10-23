@@ -1,4 +1,4 @@
-<app-page-header title="New Application" subtitle="Record a new admission application" icon="user" [breadcrumbs]="breadcrumbs">
+<app-page-header [title]="editing() ? 'Edit Application' : 'New Application'" [subtitle]="editing() ? 'Change the applicant details (only possible before a decision)' : 'Record a new admission application'" icon="user" [breadcrumbs]="breadcrumbs()">
   <app-button variant="secondary" (click)="cancel()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
 </app-page-header>
 
@@ -16,7 +16,7 @@
 
     <h4 class="subsection">Identity (optional)</h4>
     <div class="grid">
-      <app-input label="Aadhaar number" placeholder="12 digits" formControlName="aadharNumber" [errorText]="err('aadharNumber')" helpText="Shown masked everywhere after saving." />
+      <app-input label="Aadhaar number" [placeholder]="storedAadhaarMasked() ? storedAadhaarMasked()! : '12 digits'" formControlName="aadharNumber" [errorText]="err('aadharNumber')" [helpText]="editing() && storedAadhaarMasked() ? 'Leave blank to keep the saved number.' : 'Shown masked everywhere after saving.'" />
       <app-input label="Student nation ID" formControlName="studentNationId" [errorText]="err('studentNationId')" />
     </div>
   </app-card>
@@ -31,6 +31,7 @@
       <app-select label="Academic year" [required]="true" placeholder="Select…" [options]="yearOptions()" formControlName="academicYearId" [errorText]="err('academicYearId')" />
       <app-select label="Applied class" [required]="true" placeholder="Select…" [options]="classOptions()" formControlName="appliedClassId" [errorText]="err('appliedClassId')" />
       <app-select label="Admission type" [required]="true" placeholder="Select…" [options]="admissionTypeOptions()" formControlName="admissionTypeId" [errorText]="err('admissionTypeId')" />
+      <app-input label="Previous school" placeholder="Optional" formControlName="previousSchool" [errorText]="err('previousSchool')" />
     </div>
   </app-card>
 
@@ -59,6 +60,6 @@
 
   <div class="footer">
     <app-button variant="secondary" [disabled]="saving()" (click)="cancel()">Cancel</app-button>
-    <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Submitting…' : 'Submit Application' }}</app-button>
+    <app-button type="submit" [disabled]="saving()">{{ saving() ? (editing() ? 'Saving…' : 'Submitting…') : (editing() ? 'Save Changes' : 'Submit Application') }}</app-button>
   </div>
 </form>

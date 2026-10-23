@@ -26,6 +26,9 @@ namespace smss_api.Controllers
             if (!string.Equals(schoolId, own, StringComparison.OrdinalIgnoreCase))
                 return Reject(403, "You can only onboard students into your own school.");
 
+            // Creating a student straight in is a School Admin job (an Approved admission application becomes a student through Confirm Admission instead).
+            if (!User.IsSchoolAdmin()) return Reject(403, "Only a School Admin can add a student directly.");
+
             var response = await _service.CreateDirectEntryAsync(own, request, ct);
             return StatusCode(response.StatusCode, response);
         }

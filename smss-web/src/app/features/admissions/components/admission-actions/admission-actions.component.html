@@ -38,7 +38,7 @@
         </div>
       } @else {
         <app-textarea
-          [label]="d === 'reject' ? 'Reason for rejection' : 'Remarks'"
+          [label]="d === 'reject' ? 'Reason for rejection' : d === 'start-review' ? 'Review notes' : 'Remarks'"
           [required]="d === 'reject'"
           [maxLength]="2000"
           placeholder="{{ d === 'reject' ? 'Required' : 'Optional' }}"
@@ -51,7 +51,7 @@
     <ng-container modal-footer>
       <app-button variant="secondary" [disabled]="busy()" (click)="closeDialog()">Back</app-button>
       <app-button [variant]="d === 'reject' || d === 'cancel' ? 'danger' : 'primary'" [disabled]="busy() || (d === 'confirm' && sectionOptions().length === 0)" (click)="submitDialog()">
-        {{ busy() ? 'Working…' : d === 'confirm' ? 'Confirm Admission' : d === 'approve' ? 'Approve' : d === 'reject' ? 'Reject' : 'Cancel Application' }}
+        {{ busy() ? 'Working…' : d === 'confirm' ? 'Confirm Admission' : d === 'approve' ? 'Approve' : d === 'reject' ? 'Reject' : d === 'start-review' ? 'Start Review' : 'Withdraw Application' }}
       </app-button>
     </ng-container>
   </app-modal>

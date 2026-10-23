@@ -48,8 +48,26 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool CanManageHomework(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
 
+        /// <summary>Whether the caller may record internal tests (class tests): a School Admin or a Teacher, exactly like homework. Whether a TEACHER may do it for a given section + subject is the same per-request Timetable check.</summary>
+        public static bool CanManageAssessments(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
+
         /// <summary>A student's login (reads their own section's homework).</summary>
         public static bool IsStudent(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student);
+
+        /// <summary>
+        /// Admission applications: who may take them in and work them (create, edit while undecided, move to review, withdraw, documents, every read, hand an
+        /// approved one on for student creation): School Admin, Principal or Admission Staff. Deciding is a separate, narrower permission (CanDecideAdmission).
+        /// </summary>
+        public static bool CanManageApplications(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.AdmissionStaff);
+
+        /// <summary>Approving or rejecting an application: School Admin or Principal ONLY. Admission Staff can prepare an application but never decide it.</summary>
+        public static bool CanDecideAdmission(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
+        /// <summary>
+        /// A Student or Guardian login. These accounts must never read another student's record or change anything about students, so the student endpoints
+        /// refuse them outright (the staff roles, including a custom role, keep the read access they had).
+        /// </summary>
+        public static bool IsStudentOrGuardianLogin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student, RoleNames.Guardian);
 
         public static bool CanConfigureFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 

@@ -6,6 +6,9 @@
 >
   <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
   @if (admission(); as a) {
+    @if (canEdit()) {
+      <app-button variant="secondary" (click)="edit()"><app-icon name="pencil" [size]="16" />Edit</app-button>
+    }
     <app-admission-actions [admission]="a" (changed)="onChanged($event)" />
   }
 </app-page-header>
@@ -48,6 +51,13 @@
           </div>
         }
 
+        @if (a.reviewNotes) {
+          <div class="remarks">
+            <strong>Review notes</strong>
+            <p>{{ a.reviewNotes }}</p>
+          </div>
+        }
+
         @if (a.statusName === 'ADMITTED') {
           <div class="admitted">
             <app-icon name="circle-check" [size]="18" />
@@ -74,6 +84,7 @@
           <div><dt>Applied class</dt><dd>{{ a.appliedClassName || '—' }}</dd></div>
           <div><dt>Admission type</dt><dd>{{ a.admissionTypeName || '—' }}</dd></div>
           <div><dt>Application date</dt><dd>{{ fmt(a.applicationDate) }}</dd></div>
+          <div><dt>Previous school</dt><dd>{{ a.previousSchool || '—' }}</dd></div>
         </dl>
       </app-card>
 
@@ -93,6 +104,8 @@
           <div><dt>Email</dt><dd>{{ a.guardianEmail || '—' }}</dd></div>
         </dl>
       </app-card>
+
+      <app-admission-documents [admissionId]="a.admissionId" [locked]="documentsLocked()" />
     </div>
   }
 }

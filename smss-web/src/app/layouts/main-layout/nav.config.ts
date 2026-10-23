@@ -16,6 +16,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Mark Attendance', icon: 'circle-check', route: '/attendance/mark' },
   { label: 'Homework', icon: 'file-text', route: '/homework' },
   { label: 'My Homework', icon: 'file-text', route: '/homework/my' },
+  { label: 'Assessments', icon: 'file-text', route: '/assessments' },
+  { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
   { label: 'My Leave', icon: 'file-text', route: '/leave/my' },
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
   { label: 'Student Leave', icon: 'user', route: '/leave/students' },

@@ -34,6 +34,7 @@ export const routes: Routes = [
       { path: '', loadChildren: () => import('./features/employees/employees.routes').then((m) => m.EMPLOYEES_ROUTES) },
       { path: '', loadChildren: () => import('./features/attendance/attendance.routes').then((m) => m.ATTENDANCE_ROUTES) },
       { path: '', loadChildren: () => import('./features/calendar/calendar.routes').then((m) => m.CALENDAR_ROUTES) },
+      { path: '', loadChildren: () => import('./features/assessments/assessments.routes').then((m) => m.ASSESSMENTS_ROUTES) },
       { path: '', loadChildren: () => import('./features/homework/homework.routes').then((m) => m.HOMEWORK_ROUTES) },
       { path: '', loadChildren: () => import('./features/leave/leave.routes').then((m) => m.LEAVE_ROUTES) },
       { path: '', loadChildren: () => import('./features/timetable/timetable.routes').then((m) => m.TIMETABLE_ROUTES) },

@@ -12,6 +12,7 @@ namespace smss_api_service_layer.helper
         public const string SchoolId = "School Id";
         public const string SuperAdmin = "Super Admin";
         public const string Student = "Student";
+        public const string Guardian = "Guardian";
         public const string Employee = "Employee";
     }
 
@@ -25,9 +26,10 @@ namespace smss_api_service_layer.helper
         public const string Accountant = "ACCOUNTANT";
         public const string Student = "STUDENT";
         public const string Guardian = "GUARDIAN";
+        public const string AdmissionStaff = "ADMISSION_STAFF";
 
         /// <summary>The roles a school may give an EMPLOYEE's login, by role_code (an allow-list: add e.g. LIBRARIAN here once that role exists in lut_roles).</summary>
-        private static readonly string[] EmployeeAllowList = { SchoolAdmin, Principal, Teacher, Accountant };
+        private static readonly string[] EmployeeAllowList = { SchoolAdmin, Principal, Teacher, Accountant, AdmissionStaff };
         /// <summary>Never given to an employee login, even if someone adds them to the allow-list by mistake.</summary>
         private static readonly string[] NeverForEmployees = { SuperAdmin, Student, Guardian };
 
@@ -50,9 +52,11 @@ namespace smss_api_service_layer.helper
         public const string Accountant = "Accountant";
         public const string Principal = "Principal";
         public const string Teacher = "Teacher";
+        public const string AdmissionStaff = "Admission Staff";
         public const string SchoolAdmin = "School Admin";
         public const string SuperAdmin = "Super Admin";
         public const string Student = "Student";
+        public const string Guardian = "Guardian";
     }
     public static class PaymentStatuses
     {

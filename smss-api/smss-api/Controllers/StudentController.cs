@@ -36,10 +36,20 @@ namespace smss_api.Controllers
         private IActionResult Respond(int code, string message) =>
             StatusCode(code, new ApiResponse<object> { Status = false, StatusCode = code, Message = message, Data = null });
 
+        // Reads (list, profile): every staff role keeps the access it had (an Accountant still gets the limited view, handled below), but a Student or Guardian login is
+        // refused outright - a student account must never be able to pull up another student's record.
+        private IActionResult? RefuseStudentLogin() =>
+            User.IsStudentOrGuardianLogin() ? this.Forbidden("Student and Guardian accounts can't view student records.") : null;
+
+        // Writes (photo upload / remove, create login): School Admin only.
+        private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
+            User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
+
         // GET api/Student/{schoolId}?academicYearId=1&classSectionId=5&feeStatus=Overdue   (feeStatus is optional; classSectionId = tb_sections.section_id)
         [HttpGet("{schoolId}")]
         public async Task<IActionResult> GetStudents(string schoolId, [FromQuery] long? academicYearId, [FromQuery] long? classSectionId, [FromQuery] string? feeStatus, CancellationToken ct)
         {
+            if (RefuseStudentLogin() is { } blocked) return blocked;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (academicYearId is null or <= 0) return Respond(400, "academicYearId is required.");
             if (classSectionId is null or <= 0) return Respond(400, "classSectionId is required.");
@@ -53,7 +63,7 @@ namespace smss_api.Controllers
         [RequestSizeLimit(LogoRules.MaxRequestBytes)]
         public async Task<IActionResult> UploadPhoto(string schoolId, string studentId, IFormFile? file, CancellationToken ct)
         {
-            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot change a student's photo.");
+            if (RefuseUnlessSchoolAdmin("change a student's photo") is { } refusedWrite) return refusedWrite;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (file == null) return Respond(400, "Photo file is required.");
 
@@ -66,7 +76,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/{studentId:length(1,20)}/photo/remove")]
         public async Task<IActionResult> RemovePhoto(string schoolId, string studentId, CancellationToken ct)
         {
-            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot change a student's photo.");
+            if (RefuseUnlessSchoolAdmin("change a student's photo") is { } refusedWrite) return refusedWrite;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.RemovePhotoAsync(own, studentId, ct);
             return StatusCode(response.StatusCode, response);
@@ -77,7 +87,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/{studentId:length(1,20)}/create-login")]
         public async Task<IActionResult> CreateLogin(string schoolId, string studentId, CancellationToken ct)
         {
-            if (User.IsAccountantOnly()) return this.Forbidden("An Accountant cannot create a student login.");
+            if (RefuseUnlessSchoolAdmin("create a student login") is { } refusedWrite) return refusedWrite;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _loginService.CreateStudentLoginAsync(own, studentId, ct);
             return StatusCode(response.StatusCode, response);
@@ -87,6 +97,7 @@ namespace smss_api.Controllers
         [HttpGet("{schoolId}/{studentId:length(1,20)}")]
         public async Task<IActionResult> GetStudentProfile(string schoolId, string studentId, CancellationToken ct)
         {
+            if (RefuseStudentLogin() is { } blocked) return blocked;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.GetStudentProfileAsync(own, studentId, limited: User.IsAccountantOnly(), ct);
             return StatusCode(response.StatusCode, response);

@@ -10,6 +10,12 @@
     <div class="filter">
       <app-select placeholder="All statuses" [options]="statusOptions" [formControl]="statusControl" />
     </div>
+    <div class="filter">
+      <app-select placeholder="All classes" [options]="classOptions()" [formControl]="classControl" />
+    </div>
+    <div class="filter">
+      <app-select placeholder="All years" [options]="yearOptions()" [formControl]="yearControl" />
+    </div>
     <span class="count">{{ total() }} {{ total() === 1 ? 'application' : 'applications' }}</span>
   </div>
 
@@ -20,7 +26,7 @@
     [hasActions]="true"
     [sortKey]="sortKey()"
     [sortDirection]="sortDirection()"
-    [emptyMessage]="loadFailed() ? 'Could not load applications.' : search() || statusFilter() ? 'Nothing matches your filters.' : 'No applications yet. Click New Application to add the first one.'"
+    [emptyMessage]="loadFailed() ? 'Could not load applications.' : search() || statusFilter() || classFilter() || yearFilter() ? 'Nothing matches your filters.' : 'No applications yet. Click New Application to add the first one.'"
     (sortChange)="onSort($event)"
   >
     <ng-template #rowActions let-row>

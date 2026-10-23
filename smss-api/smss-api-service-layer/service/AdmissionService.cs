@@ -34,11 +34,17 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- reads ----------------
-        public async Task<ApiResponse<List<AdmissionResponseDto>>> GetAllAsync(string schoolId, CancellationToken ct)
+        public async Task<ApiResponse<List<AdmissionResponseDto>>> GetAllAsync(string schoolId, string? status, long? classId, long? academicYearId, CancellationToken ct)
         {
             try
             {
-                var list = await _repo.GetAllAsync(schoolId, ct);
+                int? statusId = null;
+                if (!string.IsNullOrWhiteSpace(status))
+                {
+                    statusId = await _repo.GetAdmissionStatusIdAsync(status.Trim().ToUpperInvariant(), ct);
+                    if (statusId == null) return Result<List<AdmissionResponseDto>>(400, "Unknown status. Use APPLICATION_SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, ADMITTED or CANCELLED.", null);
+                }
+                var list = await _repo.GetAllAsync(schoolId, statusId, classId, academicYearId, ct);
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
                 var classes = await _repo.GetClassNamesAsync(schoolId, list.Select(a => a.AppliedClassId).Distinct().ToList(), ct);
                 var types = await _repo.GetAdmissionTypeNamesAsync(schoolId, list.Select(a => a.AdmissionTypeId).Distinct().ToList(), ct);
@@ -62,74 +68,80 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- submit ----------------
+        /// <summary>Everything about a submitted / edited application that can be wrong without touching the database row: foreign ids must be this school's, the date plausible.</summary>
+        private async Task<string?> ValidateRequestAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        {
+            // Ids come from the client: every school-owned one must belong to THIS school
+            if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct)) return "The selected academic year was not found for your school.";
+            if (!await _repo.ClassBelongsToSchoolAsync(schoolId, req.AppliedClassId, ct)) return "The selected class was not found for your school.";
+            if (!await _repo.AdmissionTypeBelongsToSchoolAsync(schoolId, req.AdmissionTypeId, ct)) return "The selected admission type was not found for your school.";
+            if (req.GenderId.HasValue && !await _repo.GenderExistsAsync(req.GenderId.Value, ct)) return "The selected gender is not valid.";
+            if (req.BloodGroupId.HasValue && !await _repo.BloodGroupExistsAsync(req.BloodGroupId.Value, ct)) return "The selected blood group is not valid.";
+            if (req.StudentCategoryId.HasValue && !await _repo.StudentCategoryExistsAsync(req.StudentCategoryId.Value, ct)) return "The selected student category is not valid.";
+            if (req.DateOfBirth.Date >= DateTime.UtcNow.Date) return "Date of birth must be in the past.";
+            return null;
+        }
+
+        /// <summary>Copies the applicant's details onto the row (never the number, date, status or decision trail).</summary>
+        private static void ApplyDetails(TbAdmission e, SubmitAdmissionRequestDto req)
+        {
+            e.AcademicYearId = req.AcademicYearId;
+            e.AppliedClassId = req.AppliedClassId;
+            e.AdmissionTypeId = req.AdmissionTypeId;
+            e.ApplicantFirstName = req.ApplicantFirstName.Trim();
+            e.ApplicantMiddleName = Clean(req.ApplicantMiddleName);
+            e.ApplicantLastName = req.ApplicantLastName.Trim();
+            e.DateOfBirth = req.DateOfBirth.Date;
+            e.GenderId = req.GenderId;
+            e.BloodGroupId = req.BloodGroupId;
+            e.StudentCategoryId = req.StudentCategoryId;
+            e.AadharNumber = Clean(req.AadharNumber);
+            e.StudentNationId = Clean(req.StudentNationId);
+            e.Email = Clean(req.Email);
+            e.MobileNumber = Clean(req.MobileNumber);
+            e.AddressLine1 = Clean(req.AddressLine1);
+            e.AddressLine2 = Clean(req.AddressLine2);
+            e.CountryId = req.CountryId;
+            e.StateId = req.StateId;
+            e.DistrictId = req.DistrictId;
+            e.CityId = req.CityId;
+            e.Pincode = Clean(req.Pincode);
+            e.GuardianName = req.GuardianName.Trim();
+            e.GuardianRelationship = req.GuardianRelationship;
+            e.GuardianMobileNumber = req.GuardianMobileNumber;
+            e.GuardianEmail = Clean(req.GuardianEmail);
+            e.PreviousSchool = Clean(req.PreviousSchool);
+        }
+
+        // ---------------- submit ----------------
         public async Task<ApiResponse<AdmissionDetailDto>> SubmitAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct)
         {
             try
             {
-                // Ids come from the client: every school-owned one must belong to THIS school
-                if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected academic year was not found for your school.", null);
-                if (!await _repo.ClassBelongsToSchoolAsync(schoolId, req.AppliedClassId, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected class was not found for your school.", null);
-                if (!await _repo.AdmissionTypeBelongsToSchoolAsync(schoolId, req.AdmissionTypeId, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected admission type was not found for your school.", null);
-                if (req.GenderId.HasValue && !await _repo.GenderExistsAsync(req.GenderId.Value, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected gender is not valid.", null);
-                if (req.BloodGroupId.HasValue && !await _repo.BloodGroupExistsAsync(req.BloodGroupId.Value, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected blood group is not valid.", null);
-                if (req.StudentCategoryId.HasValue && !await _repo.StudentCategoryExistsAsync(req.StudentCategoryId.Value, ct))
-                    return Result<AdmissionDetailDto>(400, "The selected student category is not valid.", null);
-                if (req.DateOfBirth.Date >= DateTime.UtcNow.Date)
-                    return Result<AdmissionDetailDto>(400, "Date of birth must be in the past.", null);
+                var bad = await ValidateRequestAsync(schoolId, req, ct);
+                if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
 
                 var submittedId = await _repo.GetAdmissionStatusIdAsync(Submitted, ct);
                 if (submittedId == null) return ConfigError<AdmissionDetailDto>($"Admission status '{Submitted}' missing from lut_status");
 
-                var now = DateTime.UtcNow;
                 for (var attempt = 0; attempt < 3; attempt++)
                 {
+                    _repo.ClearTracking();   // nothing from a failed attempt may be saved again
+                    var now = DateTime.UtcNow;
+                    await using var tx = await _repo.BeginTransactionAsync(ct);
+                    // numbers are handed out one at a time per school (the same advisory-lock pattern as fee receipt numbers); the unique index stays as the backstop
+                    await _repo.LockApplicationNumberAsync(schoolId, ct);
                     var prefix = $"ADM{now.Year}";
                     var next = await _repo.GetMaxApplicationSequenceAsync(schoolId, prefix, ct) + 1;
 
-                    var entity = new TbAdmission
-                    {
-                        SchoolId = schoolId,
-                        ApplicationNumber = $"{prefix}{next:D4}",
-                        AcademicYearId = req.AcademicYearId,
-                        AppliedClassId = req.AppliedClassId,
-                        AdmissionTypeId = req.AdmissionTypeId,
-                        ApplicantFirstName = req.ApplicantFirstName.Trim(),
-                        ApplicantMiddleName = Clean(req.ApplicantMiddleName),
-                        ApplicantLastName = req.ApplicantLastName.Trim(),
-                        DateOfBirth = req.DateOfBirth.Date,
-                        GenderId = req.GenderId,
-                        BloodGroupId = req.BloodGroupId,
-                        StudentCategoryId = req.StudentCategoryId,
-                        AadharNumber = Clean(req.AadharNumber),
-                        StudentNationId = Clean(req.StudentNationId),
-                        Email = Clean(req.Email),
-                        MobileNumber = Clean(req.MobileNumber),
-                        AddressLine1 = Clean(req.AddressLine1),
-                        AddressLine2 = Clean(req.AddressLine2),
-                        CountryId = req.CountryId,
-                        StateId = req.StateId,
-                        DistrictId = req.DistrictId,
-                        CityId = req.CityId,
-                        Pincode = Clean(req.Pincode),
-                        GuardianName = req.GuardianName.Trim(),
-                        GuardianRelationship = req.GuardianRelationship,
-                        GuardianMobileNumber = req.GuardianMobileNumber,
-                        GuardianEmail = Clean(req.GuardianEmail),
-                        ApplicationDate = now.Date,
-                        StatusId = submittedId.Value,
-                        CreatedAt = now,
-                        UpdatedAt = now
-                    };
+                    var entity = new TbAdmission { SchoolId = schoolId, ApplicationNumber = $"{prefix}{next:D4}", ApplicationDate = now.Date, StatusId = submittedId.Value, CreatedAt = now, UpdatedAt = now };
+                    ApplyDetails(entity, req);
 
                     try
                     {
                         await _repo.AddAdmissionAsync(entity, ct);
                         await _repo.SaveChangesAsync(ct);
+                        await tx.CommitAsync(ct);
                         var detail = await ToDetailAsync(entity, ct);
                         await NotifyAsync(schoolId, entity.Email, entity.GuardianEmail,
                             name => EmailTemplates.ApplicationSubmitted(detail.ApplicantFullName, detail.ApplicationNumber, name),
@@ -142,7 +154,7 @@ namespace smss_api_service_layer.service
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == "uq_tb_admissions_school_appno" && attempt < 2)
                     {
-                        // two applications took the same number at once: pick the next free one and try again
+                        // can't happen while the lock is held; kept as the backstop
                         _logger.LogWarning(ex, "Application number collision for school {SchoolId}; retrying.", schoolId);
                     }
                 }
@@ -151,13 +163,67 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<AdmissionDetailDto>(ex, "submitting admission"); }
         }
 
+        // ---------------- edit ----------------
+        public async Task<ApiResponse<AdmissionDetailDto>> UpdateAsync(string schoolId, long admissionId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        {
+            try
+            {
+                var bad = await ValidateRequestAsync(schoolId, req, ct);
+                if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
+
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockApplicationAsync(schoolId, admissionId, ct);   // an edit and a decision for one application queue up
+                var admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
+                if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
+
+                var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
+                var current = statuses.TryGetValue(admission.StatusId, out var n) ? n : "UNKNOWN";
+                if (current != Submitted && current != UnderReview)
+                    return Result<AdmissionDetailDto>(409, $"This application is {StatusLabel(current)}, so it can no longer be edited. Only a Submitted or Under Review application can be changed.", null);
+
+                var storedAadhaar = admission.AadharNumber;
+                ApplyDetails(admission, req);
+                if (string.IsNullOrWhiteSpace(req.AadharNumber)) admission.AadharNumber = storedAadhaar;   // the form only ever sees it masked, so a blank box means keep it
+                admission.UpdatedAt = DateTime.UtcNow;
+                try { await _repo.SaveChangesAsync(ct); }
+                catch (DbUpdateException ex) when (ConstraintOf(ex) == "uq_tb_admissions_school_aadhar")
+                {
+                    return Result<AdmissionDetailDto>(409, "An application with this Aadhaar number already exists for this school.", null);
+                }
+                await tx.CommitAsync(ct);
+                return Result(200, "Application updated.", await ToDetailAsync(admission, ct));
+            }
+            catch (Exception ex) { return Error<AdmissionDetailDto>(ex, "editing admission"); }
+        }
+
         // ---------------- transitions ----------------
-        public Task<ApiResponse<AdmissionDetailDto>> StartReviewAsync(string schoolId, long admissionId, long reviewedByUserId, CancellationToken ct) =>
+        public Task<ApiResponse<AdmissionDetailDto>> StartReviewAsync(string schoolId, long admissionId, long reviewedByUserId, AdmissionReviewRequestDto? req, CancellationToken ct) =>
             TransitionAsync(schoolId, admissionId, new[] { Submitted }, UnderReview, a =>
             {
                 a.ReviewedBy = reviewedByUserId;
                 a.ReviewedAt = DateTime.UtcNow;
+                a.ReviewNotes = Clean(req?.Notes);
             }, "Application moved to review.", ct);
+
+        /// <summary>The refusal message for deciding (approve / reject) an application that is not Under Review: names the step that is missing, or says why it is final.</summary>
+        private static string? DecideRefusal(string current) => current switch
+        {
+            Submitted => "An application must be Under Review before it can be approved or rejected. Start the review first.",
+            Approved or Rejected or Admitted or Cancelled => $"This application is already {StatusLabel(current)}, so it can't be decided again.",
+            _ => null,
+        };
+
+        private static string? WithdrawRefusal(string current) => current switch
+        {
+            Approved or Rejected or Admitted => $"A decision has already been made ({StatusLabel(current)}), so the application can't be withdrawn.",
+            Cancelled => "This application was already withdrawn.",
+            _ => null,
+        };
+
+        private static string StatusLabel(string status) => status switch
+        {
+            Submitted => "Submitted", UnderReview => "Under Review", Approved => "Approved", Rejected => "Rejected", Admitted => "Admitted (converted to a student)", Cancelled => "Withdrawn", _ => status,
+        };
 
         public async Task<ApiResponse<AdmissionDetailDto>> ApproveAsync(string schoolId, long admissionId, long approvedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct)
         {
@@ -166,7 +232,7 @@ namespace smss_api_service_layer.service
                 a.ApprovedBy = approvedByUserId;
                 a.ApprovedAt = DateTime.UtcNow;
                 a.DecisionRemarks = Clean(req.Remarks);
-            }, "Application approved.", ct);
+            }, "Application approved.", ct, DecideRefusal);
 
             if (result.Status && result.Data is { } d)
             {
@@ -177,18 +243,22 @@ namespace smss_api_service_layer.service
             return result;
         }
 
-        public Task<ApiResponse<AdmissionDetailDto>> RejectAsync(string schoolId, long admissionId, AdmissionDecisionRequestDto req, CancellationToken ct)
+        public Task<ApiResponse<AdmissionDetailDto>> RejectAsync(string schoolId, long admissionId, long rejectedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.Remarks))
                 return Task.FromResult(Result<AdmissionDetailDto>(400, "A reason is required to reject an application.", null));
 
-            return TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Rejected, a => a.RejectionReason = Clean(req.Remarks),
-                "Application rejected.", ct);
+            return TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Rejected, a =>
+            {
+                a.RejectionReason = Clean(req.Remarks);
+                a.RejectedBy = rejectedByUserId;
+                a.RejectedAt = DateTime.UtcNow;
+            }, "Application rejected.", ct, DecideRefusal);
         }
 
         public Task<ApiResponse<AdmissionDetailDto>> CancelAsync(string schoolId, long admissionId, AdmissionDecisionRequestDto req, CancellationToken ct) =>
             TransitionAsync(schoolId, admissionId, new[] { Submitted, UnderReview }, Cancelled, a => a.DecisionRemarks = Clean(req.Remarks),
-                "Application cancelled.", ct);
+                "Application withdrawn.", ct, WithdrawRefusal);
 
         // ---------------- confirm admission ----------------
         // Creates the student, enrollment, guardian and guardian link and marks the application ADMITTED — all in one
@@ -235,14 +305,14 @@ namespace smss_api_service_layer.service
                 // and it simply tries again with a fresh count.
                 for (var attempt = 0; attempt < 3; attempt++)
                 {
-                    if (attempt > 0)
-                    {
-                        _repo.ClearTracking();   // forget the rows of the failed attempt
-                        admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
-                        if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
-                    }
-
+                    _repo.ClearTracking();   // forget the rows of a failed attempt
                     await using var tx = await _repo.BeginTransactionAsync(ct);
+                    // two confirmations of one application queue up; the second finds it already ADMITTED and is refused, so one application can never create two students
+                    await _repo.LockApplicationAsync(schoolId, admissionId, ct);
+                    admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
+                    if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
+                    if (!statuses.TryGetValue(admission.StatusId, out var nowStatus) || nowStatus != Approved)
+                        return Result<AdmissionDetailDto>(409, "Only an APPROVED application can be confirmed for admission. This one was already converted or is no longer approved.", null);
                     try
                     {
                         var now = DateTime.UtcNow;
@@ -377,17 +447,19 @@ namespace smss_api_service_layer.service
 
         private async Task<ApiResponse<AdmissionDetailDto>> TransitionAsync(
             string schoolId, long admissionId, string[] allowedFrom, string toStatus,
-            Action<TbAdmission> apply, string successMessage, CancellationToken ct)
+            Action<TbAdmission> apply, string successMessage, CancellationToken ct, Func<string, string?>? refusal = null)
         {
             try
             {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockApplicationAsync(schoolId, admissionId, ct);   // two decisions / withdrawals of one application queue up; the second sees the first one's result
                 var admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
                 if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
 
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
                 var current = statuses.TryGetValue(admission.StatusId, out var n) ? n : "UNKNOWN";
                 if (!allowedFrom.Contains(current))
-                    return Result<AdmissionDetailDto>(409, $"Cannot move an application from '{current}' to '{toStatus}'.", null);
+                    return Result<AdmissionDetailDto>(409, refusal?.Invoke(current) ?? $"Cannot move an application from '{current}' to '{toStatus}'.", null);
 
                 var toId = await _repo.GetAdmissionStatusIdAsync(toStatus, ct);
                 if (toId == null) return ConfigError<AdmissionDetailDto>($"Admission status '{toStatus}' missing from lut_status");
@@ -396,6 +468,7 @@ namespace smss_api_service_layer.service
                 admission.StatusId = toId.Value;
                 admission.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
 
                 return Result(200, successMessage, await ToDetailAsync(admission, ct));
             }
@@ -434,8 +507,11 @@ namespace smss_api_service_layer.service
             dto.GuardianRelationship = a.GuardianRelationship;
             dto.GuardianMobileNumber = a.GuardianMobileNumber;
             dto.GuardianEmail = a.GuardianEmail;
+            dto.PreviousSchool = a.PreviousSchool;
+            dto.ReviewNotes = a.ReviewNotes;
             dto.ReviewedAt = a.ReviewedAt;
             dto.ApprovedAt = a.ApprovedAt;
+            dto.RejectedAt = a.RejectedAt;
             dto.DecisionRemarks = a.DecisionRemarks;
             dto.RejectionReason = a.RejectionReason;
             dto.CreatedAt = a.CreatedAt;

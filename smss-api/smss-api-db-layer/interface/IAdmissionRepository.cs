@@ -15,7 +15,8 @@ namespace smss_api_db_layer.@interface
     // Every method that reads or changes a school's data takes the school id.
     public interface IAdmissionRepository
     {
-        Task<List<TbAdmission>> GetAllAsync(string schoolId, CancellationToken ct);
+        /// <summary>The school's applications, newest first; each filter is optional.</summary>
+        Task<List<TbAdmission>> GetAllAsync(string schoolId, int? statusId, long? classId, long? academicYearId, CancellationToken ct);
         Task<TbAdmission?> GetByIdAsync(string schoolId, long admissionId, bool track, CancellationToken ct);
         Task AddAdmissionAsync(TbAdmission entity, CancellationToken ct);
 
@@ -62,6 +63,17 @@ namespace smss_api_db_layer.@interface
         Task AddEnrollmentAsync(TbStudentEnrollment entity, CancellationToken ct);
         Task AddGuardianAsync(TbGuardian entity, CancellationToken ct);
         Task AddStudentGuardianAsync(TbStudentGuardian entity, CancellationToken ct);
+
+        /// <summary>Transaction-scoped lock for handing out application numbers, so two submissions for one school never pick the same number (the receipt-number pattern).</summary>
+        Task LockApplicationNumberAsync(string schoolId, CancellationToken ct);
+        /// <summary>Transaction-scoped lock for one application, so a decision, a conversion or a second conversion of it queue up.</summary>
+        Task LockApplicationAsync(string schoolId, long admissionId, CancellationToken ct);
+        /// <summary>Does this school have a student with that id?</summary>
+        Task<bool> StudentExistsAsync(string schoolId, string studentId, CancellationToken ct);
+        /// <summary>Is the student already linked to an application other than the given one?</summary>
+        Task<bool> StudentLinkedToAnotherApplicationAsync(string studentId, long exceptAdmissionId, CancellationToken ct);
+        /// <summary>The student's enrollment for the academic year (any status), or null.</summary>
+        Task<long?> GetEnrollmentIdAsync(string schoolId, string studentId, long academicYearId, CancellationToken ct);
 
         Task<int> SaveChangesAsync(CancellationToken ct);
         /// <summary>Forgets every pending / failed entity so a retry after a failed save starts from a clean context.</summary>

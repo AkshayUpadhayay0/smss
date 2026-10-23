@@ -14,9 +14,9 @@ namespace smss_api_db_layer.repository
         private readonly dbContext _db;
         public AdmissionRepository(dbContext db) => _db = db;
 
-        public Task<List<TbAdmission>> GetAllAsync(string schoolId, CancellationToken ct) =>
+        public Task<List<TbAdmission>> GetAllAsync(string schoolId, int? statusId, long? classId, long? academicYearId, CancellationToken ct) =>
             _db.Admissions.AsNoTracking()
-                .Where(a => a.SchoolId == schoolId)
+                .Where(a => a.SchoolId == schoolId && (statusId == null || a.StatusId == statusId) && (classId == null || a.AppliedClassId == classId) && (academicYearId == null || a.AcademicYearId == academicYearId))
                 .OrderByDescending(a => a.ApplicationDate).ThenByDescending(a => a.AdmissionId)
                 .ToListAsync(ct);
 
@@ -109,6 +109,27 @@ namespace smss_api_db_layer.repository
         public async Task AddEnrollmentAsync(TbStudentEnrollment entity, CancellationToken ct) => await _db.StudentEnrollments.AddAsync(entity, ct);
         public async Task AddGuardianAsync(TbGuardian entity, CancellationToken ct) => await _db.Guardians.AddAsync(entity, ct);
         public async Task AddStudentGuardianAsync(TbStudentGuardian entity, CancellationToken ct) => await _db.StudentGuardians.AddAsync(entity, ct);
+
+        public async Task LockApplicationNumberAsync(string schoolId, CancellationToken ct)
+        {
+            var key = "admission-no:" + schoolId;
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+        }
+
+        public async Task LockApplicationAsync(string schoolId, long admissionId, CancellationToken ct)
+        {
+            var key = $"admission:{schoolId}:{admissionId}";
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+        }
+
+        public Task<bool> StudentExistsAsync(string schoolId, string studentId, CancellationToken ct) =>
+            _db.Students.AnyAsync(s => s.SchoolId == schoolId && s.StudentId == studentId, ct);
+
+        public Task<bool> StudentLinkedToAnotherApplicationAsync(string studentId, long exceptAdmissionId, CancellationToken ct) =>
+            _db.Admissions.AnyAsync(a => a.StudentId == studentId && a.AdmissionId != exceptAdmissionId, ct);
+
+        public Task<long?> GetEnrollmentIdAsync(string schoolId, string studentId, long academicYearId, CancellationToken ct) =>
+            _db.StudentEnrollments.AsNoTracking().Where(e => e.SchoolId == schoolId && e.StudentId == studentId && e.AcademicYearId == academicYearId).Select(e => (long?)e.EnrollmentId).FirstOrDefaultAsync(ct);
 
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 

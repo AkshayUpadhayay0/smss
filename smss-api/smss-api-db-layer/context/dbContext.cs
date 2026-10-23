@@ -72,7 +72,11 @@ namespace smss_api_db_layer.context
         public DbSet<TbSchoolEvent> SchoolEvents { get; set; } = null!;
         public DbSet<TbPeriod> Periods { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
+        public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;
         public DbSet<TbHomework> Homework { get; set; } = null!;
+        public DbSet<LutAssessmentType> AssessmentTypes { get; set; } = null!;
+        public DbSet<TbClassAssessment> ClassAssessments { get; set; } = null!;
+        public DbSet<TbStudentAssessmentMark> StudentAssessmentMarks { get; set; } = null!;
         public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;
         public DbSet<TbEmployeeLeaveRequest> EmployeeLeaveRequests { get; set; } = null!;
         public DbSet<TbStudentLeaveRequest> StudentLeaveRequests { get; set; } = null!;
