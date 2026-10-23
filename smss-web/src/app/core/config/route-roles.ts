@@ -56,6 +56,19 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-concessions': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
+  // Calendar: every role of a school reads it (the page only shows Add / Edit / Delete to School Admin and Principal; the API re-checks)
+  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN],
+  // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
+  '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
+  // Timetable: the School Admin builds it (bell schedule + weekly grid per section); a Teacher reads their own
+  '/school-setup/periods': [ROLES.SCHOOL_ADMIN],
+  '/timetable': [ROLES.SCHOOL_ADMIN],
+  '/timetable/my': [ROLES.TEACHER],
+  // Employees (staff records, documents, creating logins): School Admin only
+  '/employees': [ROLES.SCHOOL_ADMIN],
+  '/employees/new': [ROLES.SCHOOL_ADMIN],
+  '/employees/:employeeId': [ROLES.SCHOOL_ADMIN],
+  '/employees/:employeeId/edit': [ROLES.SCHOOL_ADMIN],
   // Fee dashboard + reports: read-only for the Principal (the API sends canManage=false; the screens hide drill-down / export)
   '/fee-dashboard': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
   '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],

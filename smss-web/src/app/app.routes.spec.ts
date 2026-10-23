@@ -146,9 +146,9 @@ describe('app routes', () => {
         expect(harness.routeNativeElement?.querySelector('app-student-profile')).not.toBeNull();
       });
 
-      it('sees Dashboard, School Profile, Students, Admissions, Add Existing Student, School Setup, Fee Setup and Fees in the menu — no Registered Schools, no Masters', async () => {
+      it('sees Dashboard, Calendar, Timetable, Mark Attendance, School Profile, Students, Admissions, Add Existing Student, School Setup, Employees, Fee Setup and Fees in the menu — no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | School Profile | Students | Admissions | Add Existing Student | School Setup | Fee Setup | Fees');
+        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | School Profile | Students | Admissions | Add Existing Student | School Setup | Employees | Fee Setup | Fees');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
@@ -210,6 +210,28 @@ describe('app routes', () => {
           expect(TestBed.inject(ToastService).toasts().filter((t) => t.title === 'Access denied')).toHaveLength(0);
         },
       );
+    });
+
+    describe.each([
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance'],
+      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar'],
+    ])('%s login', (role, who, menu) => {
+      beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
+
+      it('lands on the Dashboard (a "coming soon" shell for now); the menu has Dashboard and Calendar (+ Mark Attendance for a Teacher)', async () => {
+        const { harness, url } = await go('/dashboard');
+        expect(url).toBe('/dashboard');
+        expect(heading(harness)).toBe('Dashboard');
+        expect(nav(harness)).toBe(menu);
+        expect(harness.routeNativeElement?.textContent).toContain('This screen is coming soon');
+      });
+
+      it.each(['/students', '/employees', '/school-setup/sections', '/fee-dashboard', '/admissions'])('%s is refused: back to the Dashboard, no API call', async (path) => {
+        const http = TestBed.inject(HttpTestingController);
+        const { url } = await go(path);
+        expect(url).toBe('/dashboard');
+        http.expectNone((r) => r.url.includes('/api/Employee') || r.url.includes('/api/Student') || r.url.includes('/api/Sections'));
+      });
     });
 
     it('a user with a custom role still gets the Dashboard (no redirect loop) but nothing else', async () => {

@@ -68,6 +68,18 @@ builder.Services.AddScoped<IStudentFeeBillingRepository, StudentFeeBillingReposi
 builder.Services.AddScoped<IStudentFeeBillingService, StudentFeeBillingService>();
 builder.Services.AddScoped<IFeePaymentRepository, FeePaymentRepository>();
 builder.Services.AddScoped<IFeePaymentService, FeePaymentService>();
+builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
+builder.Services.AddScoped<IPeriodService, PeriodService>();
+builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<ITimetableService, TimetableService>();
+builder.Services.AddScoped<ISchoolEventRepository, SchoolEventRepository>();
+builder.Services.AddScoped<ISchoolEventService, SchoolEventService>();
+builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IClassTeacherRepository, ClassTeacherRepository>();
+builder.Services.AddScoped<IClassTeacherService, ClassTeacherService>();
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 
@@ -87,8 +99,14 @@ if (!Path.IsPathRooted(uploadsRoot))
 Directory.CreateDirectory(uploadsRoot);
 const string uploadsRequestPath = "/uploads";
 
+// Private store (employee documents): NOT under the static-files root, so nothing in it is ever reachable by URL
+var privateRoot = builder.Configuration["FileStorage:PrivateRootPath"] ?? "uploads-private";
+if (!Path.IsPathRooted(privateRoot))
+    privateRoot = Path.Combine(builder.Environment.ContentRootPath, privateRoot);
+Directory.CreateDirectory(privateRoot);
+
 builder.Services.AddSingleton<IFileStorageService>(sp =>
-    new LocalFileStorageService(uploadsRoot, uploadsRequestPath, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
+    new LocalFileStorageService(uploadsRoot, uploadsRequestPath, privateRoot, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
 
 // JWT authentication
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
@@ -184,6 +202,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+// Authoritative forced first-login password change (the Angular route guard only mirrors it)
+app.UseMiddleware<smss_api.Helpers.FirstLoginEnforcementMiddleware>();
 
 app.MapControllers();
 

@@ -44,7 +44,7 @@ export class InputComponent implements ControlValueAccessor {
   protected readonly id = `app-input-${nextId++}`;
 
   readonly label = input<string>();
-  readonly type = input<'text' | 'email' | 'password' | 'number' | 'tel' | 'date' | 'url'>('text');
+  readonly type = input<'text' | 'email' | 'password' | 'number' | 'tel' | 'date' | 'time' | 'url'>('text');
   readonly required = input(false);
   readonly placeholder = input('');
   readonly prefixIcon = input<IconName>();

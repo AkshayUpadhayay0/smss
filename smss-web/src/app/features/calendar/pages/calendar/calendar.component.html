@@ -1,0 +1,141 @@
+<app-page-header title="Calendar" subtitle="Holidays, exams, meetings and school events" icon="calendar" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="add()"><app-icon name="plus" [size]="16" />Add event</app-button>
+  }
+</app-page-header>
+
+<div class="layout">
+  <div class="main">
+    <app-card [noPadding]="true">
+      <div class="bar">
+        <div class="nav">
+          <app-button variant="secondary" size="sm" aria-label="Previous month" (click)="step(-1)"><app-icon name="chevron-left" [size]="16" /></app-button>
+          <app-button variant="secondary" size="sm" aria-label="Next month" (click)="step(1)"><app-icon name="chevron-right" [size]="16" /></app-button>
+          <app-button variant="secondary" size="sm" (click)="goToday()">Today</app-button>
+        </div>
+        <h2 class="month" aria-live="polite">{{ title() }}</h2>
+        <ul class="legend" aria-label="Categories">
+          @for (c of categories(); track c.eventCategoryId) {
+            <li><span class="dot" [style.background]="c.colorHex"></span>{{ c.categoryName }}</li>
+          }
+        </ul>
+      </div>
+
+      @if (loadFailed()) {
+        <p class="state">The calendar could not be loaded. <app-button variant="secondary" size="sm" (click)="loadMonth()">Try again</app-button></p>
+      }
+
+      <div class="grid" role="grid" [attr.aria-label]="title()" [class.loading]="loading()">
+        <div class="head" role="row">
+          @for (d of weekdays; track d) {
+            <span role="columnheader">{{ d }}</span>
+          }
+        </div>
+        @for (week of weeks(); track week[0].date) {
+          <div class="week" role="row">
+            @for (day of week; track day.date) {
+              @let items = dayEvents(day);
+              <div
+                class="day"
+                role="gridcell"
+                tabindex="0"
+                [class.muted]="!day.inMonth"
+                [class.today]="day.isToday"
+                [class.selected]="day.date === selected()"
+                [attr.aria-label]="day.date + (items.length ? ', ' + items.length + ' events' : '')"
+                [attr.aria-selected]="day.date === selected()"
+                (click)="select(day)"
+                (keydown.enter)="select(day)"
+                (keydown.space)="select(day); $event.preventDefault()"
+              >
+                <span class="num">{{ day.day }}</span>
+                @for (ev of items.slice(0, maxChips); track ev.eventId) {
+                  <button type="button" class="event" [style.--c]="ev.colorHex" [title]="ev.eventTitle + ' (' + ev.categoryName + ')'" (click)="open(ev, $event)">
+                    <span class="dot" [style.background]="ev.colorHex"></span><span class="text">{{ chipLabel(ev, day.date) }}</span>
+                  </button>
+                }
+                @if (items.length > maxChips) {
+                  <span class="more">+{{ items.length - maxChips }} more</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </app-card>
+
+    <app-card>
+      <div class="day-head">
+        <h3>{{ selectedText() }}</h3>
+        @if (canManage()) {
+          <app-button variant="secondary" size="sm" (click)="add(selected())"><app-icon name="plus" [size]="14" />Add event on this day</app-button>
+        }
+      </div>
+      @if (selectedEvents().length === 0) {
+        <p class="empty">No events on this day.</p>
+      } @else {
+        <ul class="list">
+          @for (ev of selectedEvents(); track ev.eventId) {
+            <li>
+              <button type="button" class="row" (click)="open(ev)">
+                <span class="bar-color" [style.background]="ev.colorHex"></span>
+                <span class="info"><strong>{{ ev.eventTitle }}</strong><span class="when">{{ describeWhen(ev) }}</span></span>
+                <span class="cat">{{ ev.categoryName }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+  </div>
+
+  <aside class="side" aria-label="Upcoming events">
+    <app-card title="Upcoming">
+      @if (upcomingFailed()) {
+        <p class="empty">Could not load.</p>
+      } @else if (upcoming().length === 0) {
+        <p class="empty">Nothing coming up.</p>
+      } @else {
+        <ul class="list">
+          @for (ev of upcoming(); track ev.eventId) {
+            <li>
+              <button type="button" class="row" (click)="open(ev)">
+                <span class="bar-color" [style.background]="ev.colorHex"></span>
+                <span class="info">
+                  <strong>{{ ev.eventTitle }}</strong>
+                  <span class="when">{{ describeWhen(ev) }}@if (ev.isOngoing) { · <em>on now</em> }</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+  </aside>
+</div>
+
+@if (detail(); as ev) {
+  <app-modal [title]="ev.eventTitle" (closed)="detail.set(null)">
+    <div class="detail">
+      <span class="pill" [style.background]="ev.colorHex + '26'" [style.color]="ev.colorHex"><span class="dot" [style.background]="ev.colorHex"></span>{{ ev.categoryName }}</span>
+      <p class="when-big">{{ describeWhen(ev) }}</p>
+      @if (ev.description) {
+        <p class="desc">{{ ev.description }}</p>
+      }
+      @if (ev.createdByName) {
+        <p class="by">Added by {{ ev.createdByName }}</p>
+      }
+    </div>
+    <ng-container modal-footer>
+      @if (canManage()) {
+        <app-button variant="danger-ghost" [disabled]="busy()" (click)="remove(ev)"><app-icon name="trash-2" [size]="14" />Delete</app-button>
+        <app-button variant="secondary" (click)="edit(ev)"><app-icon name="pencil" [size]="14" />Edit</app-button>
+      }
+      <app-button variant="secondary" (click)="detail.set(null)">Close</app-button>
+    </ng-container>
+  </app-modal>
+}
+
+@if (form(); as f) {
+  <app-event-form-modal [event]="f.event" [initialDate]="f.date" [categories]="categories()" (saved)="onSaved()" (closed)="form.set(null)" />
+}

@@ -1,0 +1,40 @@
+<app-page-header title="Employees" subtitle="Everyone who works at your school" icon="user" [breadcrumbs]="breadcrumbs">
+  <app-button (click)="add()"><app-icon name="plus" [size]="16" />Add Employee</app-button>
+</app-page-header>
+
+<app-card>
+  <div class="filters">
+    <app-select label="Designation" [options]="designationOptions()" [formControl]="designationControl" />
+    <app-select label="Department" [options]="departmentOptions()" [formControl]="departmentControl" />
+    <app-select label="Employment status" [options]="employmentStatusOptions()" [formControl]="employmentStatusControl" />
+    <app-select label="Type" [options]="typeOptions" [formControl]="typeControl" />
+    <app-select label="Record status" [options]="statusOptions" [formControl]="statusControl" />
+  </div>
+</app-card>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input placeholder="Search by name, ID, mobile or email…" prefixIcon="search" [formControl]="searchControl" />
+    </div>
+    <span class="count">
+      {{ total() }} {{ total() === 1 ? 'employee' : 'employees' }}
+      @if (hasFilter()) {
+        <app-button variant="secondary" size="sm" (click)="clearFilters()"><app-icon name="x" [size]="14" />Clear filters</app-button>
+      }
+    </span>
+  </div>
+
+  <app-table [columns]="columns" [rows]="rows()" [loading]="loading()" [hasActions]="true" [emptyMessage]="emptyMessage()">
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="View" title="View" (click)="view(row)"><app-icon name="eye" [size]="14" />View</app-button>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="edit(row)"><app-icon name="pencil" [size]="14" />Edit</app-button>
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+</app-card>

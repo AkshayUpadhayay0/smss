@@ -62,6 +62,16 @@ namespace smss_api_db_layer.context
         public DbSet<TbFeePayment> FeePayments { get; set; } = null!;
         public DbSet<TbFeePaymentAllocation> FeePaymentAllocations { get; set; } = null!;
         public DbSet<TbStudentFeeConcession> StudentFeeConcessions { get; set; } = null!;
+        public DbSet<LutEmploymentStatus> LutEmploymentStatuses { get; set; } = null!;
+        public DbSet<TbEmployee> Employees { get; set; } = null!;
+        public DbSet<TbEmployeeDocument> EmployeeDocuments { get; set; } = null!;
+        public DbSet<TbClassTeacherAssignment> ClassTeacherAssignments { get; set; } = null!;
+        public DbSet<LutAttendanceStatus> LutAttendanceStatuses { get; set; } = null!;
+        public DbSet<TbStudentAttendance> StudentAttendance { get; set; } = null!;
+        public DbSet<LutEventCategory> LutEventCategories { get; set; } = null!;
+        public DbSet<TbSchoolEvent> SchoolEvents { get; set; } = null!;
+        public DbSet<TbPeriod> Periods { get; set; } = null!;
+        public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

@@ -85,6 +85,28 @@ namespace smss_api_service_layer.helper
             return (subject, html);
         }
 
+        public static (string Subject, string Html) EmployeeCredentials(
+            string employeeName, string schoolName, string loginId, string temporaryPassword, string? loginUrl)
+        {
+            var subject = $"Your SMSS login for {schoolName}";
+            var loginLine = string.IsNullOrEmpty(loginUrl)
+                ? ""
+                : $"<p>Login here: <a href=\"{loginUrl}\">{loginUrl}</a></p>";
+
+            var html = $@"
+                <p>Hello {employeeName},</p>
+                <p>A login has been created for you at <strong>{schoolName}</strong> on SMSS.</p>
+                <p>Login details:</p>
+                <ul>
+                    <li><strong>Login ID:</strong> {loginId}</li>
+                    <li><strong>Temporary Password:</strong> {temporaryPassword}</li>
+                </ul>
+                <p>The password must be changed the first time you log in. Please do not share this email.</p>
+                {loginLine}";
+
+            return (subject, html);
+        }
+
         public static (string Subject, string Html) SuperAdminWelcome(string displayName, string orgUserId, string? loginUrl)
         {
             var subject = "Your SMSS Super Admin account is ready";

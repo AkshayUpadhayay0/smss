@@ -23,6 +23,11 @@ export class ApiService {
     return this.unwrap(this.http.get<ApiResponse<T>>(this.url(path), { params }));
   }
 
+  /** A file from an authenticated endpoint (the token is attached by the interceptor): the raw bytes, not the ApiResponse envelope. */
+  download(path: string): Observable<Blob> {
+    return this.http.get(this.url(path), { responseType: 'blob' });
+  }
+
   post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Observable<T> {
     return this.unwrap(this.http.post<ApiResponse<T>>(this.url(path), body ?? {}, { context: this.context(options) }));
   }
@@ -35,9 +40,10 @@ export class ApiService {
     return this.unwrap(this.http.delete<ApiResponse<T>>(this.url(path)));
   }
 
-  /** Multipart upload, e.g. school logo (field name "file"). */
-  upload<T>(path: string, file: File, field = 'file', options?: ApiRequestOptions): Observable<T> {
+  /** Multipart upload, e.g. school logo (field name "file"); `extraFields` are sent as plain form fields next to the file. */
+  upload<T>(path: string, file: File, field = 'file', options?: ApiRequestOptions, extraFields?: Record<string, string>): Observable<T> {
     const form = new FormData();
+    for (const [name, value] of Object.entries(extraFields ?? {})) form.append(name, value);
     form.append(field, file);
     return this.unwrap(this.http.post<ApiResponse<T>>(this.url(path), form, { context: this.context(options) }));
   }

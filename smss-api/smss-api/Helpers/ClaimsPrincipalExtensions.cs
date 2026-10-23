@@ -27,6 +27,15 @@ namespace smss_api.Helpers
         /// concessions, per-item frequency / opt-out): School Admin only. The Accountant collects and voids payments (CanManageFees) but
         /// does not change what is charged, matching the frontend route rules where all of Fee Setup is School Admin only.
         /// </summary>
+        /// <summary>School Admin only (the employee module, ...). Keep role-name matching in this one file.</summary>
+        public static bool IsSchoolAdmin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
+
+        /// <summary>
+        /// Whether the caller may create / change / delete calendar events: a School Admin or a Principal. Reading the calendar needs no role
+        /// (every role of the school sees every event). Kept separate from IsSchoolAdmin / CanManageFees so each permission says what it is for.
+        /// </summary>
+        public static bool CanManageEvents(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
         public static bool CanConfigureFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
         /// <summary>

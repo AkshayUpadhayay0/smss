@@ -1,0 +1,55 @@
+<app-card title="Documents">
+  @if (documentTypes().length === 0) {
+    <p class="hint">
+      No employee document types are set up yet. Add one (applies to Employee or Both) under
+      <a routerLink="/school-setup/document-types">School Setup → Document Types</a> to upload documents.
+    </p>
+  } @else {
+    <div class="upload">
+      <app-select label="Document type" [required]="true" placeholder="Select…" [options]="typeOptions()" [formControl]="typeControl" [errorText]="typeError()" />
+      <div class="field">
+        <label for="employee-doc-file">File<span class="required">*</span></label>
+        @for (v of [fileVersion()]; track v) {
+          <input id="employee-doc-file" type="file" [accept]="accept" (change)="onFile($event)" />
+        }
+        @if (fileError(); as e) {
+          <span class="error" role="alert">{{ e }}</span>
+        } @else {
+          <span class="help">PDF, PNG, JPG or WEBP, up to 5 MB.</span>
+        }
+      </div>
+      <app-input label="Remarks" placeholder="Optional" [formControl]="remarksControl" />
+      <div class="submit">
+        <app-button [disabled]="uploading()" (click)="upload()"><app-icon name="upload" [size]="16" />{{ uploading() ? 'Uploading…' : 'Upload' }}</app-button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="hint">Loading documents…</p>
+  } @else if (loadFailed()) {
+    <p class="hint">The documents could not be loaded. <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></p>
+  } @else if (documents().length === 0) {
+    <p class="hint">No documents uploaded yet.</p>
+  } @else {
+    <ul class="docs" aria-label="Uploaded documents">
+      @for (d of documents(); track d.employeeDocumentId) {
+        <li>
+          <div class="info">
+            <strong>{{ d.documentTypeName }}</strong>
+            <span class="file">{{ d.fileName }} · {{ size(d.fileSize) }}</span>
+            <span class="meta">Uploaded {{ fmtDate(d.uploadedAt) }}@if (d.uploadedByName) { by {{ d.uploadedByName }}}@if (d.remarks) { · “{{ d.remarks }}”}</span>
+          </div>
+          <div class="actions">
+            <app-button variant="secondary" size="sm" [disabled]="busyId() !== null" [attr.aria-label]="'Download ' + d.fileName" (click)="download(d)">
+              <app-icon name="file-text" [size]="14" />Download
+            </app-button>
+            <app-button variant="danger-ghost" size="sm" [disabled]="busyId() !== null" [attr.aria-label]="'Remove ' + d.fileName" (click)="remove(d)">
+              <app-icon name="trash-2" [size]="14" />Remove
+            </app-button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</app-card>

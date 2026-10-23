@@ -10,6 +10,10 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
+  { label: 'Calendar', icon: 'calendar', route: '/calendar' },
+  { label: 'Timetable', icon: 'calendar', route: '/timetable' },
+  { label: 'My Timetable', icon: 'calendar', route: '/timetable/my' },
+  { label: 'Mark Attendance', icon: 'circle-check', route: '/attendance/mark' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   { label: 'Students', icon: 'graduation-cap', route: '/students' },
   { label: 'Admissions', icon: 'user', route: '/admissions' },
@@ -22,12 +26,21 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Academic Year', route: '/school-setup/academic-year' },
       { label: 'Class', route: '/school-setup/classes' },
       { label: 'Section', route: '/school-setup/sections' },
+      { label: 'Periods', route: '/school-setup/periods' },
       { label: 'Subject', route: '/school-setup/subjects' },
       { label: 'Class-Subject Mapping', route: '/school-setup/class-subjects' },
       { label: 'Employee Designation', route: '/school-setup/employee-designations' },
       { label: 'Employee Department', route: '/school-setup/employee-departments' },
       { label: 'Admission Type', route: '/school-setup/admission-types' },
       { label: 'Document Types', route: '/school-setup/document-types' },
+    ],
+  },
+  {
+    label: 'Employees',
+    icon: 'user',
+    children: [
+      { label: 'All Employees', route: '/employees' },
+      { label: 'Add Employee', route: '/employees/new' },
     ],
   },
   {

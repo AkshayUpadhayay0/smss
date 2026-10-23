@@ -1,0 +1,65 @@
+<app-page-header
+  [title]="editing() ? 'Edit Employee' : 'Add Employee'"
+  [subtitle]="editing() ? (existing()?.employeeId ?? '') : 'Create the staff record first. A login can be added afterwards from the employee page.'"
+  icon="user"
+  [breadcrumbs]="breadcrumbs()"
+/>
+
+@if (loadFailed()) {
+  <app-card>
+    <div class="state"><p>This employee could not be loaded.</p><app-button variant="secondary" size="sm" (click)="cancel()">Back</app-button></div>
+  </app-card>
+} @else {
+  <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-card title="Job">
+      <div class="grid">
+        <app-select label="Designation" [required]="true" placeholder="Select…" [options]="designationOptions()" formControlName="designationId" [errorText]="err('designationId')" />
+        <app-select label="Department" [required]="true" placeholder="Select…" [options]="departmentOptions()" formControlName="departmentId" [errorText]="err('departmentId')" />
+        <app-select label="Employee type" [required]="true" placeholder="Select…" [options]="typeOptions" formControlName="employeeType" [errorText]="err('employeeType')" />
+        <app-select label="Employment status" [required]="true" placeholder="Select…" [options]="employmentStatusOptions()" formControlName="employmentStatusId" [errorText]="err('employmentStatusId')" />
+        <app-input label="Date of joining" type="date" [required]="true" formControlName="dateOfJoining" [errorText]="err('dateOfJoining')" />
+        <app-input label="Date of leaving" type="date" formControlName="dateOfLeaving" [errorText]="err('dateOfLeaving')" helpText="Only when they have left." />
+      </div>
+      @if (!designationOptions().length || !departmentOptions().length) {
+        <p class="hint">Add an active designation and department under School Setup first.</p>
+      }
+    </app-card>
+
+    <app-card title="Personal Details">
+      <div class="grid">
+        <app-input label="First name" [required]="true" formControlName="firstName" [errorText]="err('firstName')" />
+        <app-input label="Middle name" formControlName="middleName" [errorText]="err('middleName')" />
+        <app-input label="Last name" [required]="true" formControlName="lastName" [errorText]="err('lastName')" />
+        <app-input label="Date of birth" type="date" [required]="true" formControlName="dateOfBirth" [errorText]="err('dateOfBirth')" />
+        <app-select label="Gender" placeholder="Select…" [options]="genderOptions()" formControlName="genderId" />
+        <app-select label="Blood group" placeholder="Select…" [options]="bloodGroupOptions()" formControlName="bloodGroupId" />
+      </div>
+      <div class="grid wide">
+        <app-input label="Qualification" placeholder="e.g. M.Sc, B.Ed" formControlName="qualification" [errorText]="err('qualification')" />
+      </div>
+
+      <h4 class="subsection">Photo (optional)</h4>
+      @if (editing()) {
+        <p class="note">To change the photo, use "Change photo" on the employee page.</p>
+      } @else {
+        <app-logo-upload noun="photo" icon="user" (changed)="onPhotoChanged($event)" />
+      }
+    </app-card>
+
+    <app-card title="Contact">
+      <div class="grid">
+        <app-input label="Mobile number" type="tel" [required]="true" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
+        <app-input label="Alternate mobile" type="tel" placeholder="Optional" formControlName="alternateMobile" [errorText]="err('alternateMobile')" />
+        <app-input label="Email" type="email" prefixIcon="mail" formControlName="email" [errorText]="err('email')" helpText="Login details are emailed here. Must be unique in your school." />
+      </div>
+      <div class="grid wide">
+        <app-textarea label="Address" [required]="true" [rows]="3" [maxLength]="1000" formControlName="address" [errorText]="err('address')" />
+      </div>
+    </app-card>
+
+    <div class="footer">
+      <app-button variant="secondary" type="button" [disabled]="saving()" (click)="cancel()">Cancel</app-button>
+      <app-button type="submit" [disabled]="saving() || loading()">{{ saving() ? 'Saving…' : editing() ? 'Save Changes' : 'Create Employee' }}</app-button>
+    </div>
+  </form>
+}

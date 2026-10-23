@@ -1,0 +1,44 @@
+<app-modal [title]="editing() ? 'Edit event' : 'Add event'" [dismissible]="!saving()" (closed)="closed.emit()">
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate id="event-form">
+    <app-input label="Title" [required]="true" placeholder="e.g. Diwali holiday" formControlName="eventTitle" [errorText]="err('eventTitle')" />
+
+    <label class="allday">
+      <input type="checkbox" formControlName="isAllDay" />
+      <span>All-day event</span>
+    </label>
+
+    <div class="row">
+      <app-input label="Start date" type="date" [required]="true" formControlName="startDate" [errorText]="err('startDate')" />
+      @if (!allDay()) {
+        <app-input label="Start time" type="time" [required]="true" formControlName="startTime" [errorText]="err('startTime')" />
+      }
+    </div>
+    <div class="row">
+      <app-input label="End date" type="date" formControlName="endDate" helpText="Same as the start date if left blank." [errorText]="err('endDate')" />
+      @if (!allDay()) {
+        <app-input label="End time" type="time" [required]="true" formControlName="endTime" [errorText]="err('endTime')" />
+      }
+    </div>
+
+    <fieldset class="categories">
+      <legend>Category <span class="required">*</span></legend>
+      <div class="chips" role="radiogroup" aria-label="Category">
+        @for (c of categories(); track c.eventCategoryId) {
+          <button type="button" class="chip" role="radio" [attr.aria-checked]="categoryId() === c.eventCategoryId" [class.selected]="categoryId() === c.eventCategoryId" (click)="pick(c.eventCategoryId)">
+            <span class="dot" [style.background]="c.colorHex"></span>{{ c.categoryName }}
+          </button>
+        }
+      </div>
+      @if (submitted() && categoryId() < 1) {
+        <span class="error" role="alert">Choose a category</span>
+      }
+    </fieldset>
+
+    <app-textarea label="Description" placeholder="Optional" [rows]="3" [maxLength]="2000" formControlName="description" [errorText]="err('description')" />
+  </form>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    <app-button type="submit" [disabled]="saving()" (click)="submit()">{{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Add event' }}</app-button>
+  </ng-container>
+</app-modal>

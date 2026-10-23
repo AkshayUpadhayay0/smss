@@ -2,6 +2,18 @@
   <app-button (click)="openCreate()"><app-icon name="plus" [size]="16" />Add Section</app-button>
 </app-page-header>
 
+<app-card>
+  <div class="year-bar">
+    <app-select label="Academic year (for class teachers)" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
+    <p class="year-hint">Each section has one class teacher per academic year. Only active Teaching employees with a Teacher login can be chosen.</p>
+  </div>
+  @if (teacherFailed()) {
+    <p class="notice warn" role="alert">Class teachers could not be loaded. <app-button variant="secondary" size="sm" (click)="loadClassTeachers()">Try again</app-button></p>
+  } @else if (showMissing()) {
+    <p class="notice warn" role="status"><app-icon name="triangle-alert" [size]="16" /> {{ missingCount() }} active {{ missingCount() === 1 ? 'section has' : 'sections have' }} no class teacher yet for this year.</p>
+  }
+</app-card>
+
 <app-card [noPadding]="true">
   <div class="toolbar">
     <div class="search">
@@ -20,6 +32,27 @@
     [emptyMessage]="loadFailed() ? 'Could not load sections.' : search() ? 'Nothing matches your search.' : 'No sections yet. Add classes first, then add sections to them.'"
     (sortChange)="onSort($event)"
   >
+    <ng-template #cell let-row>
+      @if (row.isActive) {
+        <div class="teacher-cell" [class.missing]="!row.classTeacherId && !teacherLoading() && !teacherFailed() && yearControl.value">
+          @for (v of [dropdownVersion()]; track v) {
+            <app-select
+              class="teacher-select"
+              placeholder="— Not assigned —"
+              [options]="teacherOptions(row)"
+              [ngModel]="row.classTeacherId"
+              (ngModelChange)="onTeacherChange(row, $event)"
+              [disabled]="!yearControl.value || teacherLoading() || teacherFailed() || teacherSavingId() !== null"
+            />
+          }
+          @if (!row.classTeacherId && yearControl.value && !teacherLoading() && !teacherFailed()) {
+            <span class="flag" title="This section has no class teacher for the chosen year">Missing</span>
+          }
+        </div>
+      } @else {
+        <span class="muted">—</span>
+      }
+    </ng-template>
     <ng-template #rowActions let-row>
       <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
         <app-icon name="pencil" [size]="14" />

@@ -29,6 +29,9 @@ namespace smss_api_db_layer.repository
             return await query.FirstOrDefaultAsync();
         }
 
+        public async Task<bool?> GetFirstLoginFlagAsync(long userId) =>
+            await _dbContext.Users.AsNoTracking().Where(u => u.UserId == userId).Select(u => (bool?)u.IsFirstLogin).FirstOrDefaultAsync();
+
         public async Task<List<LutRole>> GetRolesByUserIdAsync(long userId)
         {
             return await (from ur in _dbContext.UserRoles.AsNoTracking()

@@ -33,4 +33,7 @@ export interface SectionRow extends Record<string, unknown> {
   maxStrength: string;
   statusName: string;
   isActive: boolean;
+  /** The class teacher for the chosen academic year ('' = none); only meaningful for active sections. */
+  classTeacherId: string;
+  classTeacher: string;
 }

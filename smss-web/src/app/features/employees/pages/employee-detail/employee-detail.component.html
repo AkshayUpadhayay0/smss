@@ -1,0 +1,88 @@
+<app-page-header
+  [title]="employee()?.fullName ?? 'Employee'"
+  [subtitle]="employee() ? employee()!.employeeId + ' · ' + employee()!.designationName : 'Employee'"
+  icon="user"
+  [breadcrumbs]="breadcrumbs()"
+>
+  <app-button variant="secondary" (click)="back()"><app-icon name="arrow-left" [size]="16" />Back to Employees</app-button>
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="note">Loading employee…</p></app-card>
+} @else if (loadFailed() || !employee()) {
+  <app-card>
+    <div class="note"><p>This employee could not be loaded.</p><app-button variant="secondary" (click)="back()">Back to Employees</app-button></div>
+  </app-card>
+} @else {
+  @if (employee(); as e) {
+    <div class="sections">
+      <app-card>
+        <div class="hero">
+          <span class="photo">
+            @if (photoUrl(); as src) {
+              <img [src]="src" [alt]="e.fullName + ' photo'" />
+            } @else {
+              <span class="initials" aria-hidden="true">{{ initials() }}</span>
+            }
+          </span>
+          <div class="who">
+            <h2>{{ e.fullName }}</h2>
+            <p class="sub">{{ e.designationName }} · {{ e.departmentName }} · {{ e.employeeType }}</p>
+            <div class="badges">
+              <span class="pill tone-{{ tone(e.employmentStatusName) }}">{{ e.employmentStatusName }}</span>
+              <span class="pill" [class.tone-green]="isActive()" [class.tone-gray]="!isActive()">{{ isActive() ? 'Active record' : 'Inactive record' }}</span>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <app-button variant="secondary" (click)="photoOpen.set(true)"><app-icon name="upload" [size]="16" />{{ photoUrl() ? 'Change photo' : 'Add photo' }}</app-button>
+            <app-button variant="secondary" (click)="edit()"><app-icon name="pencil" [size]="16" />Edit</app-button>
+            <app-button [variant]="isActive() ? 'danger' : 'secondary'" [disabled]="busy()" (click)="toggleStatus()">{{ isActive() ? 'Deactivate' : 'Activate' }}</app-button>
+          </div>
+        </div>
+      </app-card>
+
+      <app-card title="Details">
+        <dl class="details">
+          <div><dt>Employee ID</dt><dd>{{ e.employeeId }}</dd></div>
+          <div><dt>Date of birth</dt><dd>{{ fmt(e.dateOfBirth) }}</dd></div>
+          <div><dt>Gender</dt><dd>{{ e.genderName || '—' }}</dd></div>
+          <div><dt>Blood group</dt><dd>{{ e.bloodGroupName || '—' }}</dd></div>
+          <div><dt>Date of joining</dt><dd>{{ fmt(e.dateOfJoining) }}</dd></div>
+          <div><dt>Date of leaving</dt><dd>{{ e.dateOfLeaving ? fmt(e.dateOfLeaving) : '—' }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ e.mobileNumber }}</dd></div>
+          <div><dt>Alternate mobile</dt><dd>{{ e.alternateMobile || '—' }}</dd></div>
+          <div><dt>Email</dt><dd>{{ e.email || '—' }}</dd></div>
+          <div class="wide"><dt>Qualification</dt><dd>{{ e.qualification || '—' }}</dd></div>
+          <div class="wide"><dt>Address</dt><dd>{{ e.address }}</dd></div>
+        </dl>
+      </app-card>
+
+      <app-card title="System login">
+        @if (e.loginId) {
+          <dl class="details">
+            <div><dt>Login ID</dt><dd><code>{{ e.loginId }}</code></dd></div>
+            <div><dt>Roles</dt><dd>{{ e.loginRoles.join(', ') || '—' }}</dd></div>
+          </dl>
+          <p class="note small">The password cannot be viewed again. Roles decide what this person can do; the designation is only a job title.</p>
+        } @else {
+          <div class="login-empty">
+            <p class="note small">This employee has no login yet. Create one to let them sign in; you choose the roles that decide what they can do.</p>
+            <app-button [disabled]="!isActive()" (click)="loginOpen.set(true)"><app-icon name="lock" [size]="16" />Create Login</app-button>
+          </div>
+          @if (!isActive()) {
+            <p class="note small">Activate this record before creating a login.</p>
+          }
+        }
+      </app-card>
+
+      <app-employee-documents [employeeId]="e.employeeId" [documentTypes]="lookups()?.documentTypes ?? []" />
+    </div>
+
+    @if (photoOpen()) {
+      <app-employee-photo-dialog [employeeId]="e.employeeId" [employeeName]="e.fullName" [currentUrl]="photoUrl()" (saved)="onPhotoSaved($event)" (closed)="photoOpen.set(false)" />
+    }
+    @if (loginOpen()) {
+      <app-employee-login-dialog [employeeId]="e.employeeId" [employeeName]="e.fullName" [roles]="lookups()?.assignableRoles ?? []" (created)="onLoginCreated($event)" (closed)="loginOpen.set(false)" />
+    }
+  }
+}

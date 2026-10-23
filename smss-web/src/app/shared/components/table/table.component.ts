@@ -12,8 +12,9 @@ export interface TableColumn<T> {
   /**
    * 'status' renders the value as an Active/Inactive pill (boolean, or a string such as "Active").
    * 'badge' renders the text in the same pill shape, highlighted only when it is "Yes" (e.g. Required: Yes / No).
+   * 'template' renders the parent's `<ng-template #cell let-row let-key="key">` for the cell (e.g. a dropdown inside the row).
    */
-  type?: 'text' | 'status' | 'badge' | 'avatar';
+  type?: 'text' | 'status' | 'badge' | 'avatar' | 'template';
   /** For 'avatar': the cell value is an absolute image URL (or empty); this gives the text for the initials fallback. */
   avatarLabel?: (row: T) => string;
   /** For 'badge': picks the pill colour (gray | blue | green | yellow | red | violet | gray-strike) from the cell value. */
@@ -85,6 +86,10 @@ export interface SortChange {
                           {{ initials(col.avatarLabel ? col.avatarLabel(row) : '') }}
                         }
                       </span>
+                    } @else if (col.type === 'template') {
+                      @if (cellTemplate(); as tpl) {
+                        <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, key: col.key }" />
+                      }
                     } @else if (col.type === 'badge') {
                       <span
                         class="pill"
@@ -133,6 +138,7 @@ export class TableComponent<T> {
   readonly sortChange = output<SortChange>();
 
   protected readonly rowActions = contentChild<TemplateRef<{ $implicit: T }>>('rowActions');
+  protected readonly cellTemplate = contentChild<TemplateRef<{ $implicit: T; key: string }>>('cell');
   protected readonly skeletonRows = [1, 2, 3, 4, 5];
 
   protected cell(row: T, key: string): unknown {

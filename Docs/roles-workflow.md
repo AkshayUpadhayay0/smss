@@ -155,16 +155,18 @@ School Setup Wizard
 
 Recommended setup sequence: School Profile → Academic Year → Classes → Sections → Subjects → Departments → Designations → Employees → Teachers → **Fee Setup (Fee Types → Fee Structures → Fee Concessions)** → Students → Guardians → Examination Configuration → Timetable.
 
-Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, and section 28 for Student Fee Billing & Collection (the actual per-student items, installments, payments, dashboard, and reports — this is now complete end to end).
+Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, section 28 for Student Fee Billing & Collection, section 29 for Employee Management (registration and login — Stage 1 complete), section 30 for Class-Teacher Assignment, section 31 for Attendance, section 32 for the Academic Calendar, and section 33 for Teacher Timetable — all six complete and deployed.
 
 ## 7. Principal workflow
 
 Dashboard shows: Students, Teachers, Attendance, Admissions, Examinations, Academic Performance, Homework, Leave, Timetable, Notices, School Calendar.
 
 **Academic:** manage academic year, monitor classes/subjects/teacher assignments, review student performance/examinations/report cards, monitor attendance/homework/timetable.
-**Staff:** view employees, review teacher attendance, approve teacher leave, monitor teacher workload, assign teachers where permitted.
+**Staff:** view employees, review teacher attendance, approve teacher leave, monitor teacher workload, assign teachers where permitted. (Employee reads are currently School Admin only — see section 29 — so Principal's employee visibility is not yet built.)
 **Students:** view students, monitor attendance, review academic performance and disciplinary/student notes, approve certain student actions.
-**Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link.
+**Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link. Principal can also create/edit/delete Academic Calendar events (section 32, `CanManageEvents`) — the first place Principal got a real write permission outside Fees' read-only case.
+
+Principal does not yet have attendance or timetable read access (sections 31, 33) — currently only the relevant class teacher and School Admin can read those. Future work, following the same `CanViewFees`-style read-only pattern already established (section 25).
 
 ## 8. Teacher workflow
 
@@ -172,7 +174,9 @@ Dashboard shows: My Classes, My Subjects, Today's Timetable, Attendance, Homewor
 
 **Classes:** view assigned classes/sections/subjects/students.
 
-**Attendance:** `Select Class → Select Section → Select Date → Mark Attendance → Save`
+**Attendance:** `Select Class → Select Section → Select Date → Mark Attendance → Save`. **Built and deployed (section 31).** Only the section's current class teacher (section 30) may mark attendance for that section, once per day, same calendar day only — enforced server-side via `IClassTeacherService.IsClassTeacherAsync`, not just hidden in the UI for other teachers. Reachable from "Mark Attendance" in the Teacher/School Admin nav.
+
+**My Timetable:** **Built and deployed (section 33).** A read-only weekly grid of the teacher's own periods across all sections they teach, at `/timetable/my` — self-only, 403 for anyone else's.
 
 **Homework:** `Create Homework → Select Class → Select Section → Select Subject → Set Due Date → Publish`
 
@@ -203,11 +207,11 @@ Finance
 └── Reports
 ```
 
-**Fee collection workflow:** `Student → Fee Due → Accountant → Collect Payment → Record Transaction → Generate Receipt → Update Student Fee Balance`
+**Fee collection workflow:** `Student → Fee Due → Accountant → Collect Payment → Record Transaction → Generate Receipt → Update Student Fee Balance`, via the student's Fees tab (`/students/:id`), the only place in the app that collects or voids a payment.
 
-See section 28 for the full schema and screens behind this workflow (`tb_fee_payments`, `tb_fee_payment_allocations`, `tb_student_fee_dues`, Fee Dashboard, class-wise report) — this module is now complete.
+See section 28 for the full schema and screens behind this workflow (`tb_fee_payments`, `tb_fee_payment_allocations`, `tb_student_fee_dues`, Fee Dashboard, class-wise report) — this module is now complete, including server-side role checks.
 
-**Known gap to fix:** the student record route (`/students/:id`) is currently School Admin-only in the Angular route rules, which blocks the Accountant from opening a student's Fees tab even though Accountant is the role that collects and voids payments there. Decided fix: give Accountant access to the student record scoped to the Fees tab (not full profile edit rights elsewhere on that page).
+**Accountant's access, precisely:** Accountant can open a student record, but sees only the header (name, admission number, status, class/section) and the Fees tab — no Profile tab, no photo actions, no student login creation. They reach a student via Fees → Class-wise Report → the "Fees" link on each row (there is no general student list for Accountant — not needed, since the class report covers it). On the Fees tab they can Collect Payment, Void Payment, and view/print receipts — but **cannot** change what a student is billed (assign/change fee structure, add/remove a concession, change a fee item's frequency or opt-out) — that is School Admin only (`CanConfigureFees`, section 25), enforced server-side as well as hidden in the UI, since a bad concession is effectively a cash decision.
 
 Accountant should not be able to modify academic marks, attendance, or student academic records unless explicitly authorized.
 
@@ -220,6 +224,8 @@ Enquiry → Application → Document Collection → Application Review → Admis
 ```
 
 After admission: `Student → tb_students → Enrollment → Class / Section`
+
+Not yet built as a distinct module — students are currently created directly by School Admin, with no Enquiry/Application/Decision pipeline or dedicated Admission Staff login flow yet. Scoped as future work.
 
 ## 11. HR / Employee Admin workflow
 
@@ -238,7 +244,9 @@ Employee Management
 └── Salary/Payroll
 ```
 
-HR/Admin can manage employee information. Principal can view/manage relevant staff information according to permissions.
+HR/Admin can manage employee information. Principal can view/manage relevant staff information according to permissions (not yet built — see section 29).
+
+See section 29 for the full Employee Management schema and build status: registration, designation/department, documents, employment status, and login creation are built and deployed; Employee Attendance (staff clocking in/out — distinct from the student-facing Attendance in section 31), Leave and Salary/Payroll shown above are future modules, not yet designed. Don't conflate Employee Attendance (not built) with Student Attendance (section 31, built).
 
 ## 12. Librarian workflow (if Library Management enabled)
 
@@ -248,6 +256,8 @@ Manage books, authors, publishers, categories, book copies; issue/return/renew b
 
 Self-service portal. Student can view: My Profile, My Attendance, My Timetable, My Subjects, My Homework, My Exams, My Marks, My Report Cards, My Fees, My Notices, My Calendar, My Documents. Student generally cannot modify academic records.
 
+Student-facing attendance and timetable viewing are not yet built (sections 31, 33 have the data and read endpoints shaped to support them later, but no Student-facing screen exists yet). The Academic Calendar (section 32) **is** visible to Student today — every role reads the same calendar, no targeting yet.
+
 ## 14. Guardian/Parent workflow
 
 ```
@@ -256,11 +266,15 @@ Guardian Login → Guardian Dashboard → Select Child
 
 If a guardian has two children, they switch between Child 1 / Child 2. Guardian can view: student profile, attendance, homework, examination schedule, marks, report cards, fees, fee receipts, notices, school calendar, teacher communication where enabled.
 
+Guardian login itself is not yet built (only Student and Employee/Teacher logins exist so far). Not yet scoped.
+
 ## 15. Attendance workflow
 
 **Teacher:** `My Class → Date → Mark Attendance → Submit`
 **Principal/Admin:** view attendance class-wise, student-wise, date-wise, monthly.
 **Guardian:** view child attendance.
+
+**Built and deployed — see section 31 for the full schema, decisions, and build status.** The Teacher row above is live exactly as described: class-teacher-only, once per section per day, same-day resubmit allowed, locked after that (School Admin can still correct or backfill, with a required reason, audited). The Principal/Admin and Guardian rows above are not yet built as UI — School Admin has full read/correct access via the API, but no dedicated admin "view attendance" or "who hasn't marked" screen exists yet, and Principal/Guardian have no attendance access at all yet (see sections 7, 13, 14).
 
 ## 16. Examination workflow
 
@@ -270,6 +284,8 @@ School Admin / Principal → Create Examination → Create Exam Schedule → Ass
 → Generate Result → Generate Report Card → Student / Guardian → View Result
 ```
 
+Not yet built. A lighter-weight Internal Assessment / Class Test tracking module (separate from formal Examination/Report Card, doesn't affect final results) is also planned as future work, not yet designed.
+
 ## 17. Homework workflow
 
 ```
@@ -277,10 +293,14 @@ Teacher → Create Homework → Select Class / Section / Subject → Publish
 → Student → View Homework → Submit Homework → Teacher → Review Submission → Feedback / Marks
 ```
 
+Not yet built.
+
 ## 18. Leave workflow
 
 **Teacher/Employee:** `Apply Leave → Principal / Authorized Admin → Review → Approve / Reject`
 **Student:** `Student/Guardian → Leave Request → Class Teacher / Authorized Staff → Approve / Reject`
+
+Not yet built. Likely a shared schema between teacher and student/guardian leave, since both sides of the workflow are structurally similar.
 
 ## 19. Timetable workflow
 
@@ -288,6 +308,8 @@ Teacher → Create Homework → Select Class / Section / Subject → Publish
 School Admin / Principal → Configure (Classes, Sections, Subjects, Teachers, Periods)
 → Create Timetable → Publish → Teacher / Student → View Timetable
 ```
+
+**Built and deployed — see section 33 for the full schema, decisions, and build status.** School Admin configures the period/bell schedule and assigns subject+teacher+room per class/section/day/period; a Teacher reads their own weekly grid at `/timetable/my`. Principal, Student, and Guardian read access is not yet built (same conservative-by-default pattern as Attendance, section 31) — endpoints exist, screens don't yet.
 
 ## 20. Notice / Communication workflow
 
@@ -297,9 +319,13 @@ Authorized users: Super Admin, School Admin, Principal — can publish notices a
 Principal → Create Notice → Target (All Students / Teachers / Parents / Class 8 / Specific Section) → Publish → Notification
 ```
 
+Not yet built. Planned to also carry fee-due and absent alerts (now that Attendance exists, section 31) once this module is scoped — a general notification delivery layer, not yet designed. If/when this module needs audience targeting (All / Staff / Students+Guardians / a specific class), note that the Academic Calendar (section 32) deliberately skipped that for v1 — the same design question will come up here and may be worth solving once, shared between the two.
+
 ## 21. School Calendar
 
 School Admin/Principal can manage: Academic Events, Holidays, Exams, Parent Meetings, School Events, Activities, Important Dates. Users view events according to their permissions.
+
+**Built and deployed — see section 32 for the full schema, decisions, and build status.** School Admin and Principal can create/edit/delete events; every role in the school reads the same calendar (no audience targeting in v1 — every event is visible to everyone). Note: Attendance's "who hasn't marked" list (section 31) still has no concept of holidays/non-working days — it will list every calendar day including Sundays and school holidays until that gets explicitly wired to this calendar.
 
 ## 22. Student Transfer / SLC / TC
 
@@ -307,7 +333,7 @@ School Admin/Principal can manage: Academic Events, Holidays, Exams, Parent Meet
 Student → Request Transfer / Leaving → Verify Fees → Verify Documents
 → Academic Verification → Generate SLC / TC → Student Status Updated
 ```
-Authorized by School Admin/Principal.
+Authorized by School Admin/Principal. Not yet built.
 
 ## 23. Finance workflow
 
@@ -329,21 +355,26 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 | School Registration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | School Profile | Manage | Manage | View/Manage* | View | View | View | View | View |
 | Academic Setup | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Employee Management | ❌ | ✅ | Manage/View | View | ❌ | ❌ | ❌ | ❌ |
+| Employee Management | ❌ | Manage | ❌† | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Class-Teacher Assignment | ❌ | Manage | ❌ | View own (via check) | ❌ | ❌ | ❌ | ❌ |
 | Student Management | ❌ | ✅ | ✅ | Assigned Students | View | ✅ | Own | Child |
 | Admissions | ❌ | ✅ | Approve/View | ❌ | Fee-related | ✅ | ❌ | ❌ |
-| Attendance | ❌ | View/Manage | Monitor | Mark | ❌ | ❌ | View Own | View Child |
+| Attendance | Manage/Correct‡ | Manage/Correct‡ | ❌‡ | Mark (class teacher only) | ❌ | ❌ | ❌‡ | ❌‡ |
+| Timetable | Manage§ | Manage§ | ❌§ | View own§ | ❌ | ❌ | ❌§ | ❌§ |
+| School Calendar | Manage | Manage | Manage | View | View | View | View | View |
 | Examinations | ❌ | Manage | Manage | Enter Marks | ❌ | ❌ | View | View |
 | Homework | ❌ | Monitor | Monitor | Create | ❌ | ❌ | Submit | View |
-| Timetable | ❌ | Manage | Manage | View | ❌ | ❌ | View | View |
 | Leave | ❌ | Manage | Approve | Apply | Apply | Apply | Request | Request |
-| Fees | Subscription | Manage | View | ❌ | Manage | View | View | Pay/View |
+| Fees | Subscription | Manage | View | ❌ | Collect/Void | View | View | Pay/View |
 | Finance | SaaS Billing | Manage | View | ❌ | Manage | ❌ | ❌ | ❌ |
 | Library | ❌ | Manage | View | Borrow | ❌ | ❌ | Borrow | View |
 | Notices | SaaS | Manage | Publish | View | View | View | View | View |
 | Reports | SaaS | School | Academic | Own Classes | Finance | Admission | Own | Child |
 
-\* Exact permissions should be configurable through RBAC.
+\* Exact permissions should be configurable through RBAC. Fees row for Accountant: "Collect/Void" (not "Manage") — collecting/voiding payments is Accountant's job, but configuring what's billed (fee types, structures, concessions, a student's fee items) is School Admin only. See section 28.
+† Employee Management row currently reads ❌ for every non-School-Admin role because all employee endpoints, including reads, are School Admin only as a conservative starting point (section 29) — this row (Principal in particular) is expected to loosen once that's revisited, not a permanent design choice.
+‡ Attendance (section 31) is live, but only Teacher (class-teacher-only, mark/same-day-edit) and School Admin (full read, correct, backfill) have any access today — Super Admin's row shown as Manage/Correct reflects that a Super Admin impersonating/configuring at the school level has the same reach as School Admin, not a separate superadmin-specific screen. Principal, Student and Guardian all have ❌ for now — not a permanent design choice, just not built yet (see sections 7, 13, 14).
+§ Timetable (section 33) is live, but only School Admin (full manage, including the period/bell-schedule setup) and Teacher (their own grid, self-only) have access today. Principal, Student and Guardian are ❌ for now, same reasoning as the Attendance footnote above — endpoints exist, screens don't yet.
 
 ## 25. Most important RBAC principle
 
@@ -368,13 +399,18 @@ HOMEWORK_REVIEW, EXAM_MARKS_ENTER, LEAVE_APPLY
 
 This is far more flexible than hard-coding permissions directly into roles.
 
-**Known current gap:** there is no real permission system yet — role checks in code currently test role **names** directly rather than resolving permissions. This is an accepted stopgap, consistent project-wide, to be replaced once `lut_roles`/`tb_user_roles` grows real permission mapping. Do not treat each new instance of this pattern as a fresh decision — it matches existing practice.
+**Known current gap:** there is no real permission system yet — role checks in code currently test role **names** directly rather than resolving permissions, and most of the project (e.g. Admissions) has no server-side role checks at all. This is an accepted stopgap, consistent project-wide, to be replaced once `lut_roles`/`tb_user_roles` grows real permission mapping. Do not treat each new instance of this pattern as a fresh decision — it matches existing practice. **A project-wide RBAC pass is explicitly deferred as separate future work, not bundled into any single feature.**
 
-The Fees module (section 28) is the first place a view-vs-manage distinction was needed, and it was done as two small role-name helpers rather than a generic framework:
-- `CanManageFees()` — School Admin, Accountant. Used by payment recording and voiding.
-- `CanViewFees()` — School Admin, Accountant, Principal. Used by the Fee Dashboard and class-wise report; responses also carry a `canManage` flag so the frontend can hide manage-only actions (class-report button, per-student Fees link, CSV export) for a view-only caller (Principal).
+**Also project-wide now:** `[Authorize(Roles = ...)]` attributes are commented out across the API (a leftover from early development, predating real login). Where a module needs an actual role check today, it's done with an in-controller claim check instead (e.g. Employee's `IsSchoolAdmin`) rather than the attribute. Don't assume the attribute is enforcing anything anywhere in this codebase until this is revisited.
 
-This pair is the template to reuse if another module needs the same read/write split, rather than inventing a new helper per module.
+**Also project-wide now:** first-login enforcement is a genuine server-side check, not just a client guard. `FirstLoginEnforcementMiddleware` reads `tb_users.is_first_login` live (no caching, no token claim — can't be forged or go stale) on every authenticated request and returns 403 "Password change required..." except for `/Auth/change-password`, `/Auth/me`, `/Auth/refresh`, `/Auth/logout`. Covers every account type on a temporary password, including School Admin right after school registration. This closed a real gap: previously only the Angular route guard blocked a first-login user, so a valid token could hit any endpoint directly while bypassing the browser.
+
+The Fees module (section 28) is the first place view/manage/configure distinctions were needed, and all of them were done as small role-name helpers rather than a generic framework:
+- `CanManageFees()` — School Admin, Accountant. Payment recording and voiding only.
+- `CanViewFees()` — School Admin, Accountant, Principal. Fee Dashboard and class-wise report; responses carry a `canManage` flag so the frontend hides manage-only actions (class-report button, per-student Fees link, CSV export) for a view-only caller (Principal).
+- `CanConfigureFees()` — School Admin only. Every write on fee types, fee structures/details, fee concessions, and a student's fee items (frequency, opt-out, structure/concession assignment). Deliberately narrower than `CanManageFees` — Accountant can collect/void money but cannot change what's owed; this is enforced server-side, not just hidden in the UI.
+
+This three-helper pattern (manage vs. view vs. configure, named for what they actually gate) is the template to reuse if another module needs a similar split, rather than inventing new helpers per module or building a generic permission framework prematurely. Employee Management (section 29), Class-Teacher Assignment (section 30), and Attendance (section 31) all currently use a single `IsSchoolAdmin` check (plus, for Class-Teacher and Attendance, a narrow self-only exception for Teacher callers on their own section) rather than this three-way pattern. The Academic Calendar (section 32) introduced `CanManageEvents()` (School Admin + Principal) since Principal needed a real write permission for the first time outside Fees' read-only case. Timetable (section 33) went back to the single-`IsSchoolAdmin`-plus-self-only-Teacher-read pattern. Revisit any of these if/when Principal gets broader employee, class-teacher, attendance, or timetable visibility.
 
 ## 26. Final high-level workflow
 
@@ -422,7 +458,7 @@ This pair is the template to reuse if another module needs the same read/write s
 
 Mirrors School Setup: a sequence of fee masters the School Admin configures once per school, then reuses when students are admitted. All tables are school-owned (carry `school_id`, not global `lut_` masters) because fee types, amounts, and concessions vary school to school.
 
-Setup sequence: **Fee Types → Fee Structures (per Class + Academic Year) → Fee Concessions/Discounts**. Depends only on Academic Year and Class masters — does not depend on the Student module, so it was built and tested before Students/Admissions existed. Status: **complete** (Fee Types, Fee Structures, Fee Concessions all built and tested, backend + Angular UI).
+Setup sequence: **Fee Types → Fee Structures (per Class + Academic Year) → Fee Concessions/Discounts**. Depends only on Academic Year and Class masters — does not depend on the Student module, so it was built and tested before Students/Admissions existed. Status: **complete** (Fee Types, Fee Structures, Fee Concessions all built and tested, backend + Angular UI; all writes are now `CanConfigureFees`-gated, School Admin only — see section 25).
 
 ### `tb_fee_types` (school-owned master)
 - `fee_type_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -441,7 +477,7 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `frequency_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
 - `frequency_name` VARCHAR(50) — One Time, Monthly, Quarterly, Half-Yearly, Annual
 - `frequency_code` VARCHAR(30)
-- `isactive` BOOLEAN
+- `isactive` BOOLEAN — **note:** this column is spelled `isactive` here, a legacy naming inconsistency from when the Fee module was first built. Every lookup table built since (`lut_gender`, `lut_employment_status`, `lut_attendance_status`, `lut_event_category` — sections 29, 31, 32) uses `is_active` instead, which is now the standard going forward. Not worth a breaking migration to fix retroactively on this one table.
 
 ### `tb_fee_structures` (header — one per Class per Academic Year per School)
 - `fee_structure_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -475,8 +511,8 @@ Each school seeds/edits its own fee types (Tuition, Admission, Annual, Exam, Tra
 - `created_at` / `updated_at`
 
 ### Student-level linkage (built, see section 28 for the full billing/payment layer on top)
-- `tb_student_fee_structure` — links a student to a fee structure: `student_id`, `fee_structure_id`, `school_id`, `academic_year_id`. Built and working; auto-assigned at admission based on class + academic year, with manual assignment/reassignment as fallback.
-- `tb_student_fee_concessions` — per-student concessions applied (many-to-many): `student_id`, `concession_id`, `approved_by`, `remarks`. Built and working.
+- `tb_student_fee_structure` — links a student to a fee structure: `student_id`, `fee_structure_id`, `school_id`, `academic_year_id`. Built and working; auto-assigned at admission based on class + academic year, with manual assignment/reassignment as fallback (School Admin only).
+- `tb_student_fee_concessions` — per-student concessions applied (many-to-many): `student_id`, `concession_id`, `approved_by`, `remarks`. Built and working (School Admin only).
 
 **Note on `student_id` type:** `tb_students.student_id` is `VARCHAR(20)` (a business-generated identifier, same pattern as `tb_schools.school_id`), not `BIGINT` as originally assumed when this section was first drafted. Every FK to `tb_students` below in section 28 uses `VARCHAR(20)` — corrected to match the real schema.
 
@@ -492,7 +528,7 @@ Requirements this satisfies: fee configuration at admission (per-student frequen
 - `school_id` VARCHAR(100) FK → tb_schools
 - `academic_year_id` BIGINT FK → tb_academic_years
 - `fee_type_id` BIGINT FK → tb_fee_types
-- `frequency_id` BIGINT FK → lut_fee_frequency — the frequency **this student** chose for this fee head (e.g. a parent may choose to pay tuition quarterly even though another student in the same class pays monthly); seeded from the fee structure's default but independently stored and editable per student. Allowed frequencies: One Time/Annual lines stay fixed; Monthly/Quarterly/Half-Yearly lines can be paid Monthly, Quarterly, Half-Yearly, or Annual (student's choice).
+- `frequency_id` BIGINT FK → lut_fee_frequency — the frequency **this student** chose for this fee head (e.g. a parent may choose to pay tuition quarterly even though another student in the same class pays monthly); seeded from the fee structure's default but independently stored and editable per student (School Admin only — `CanConfigureFees`). Allowed frequencies: One Time/Annual lines stay fixed; Monthly/Quarterly/Half-Yearly lines can be paid Monthly, Quarterly, Half-Yearly, or Annual (student's choice).
 - `base_amount` NUMERIC(12,2) — the **per-period** amount from the fee structure (e.g. ₹2,500/month). The year total for an item is `net_amount × periods-per-year-at-the-structure's-default-frequency`, then re-split across whatever frequency the student actually chose — so a student paying quarterly pays the full proportional share (e.g. ₹7,500/quarter for a ₹2,500/month line), never a fraction of the annual total.
 - `concession_amount` NUMERIC(12,2) default 0 — resolved from any applicable `tb_student_fee_concessions`
 - `net_amount` NUMERIC(12,2) — `base_amount - concession_amount`, the resolved per-period billed amount
@@ -501,7 +537,7 @@ Requirements this satisfies: fee configuration at admission (per-student frequen
 - `created_at` / `updated_at`
 - Unique: `(student_id, academic_year_id, fee_type_id)`
 
-Seeded from `tb_fee_structure_details` for the student's class at admission time (one row per applicable fee head), with frequency and applicability editable per student afterward from the Fees tab. Re-synced automatically whenever the underlying fee structure, a concession, or the item itself changes.
+Seeded from `tb_fee_structure_details` for the student's class at admission time (one row per applicable fee head), with frequency and applicability editable per student afterward from the Fees tab (School Admin only). Re-synced automatically whenever the underlying fee structure, a concession, or the item itself changes.
 
 ### `tb_student_fee_dues` (generated installments)
 - `fee_due_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
@@ -583,10 +619,268 @@ Access: `CanViewFees` (section 25) — School Admin and Accountant get full acce
 - **Student-wise fee statement**: not a separate endpoint — the existing student Fees tab (items, dues, payment history, void) already is this report for the student's current enrollment year, so the dashboard links into it rather than duplicating it. A past-year statement would need a year parameter added to the existing Fees tab endpoints (not yet needed/built).
 - **Class-wise collection report**: `GET /api/FeeReports/class/{classId}?academicYearId=` — per-student total due/collected/outstanding/status plus a class total row, sortable client-side (defaults to highest outstanding first), reuses the same grouped query as the student list (no N+1). CSV export is a client-side, no-dependency export, available to School Admin and Accountant only (not Principal, per `canManage`).
 
+### Student-record access for Accountant (built)
+`GET /api/Student/{schoolId}/{studentId}` returns a **limited view** (`limited: true`) when the caller is an Accountant who isn't also School Admin: student id, admission number, name, status, class, section, year, roll number. Everything else — DOB, gender, blood group, category, email, mobile, masked Aadhaar, photo, login id, and the entire guardian list — is stripped server-side, not just hidden in the UI. School Admin, Principal, and Teacher continue to get the full profile. Photo upload/remove and create-login on this endpoint are refused (403) for Accountant. Frontend-side, the student page opens straight on the Fees tab for Accountant with no Profile tab rendered, and "Back" returns to the class-wise report with filters preserved.
+
 ### Build status — MODULE COMPLETE
 - **Stage 1** (fix existing-student load crash): done.
 - **Stage 2** (`tb_student_fee_items`, `tb_student_fee_dues`, due-day config, due generation, admission-time fee configuration, Fees tab with due schedule + status badges): done and deployed.
 - **Stage 3** (`tb_fee_payments`, `tb_fee_payment_allocations`, payment collection, receipts, voiding, mid-year/gap fix, RBAC on both fee-payment endpoints, receipt-number concurrency lock): done and deployed, confirmed against real `smss-db`.
 - **Stage 4** (student list fee-status column + filter, Fees tab Paid/Outstanding columns): done and deployed, confirmed against real `smss-db`.
 - **Stage 5** (Fee Dashboard, class-wise report, `CanViewFees`): done and deployed, dashboard figures cross-checked to the rupee against real `smss-db` and the Fees tab.
-- **Open follow-up** (not part of the Fee module itself, a pre-existing route-access gap it surfaced): give Accountant access to the student record's Fees tab — see section 9.
+- **Security closeout** (Accountant frontend access to the Fees tab, plus the server-side RBAC it surfaced — `CanConfigureFees` on all fee-setup/billing-config writes, limited student-profile view for Accountant): done and deployed, confirmed against real `smss-db`.
+- **No open items.** The only thing explicitly deferred is a project-wide RBAC pass covering modules outside Fees (e.g. Admissions) — see section 25 — which is separate future work, not part of this module.
+
+## 29. Employee Management module (registration + login) — STAGE 1 COMPLETE
+
+One table holds every staff member — Principal, Teacher, Accountant, etc. There is no separate Teacher table: which system role(s) an employee holds is assigned via the existing `tb_user_roles` mechanism (same pattern School Admin already uses), not by which row they're in. Designation (section-specific job title, e.g. "Senior Teacher") and system role (TEACHER, PRINCIPAL, ...) are deliberately separate things — an employee's designation label doesn't drive their login permissions, the role assignment at login creation does.
+
+Depends on the existing school-owned `tb_employee_designations` / `tb_employee_departments` masters (built earlier as Core School Masters). Decided to use `status_id → lut_status` for the "hide this row" convention rather than a boolean, matching how `tb_students`, designations, departments and document types already do it project-wide — the Fee module's `isactive` boolean naming doesn't apply here since the Student/Employee side of the project uses `status_id` instead.
+
+### `lut_employment_status` (global lookup, small/fixed list)
+- `employment_status_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `status_name` VARCHAR(50) — Active, On Leave, Resigned, Terminated, Retired
+- `status_code` VARCHAR(30)
+- `blocks_login` BOOLEAN — true for Resigned, Terminated, Retired; false for Active, On Leave. This flag, not a hardcoded status-name check in code, is what the login logic reads — so adding a new blocking status later is a data change, not a code change.
+- `is_active` BOOLEAN — column naming note: see section 27's `lut_fee_frequency` entry and section 31 for the project-wide standard (`is_active`, not `isactive`); this table follows the standard.
+
+### `tb_employees`
+- `employee_id` VARCHAR(20) PK — business-generated: `{schoolShortCode}EM{nnn}` (e.g. `APS001EM001`), assigned via a per-school **locked max-plus-one** (not a simple count-plus-one, which can collide under concurrent creates — confirmed with 6 simultaneous creates giving 6 distinct consecutive ids)
+- `school_id` VARCHAR(100) FK → tb_schools
+- `designation_id` BIGINT FK → tb_employee_designations
+- `department_id` BIGINT FK → tb_employee_departments
+- `employment_status_id` BIGINT FK → lut_employment_status
+- `employee_type` VARCHAR(20) — `Teaching` or `Non-Teaching`. Consumed by Class-Teacher Assignment (section 30) and Timetable (section 33), both of which require `Teaching` plus the TEACHER role to be eligible.
+- `first_name` / `middle_name` (nullable) / `last_name`
+- `gender_id` BIGINT FK → `lut_gender`, `blood_group_id` BIGINT FK → `lut_blood_group` — real foreign keys, unlike the Student module's equivalent plain-integer columns (students were left as-is; Employee doesn't inherit that gap)
+- `date_of_birth` DATE
+- `email` VARCHAR, nullable — unique per school, case-insensitive (the Student module doesn't enforce an equivalent uniqueness; Employee does)
+- `mobile` VARCHAR — required
+- `alternate_mobile` VARCHAR, nullable
+- `address` TEXT
+- `date_of_joining` DATE
+- `date_of_leaving` DATE, nullable
+- `qualification` TEXT, nullable
+- `photo_path` VARCHAR, nullable — `{schoolCode}/employees/{employeeId}/photo_<timestamp>.<ext>`, same validation as student photos (2 MB limit, file-signature check, not just extension)
+- `status_id` BIGINT FK → lut_status — the project-wide "hide this row" toggle, independent of `employment_status_id`
+- `created_at` / `updated_at`
+
+### `tb_employee_documents`
+Mirrors the document-upload pattern built fresh for this module (the Student module had no equivalent — only `tb_admission_documents` existed, nothing reusable). FK'd to `employee_id`, uses the existing document-type master filtered to types that apply to Employee or Both. Files are stored in a **private** folder, never served by direct URL — only through an authenticated, School-Admin-gated download endpoint. Accepts PDF and images up to 5 MB with a file-signature check. Removing a document hides the row and keeps the file (consistent with the project's no-hard-delete convention). A school needs at least one document type with "applies to" Employee or Both configured before employee document upload will work — the UI surfaces this rather than failing silently.
+
+### Login creation
+`POST /api/Employee/{id}/create-login` — a separate action after the employee record exists, not automatic at registration (mirrors how Student login creation already works in this codebase, deliberately not a new pattern). Takes `{roleIds}`. Login id is the employee id; a random 12-character temporary password is shown once and emailed (not the Student flow's name-plus-birthday pattern — a weaker scheme that's fine for a student but not appropriate to carry over here). Returns 409 if a login already exists, and 409 if the employee's employment status would leave the new login blocked from the start (see login gating below) — no point creating a login that can't be used.
+
+**Assignable roles are an allow-list by `role_code`**: `SCHOOL_ADMIN`, `PRINCIPAL`, `TEACHER`, `ACCOUNTANT`, read from `lut_roles` but filtered to this set — not "every active role except Super Admin" (an earlier draft that would have offered Student/Guardian for an employee login, which made no sense). `SUPER_ADMIN`, `STUDENT`, `GUARDIAN` are excluded in code regardless of what's in the table. Adding a future staff role (e.g. `LIBRARIAN`) to the allow-list is a one-line change, no schema change.
+
+### Login gating — two independent switches
+A login works only when **both** are true:
+1. `tb_employees.status_id` resolves to Active (the "hide this row" toggle), **and**
+2. The employee's current `employment_status_id` has `blocks_login = false`.
+
+Changing one does not touch the other — e.g. deactivating the row (switch 1 off) then later marking the employee Active again in employment status (switch 2) does **not** re-enable the login, because switch 1 is still off; both have to say "allow" independently. This was specifically tested: toggle record Inactive → set Terminated → set Active (still refused, record switch is off) → toggle record Active (now works). The API's token-refresh check also re-validates both switches, so an already-active session is cut off the moment either one flips, not just new logins.
+
+### Authorization (current state)
+`[Authorize(Roles = ...)]` attributes are commented out project-wide (see section 25) — Employee uses an in-controller `IsSchoolAdmin` claim check instead, applied to **every** endpoint including reads. So for now Principal, Accountant, and Teacher all get 403 on employee data, including just viewing the list — see the section 24 footnote. This is deliberately conservative to start, not a long-term design; loosen it (e.g. Principal view access) when actually needed, following the `CanViewFees`-style pattern from section 25 rather than widening `IsSchoolAdmin` itself.
+
+### Build status
+- **Stage 1** (schema, registration CRUD, photo + document upload, employment status, login creation, role-gated login): built, tested, and **deployed to real `smss-db`** (existing data confirmed untouched by the migration). Backend and frontend suites green. Teacher login confirmed end-to-end.
+- **Not yet built**: Teacher-Subject Mapping as a standalone concept (subject-level teaching assignments are now effectively captured per-slot by Timetable, section 33, rather than a separate persistent mapping table), Employee Attendance/Leave/Salary-Payroll (future modules per section 11, not designed yet — distinct from the now-built Student Attendance, section 31), broader role access beyond School Admin (see Authorization above).
+- **Small pending UI polish**: a warning in the employee form when choosing Resigned/Terminated/Retired, since the server already enforces the login-block correctly but the form doesn't yet hint at the consequence before saving. (Prompted for; status not yet confirmed back.)
+
+## 30. Class-Teacher Assignment module — COMPLETE, DEPLOYED
+
+The first step toward Attendance (section 31): a hard, server-enforced answer to "is this employee allowed to mark attendance for this section today," rather than trusting that any TEACHER-role login picked the right section.
+
+### `tb_class_teacher_assignments`
+- `assignment_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `academic_year_id` BIGINT FK → tb_academic_years (same target `tb_fee_structures` uses)
+- `class_id` BIGINT, `section_id` BIGINT — composite FK to `tb_sections(section_id, class_id)` (a new unique constraint was added to `tb_sections` to support this), which guarantees a section and its stated class can never mismatch — confirmed rejected on a raw insert with the wrong class.
+- `employee_id` VARCHAR(20) FK → tb_employees
+- `status_id` BIGINT FK → lut_status — the project-wide hide-row pattern; reassigning a section **deactivates the old row and inserts a new one** in the same transaction rather than overwriting it, so "who was class teacher of 8-B last term" stays answerable.
+- `assigned_by`, created/updated audit columns
+
+**Real schema note:** `tb_sections` is its own table (`section_id`, `class_id`, `section_name`, `status_id`) and is **not** year-scoped — a section persists across academic years, which is exactly why the academic year lives on the assignment, not the section.
+
+**One active assignment per section per year, enforced at the database level**: a partial unique index on `(school_id, academic_year_id, class_id, section_id) WHERE status_id = <Active>`, with the Active status id looked up at migration run time rather than hardcoded (confirmed `sid = 1` on both the test copy and the real `smss-db`, but checked, not assumed). Confirmed rejecting a second concurrent active row under 6 simultaneous assignment attempts (exactly one survives), both on the test copy and the real database.
+
+**Eligible teacher** = employee is `status_id` Active, `employee_type = Teaching`, current employment status doesn't block login (reuses the same check as section 29's login gating), and holds an Active login with an Active role of code `TEACHER` (role-code match, same pattern as the Employee login allow-list — the Teacher role may sit alongside other roles on the same login).
+
+**Decided:** a class teacher who later becomes ineligible (e.g. Terminated) keeps their historical assignment row — the admin can see and replace them — but the attendance `check` answers `false` for them, and the UI dropdown shows them as "no longer eligible." Mirrors the `blocks_login` design in spirit: the live answer reflects current reality, the row stays as history.
+
+**Decided:** no restriction on one teacher covering multiple sections — realistic for small schools, not worth a constraint until an actual school needs it. (Would be a second partial unique index if ever required.)
+
+### Endpoints (`/api/ClassTeacher`, School Admin only except `/check`)
+- `POST assign` — assign/reassign in one transaction (old row → Inactive, new row → Active). Assigning the same teacher again is a no-op.
+- `POST unassign` — marks the active row Inactive; 404 if there isn't one.
+- `GET current` — the section's active class teacher, or `200` with `null` data if none.
+- `GET` (list) — every active section with its teacher or none, plus a missing-count, in one query (used for the "sections missing a class teacher" admin banner).
+- `GET history` — past and current assignments for a section.
+- `GET eligible-teachers` — the dropdown's source list.
+- `GET check?employeeId&sectionId[&academicYearId]` — "is this employee the active class teacher of this section right now" (year defaults to current). **School Admin may ask about anyone; a Teacher may only ask about themselves** (403 otherwise). Also exposed in-process as `IClassTeacherService.IsClassTeacherAsync` — consumed by Attendance (section 31).
+
+### Frontend
+Lives on the existing School Setup → Section page — no new nav item. Academic-year picker (defaults to current year), a "Class Teacher" dropdown per active section row, a "Missing" flag + count banner for unassigned sections, "Not assigned" to unassign, snaps back on a failed save. A reusable `template` column type was added to the shared table component to host the dropdown in a cell.
+
+### Deployment
+Migration `Docs/smss-class-teacher-assignments.sql` run against real `smss-db` (backup `smss-db-before-class-teacher.dump` taken first — same convention as the Employee deployment). Smoke-tested against real data: assign/reassign/history/check all confirmed correct on real sections, the partial unique index confirmed to key off the real `lut_status` Active id (`sid = 1`), a raw-SQL second-active-row insert confirmed rejected on the real database, and existing schools/users/students/employees confirmed byte-identical before/after (only `tb_users.last_login_at` changed, from the smoke test's own sign-ins) — test data created during the smoke test was fully cleaned up afterward.
+
+### Build status — COMPLETE
+Backend and frontend suites green (backend: eligible-teacher filtering, assign/reassign/unassign/history, concurrency, validation, the attendance check for self/admin/ineligible-teacher callers, 403 for non-admins — all covered; frontend: 371 tests/39 files passing, including a real bug the new specs caught and fixed — the "no class teacher" banner wasn't recalculating because it read a form control directly instead of reacting to it). Deployed and confirmed on real `smss-db`. No open items.
+
+## 31. Attendance module (daily, class-teacher-only) — COMPLETE, DEPLOYED
+
+Scoped deliberately narrow per the roadmap decision: daily whole-day attendance only (no period-wise marking — that depends on Timetable, section 33), Present/Absent only (no Late/Half-Day yet — a lookup table, extendable without a schema change), marked once per section per day by that section's active class teacher (section 30).
+
+### Roster source (discovered, not assumed)
+No new table was needed. A student's current class/section comes from the existing `tb_student_enrollments`: `student_id`, `academic_year_id`, `status_id`, `roll_number`, `class_section_id` (holds `tb_sections.section_id`, no FK constraint on it), unique on `(student_id, academic_year_id)` — so a student has exactly one section per year, and a mid-year section move is an update to this one row, not a new row. The active roster of a section for a year is every enrollment in that section with Active status whose student is also Active.
+
+### `lut_attendance_status` (global lookup)
+- `attendance_status_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `status_name` VARCHAR(50) — Present (1), Absent (2)
+- `status_code` VARCHAR(30)
+- `is_active` BOOLEAN — this table is the reference point for the project-wide `is_active` naming standard (see section 27's `lut_fee_frequency` note and section 29).
+
+### `tb_student_attendance`
+- `attendance_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id`, `academic_year_id`, `section_id`, `class_id` (denormalized from the section via a composite FK, same reasoning as `tb_student_fee_dues` denormalizing `student_id` — keeps class-wise reporting off an extra join), `student_id`
+- `attendance_date` DATE
+- `attendance_status_id` BIGINT FK → lut_attendance_status
+- `marked_by` BIGINT FK → tb_users, `marked_at` TIMESTAMPTZ
+- `corrected_by` BIGINT FK → tb_users nullable, `corrected_at` TIMESTAMPTZ nullable, `correction_reason` TEXT nullable (≤500 chars) — a database check constraint requires all three together, with a non-blank reason, whenever any is set
+- Unique: `(student_id, attendance_date)` — one mark per student per day, enforced at the database level as the backstop behind the application logic
+
+### Marking — `POST api/Attendance/submit`
+A whole-section, one-day batch write: `{sectionId, date, marks: [{studentId, attendanceStatusId}]}`.
+- The `date` must equal the server's India-date for this endpoint — no backdating through this path (that's what correction/backfill is for).
+- Caller must be the section's active class teacher for that date's academic year (`IClassTeacherService.IsClassTeacherAsync` — a Terminated or reassigned-away teacher is correctly refused), or School Admin.
+- The submitted list must cover **every** currently active student in the section's roster — a missing, unknown, duplicate, or since-left student id is rejected (400, naming the ids) and **nothing is written**. No silent defaulting.
+- Resubmitting the same section+date today **overwrites** the existing marks (upsert) — this is the entire "same-day edit" mechanism; there's no separate edit endpoint.
+- Section-day writes are locked during the transaction, with the unique constraint as a second backstop. Confirmed under load: 6 simultaneous submits for one section+day all return 200 and leave exactly one consistent set of rows (never a mix of two submissions); concurrent submits for different sections don't interfere; a student moved to another section mid-write correctly gets 409 with nothing written.
+
+### Correction / backfill — `PUT api/Attendance/correct` (School Admin only)
+One endpoint handles both: if the student already has a mark for that day, it's **changed**; if not, one is **created** (a backfill for a day the class teacher never marked at all). The response's `created` flag says which happened.
+- Requires a non-blank reason, ≤500 characters, always.
+- No time limit — correcting or backfilling 45 days back is the same as today, consistent with the fee-payment-void precedent (section 28): the audit trail is the control, not a lockout window.
+- A backfilled row gets the student's section/class/year from their enrollment as of that date, and must fall on or after the student's enrollment date (added as a rule beyond what was originally specified — prevents "attendance" existing before a student had even joined; the error names the actual enrollment date).
+- A student who has since left the school can still be backfilled, so their historical record stays completable.
+- Repeating a backfill with the **same** status is rejected 400 ("already marked"); a **different** status on an already-marked day behaves as an ordinary correction.
+- **A same-day admin correction or backfill blocks that section's class teacher from resubmitting for the rest of the day (409)** — deliberate: a full-section resubmit would silently overwrite the admin's entry, so it's refused instead. The teacher can still view the day (both marks show as corrected) and the admin finishes marking the rest of the section via further backfills if needed. For past days, this never arises since the teacher can no longer submit for them anyway.
+- Confirmed under load: 6 simultaneous backfill attempts for the same student+day leave exactly one created row, the rest correctly rejected as "already marked," no server errors.
+
+### Reads
+- `GET section/{id}?date=` — the roster with each student's mark for that date, or unmarked; shows a student who has since left but still has a mark for that day. Readable by the section's class teacher or School Admin.
+- `GET student/{id}?from=&to=` — a student's attendance history (max 366-day range), with a per-status summary (keyed by status code, so a future status needs no code change) and a present-percentage figure. Readable by the student's class teacher or School Admin.
+- `GET missing?date=&academicYearId=` — active sections that have students but no attendance rows yet for that date (School Admin only) — note: this has no concept of holidays/non-working days yet (section 21/32 calendar isn't wired in), so it will list every calendar day including Sundays until this gets explicitly connected.
+- `GET my-sections` — the sections the calling teacher can mark today (feeds the teacher's own marking screen).
+
+### Frontend
+`/attendance/mark` — a "Mark Attendance" nav item for Teacher and School Admin. Every student defaults to Present; tapping flips a student to Absent (fastest path for the common case, since most students are present most days); a single Submit sends the whole section. Reopening an already-marked day shows the saved state and the button reads "Update attendance." A "Mark all present" shortcut exists. Built so a future status (e.g. Late) slots into the same tap-cycle with no code change. No admin correction screen, no "who hasn't marked" screen, and no Student/Guardian attendance screens exist yet — the endpoints are ready for them, the UI isn't built (see sections 7, 13, 14, 15).
+
+### Deployment
+Migration `Docs/smss-attendance.sql` run against real `smss-db` (backup `smss-db-before-attendance.dump` taken first). Smoke-tested against real data: real roster/roll-order/active-student filtering confirmed correct against real enrollments; a temporary stand-in teacher was created, assigned, tested, and fully removed afterward (the real class teacher's password wasn't known/reset for this test); submit, resubmit, correction, and backfill all confirmed working against real student rows, with all test-created data cleaned up afterward; existing data confirmed byte-identical before/after.
+
+### Build status — COMPLETE
+Backend suite covers roster shape, submit success/resubmit/rejection cases, authorization, concurrency, database-level constraint enforcement, correction/backfill rules, and read access/error cases. Full backend suite passes, 0 failures. Frontend: 384 tests/40 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — everything explicitly out of scope (admin UI screens, Student/Guardian views, holiday awareness) is deferred future work, not a gap in what was asked for.
+
+## 32. Academic Calendar module — COMPLETE, DEPLOYED
+
+Section 21's School Calendar, built. Scoped deliberately simple per the roadmap decision: no audience targeting (every role sees every event), a fixed global category list (not school-customizable).
+
+### `lut_event_category` (global lookup)
+- `event_category_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `category_name` VARCHAR(50) — seeded: Holiday (#22c55e), Exam (#ef4444), PTM (#f59e0b), Staff Meeting (#3b82f6), School Event (#8b5cf6), Other (#6b7280)
+- `category_code` VARCHAR(30)
+- `color_hex` VARCHAR(7) — database check constraint requires `#rrggbb` format
+- `is_active` BOOLEAN
+
+### `tb_school_events`
+- `event_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `academic_year_id` BIGINT FK → tb_academic_years — **every event must fall entirely within one academic year** (decided: keep this constraint; a holiday spanning two academic years would need two events — a rare enough boundary case that splitting is an acceptable workaround rather than relaxing the rule)
+- `event_title` VARCHAR
+- `start_date` DATE, `end_date` DATE (defaults to `start_date` if omitted; database rejects `end_date < start_date`)
+- `is_all_day` BOOLEAN
+- `start_time` / `end_time` TIME, nullable — a database check constraint requires both present together only when `is_all_day = false`, and on a single-day timed event requires `end_time > start_time`
+- `event_category_id` BIGINT FK → lut_event_category
+- `description` TEXT, nullable
+- `created_by` BIGINT FK → tb_users
+- `status_id` BIGINT FK → lut_status — soft delete, no hard delete
+
+### Authorization
+`CanManageEvents()` — School Admin and Principal (write access); every signed-in role in the school can read (no audience targeting in v1). This is the first module where Principal got a real write permission outside Fees' read-only case (section 25) — deliberately a small named helper, not an overload of `IsSchoolAdmin`.
+
+### Endpoints (`/api/SchoolEvent`)
+- `POST` / `PUT` / `DELETE` (soft, via `status_id`) — `CanManageEvents` only.
+- `GET ?from=&to=[&academicYearId=]` — events overlapping a date range (max 400 days), for the calendar grid. If `academicYearId` is omitted, the server resolves it from `start_date`.
+- `GET /upcoming?take=1-50` (default 5) — the next events from today, soonest first; an event already in progress is included and flagged `isOngoing`.
+- `GET /categories` — the category list with colors, for the form and legend.
+
+### Frontend
+`/calendar` — nav item right after Dashboard, visible to every school role (School Admin, Principal, Teacher, Accountant, Student, Guardian — not Super Admin or a custom role). Month view (6-week grid, **Sunday-first** — distinct from Timetable's Monday-first week, section 33, both correct for their own context) with colored event chips, multi-day events shown on every day they cover, a "+N more" affordance on busy days, a color legend, an upcoming-events side panel, and an event details popup. School Admin/Principal additionally get Add/Edit/Delete, with an all-day toggle that shows/hides the time fields and a category picker showing each category's color. Week/day/list views were explicitly deferred — month view plus the upcoming list covers the real need for v1.
+
+### Deployment
+Migration `Docs/smss-school-events.sql` run against real `smss-db` (backup `smss-db-before-school-events.dump` taken first). Smoke-tested against real data: a real event created by School Admin, confirmed visible to Teacher/Student/Accountant/Guardian logins as read-only, confirmed write-rejected for those roles, existing data confirmed untouched.
+
+### Build status — COMPLETE
+Backend suite covers creation/validation (dates, times, category state, academic-year containment, length limits), update (including all-day↔timed switching), database-level constraint enforcement, write authorization (Principal can write, Teacher/Student/Accountant/Guardian get 403, cross-school 404), soft-delete behavior, and read behavior (uniform across roles, boundary-correct overlap queries, ordering, upcoming-list edge cases). Full backend suite passes, 0 failures. Frontend: 419 tests/43 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — audience targeting and week/day/list views are explicitly deferred, not gaps.
+
+## 33. Teacher Timetable module — COMPLETE, DEPLOYED
+
+Section 19's Timetable, built. Depends on the existing school-owned Subject masters (`tb_subjects`, `tb_class_subjects` — found already built from earlier Academic Setup work and reused as-is, not rebuilt) and reuses the Class-Teacher Assignment's (section 30) history/reassignment and composite-FK patterns directly.
+
+### `tb_periods` (school-owned "bell schedule")
+- `period_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `period_number` SMALLINT
+- `start_time` / `end_time` TIME
+- `status_id` BIGINT FK → lut_status
+- Unique: `(school_id, period_number)` — enforced regardless of active status (consistent with how uniqueness is enforced project-wide, e.g. `tb_fee_structures`), so a period number can't be reused while an inactive row with that number still exists.
+- Not academic-year-scoped — a school's bell schedule rarely changes year to year. Managed at `/school-setup/periods`, School Admin only. Guards: an Active period can't be deactivated while timetable entries reference it as Active, and two Active periods can't have overlapping time ranges.
+
+### `tb_timetable_entries`
+- `timetable_entry_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `academic_year_id` BIGINT FK → tb_academic_years
+- `class_id`, `section_id` — composite FK to `tb_sections(section_id, class_id)`, same pattern as Class-Teacher Assignment (section 30)
+- `day_of_week` SMALLINT — **1 (Monday) through 6 (Saturday); Sunday is rejected** at both the database and API level (the week is **Monday-first** here, distinct from the Calendar's Sunday-first week, section 32 — both correct for their own context)
+- `period_id` BIGINT FK → tb_periods
+- `subject_id` BIGINT FK → tb_subjects
+- `employee_id` VARCHAR(20) FK → tb_employees (the teacher)
+- `room_no` VARCHAR — free text, **not** checked for double-booking (some schools legitimately share rooms)
+- `status_id` BIGINT FK → lut_status
+
+**Reassignment reuses the Class-Teacher Assignment pattern exactly:** changing a slot's subject/teacher/room deactivates the old row and inserts a new one in the same transaction — no explicit "effective from" field, history lives in the `status_id` trail.
+
+**Two partial unique indexes, both on Active rows, both confirmed holding under concurrent writes:**
+1. One active entry per `(school_id, academic_year_id, class_id, section_id, day_of_week, period_id)` — a class/section can't have two subjects in the same slot.
+2. One active entry per `(school_id, academic_year_id, employee_id, day_of_week, period_id)` — **a teacher can never be double-booked**, confirmed rejecting a conflicting assignment with 409 naming the conflicting class/section/subject, both at the application layer and as a database backstop. **Decided: keep this strict** — combined/merged-class teaching (one teacher, two sections, same slot) isn't supported for now; a real enough need for it later would be an explicit, separate exception, not a loosened constraint.
+
+**Validation decided:** a subject must already be mapped to the section's class via the existing Class-Subject Mapping before it can be assigned to a timetable slot (keeps the timetable from scheduling a subject the class doesn't actually take) — **kept enforced**. A teacher is eligible (Active employee, `employee_type = Teaching`, employment status doesn't block login) **without needing an active login** — lighter than Class-Teacher Assignment's rule, decided as correct: being scheduled and being able to view your own schedule are separable concerns, and a school may want to build out a timetable before every teacher has a login yet.
+
+### Endpoints (`/api/Timetable`, plus `/api/Period`)
+- `/api/Period` — CRUD for the bell schedule, School Admin only.
+- `POST /api/Timetable/assign` — the reassign-in-one-transaction write above, School Admin only.
+- `POST /api/Timetable/unassign` — clears a slot (not originally scoped, added as a natural companion to assign).
+- `GET /api/Timetable/class/{sectionId}?academicYearId=` — the full weekly grid for a section (every period × every day), School Admin only for now.
+- `GET /api/Timetable/teacher/{employeeId}?academicYearId=` — a teacher's full weekly grid across all their sections. **School Admin may ask about anyone; a Teacher may only ask about themselves** (403 otherwise — same self-only pattern as Class-Teacher's `/check` and Attendance's reads).
+- `GET /api/Timetable/my?academicYearId=` — convenience wrapper using the caller's own `employee_id`.
+- `GET /api/Timetable/lookups` — not originally scoped, added to feed the assignment form's dropdowns (eligible subjects per class, eligible teachers).
+
+### Frontend
+- `/school-setup/periods` (School Admin) — manage the bell schedule.
+- `/timetable` (School Admin) — Academic Year + Class + Section pickers, a weekly period-by-day grid; clicking a cell assigns, changes, or clears that slot.
+- `/timetable/my` (Teacher) — read-only weekly grid of the teacher's own schedule, the direct build of the reference "Teacher Time Table" image.
+
+Principal, Student, and Guardian read access is not yet built — same conservative-by-default pattern as Attendance (section 31): endpoints are ready to support it, screens aren't built yet.
+
+### Deployment
+Migration `Docs/smss-timetable.sql` run against real `smss-db` (backup `smss-db-before-timetable.dump` taken first; neither `tb_periods` nor `tb_timetable_entries` existed there before this). Smoke-tested against real data: real periods created, a real subject+teacher+room assigned to a real class/section/slot using the real Class-Subject Mapping data, the double-booking 409 confirmed against a real second section, teacher self/other-403 access confirmed, existing data confirmed byte-identical before/after. No real bell-schedule periods were kept from the smoke test (would have been fake data) — the School Admin needs to add the school's actual periods at `/school-setup/periods`.
+
+**Process note for future smoke tests:** this deployment briefly swapped a real teacher's password hash to log in and test as them (restored and verified afterward, refresh tokens cleaned up) because the real password wasn't known. Decided: prefer creating a throwaway employee+login for this kind of test instead (as Class-Teacher Assignment and Attendance did), even though this one was reverted cleanly — lower risk if something fails mid-test.
+
+### Build status — COMPLETE
+Backend suite covers period CRUD and guards, assignment success/validation (unmapped subject, Sunday, ineligible teacher), the two partial unique indexes under concurrent load (8 simultaneous assigns to one slot leave exactly one Active row; 6 simultaneous cross-section assigns of one teacher give a 200/409 mix, never two Active bookings), double-booking rejection naming the conflict, teacher self/other read access, and the full existing regression suite (attendance, class-teacher, employee, fee, first-login, events). All 0 failures. Frontend: 432 tests/46 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — Principal/Student/Guardian read screens are deferred future work, not a gap in what was asked for.
+
+**Status check:** Academic Calendar and Teacher Timetable are now both complete and deployed, alongside Class-Teacher Assignment, Attendance, and Employee Management Stage 1. Next module not yet decided — candidates from the original roadmap discussion: Leave Management, Homework, the Admission pipeline, Internal Assessment/Class Tests, or Notifications.

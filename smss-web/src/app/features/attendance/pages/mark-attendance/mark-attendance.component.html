@@ -1,0 +1,86 @@
+<app-page-header title="Mark Attendance" subtitle="Daily attendance for your class" icon="circle-check" [breadcrumbs]="breadcrumbs" />
+
+@if (loadingSections()) {
+  <app-card><p class="note">Loading your sections…</p></app-card>
+} @else if (sectionsFailed()) {
+  <app-card><div class="note"><p>Your sections could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadSections()">Try again</app-button></div></app-card>
+} @else if (sections().length === 0) {
+  <app-card>
+    <div class="note empty">
+      <app-icon name="inbox" [size]="36" />
+      <p>You are not the class teacher of any section{{ yearName() ? ' for ' + yearName() : '' }}.</p>
+      <p class="small">Attendance is marked by a section's class teacher. Ask your School Admin to assign you to a section.</p>
+    </div>
+  </app-card>
+} @else {
+  <app-card>
+    <div class="top">
+      <app-select label="Section" [options]="sectionOptions()" [formControl]="sectionControl" />
+      <div class="today">
+        <span class="label">Date</span>
+        <strong>Today, {{ fmt(today()) }}</strong>
+        <span class="small">{{ yearName() }}</span>
+      </div>
+    </div>
+  </app-card>
+
+  @if (loading()) {
+    <app-card><p class="note">Loading the class list…</p></app-card>
+  } @else if (loadFailed()) {
+    <app-card><div class="note"><p>The class list could not be loaded.</p><app-button variant="secondary" size="sm" (click)="sectionControl.updateValueAndValidity()">Try again</app-button></div></app-card>
+  } @else if (data(); as d) {
+    @if (students().length === 0) {
+      <app-card><div class="note"><p>This section has no active students yet.</p></div></app-card>
+    } @else {
+      <app-card [noPadding]="true">
+        <div class="summary" role="status">
+          <div class="counts">
+            @for (c of counts(); track c.code) {
+              <span class="count" [class.present]="c.code === 'PRESENT'" [class.absent]="c.code === 'ABSENT'"><strong>{{ c.n }}</strong> {{ c.name }}</span>
+            }
+            <span class="count total">{{ students().length }} students</span>
+          </div>
+          @if (alreadyMarked()) {
+            <span class="state saved">Already marked today{{ dirty() ? ' · unsaved changes' : '' }}</span>
+          } @else {
+            <span class="state">Not submitted yet · everyone starts as Present, tap to change</span>
+          }
+        </div>
+
+        <ul class="roster" aria-label="Students">
+          @for (s of students(); track s.studentId) {
+            @let st = statusOf(s.studentId);
+            <li>
+              <button
+                type="button"
+                class="student"
+                [class.present]="st?.statusCode === 'PRESENT'"
+                [class.absent]="st?.statusCode === 'ABSENT'"
+                [disabled]="!d.canSubmit || saving()"
+                [attr.aria-label]="s.fullName + ': ' + (st?.statusName ?? 'not marked') + '. Tap to change.'"
+                (click)="flip(s.studentId)"
+              >
+                <span class="roll">{{ s.rollNumber || '—' }}</span>
+                <span class="name">{{ s.fullName }}</span>
+                @if (s.isCorrected) {
+                  <span class="corrected" title="Corrected by the School Admin: {{ s.correctionReason }}">corrected</span>
+                }
+                <span class="chip">{{ st?.statusName ?? '—' }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+
+        <div class="footer">
+          <app-button variant="secondary" [disabled]="!d.canSubmit || saving()" (click)="markAllPresent()">Mark all present</app-button>
+          <app-button [disabled]="!canSubmit()" (click)="submit()">
+            <app-icon name="circle-check" [size]="16" />{{ saving() ? 'Saving…' : alreadyMarked() ? 'Update attendance' : 'Submit attendance' }}
+          </app-button>
+        </div>
+        @if (alreadyMarked() && !dirty()) {
+          <p class="fine">You can change today's marks and update them until midnight. Later changes go through the School Admin.</p>
+        }
+      </app-card>
+    }
+  }
+}
