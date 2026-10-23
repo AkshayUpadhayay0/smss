@@ -1,0 +1,21 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-5);
+
+  app-select {
+    width: min(260px, 100%);
+  }
+
+  .hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+app-card + app-card {
+  display: block;
+  margin-top: var(--space-6);
+}

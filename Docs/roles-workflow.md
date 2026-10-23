@@ -155,14 +155,14 @@ School Setup Wizard
 
 Recommended setup sequence: School Profile → Academic Year → Classes → Sections → Subjects → Departments → Designations → Employees → Teachers → **Fee Setup (Fee Types → Fee Structures → Fee Concessions)** → Students → Guardians → Examination Configuration → Timetable.
 
-Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, section 28 for Student Fee Billing & Collection, section 29 for Employee Management (registration and login — Stage 1 complete), section 30 for Class-Teacher Assignment, section 31 for Attendance, section 32 for the Academic Calendar, and section 33 for Teacher Timetable — all six complete and deployed.
+Fee Setup is placed before Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, section 28 for Student Fee Billing & Collection, section 29 for Employee Management (registration and login — Stage 1 complete), section 30 for Class-Teacher Assignment, section 31 for Attendance, section 32 for the Academic Calendar, section 33 for Teacher Timetable, and section 34 for Leave Management — all seven complete and deployed.
 
 ## 7. Principal workflow
 
 Dashboard shows: Students, Teachers, Attendance, Admissions, Examinations, Academic Performance, Homework, Leave, Timetable, Notices, School Calendar.
 
 **Academic:** manage academic year, monitor classes/subjects/teacher assignments, review student performance/examinations/report cards, monitor attendance/homework/timetable.
-**Staff:** view employees, review teacher attendance, approve teacher leave, monitor teacher workload, assign teachers where permitted. (Employee reads are currently School Admin only — see section 29 — so Principal's employee visibility is not yet built.)
+**Staff:** view employees, review teacher attendance, approve teacher leave (**built — section 34**, via `CanApproveLeave()`), monitor teacher workload, assign teachers where permitted. (Employee reads are currently School Admin only — see section 29 — so Principal's general employee visibility is not yet built, Leave being the one exception.)
 **Students:** view students, monitor attendance, review academic performance and disciplinary/student notes, approve certain student actions.
 **Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link. Principal can also create/edit/delete Academic Calendar events (section 32, `CanManageEvents`) — the first place Principal got a real write permission outside Fees' read-only case.
 
@@ -182,7 +182,7 @@ Dashboard shows: My Classes, My Subjects, Today's Timetable, Attendance, Homewor
 
 **Examination:** view assigned examinations/schedule, enter marks, update marks before lock, view student performance, add remarks.
 
-**Leave:** `Apply Leave → Principal / Authorized Admin → Approve / Reject`
+**Leave:** `Apply Leave → Principal / Authorized Admin → Approve / Reject`. **Built and deployed (section 34).** At `/leave/my` — apply, cancel while still Pending, see your own request history. Approval is by School Admin or Principal, never the applicant themselves, even for a Principal's own leave.
 
 ## 9. Accountant workflow
 
@@ -246,7 +246,7 @@ Employee Management
 
 HR/Admin can manage employee information. Principal can view/manage relevant staff information according to permissions (not yet built — see section 29).
 
-See section 29 for the full Employee Management schema and build status: registration, designation/department, documents, employment status, and login creation are built and deployed; Employee Attendance (staff clocking in/out — distinct from the student-facing Attendance in section 31), Leave and Salary/Payroll shown above are future modules, not yet designed. Don't conflate Employee Attendance (not built) with Student Attendance (section 31, built).
+See section 29 for the full Employee Management schema and build status: registration, designation/department, documents, employment status, and login creation are built and deployed. Employee **Leave** (apply/approve/reject, section 34) is also now built and deployed — see section 34, not this section, for its schema. Employee Attendance (staff clocking in/out — distinct from the student-facing Attendance in section 31) and Salary/Payroll shown above are still future modules, not yet designed. Don't conflate Employee Attendance (not built) with Student Attendance (section 31, built).
 
 ## 12. Librarian workflow (if Library Management enabled)
 
@@ -256,7 +256,7 @@ Manage books, authors, publishers, categories, book copies; issue/return/renew b
 
 Self-service portal. Student can view: My Profile, My Attendance, My Timetable, My Subjects, My Homework, My Exams, My Marks, My Report Cards, My Fees, My Notices, My Calendar, My Documents. Student generally cannot modify academic records.
 
-Student-facing attendance and timetable viewing are not yet built (sections 31, 33 have the data and read endpoints shaped to support them later, but no Student-facing screen exists yet). The Academic Calendar (section 32) **is** visible to Student today — every role reads the same calendar, no targeting yet.
+Student-facing attendance and timetable viewing are not yet built (sections 31, 33 have the data and read endpoints shaped to support them later, but no Student-facing screen exists yet). The Academic Calendar (section 32) **is** visible to Student today — every role reads the same calendar, no targeting yet. Student leave (section 34) is likewise not yet self-service — a class teacher or School Admin records it on the student's behalf for now.
 
 ## 14. Guardian/Parent workflow
 
@@ -300,7 +300,7 @@ Not yet built.
 **Teacher/Employee:** `Apply Leave → Principal / Authorized Admin → Review → Approve / Reject`
 **Student:** `Student/Guardian → Leave Request → Class Teacher / Authorized Staff → Approve / Reject`
 
-Not yet built. Likely a shared schema between teacher and student/guardian leave, since both sides of the workflow are structurally similar.
+**Built and deployed — see section 34 for the full schema, decisions, and build status.** Both rows are live largely as described, with two scoping notes: no leave-quota/balance tracking (pure request/approve/reject, decided deliberately simple for v1), and Student leave is currently entered and approved by the class teacher or School Admin on the student's behalf (Guardian login doesn't exist yet, section 14, and there's no Student-facing self-apply screen yet either — the API is shaped to support one later without a schema change).
 
 ## 19. Timetable workflow
 
@@ -364,7 +364,7 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 | School Calendar | Manage | Manage | Manage | View | View | View | View | View |
 | Examinations | ❌ | Manage | Manage | Enter Marks | ❌ | ❌ | View | View |
 | Homework | ❌ | Monitor | Monitor | Create | ❌ | ❌ | Submit | View |
-| Leave | ❌ | Manage | Approve | Apply | Apply | Apply | Request | Request |
+| Leave | ❌ | Apply/Approve¶ | Apply/Approve¶ | Apply/Cancel own | Apply/Cancel own | ❌ | Recorded for¶ | ❌ |
 | Fees | Subscription | Manage | View | ❌ | Collect/Void | View | View | Pay/View |
 | Finance | SaaS Billing | Manage | View | ❌ | Manage | ❌ | ❌ | ❌ |
 | Library | ❌ | Manage | View | Borrow | ❌ | ❌ | Borrow | View |
@@ -375,6 +375,7 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 † Employee Management row currently reads ❌ for every non-School-Admin role because all employee endpoints, including reads, are School Admin only as a conservative starting point (section 29) — this row (Principal in particular) is expected to loosen once that's revisited, not a permanent design choice.
 ‡ Attendance (section 31) is live, but only Teacher (class-teacher-only, mark/same-day-edit) and School Admin (full read, correct, backfill) have any access today — Super Admin's row shown as Manage/Correct reflects that a Super Admin impersonating/configuring at the school level has the same reach as School Admin, not a separate superadmin-specific screen. Principal, Student and Guardian all have ❌ for now — not a permanent design choice, just not built yet (see sections 7, 13, 14).
 § Timetable (section 33) is live, but only School Admin (full manage, including the period/bell-schedule setup) and Teacher (their own grid, self-only) have access today. Principal, Student and Guardian are ❌ for now, same reasoning as the Attendance footnote above — endpoints exist, screens don't yet.
+¶ Leave (section 34) is live. Employee leave: any employee with a login applies for themselves and can cancel their own still-Pending request; School Admin or Principal approve/reject (never the applicant, even a Principal approving their own). Student leave: there's no Student-facing apply screen yet, so a request is recorded on the student's behalf by their class teacher or School Admin, and approved by the class teacher or School Admin — Student shows "Recorded for" rather than "Apply" to reflect this; Accountant and Guardian have no access (Guardian login doesn't exist yet, Accountant was never in scope for leave).
 
 ## 25. Most important RBAC principle
 
@@ -410,7 +411,7 @@ The Fees module (section 28) is the first place view/manage/configure distinctio
 - `CanViewFees()` — School Admin, Accountant, Principal. Fee Dashboard and class-wise report; responses carry a `canManage` flag so the frontend hides manage-only actions (class-report button, per-student Fees link, CSV export) for a view-only caller (Principal).
 - `CanConfigureFees()` — School Admin only. Every write on fee types, fee structures/details, fee concessions, and a student's fee items (frequency, opt-out, structure/concession assignment). Deliberately narrower than `CanManageFees` — Accountant can collect/void money but cannot change what's owed; this is enforced server-side, not just hidden in the UI.
 
-This three-helper pattern (manage vs. view vs. configure, named for what they actually gate) is the template to reuse if another module needs a similar split, rather than inventing new helpers per module or building a generic permission framework prematurely. Employee Management (section 29), Class-Teacher Assignment (section 30), and Attendance (section 31) all currently use a single `IsSchoolAdmin` check (plus, for Class-Teacher and Attendance, a narrow self-only exception for Teacher callers on their own section) rather than this three-way pattern. The Academic Calendar (section 32) introduced `CanManageEvents()` (School Admin + Principal) since Principal needed a real write permission for the first time outside Fees' read-only case. Timetable (section 33) went back to the single-`IsSchoolAdmin`-plus-self-only-Teacher-read pattern. Revisit any of these if/when Principal gets broader employee, class-teacher, attendance, or timetable visibility.
+This three-helper pattern (manage vs. view vs. configure, named for what they actually gate) is the template to reuse if another module needs a similar split, rather than inventing new helpers per module or building a generic permission framework prematurely. Employee Management (section 29), Class-Teacher Assignment (section 30), and Attendance (section 31) all currently use a single `IsSchoolAdmin` check (plus, for Class-Teacher and Attendance, a narrow self-only exception for Teacher callers on their own section) rather than this three-way pattern. The Academic Calendar (section 32) introduced `CanManageEvents()` (School Admin + Principal) since Principal needed a real write permission for the first time outside Fees' read-only case. Timetable (section 33) went back to the single-`IsSchoolAdmin`-plus-self-only-Teacher-read pattern. Leave Management (section 34) introduced `CanApproveLeave()` (School Admin + Principal, same shape as `CanManageEvents`) for employee leave decisions, plus a self-only block (nobody, including a Principal, can decide their own leave request) and reuses `IClassTeacherService.IsClassTeacherAsync` (section 30) to gate student-leave decisions by the student's current class teacher. Revisit any of these if/when Principal gets broader employee, class-teacher, attendance, or timetable visibility.
 
 ## 26. Final high-level workflow
 
@@ -685,7 +686,7 @@ Changing one does not touch the other — e.g. deactivating the row (switch 1 of
 
 ### Build status
 - **Stage 1** (schema, registration CRUD, photo + document upload, employment status, login creation, role-gated login): built, tested, and **deployed to real `smss-db`** (existing data confirmed untouched by the migration). Backend and frontend suites green. Teacher login confirmed end-to-end.
-- **Not yet built**: Teacher-Subject Mapping as a standalone concept (subject-level teaching assignments are now effectively captured per-slot by Timetable, section 33, rather than a separate persistent mapping table), Employee Attendance/Leave/Salary-Payroll (future modules per section 11, not designed yet — distinct from the now-built Student Attendance, section 31), broader role access beyond School Admin (see Authorization above).
+- **Not yet built**: Teacher-Subject Mapping as a standalone concept (subject-level teaching assignments are now effectively captured per-slot by Timetable, section 33, rather than a separate persistent mapping table), Employee Attendance/Salary-Payroll (future modules per section 11, not designed yet — distinct from the now-built Student Attendance, section 31; Employee Leave is now built, section 34), broader role access beyond School Admin (see Authorization above).
 - **Small pending UI polish**: a warning in the employee form when choosing Resigned/Terminated/Retired, since the server already enforces the login-block correctly but the form doesn't yet hint at the consequence before saving. (Prompted for; status not yet confirmed back.)
 
 ## 30. Class-Teacher Assignment module — COMPLETE, DEPLOYED
@@ -718,7 +719,7 @@ The first step toward Attendance (section 31): a hard, server-enforced answer to
 - `GET` (list) — every active section with its teacher or none, plus a missing-count, in one query (used for the "sections missing a class teacher" admin banner).
 - `GET history` — past and current assignments for a section.
 - `GET eligible-teachers` — the dropdown's source list.
-- `GET check?employeeId&sectionId[&academicYearId]` — "is this employee the active class teacher of this section right now" (year defaults to current). **School Admin may ask about anyone; a Teacher may only ask about themselves** (403 otherwise). Also exposed in-process as `IClassTeacherService.IsClassTeacherAsync` — consumed by Attendance (section 31).
+- `GET check?employeeId&sectionId[&academicYearId]` — "is this employee the active class teacher of this section right now" (year defaults to current). **School Admin may ask about anyone; a Teacher may only ask about themselves** (403 otherwise). Also exposed in-process as `IClassTeacherService.IsClassTeacherAsync` — consumed by Attendance (section 31) and Leave Management (section 34).
 
 ### Frontend
 Lives on the existing School Setup → Section page — no new nav item. Academic-year picker (defaults to current year), a "Class Teacher" dropdown per active section row, a "Missing" flag + count banner for unassigned sections, "Not assigned" to unassign, snaps back on a failed save. A reusable `template` column type was added to the shared table component to host the dropdown in a cell.
@@ -878,9 +879,59 @@ Principal, Student, and Guardian read access is not yet built — same conservat
 ### Deployment
 Migration `Docs/smss-timetable.sql` run against real `smss-db` (backup `smss-db-before-timetable.dump` taken first; neither `tb_periods` nor `tb_timetable_entries` existed there before this). Smoke-tested against real data: real periods created, a real subject+teacher+room assigned to a real class/section/slot using the real Class-Subject Mapping data, the double-booking 409 confirmed against a real second section, teacher self/other-403 access confirmed, existing data confirmed byte-identical before/after. No real bell-schedule periods were kept from the smoke test (would have been fake data) — the School Admin needs to add the school's actual periods at `/school-setup/periods`.
 
-**Process note for future smoke tests:** this deployment briefly swapped a real teacher's password hash to log in and test as them (restored and verified afterward, refresh tokens cleaned up) because the real password wasn't known. Decided: prefer creating a throwaway employee+login for this kind of test instead (as Class-Teacher Assignment and Attendance did), even though this one was reverted cleanly — lower risk if something fails mid-test.
+**Process note for future smoke tests:** this deployment briefly swapped a real teacher's password hash to log in and test as them (restored and verified afterward, refresh tokens cleaned up) because the real password wasn't known. Decided: prefer creating a throwaway employee+login for this kind of test instead (as Class-Teacher Assignment and Attendance did), even though this one was reverted cleanly — lower risk if something fails mid-test. **This recurred once more on the Leave Management deployment (section 34) and was escalated there to a hard, no-exceptions rule — see section 34's deployment notes.**
 
 ### Build status — COMPLETE
 Backend suite covers period CRUD and guards, assignment success/validation (unmapped subject, Sunday, ineligible teacher), the two partial unique indexes under concurrent load (8 simultaneous assigns to one slot leave exactly one Active row; 6 simultaneous cross-section assigns of one teacher give a 200/409 mix, never two Active bookings), double-booking rejection naming the conflict, teacher self/other read access, and the full existing regression suite (attendance, class-teacher, employee, fee, first-login, events). All 0 failures. Frontend: 432 tests/46 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — Principal/Student/Guardian read screens are deferred future work, not a gap in what was asked for.
 
-**Status check:** Academic Calendar and Teacher Timetable are now both complete and deployed, alongside Class-Teacher Assignment, Attendance, and Employee Management Stage 1. Next module not yet decided — candidates from the original roadmap discussion: Leave Management, Homework, the Admission pipeline, Internal Assessment/Class Tests, or Notifications.
+## 34. Leave Management module — COMPLETE, DEPLOYED
+
+Section 18's Leave workflow, built. Two separate request tables rather than one polymorphic table — Employee and Student leave have different approval chains and different business rules, and the project has consistently kept Employee and Student as separate concepts rather than a shared "Person" abstraction. No quota/balance/accrual tracking in this version (decided deliberately: pure request/approve/reject for v1; a real quota system is its own scoping exercise if it's ever needed).
+
+### `lut_leave_type` (global lookup)
+- `leave_type_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `type_name` VARCHAR(50), `type_code` VARCHAR(30)
+- `applies_to_employee` / `applies_to_student` BOOLEAN — same "applies to" discriminator pattern as the document-type master (section 29)
+- `is_active` BOOLEAN
+- Seeded: 8 rows — Casual Leave, Sick Leave, Earned Leave, Unpaid Leave, Other (employee-side) and Sick Leave, Personal Leave, Other (student-side). "Sick Leave" and "Other" intentionally appear twice, told apart by `type_code` and the applies-to flags — not a duplicate to clean up.
+
+### `tb_employee_leave_requests` / `tb_student_leave_requests`
+Same shape, with `employee_id` (FK `tb_employees`) vs `student_id` (FK `tb_students`) as the only structural difference:
+- `leave_request_id` BIGINT GENERATED ALWAYS AS IDENTITY PK, `school_id`, applicant FK, `leave_type_id`
+- `from_date` / `to_date` DATE — database check: `to_date >= from_date`; a request can span at most 366 days (matches Attendance's history-range limit); dates may be in the past (for recording leave after the fact)
+- `reason` TEXT — required on **apply** as well as on reject, up to 500 characters (decided during the build, not originally scoped by me, but accepted — consistent with the project's existing required-reason conventions for Attendance corrections and fee-payment voids)
+- `status` VARCHAR — Pending / Approved / Rejected / Cancelled
+- `applied_by` (FK `tb_users`), `applied_at`
+- `approved_by` (FK `tb_users`, nullable), `approved_at` (nullable), `decision_reason` (nullable, database-required non-blank whenever `status` becomes Rejected)
+
+**Overlap prevention, two layers:** a database **exclusion constraint** (`ex_tb_elr_no_approved_overlap` / `ex_tb_slr_no_approved_overlap`, using PostgreSQL's `btree_gist` extension — the project's first use of a PostgreSQL extension, approved on review: standard, no external dependency, confirmed working on the real `smss-db` with superuser privilege) stops a second **Approved** leave from overlapping an existing Approved one for the same person, plus the same check at the application layer. Multiple **Pending** requests for the same person/dates can coexist — only Approved rows are checked for overlap, and only at the moment of approval. Confirmed under concurrent load: 6 simultaneous approval attempts on overlapping requests give exactly one 200 and five 409s, both for employee and student leave; a raw SQL insert of a second overlapping Approved row is rejected directly by the database.
+
+**Cancel:** only while still Pending (409 otherwise, even for School Admin) — by the applicant, whoever recorded the request, or School Admin. Confirmed: racing 3 approvals against 3 cancels on the same request leaves exactly one winner.
+
+### Authorization
+- **Employee leave:** `CanApproveLeave()` — School Admin + Principal (same shape as `CanManageEvents`, section 25). **Nobody can decide their own request** — a Principal's leave is approved by School Admin, confirmed via 403 on self-decide. (A single-School-Admin school with no Principal could theoretically have no one to approve the School Admin's own leave — accepted as a rare edge case to revisit later, e.g. letting Super Admin break the tie, not a reason to weaken the no-self-decision rule now.) Any employee with a login can apply for themselves and view `/my`; School Admin can also apply on behalf of another employee.
+- **Student leave:** approved by the student's current class teacher (`IClassTeacherService.IsClassTeacherAsync`, reused directly from section 30 — confirmed that reassigning a section's class teacher correctly shifts who can act on that section's pending requests) or School Admin. Entry (apply) is from the class teacher or School Admin's side only — no Student-facing self-apply screen exists yet (consistent with Attendance/Timetable's deferred Student screens, sections 31/33). Principal and Accountant get an empty/`❌` queue by design — only the class teacher and School Admin handle student leave, per section 18's original scoping.
+- **Edge case handled:** the School Admin's own login is tied to `school_id`, not an `employee_id` — there's no employee record to attach a leave request to. `/leave/my` shows an explanatory notice for that login instead of a broken form; "Record Leave" on the admin Leave Requests page is how a School-Admin-as-person applies for actual staff.
+
+### Endpoints
+- `/api/EmployeeLeave` — `POST` (apply), `PUT /{id}/decide`, `POST /{id}/cancel`, `GET /my`, `GET ?status=&employeeId=` (the employee filter on this list is limited to people who already appear in requests, since Principal can't list all employees per section 29's conservative RBAC — an expected consequence of that earlier decision, not a new gap).
+- `/api/StudentLeave` — same shape, scoped by `sectionId` instead of a free employee filter: `GET ?sectionId=&status=` is a class teacher's queue for their own section(s) (self-only, same pattern as Attendance's reads), School Admin sees all.
+- `/api/LeaveType?appliesTo=` — feeds the leave-type dropdown for either side (not originally scoped, added as a natural companion).
+
+### Leave stays separate from Attendance
+**Decided, deliberately:** approving a leave request does **not** write to `tb_student_attendance` or touch `tb_class_teacher_assignments`. A class teacher marking the day's attendance sees no automatic change from an approved leave — they still mark Present/Absent manually (a UI hint showing "this student has approved leave today" could be added later as a pure frontend read, no schema change). Confirmed: the attendance row count was unchanged by the leave smoke test; class-teacher assignments only changed via explicit reassignment calls made as part of testing cross-section access.
+
+### Frontend
+- `/leave/my` — any employee with a login: apply, cancel a still-Pending request, view own history.
+- `/leave/requests` — School Admin/Principal: opens on Pending, approve/reject employee leave, "Record Leave" to apply on behalf of staff, filterable list.
+- `/leave/students` — class teacher's (or School Admin's) queue: record and decide student leave for their own section(s).
+
+### Deployment
+Migration `Docs/smss-leave.sql` run against real `smss-db` (backup `smss-db-before-leave.dump` taken first), including `CREATE EXTENSION IF NOT EXISTS btree_gist` — confirmed successful. Smoke-tested against real data: real employee and student leave applied/approved/rejected, the overlap 409 confirmed against a real approved leave, self-decision 403 confirmed for the real teacher, class-teacher-queue scoping confirmed, all test leave data removed afterward, existing data confirmed byte-identical before/after.
+
+**Process note, repeated from Timetable (section 33):** this deployment again briefly swapped a real teacher's password hash to test as them (restored and verified). This is now a **hard rule going forward, not a judgment call**: every future real-db smoke test that needs to act as an existing user must create a throwaway account for that purpose and delete it afterward, exactly as Class-Teacher Assignment and the Attendance deploy did — never touch a real account's credentials, even temporarily, even when it has been reverted cleanly before.
+
+### Build status — COMPLETE
+136 backend checks, 0 failures — overlap rejection (touching either end, fully inside, fully containing, back-to-back accepted), concurrency (overlapping approvals, approve-vs-cancel races), cancel-only-while-Pending, required-reason-on-reject (and on-apply), self-decision blocking, class-teacher-reassignment correctly shifting decide rights, and the confirmation that leave stays fully separate from Attendance and Class-Teacher Assignment data. Full regression suite (15 backend scripts including timetable and leave) passes, 0 failures. Frontend: 456 tests/49 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — quota tracking and a Student self-service apply screen are explicitly deferred, not gaps.
+
+**Status check:** Class-Teacher Assignment, Attendance, Employee Management Stage 1, Academic Calendar, Teacher Timetable, and Leave Management are all now complete and deployed. Next module not yet decided — remaining candidates from the original roadmap discussion: Homework, the Admission pipeline, Internal Assessment/Class Tests, or Notifications.

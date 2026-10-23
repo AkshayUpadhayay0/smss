@@ -11,6 +11,10 @@ namespace smss_api_db_layer.repository
         private readonly dbContext _db;
         public TimetableRepository(dbContext db) => _db = db;
 
+        public Task<bool> IsTeachingSectionSubjectAsync(string schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, int activeStatusId, CancellationToken ct) =>
+            _db.TimetableEntries.AsNoTracking().AnyAsync(e => e.SchoolId == schoolId && e.EmployeeId == employeeId && e.SectionId == sectionId && e.SubjectId == subjectId
+                                                              && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId, ct);
+
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
         public async Task LockSlotAsync(string schoolId, long academicYearId, short dayOfWeek, long periodId, CancellationToken ct)

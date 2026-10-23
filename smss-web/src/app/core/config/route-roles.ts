@@ -60,6 +60,15 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN],
   // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
   '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
+  // Homework (publish + view): a Teacher sets it for what the Timetable says they teach, a School Admin for any section; a Student reads their own section's.
+  // Principal / Accountant / Guardian have no access yet. The API re-checks every action (eligibility, ownership, section).
+  '/homework': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
+  '/homework/my': [ROLES.STUDENT],
+  // Leave: any staff member with a login applies for their own leave; the School Admin and Principal decide staff leave; the class teacher
+  // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
+  '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN],
+  '/leave/requests': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/leave/students': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   // Timetable: the School Admin builds it (bell schedule + weekly grid per section); a Teacher reads their own
   '/school-setup/periods': [ROLES.SCHOOL_ADMIN],
   '/timetable': [ROLES.SCHOOL_ADMIN],

@@ -93,6 +93,20 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/employees/{employeeId}/documents/{fileName}";
         }
 
+        public async Task<string> SaveHomeworkAttachmentAsync(string schoolCode, long homeworkId, Stream content, string extension, CancellationToken ct)
+        {
+            if (!SchoolCodeRules.IsFolderSafe(schoolCode)) throw new InvalidOperationException("School code is not a valid folder name.");
+            if (homeworkId <= 0) throw new InvalidOperationException("Homework id is not valid.");
+            var folder = Path.Combine(_privateRootPath, schoolCode, "homework", homeworkId.ToString());
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"attachment_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{schoolCode}/homework/{homeworkId}/{fileName}";
+        }
+
         public Stream? OpenPrivate(string storageKey)
         {
             try

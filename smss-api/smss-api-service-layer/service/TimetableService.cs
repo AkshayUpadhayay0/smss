@@ -24,6 +24,15 @@ namespace smss_api_service_layer.service
             _logger = logger;
         }
 
+        // ---------------------------------------------------------------- reuse: is this teacher teaching this subject to this section?
+        public async Task<bool> IsTeachingSectionSubjectAsync(string? schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId) || string.IsNullOrWhiteSpace(employeeId)) return false;
+            var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+            if (activeId == null) return false;
+            return await _repo.IsTeachingSectionSubjectAsync(schoolId, employeeId.Trim(), sectionId, subjectId, academicYearId, activeId.Value, ct);
+        }
+
         // ---------------------------------------------------------------- assign / reassign / unassign
         public async Task<ApiResponse<TimetableEntryDto>> AssignAsync(string? schoolId, long assignedByUserId, AssignTimetableRequest req, CancellationToken ct)
         {

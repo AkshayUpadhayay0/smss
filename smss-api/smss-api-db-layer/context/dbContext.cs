@@ -72,6 +72,10 @@ namespace smss_api_db_layer.context
         public DbSet<TbSchoolEvent> SchoolEvents { get; set; } = null!;
         public DbSet<TbPeriod> Periods { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
+        public DbSet<TbHomework> Homework { get; set; } = null!;
+        public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;
+        public DbSet<TbEmployeeLeaveRequest> EmployeeLeaveRequests { get; set; } = null!;
+        public DbSet<TbStudentLeaveRequest> StudentLeaveRequests { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

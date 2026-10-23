@@ -36,6 +36,21 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool CanManageEvents(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
 
+        /// <summary>
+        /// Whether the caller may approve / reject EMPLOYEE leave and see every employee's requests: a School Admin or a Principal. Student leave is decided
+        /// by the student's class teacher or a School Admin instead (checked against the Class-Teacher module in the service), so it does not use this.
+        /// </summary>
+        public static bool CanApproveLeave(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
+        /// <summary>
+        /// Whether the caller may publish homework: a School Admin or a Teacher. Whether a TEACHER may do it for a given section + subject is a per-request
+        /// check against the Timetable (ITimetableService.IsTeachingSectionSubjectAsync) in the service; a School Admin bypasses it.
+        /// </summary>
+        public static bool CanManageHomework(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
+
+        /// <summary>A student's login (reads their own section's homework).</summary>
+        public static bool IsStudent(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student);
+
         public static bool CanConfigureFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
         /// <summary>

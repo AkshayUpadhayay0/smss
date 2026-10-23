@@ -11,6 +11,9 @@ namespace smss_api_db_layer.@interface
     // Every method takes the school id: another school's timetable can never be reached through this repository.
     public interface ITimetableRepository
     {
+        /// <summary>Does the employee have an Active entry for exactly this section + subject in the year (any day / period)?</summary>
+        Task<bool> IsTeachingSectionSubjectAsync(string schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, int activeStatusId, CancellationToken ct);
+
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         /// <summary>Transaction-scoped lock for one (year, weekday, period): every write that could clash on that slot (the section's slot AND any teacher's booking in it) queues up.</summary>
         Task LockSlotAsync(string schoolId, long academicYearId, short dayOfWeek, long periodId, CancellationToken ct);

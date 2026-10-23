@@ -50,6 +50,25 @@ describe('route-roles', () => {
       for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ACCOUNTANT, ROLES.SUPER_ADMIN]) expect(canAccess('/timetable/my', [role])).toBe(false);
     });
 
+    it('/homework: Teacher and School Admin; /homework/my: Student only. Principal, Accountant, Guardian and Super Admin get neither', () => {
+      for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN]) expect(canAccess('/homework', [role])).toBe(true);
+      for (const role of [ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(canAccess('/homework', [role])).toBe(false);
+      expect(canAccess('/homework/my', [ROLES.STUDENT])).toBe(true);
+      for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(canAccess('/homework/my', [role])).toBe(false);
+    });
+
+    it('/leave/my: staff with a login (Teacher, Principal, Accountant, School Admin) - not Student, Guardian or Super Admin', () => {
+      for (const role of [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN]) expect(canAccess('/leave/my', [role])).toBe(true);
+      for (const role of [ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(canAccess('/leave/my', [role])).toBe(false);
+    });
+
+    it('/leave/requests: School Admin and Principal decide staff leave; /leave/students: Teacher and School Admin handle student leave', () => {
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect(canAccess('/leave/requests', [role])).toBe(true);
+      for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(canAccess('/leave/requests', [role])).toBe(false);
+      for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN]) expect(canAccess('/leave/students', [role])).toBe(true);
+      for (const role of [ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(canAccess('/leave/students', [role])).toBe(false);
+    });
+
     it('/attendance/mark: Teacher and School Admin may open it; Student, Guardian, Accountant, Principal and Super Admin may not', () => {
       for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN]) expect(canAccess('/attendance/mark', [role])).toBe(true);
       for (const role of [ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL, ROLES.SUPER_ADMIN]) expect(canAccess('/attendance/mark', [role])).toBe(false);
@@ -75,7 +94,7 @@ describe('route-roles', () => {
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my'];
+      const schoolSide = ['/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/requests', '/leave/students', '/homework', '/homework/my'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }
