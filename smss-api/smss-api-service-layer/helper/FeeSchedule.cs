@@ -139,6 +139,13 @@ namespace smss_api_service_layer.helper
     {
         private static readonly TimeZoneInfo? India = Find("India Standard Time") ?? Find("Asia/Kolkata");
 
+        /// <summary>The UTC instant at which the given calendar day starts in the school's time zone (India), for filtering timestamps by school day.</summary>
+        public static DateTime StartOfDayUtc(DateOnly day)
+        {
+            var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+            return India == null ? DateTime.SpecifyKind(local, DateTimeKind.Utc) : DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(local, India), DateTimeKind.Utc);
+        }
+
         public static DateOnly Today() => DateOnly.FromDateTime(India == null ? DateTime.UtcNow : TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, India));
 
         private static TimeZoneInfo? Find(string id)

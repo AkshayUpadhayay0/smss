@@ -14,6 +14,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Timetable', icon: 'calendar', route: '/timetable' },
   { label: 'My Timetable', icon: 'calendar', route: '/timetable/my' },
   { label: 'Mark Attendance', icon: 'circle-check', route: '/attendance/mark' },
+  { label: 'Notices', icon: 'bell', route: '/notices' },
+  { label: 'My Notices', icon: 'bell', route: '/notices/my' },
   { label: 'Homework', icon: 'file-text', route: '/homework' },
   { label: 'My Homework', icon: 'file-text', route: '/homework/my' },
   { label: 'Assessments', icon: 'file-text', route: '/assessments' },

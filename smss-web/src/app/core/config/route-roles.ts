@@ -71,6 +71,9 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   // Principal / Accountant / Admission Staff / Guardian have no access. The API re-checks every action (eligibility, ownership, section, mapping).
   '/assessments': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   '/assessments/my': [ROLES.STUDENT],
+  // Notices: the School Admin and Principal publish / edit / delete them; EVERY school role reads the ones addressed to it (the API decides which).
+  '/notices': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/notices/my': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
   // Leave: any staff member with a login applies for their own leave; the School Admin and Principal decide staff leave; the class teacher
   // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
   '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN],

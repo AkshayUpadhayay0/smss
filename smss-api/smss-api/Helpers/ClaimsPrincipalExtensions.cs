@@ -48,6 +48,12 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool CanManageHomework(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
 
+        /// <summary>
+        /// Whether the caller may publish, edit and delete notices and see the admin list: a School Admin or a Principal (the same pair as CanManageEvents, kept as its own
+        /// named permission). Editing and deleting is narrowed further to a School Admin or the creating Principal in the service.
+        /// </summary>
+        public static bool CanManageNotices(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
         /// <summary>Whether the caller may record internal tests (class tests): a School Admin or a Teacher, exactly like homework. Whether a TEACHER may do it for a given section + subject is the same per-request Timetable check.</summary>
         public static bool CanManageAssessments(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
 

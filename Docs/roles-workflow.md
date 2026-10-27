@@ -155,7 +155,7 @@ School Setup Wizard
 
 Recommended setup sequence: School Profile → Academic Year → Classes → Sections → Subjects → Departments → Designations → Employees → Teachers → **Fee Setup (Fee Types → Fee Structures → Fee Concessions)** → Admissions → Students → Guardians → Examination Configuration → Timetable.
 
-Fee Setup is placed before Admissions/Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, section 28 for Student Fee Billing & Collection, section 29 for Employee Management (registration and login — Stage 1 complete), section 30 for Class-Teacher Assignment, section 31 for Attendance, section 32 for the Academic Calendar, section 33 for Teacher Timetable, section 34 for Leave Management, section 35 for Homework, and section 36 for the Admission pipeline — all nine complete and deployed.
+Fee Setup is placed before Admissions/Students because Student Admission assigns a student to an existing Fee Structure — the structure must exist first. It only depends on Academic Year and Classes, both already earlier in this sequence, so it does not block on anything school-specific that hasn't been built yet. See section 27 for the full Fee Setup schema, section 28 for Student Fee Billing & Collection, section 29 for Employee Management (registration and login — Stage 1 complete), section 30 for Class-Teacher Assignment, section 31 for Attendance, section 32 for the Academic Calendar, section 33 for Teacher Timetable, section 34 for Leave Management, section 35 for Homework, section 36 for the Admission pipeline, section 37 for Internal Assessment/Class Tests, and section 38 for Notice/Communication — all eleven complete and deployed.
 
 ## 7. Principal workflow
 
@@ -164,9 +164,9 @@ Dashboard shows: Students, Teachers, Attendance, Admissions, Examinations, Acade
 **Academic:** manage academic year, monitor classes/subjects/teacher assignments, review student performance/examinations/report cards, monitor attendance/homework/timetable.
 **Staff:** view employees, review teacher attendance, approve teacher leave (**built — section 34**, via `CanApproveLeave()`), monitor teacher workload, assign teachers where permitted. (Employee reads are currently School Admin only — see section 29 — so Principal's general employee visibility is not yet built, Leave being the one exception.)
 **Students:** view students, monitor attendance, review academic performance and disciplinary/student notes, approve certain student actions. Principal can also decide admission applications (**built — section 36**, via `CanDecideAdmission()`), the first place "approve/reject" on a pipeline this formal exists for Principal outside Leave.
-**Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link. Principal can also create/edit/delete Academic Calendar events (section 32, `CanManageEvents`) — the first place Principal got a real write permission outside Fees' read-only case.
+**Administration:** notices, school calendar, events, announcements, reports. Principal also has read-only access to the Fee Dashboard and class-wise fee report (section 28) — numbers only, no collection/void actions and no per-student Fees tab link. Principal can also create/edit/delete Academic Calendar events (section 32, `CanManageEvents`) — the first place Principal got a real write permission outside Fees' read-only case. Principal can also publish/edit/delete Notices (**built — section 38**, via `CanManageNotices()`) — only for notices they created themselves, or any notice if they're also School Admin.
 
-Principal does not yet have attendance, timetable, or homework read access (sections 31, 33, 35) — currently only the relevant class teacher/creator and School Admin can read those. Future work, following the same `CanViewFees`-style read-only pattern already established (section 25).
+Principal does not yet have attendance, timetable, homework, or internal-assessment read access (sections 31, 33, 35, 37) — currently only the relevant class teacher/creator and School Admin can read those. Future work, following the same `CanViewFees`-style read-only pattern already established (section 25).
 
 ## 8. Teacher workflow
 
@@ -180,9 +180,11 @@ Dashboard shows: My Classes, My Subjects, Today's Timetable, Attendance, Homewor
 
 **Homework:** `Create Homework → Select Class → Select Section → Select Subject → Set Due Date → Publish`. **Built and deployed (section 35), v1 scope: publish and view only, no submission/review/marks.** A Teacher may only create homework for a class/section/subject they're currently timetabled to teach (section 33), and may only edit/delete homework they personally created — even another teacher eligible for the same section/subject can't touch it. At `/homework`.
 
-**Examination:** view assigned examinations/schedule, enter marks, update marks before lock, view student performance, add remarks.
+**Examination:** view assigned examinations/schedule, enter marks, update marks before lock, view student performance, add remarks. (Formal Examination itself is not yet built — see section 16 — but its lighter-weight sibling, Internal Assessment/Class Tests, is: **built and deployed, section 37**. A Teacher may only record a test for a section/subject they're currently timetabled to teach, same eligibility rule as Homework, and may only edit/delete/re-score a test they personally created. At `/assessments`.)
 
 **Leave:** `Apply Leave → Principal / Authorized Admin → Approve / Reject`. **Built and deployed (section 34).** At `/leave/my` — apply, cancel while still Pending, see your own request history. Approval is by School Admin or Principal, never the applicant themselves, even for a Principal's own leave.
+
+**Notices:** read-only, no publish rights (Accountant and Admission Staff likewise). **Built and deployed (section 38)** — `/notices/my` shows notices targeted at the Teacher's STAFF or ALL tier, with an unread count in the topbar bell.
 
 ## 9. Accountant workflow
 
@@ -255,7 +257,7 @@ Manage books, authors, publishers, categories, book copies; issue/return/renew b
 
 Self-service portal. Student can view: My Profile, My Attendance, My Timetable, My Subjects, My Homework, My Exams, My Marks, My Report Cards, My Fees, My Notices, My Calendar, My Documents. Student generally cannot modify academic records.
 
-Student-facing attendance and timetable viewing are not yet built (sections 31, 33 have the data and read endpoints shaped to support them later, but no Student-facing screen exists yet). The Academic Calendar (section 32) **is** visible to Student today — every role reads the same calendar, no targeting yet. **My Homework (section 35) is also built and live for Student** — a read-only list of homework assigned to their own current section, soonest due first; this is the first Student-facing screen built alongside its module rather than deferred, since it carries no submission logic. Student leave (section 34) is likewise not yet self-service — a class teacher or School Admin records it on the student's behalf for now. A Student login now has no access at all to any other student's record — see section 36's student-endpoint hardening note — which closed a real gap rather than changing any intended behavior.
+Student-facing attendance and timetable viewing are not yet built (sections 31, 33 have the data and read endpoints shaped to support them later, but no Student-facing screen exists yet). The Academic Calendar (section 32) **is** visible to Student today — every role reads the same calendar, no targeting yet. **My Homework (section 35) is also built and live for Student** — a read-only list of homework assigned to their own current section, soonest due first; this is the first Student-facing screen built alongside its module rather than deferred, since it carries no submission logic. **My Results (section 37) is likewise built and live** — a read-only list of a student's own Internal Assessment/Class Test marks, most recent test first, with no average, rank, or comparison to classmates. **My Notices (section 38) is also built and live** — `/notices/my` shows notices targeted at the Student's STUDENTS_GUARDIANS or ALL tier, with the same topbar unread bell every role gets. Student leave (section 34) is likewise not yet self-service — a class teacher or School Admin records it on the student's behalf for now. A Student login now has no access at all to any other student's record — see section 36's student-endpoint hardening note — which closed a real gap rather than changing any intended behavior.
 
 ## 14. Guardian/Parent workflow
 
@@ -265,7 +267,7 @@ Guardian Login → Guardian Dashboard → Select Child
 
 If a guardian has two children, they switch between Child 1 / Child 2. Guardian can view: student profile, attendance, homework, examination schedule, marks, report cards, fees, fee receipts, notices, school calendar, teacher communication where enabled.
 
-Guardian login itself is not yet built (only Student and Employee/Teacher logins exist so far). Not yet scoped.
+Guardian login itself is not yet built (only Student and Employee/Teacher logins exist so far). Not yet scoped. One piece is already forward-compatible, though: Notices' (section 38) audience-resolution logic recognizes a Guardian login type the moment it exists, with no code change needed to light up Guardian's view of STUDENTS_GUARDIANS-tier notices.
 
 ## 15. Attendance workflow
 
@@ -283,7 +285,7 @@ School Admin / Principal → Create Examination → Create Exam Schedule → Ass
 → Generate Result → Generate Report Card → Student / Guardian → View Result
 ```
 
-Not yet built. A lighter-weight Internal Assessment / Class Test tracking module (separate from formal Examination/Report Card, doesn't affect final results) is also planned as future work, not yet designed.
+Not yet built. A lighter-weight Internal Assessment / Class Test tracking module (separate from formal Examination/Report Card, doesn't affect final results) is built and deployed — see section 37.
 
 ## 17. Homework workflow
 
@@ -312,13 +314,13 @@ School Admin / Principal → Configure (Classes, Sections, Subjects, Teachers, P
 
 ## 20. Notice / Communication workflow
 
-Authorized users: Super Admin, School Admin, Principal — can publish notices according to their scope.
+Authorized users: School Admin, Principal — can publish notices for their school.
 
 ```
-Principal → Create Notice → Target (All Students / Teachers / Parents / Class 8 / Specific Section) → Publish → Notification
+Principal / School Admin → Create Notice → Target (ALL / STAFF / STUDENTS_GUARDIANS) → Publish → School-wide read list + unread bell
 ```
 
-Not yet built. Planned to also carry fee-due and absent alerts (now that Attendance exists, section 31) once this module is scoped — a general notification delivery layer, not yet designed. If/when this module needs audience targeting (All / Staff / Students+Guardians / a specific class), note that the Academic Calendar (section 32) deliberately skipped that for v1 — the same design question will come up here and may be worth solving once, shared between the two.
+**Built and deployed — see section 38 for the full schema, decisions, and build status.** v1 scope is deliberately narrower than the original sketch above the diagram: audience targeting is three broad tiers (ALL / STAFF / STUDENTS_GUARDIANS), not down to a specific class or section — the Academic Calendar (section 32) raised this exact granularity question first and also deferred it, so both modules currently share the same simpler shape. No automatic fee-due or absent-today alerts — that idea from this section's original draft needs background-job/scheduler infrastructure the project has never needed before, and was explicitly scoped out as separate future work, not bundled into this build. In-app only, no email delivery. A Super Admin platform-wide notice tier (mentioned in the original authorized-users line) is also out of scope — a different audience/purpose than a single school's notices, not part of this module.
 
 ## 21. School Calendar
 
@@ -363,11 +365,12 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 | School Calendar | Manage | Manage | Manage | View | View | View | View | View |
 | Examinations | ❌ | Manage | Manage | Enter Marks | ❌ | ❌ | View | View |
 | Homework | ❌ | Manage‖ | ❌‖ | Create/Manage own‖ | ❌ | ❌ | View own section‖ | ❌‖ |
+| Internal Assessment | ❌ | Manage‡‡ | ❌‡‡ | Create/Manage own‡‡ | ❌ | ❌ | View own‡‡ | ❌‡‡ |
 | Leave | ❌ | Apply/Approve¶ | Apply/Approve¶ | Apply/Cancel own | Apply/Cancel own | ❌ | Recorded for¶ | ❌ |
 | Fees | Subscription | Manage | View | ❌ | Collect/Void | View | View | Pay/View |
 | Finance | SaaS Billing | Manage | View | ❌ | Manage | ❌ | ❌ | ❌ |
 | Library | ❌ | Manage | View | Borrow | ❌ | ❌ | Borrow | View |
-| Notices | SaaS | Manage | Publish | View | View | View | View | View |
+| Notices | ❌§§ | Manage§§ | Manage own§§ | View (tier)§§ | View (tier)§§ | View (tier)§§ | View (tier)§§ | View (tier)§§ |
 | Reports | SaaS | School | Academic | Own Classes | Finance | Admission | Own | Child |
 
 \* Exact permissions should be configurable through RBAC. Fees row for Accountant: "Collect/Void" (not "Manage") — collecting/voiding payments is Accountant's job, but configuring what's billed (fee types, structures, concessions, a student's fee items) is School Admin only. See section 28.
@@ -377,6 +380,8 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 ¶ Leave (section 34) is live. Employee leave: any employee with a login applies for themselves and can cancel their own still-Pending request; School Admin or Principal approve/reject (never the applicant, even a Principal approving their own). Student leave: there's no Student-facing apply screen yet, so a request is recorded on the student's behalf by their class teacher or School Admin, and approved by the class teacher or School Admin — Student shows "Recorded for" rather than "Apply" to reflect this; Accountant and Guardian have no access (Guardian login doesn't exist yet, Accountant was never in scope for leave).
 ‖ Homework (section 35) is live, v1 scope (publish + view, no submission). School Admin can create/edit/delete homework for any Active section/subject (subject must still be mapped to the class via Class-Subject Mapping — enforced for School Admin too, not just Teacher). A Teacher can create homework only for a section/subject they're currently timetabled to teach, and can edit/delete only homework they personally created — not another teacher's, even for the same section/subject. Student reads only their own current section's homework, read-only, across all subjects. Principal, Accountant, Admission and Guardian all have ❌ — not built yet (Guardian login doesn't exist at all; Principal/Accountant weren't in this module's scope, consistent with the conservative default most recent modules have shipped with).
 †† Admissions (section 36) is live (it already existed — this is not a new module, see section 10). `CanManageApplications()` (School Admin, Principal, Admission Staff) covers intake, document collection, and review. `CanDecideAdmission()` (School Admin, Principal only — not Admission Staff) covers the final Approve/Reject and the Confirm Admission step that creates the student and assigns a fee structure. Student Management's row is now ❌ for Admission Staff specifically because a real gap was closed this round: student-creation endpoints previously had no role check at all beyond same-school, so this table's earlier "✅" for Admission under Student Management reflected an unintentional hole, not a design choice — Admission Staff's actual job is the application pipeline, not general student-record management.
+‡‡ Internal Assessment/Class Tests (section 37) is live, built as a direct sibling of Homework and reusing its shape. `CanManageAssessments()` = School Admin or an eligible Teacher — eligibility requires an Active Timetable slot for that section+subject; School Admin bypasses the timetable check but not Class-Subject Mapping. Only the creating teacher or School Admin can edit/delete/re-submit a test's marks — not another eligible teacher. Student reads only their own marks across all subjects, with no average, rank, or classmate comparison in the payload. Principal, Accountant, Admission, and Guardian all have ❌ — not built yet, same conservative default Homework shipped with.
+§§ Notices (section 38) is live, replacing the earlier placeholder row (which had generically assumed a platform-wide Super Admin tier and a broad "Publish" right for Principal — neither matches what was actually built). `CanManageNotices()` = School Admin or Principal; ownership is stricter than eligibility, same pattern as Homework/Assessments — only the creating Principal, or School Admin regardless of creator, can edit/delete a notice, so Principal's cell reads "Manage own" rather than a flat "Manage." Every other role gets "View (tier)" — `/notices/my` strictly filtered to whichever of ALL/STAFF/STUDENTS_GUARDIANS matches that login, with an unread count in the topbar bell. Super Admin is ❌ here because the platform-wide notice tier the original section 20 sketch implied was explicitly scoped out — this module is single-school only.
 
 ## 25. Most important RBAC principle
 
@@ -412,7 +417,7 @@ The Fees module (section 28) is the first place view/manage/configure distinctio
 - `CanViewFees()` — School Admin, Accountant, Principal. Fee Dashboard and class-wise report; responses carry a `canManage` flag so the frontend hides manage-only actions (class-report button, per-student Fees link, CSV export) for a view-only caller (Principal).
 - `CanConfigureFees()` — School Admin only. Every write on fee types, fee structures/details, fee concessions, and a student's fee items (frequency, opt-out, structure/concession assignment). Deliberately narrower than `CanManageFees` — Accountant can collect/void money but cannot change what's owed; this is enforced server-side, not just hidden in the UI.
 
-This three-helper pattern (manage vs. view vs. configure, named for what they actually gate) is the template to reuse if another module needs a similar split, rather than inventing new helpers per module or building a generic permission framework prematurely. Employee Management (section 29), Class-Teacher Assignment (section 30), and Attendance (section 31) all currently use a single `IsSchoolAdmin` check (plus, for Class-Teacher and Attendance, a narrow self-only exception for Teacher callers on their own section) rather than this three-way pattern. The Academic Calendar (section 32) introduced `CanManageEvents()` (School Admin + Principal) since Principal needed a real write permission for the first time outside Fees' read-only case. Timetable (section 33) went back to the single-`IsSchoolAdmin`-plus-self-only-Teacher-read pattern. Leave Management (section 34) introduced `CanApproveLeave()` (School Admin + Principal, same shape as `CanManageEvents`) for employee leave decisions, plus a self-only block (nobody, including a Principal, can decide their own leave request) and reuses `IClassTeacherService.IsClassTeacherAsync` (section 30) to gate student-leave decisions by the student's current class teacher. Homework (section 35) introduced `CanManageHomework()` (School Admin or Teacher, same shape as `CanManageEvents`), layered with an eligibility check (`ITimetableService.IsTeachingSectionSubjectAsync`, reusing Timetable data rather than a new mapping table) and an ownership check (only the creating teacher, not any eligible one, can edit/delete). The Admission pipeline (section 36) introduced the project's first explicit two-tier split on a single module in this style: `CanManageApplications()` (School Admin, Principal, Admission Staff) vs `CanDecideAdmission()` (School Admin, Principal only) — Admission Staff can run the whole intake/review flow but never the final decision, mirroring how Leave already keeps "apply" and "decide" as separate powers. Revisit any of these if/when Principal gets broader employee, class-teacher, attendance, timetable, or homework visibility.
+This three-helper pattern (manage vs. view vs. configure, named for what they actually gate) is the template to reuse if another module needs a similar split, rather than inventing new helpers per module or building a generic permission framework prematurely. Employee Management (section 29), Class-Teacher Assignment (section 30), and Attendance (section 31) all currently use a single `IsSchoolAdmin` check (plus, for Class-Teacher and Attendance, a narrow self-only exception for Teacher callers on their own section) rather than this three-way pattern. The Academic Calendar (section 32) introduced `CanManageEvents()` (School Admin + Principal) since Principal needed a real write permission for the first time outside Fees' read-only case. Timetable (section 33) went back to the single-`IsSchoolAdmin`-plus-self-only-Teacher-read pattern. Leave Management (section 34) introduced `CanApproveLeave()` (School Admin + Principal, same shape as `CanManageEvents`) for employee leave decisions, plus a self-only block (nobody, including a Principal, can decide their own leave request) and reuses `IClassTeacherService.IsClassTeacherAsync` (section 30) to gate student-leave decisions by the student's current class teacher. Homework (section 35) introduced `CanManageHomework()` (School Admin or Teacher, same shape as `CanManageEvents`), layered with an eligibility check (`ITimetableService.IsTeachingSectionSubjectAsync`, reusing Timetable data rather than a new mapping table) and an ownership check (only the creating teacher, not any eligible one, can edit/delete). The Admission pipeline (section 36) introduced the project's first explicit two-tier split on a single module in this style: `CanManageApplications()` (School Admin, Principal, Admission Staff) vs `CanDecideAdmission()` (School Admin, Principal only) — Admission Staff can run the whole intake/review flow but never the final decision, mirroring how Leave already keeps "apply" and "decide" as separate powers. Internal Assessment/Class Tests (section 37) introduced `CanManageAssessments()`, identical in shape to `CanManageHomework()` and reusing the same eligibility (Timetable slot) and ownership (creator-or-admin-only) layering rather than inventing a new pattern. Notice/Communication (section 38) introduced `CanManageNotices()` (School Admin + Principal, same shape as `CanManageEvents()`), with the same ownership-stricter-than-eligibility rule Homework and Assessments use (a different Principal who didn't create a notice gets 403, School Admin can act on any). Revisit any of these if/when Principal gets broader employee, class-teacher, attendance, timetable, or homework visibility.
 
 ## 26. Final high-level workflow
 
@@ -930,7 +935,7 @@ Same shape, with `employee_id` (FK `tb_employees`) vs `student_id` (FK `tb_stude
 ### Deployment
 Migration `Docs/smss-leave.sql` run against real `smss-db` (backup `smss-db-before-leave.dump` taken first), including `CREATE EXTENSION IF NOT EXISTS btree_gist` — confirmed successful. Smoke-tested against real data: real employee and student leave applied/approved/rejected, the overlap 409 confirmed against a real approved leave, self-decision 403 confirmed for the real teacher, class-teacher-queue scoping confirmed, all test leave data removed afterward, existing data confirmed byte-identical before/after.
 
-**Process note, repeated from Timetable (section 33):** this deployment again briefly swapped a real teacher's password hash to test as them (restored and verified) — a second occurrence, which is what finally made this a standing hard rule rather than a one-off reminder: every future real-db smoke test that needs to act as an existing user must create a throwaway account for that purpose and delete it afterward, exactly as Class-Teacher Assignment and the Attendance deploy did — never touch a real account's credentials, even temporarily, even when it has been reverted cleanly before. The rule has held cleanly through every deployment since (Homework, section 35; the Admission pipeline, section 36).
+**Process note, repeated from Timetable (section 33):** this deployment again briefly swapped a real teacher's password hash to test as them (restored and verified) — a second occurrence, which is what finally made this a standing hard rule rather than a one-off reminder: every future real-db smoke test that needs to act as an existing user must create a throwaway account for that purpose and delete it afterward, exactly as Class-Teacher Assignment and the Attendance deploy did — never touch a real account's credentials, even temporarily, even when it has been reverted cleanly before. The rule has held cleanly through every deployment since (Homework, section 35; the Admission pipeline, section 36; Internal Assessment/Class Tests, section 37; Notice/Communication, section 38).
 
 ### Build status — COMPLETE
 136 backend checks, 0 failures — overlap rejection (touching either end, fully inside, fully containing, back-to-back accepted), concurrency (overlapping approvals, approve-vs-cancel races), cancel-only-while-Pending, required-reason-on-reject (and on-apply), self-decision blocking, class-teacher-reassignment correctly shifting decide rights, and the confirmation that leave stays fully separate from Attendance and Class-Teacher Assignment data. Full regression suite (15 backend scripts including timetable and leave) passes, 0 failures. Frontend: 456 tests/49 files passing, ng build clean. Deployed and confirmed on real `smss-db`. No open items — quota tracking and a Student self-service apply screen are explicitly deferred, not gaps.
@@ -1031,4 +1036,132 @@ Backup `smss-db-before-admission-pipeline.dump` (250 KB) taken first. Migration 
 ### Build status — COMPLETE
 87 pipeline checks on the test copy, 0 failures — both authorization tiers (including 403 on every endpoint for Teacher/Accountant), status-transition rules (skip-review, double-decide, edit/withdraw-after-decision, missing rejection reason), application-number concurrency, document validation/download authorization, and the Confirm handoff under concurrency (6 simultaneous saves of one application producing exactly one student). Full backend regression (17 scripts) passes, 0 failures — including two pre-existing tests fixed along the way (one expected the old, narrower role list; one had a fragile text-based id sort that broke once the new role existed). Frontend: 511 tests across 55 files pass, `ng build` clean. Deployed and smoke-tested on real `smss-db`, 0 failures, existing data confirmed untouched beyond the expected role-count change. No open items — the Enquiry/lead stage and auto-conversion-without-review were deliberately out of scope from the start (see section 10), not gaps.
 
-**Status check:** Class-Teacher Assignment, Attendance, Employee Management Stage 1, Academic Calendar, Teacher Timetable, Leave Management, Homework, and the Admission pipeline are all now complete and deployed (the last one extended, not newly built — see above). Remaining candidates from the original roadmap discussion: Internal Assessment/Class Tests, or Notifications.
+## 37. Internal Assessment / Class Tests module — COMPLETE, DEPLOYED
+
+Section 16's lighter-weight sibling to formal Examination (which remains unbuilt). Scores a single class test/unit test, with no influence on and no shared tables with the future formal Examination/Report Card module — deliberately kept separate so that building this doesn't create a dependency a future Examination build would have to work around.
+
+### `lut_assessment_type` (global lookup)
+- `assessment_type_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `type_name` VARCHAR(50), `type_code` VARCHAR(30)
+- `is_active` BOOLEAN
+- Seeded: 4 rows — Class Test, Unit Test, Monthly Test, Other.
+
+### `tb_class_assessments` (header)
+- `assessment_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `academic_year_id` BIGINT FK → tb_academic_years
+- `class_id`, `section_id` — composite FK to `tb_sections(section_id, class_id)`, same pattern as Class-Teacher Assignment/Timetable/Homework
+- `subject_id` BIGINT FK → tb_subjects
+- `assessment_type_id` BIGINT FK → lut_assessment_type
+- `employee_id` VARCHAR(20) FK → tb_employees — the recording/owning teacher
+- `title` VARCHAR(200)
+- `test_date` DATE — **decided: can't be dated in the future**, since marks are recorded after the test is held, not scheduled ahead of it (this module has no "scheduled but not yet scored" state at all — see the next decision)
+- `max_marks` NUMERIC(6,2) — **decided: capped at 9999.99, max two decimal places**, so the database never silently rounds
+- `status_id` BIGINT FK → lut_status — soft delete
+
+**Decided (one-step submission, confirmed by me up front): a test only exists in the system once it's graded.** Create always includes the full marks array in the same call — there is no "define the test now, score it later" two-step flow. This keeps the module simple and avoids a partial-entry state to design around.
+
+**Decided: section, subject, class, academic year, and owner are immutable after creation** — exactly Homework's rule (section 35), for the same reason: a one-off item, not an ongoing assignment slot. Update changes title, test_date, max_marks, and re-submits the marks array; fixing anything else means delete-and-recreate.
+
+### `tb_student_assessment_marks` (detail)
+- `mark_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `assessment_id` BIGINT FK → tb_class_assessments, ON DELETE CASCADE
+- `student_id` VARCHAR(20) FK → tb_students
+- `obtained_marks` NUMERIC(6,2), nullable
+- `is_absent` BOOLEAN default false
+- A database check requires exactly one of `obtained_marks` / `is_absent = true` — never both, never neither.
+- Unique: `(assessment_id, student_id)`
+
+**`obtained_marks <= max_marks` is service-layer only, not a DB check constraint** — unlike Homework's single-row `due_date >= assigned_date` rule, this spans two tables (the marks row and its header's `max_marks`), which a plain PostgreSQL check constraint can't reference. Confirmed by a raw-SQL test that the database itself accepts an over-maximum row — this is a known, accepted, documented gap in the DB-level enforcement, not an oversight.
+
+### Roster rule — whole-section coverage, same as Attendance
+Both create and update require marks for **every** currently active roster student (sourced from `tb_student_enrollments`, same pattern as Attendance/Homework) — each student gets either a numeric mark or `is_absent = true`. Missing, unknown, duplicate, or since-left student ids are all rejected (400, naming them) with **nothing written**, identical to Attendance's `submit` rule (section 31). A student who later leaves the section keeps their historical result unchanged on a subsequent update to the same test.
+
+### Authorization — mirrors Homework exactly
+`CanManageAssessments()` — School Admin or Teacher, same shape as `CanManageHomework()` (section 25), layered with:
+- **Eligibility:** a Teacher needs an Active `tb_timetable_entries` row for that exact section+subject+year (`ITimetableService.IsTeachingSectionSubjectAsync`, reused directly from Timetable/Homework — no new mapping table).
+- **Class-Subject Mapping, enforced for every creator including School Admin:** School Admin bypasses the timetable-eligibility check but not this one — 400 naming the subject and class, identical to Homework's rule.
+- **Ownership stricter than eligibility:** only the creating teacher or School Admin may update, delete, or re-submit marks on a test — a different eligible teacher gets 403, even one who could have created the same test themselves.
+- **Owner must be named explicitly when School Admin creates a test** (the school-id login isn't an employee record, same reasoning as Homework's admin-owner rule).
+
+### Endpoints (`/api/Assessment`)
+- `POST` — create, full roster + marks required. 400 on an over-max mark, a future date, a bad roster, or a Class-Subject Mapping miss; 403 on an ineligible teacher.
+- `PUT /{id}` — update title/test_date/max_marks and re-submit the full marks array. Creating teacher or School Admin only; immutable fields rejected if changed.
+- `DELETE /{id}` — soft delete via `status_id`; marks rows are kept, just hidden everywhere alongside the header.
+- `GET /{id}` — single assessment with its full marks list.
+- `GET /my?sectionId=&subjectId=&from=&to=` — Teacher: assessments they created.
+- `GET ?sectionId=&academicYearId=&from=&to=&subjectId=` — School Admin: full school-wide list.
+- `GET /section/{sectionId}?academicYearId=&from=&to=` — School Admin only: every assessment in a section regardless of creator, same shape as Homework's admin-overview endpoint.
+- `GET /student/my?from=&to=` — Student: their own marks only, across subjects, most-recent-test-first. Returns exactly 8 fields (assessmentId, title, assessmentTypeName, subjectName, testDate, maxMarks, obtainedMarks, isAbsent) — no average, rank, or any other student's data.
+- `GET /types` — not originally scoped, added to feed the type dropdown.
+- `GET /roster?academicYearId=&sectionId=&subjectId=` — not originally scoped, added because Attendance's roster endpoint (section 31) is closed to a subject teacher who isn't the section's class teacher; a teacher building an assessment needed their own way to see the roster they must cover.
+
+Each list item also returns how many students have a recorded row and how many were marked absent — a count, not comparison data, and explicitly not an average or class performance figure.
+
+### Frontend
+- `/assessments` — Teacher and School Admin: filters (Academic Year, Section, Subject), a record/edit form showing the section's active roster with a marks field and an Absent toggle per student (toggling Absent disables that student's marks field), delete. A Teacher's section/subject choices come from their own `/api/Timetable/my` data, same pattern as Homework.
+- `/assessments/my` ("My Results") — Student: a read-only table of their own test results, most recent test first.
+
+### Deployment
+Backup `smss-db-before-assessments.dump` (257 KB) taken first. Migration `Docs/smss-assessments.sql` ran clean — seeds `lut_assessment_type`'s 4 rows and creates both new tables. Smoke-tested against real data: the real school had 0 real timetable entries and its one real teacher had none, so eligible/ineligible teachers were created as throwaways and given real timetable slots for the test; Physics (a real subject not mapped to Class 1) was used as the real Class-Subject Mapping 400 case, with no need to construct a fake one; the two real students have no known password, so a throwaway student placed in their real section covered the student-view check instead — all consistent with the standing hard rule (section 34). Confirmed: a real eligible teacher created a real Mathematics test covering the section's full real+throwaway roster with one real student marked absent; leaving a roster student out, an over-max mark, and a future date were all refused; an ineligible teacher and a teacher eligible only for a different subject both got 403 (the latter could still fetch that other subject's roster); School Admin bypassed the timetable check but hit the same Physics/Class 1 Class-Subject Mapping 400 as a teacher would; a Principal and a Student got 403 trying to create; a second eligible Mathematics teacher got 403 on update/delete/reading marks for a test they didn't create, while the owner's update succeeded; the throwaway student's own view showed exactly their own two results (12/20 and an absent mark) with no other student's data visible anywhere in the payload; soft-deleting both test assessments hid them from every list, read, and the student view while keeping their marks rows in the database. Existing data fingerprinted across all 56 pre-existing tables, confirmed unchanged beyond the two new (otherwise empty, aside from the lookup seed) assessment tables; every throwaway account, timetable entry, assessment, and mark created for the test was deleted afterward.
+
+### Build status — COMPLETE
+86 backend checks on the test copy, 0 failures — eligibility/mapping enforcement (including the School-Admin-bypasses-timetable-but-not-mapping case), roster coverage, around 30 marks-validation cases (over-max, negative, excess decimals, absent-plus-marks, missing marks, bad maximum values, a future date, a blank title), database-level check enforcement (confirming the over-max DB gap is real and as-documented), update/ownership rules, concurrency (6 simultaneous saves of one test leave exactly one complete submission; 5 simultaneous creates produce 5 independent tests), and the student view's exact-own-data-only shape. Full backend regression (18 scripts) passes, 0 failures. Frontend: 528 tests across 57 files pass, `ng build` clean. Deployed and smoke-tested on real `smss-db`, 26 real-data checks, 0 failures, existing data confirmed untouched. No open items — this module was deliberately never linked to the future formal Examination/Report Card module (section 16), which is not a gap, it's the design.
+
+## 38. Notice / Communication module — COMPLETE, DEPLOYED
+
+Section 20's Notice workflow, built. v1 scope decided up front: manual notices only — no automatic fee-due/absent-today alerts (that idea from section 20's original draft needs background-job/scheduler infrastructure the project has never needed before, and is now explicitly separate future work), in-app only (no email delivery), and three broad audience tiers rather than per-class/section targeting.
+
+### `lut_assessment_type`-style tiers, not a lookup table
+Audience is a fixed, code-level set of three values — `ALL`, `STAFF`, `STUDENTS_GUARDIANS` — stored upper-case on the notice row itself via a database CHECK constraint, not a separate lookup table (there's no admin-configurable list here, unlike most of this project's other controlled-vocabulary fields).
+
+### `tb_notices` (header)
+- `notice_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `school_id` VARCHAR(100) FK → tb_schools
+- `title` VARCHAR(200)
+- `body` TEXT, up to 5000 characters
+- `audience` VARCHAR(20) — CHECK constrained to `ALL`/`STAFF`/`STUDENTS_GUARDIANS`, accepted in any case from the API and stored upper-case
+- `created_by` BIGINT FK → tb_users
+- `published_at` TIMESTAMPTZ, defaults to `now()` at creation — **no draft/scheduled state**, publishing is immediate on create, the same "don't introduce a partial-entry state" call Internal Assessment (section 37) made for its own one-step-submission rule
+- `status_id` BIGINT FK → lut_status — soft delete; a deleted notice 404s for **everyone**, including School Admin and Principal, same as every other soft-deleted record in this project — its `tb_notice_reads` rows stay in the database rather than being cleaned up
+
+### `tb_notice_reads` (per-user read tracking)
+- `notice_read_id` BIGINT GENERATED ALWAYS AS IDENTITY PK
+- `notice_id` BIGINT FK → tb_notices, ON DELETE CASCADE
+- `user_id` BIGINT FK → tb_users
+- `read_at` TIMESTAMPTZ
+- Unique: `(notice_id, user_id)`
+
+**Opening a notice marks it read as a side effect** — `GET /{id}` always upserts a `tb_notice_reads` row for the caller, including when School Admin or Principal opens it for management purposes. No separate "mark read" endpoint exists; this is the entire read-tracking mechanism.
+
+### Audience resolution
+- `STAFF` matches: any employee login (Teacher, Accountant, Admission Staff, Principal, etc. — anyone with an active `tb_employees` record and an active role) **plus** the School Admin's own school-id login.
+- `STUDENTS_GUARDIANS` matches: an active Student login today. **Built forward-compatible for Guardian** — a Guardian login (recognized by user type `Guardian` or the `GUARDIAN` role) would automatically match this tier the moment that login type exists in the project, with no code change needed, the same spirit as how Homework's Student-facing read was built to need no changes later (section 14).
+- `ALL` matches everyone.
+
+A notice's audience is always exactly one of the three tiers, never a combination.
+
+### Authorization
+`CanManageNotices()` — School Admin or Principal, same shape as `CanManageEvents()` (section 25). **Ownership stricter than eligibility, same pattern as Homework/Assessments:** only the creating Principal, or School Admin regardless of who created it, may update or delete a notice — a different Principal who didn't create a given notice gets 403 on edit and delete, confirmed on real data with two real throwaway Principals. Reading a notice (`GET /{id}` or via `/my`) requires either an audience-tier match or `CanManageNotices()` — so School Admin/Principal can always open/manage any notice regardless of their own personal audience tier, but **`/notices/my` strictly filters to the caller's own resolved tier even for them** — admins use the separate admin list endpoint to see everything else, not `/my`.
+
+### Endpoints (`/api/Notice`)
+- `POST` — create (and immediately publish): `{title, body, audience}`. `CanManageNotices()` only.
+- `PUT /{id}` — update title/body/audience. Ownership rule above; a different Principal gets 403.
+- `DELETE /{id}` — soft delete via `status_id`. Same authorization as update.
+- `GET /{id}` — single notice. Audience match or `CanManageNotices()`; 403 otherwise, 404 cross-school or once deleted. Marks the notice read for the caller as a side effect, always.
+- `GET /my?unreadOnly=&from=&to=` — for the calling user: notices matching their resolved audience tier(s), with an `isRead` flag per notice, most-recently-published first. `from`/`to` filter on the published day in India time. `unreadOnly=true` filters to `isRead=false`.
+- `GET /unread-count` — count of notices matching the caller's tier with no `tb_notice_reads` row yet. Feeds the topbar bell badge; skipped (no call made) for a caller without a school.
+- `GET ?audience=&from=&to=` — School Admin/Principal only: the full admin list across the school regardless of audience, filterable.
+
+### Frontend
+- `/notices` — School Admin and Principal: filter by audience/date, create (title, body, audience picker), edit, delete, admin list view.
+- `/notices/my` — every authenticated school role: their own notices with an unread badge, opening a notice marks it read. Route roles for this page list the school roles explicitly rather than a generic "any authenticated user" check, specifically so Super Admin and any future custom role can't open it — a deliberate tightening added during the build, not an oversight.
+- **Topbar bell** (not originally scoped, added as a natural companion): shows the caller's real unread count, a dropdown of the latest 5 unread notices each linking into `/notices/my?open=<id>`, refreshing on every navigation.
+
+### Deployment
+Backup `smss-db-before-notices.dump` (270 KB) taken first. Migration `Docs/smss-notices.sql` ran clean, creating both tables. Smoke-tested against real data (31 checks, 0 failures) using throwaway accounts only (a Teacher, two Principals, an Accountant, a Student in real Class 1-A), plus the real School Admin's own known test-school login for publishing — no other real account's credentials were touched, per the standing hard rule (section 34). Confirmed: one real notice published per tier (ALL/STAFF/STUDENTS_GUARDIANS), each visible only to the matching tier(s) (Teacher/Accountant saw ALL+STAFF, Student saw ALL+STUDENTS_GUARDIANS, cross-tier opens gave 403 for non-managers); the unread count for the Student dropped 2→1 after opening the ALL notice and stayed stable on a second open; a Principal could edit/delete their own notice, a second Principal got 403 on both for a notice they didn't create, and School Admin could edit/delete regardless of creator; soft-deleting a notice gave 404 to every role including School Admin/Principal while its read rows stayed in the database. Existing data fingerprinted across all 56 pre-existing tables, confirmed unchanged; both new tables back to 0 rows and every throwaway account/login/role-assignment/refresh-token removed afterward. Not exercised against real data: a cross-school 404 (no second real school login available) — passed on the test copy, accepted as sufficient without a live second-school check.
+
+### Build status — COMPLETE
+78 backend checks on the test copy, 0 failures, plus the full existing regression suite (18 scripts) still green. Frontend: 543 tests across 60 files pass, `ng build` clean. Deployed and smoke-tested on real `smss-db`, 31 real-data checks, 0 failures, existing data confirmed untouched. No open items — granular class/section targeting, automatic alerts, and email delivery were all deliberately scoped out up front (see section 20), not gaps.
+
+**Status check:** every module identified in the original roadmap discussion — Class-Teacher Assignment, Attendance, Employee Management Stage 1, Academic Calendar, Teacher Timetable, Leave Management, Homework, the Admission pipeline (extended rather than newly built, section 36), Internal Assessment/Class Tests, and now Notice/Communication — is complete and deployed to real `smss-db`. No pre-identified candidates remain; the next module to tackle will need to be chosen fresh rather than picked off the existing roadmap list.

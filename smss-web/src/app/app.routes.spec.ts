@@ -148,7 +148,7 @@ describe('app routes', () => {
 
       it('sees Dashboard, Calendar, Timetable, Mark Attendance, Homework, Assessments, My Leave, Leave Requests, Student Leave, School Profile, Students, Admissions, Add Existing Student, School Setup, Employees, Fee Setup and Fees in the menu — no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Homework | Assessments | My Leave | Leave Requests | Student Leave | School Profile | Students | Admissions | Add Existing Student | School Setup | Employees | Fee Setup | Fees');
+        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Notices | My Notices | Homework | Assessments | My Leave | Leave Requests | Student Leave | School Profile | Students | Admissions | Add Existing Student | School Setup | Employees | Fee Setup | Fees');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
@@ -213,8 +213,8 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | Homework | Assessments | My Leave | Student Leave'],
-      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Homework | My Results'],
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | My Notices | Homework | Assessments | My Leave | Student Leave'],
+      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results'],
     ])('%s login', (role, who, menu) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
 
@@ -239,7 +239,7 @@ describe('app routes', () => {
 
       it('the menu is Dashboard, Calendar and Admissions - nothing else', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Calendar | Admissions');
+        expect(nav(harness)).toBe('Dashboard | Calendar | My Notices | Admissions');
       });
 
       it.each(['/admissions', '/admissions/new', '/admissions/7', '/admissions/7/edit'])('%s opens', async (path) => {

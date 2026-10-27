@@ -74,6 +74,8 @@ namespace smss_api_db_layer.context
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
         public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;
         public DbSet<TbHomework> Homework { get; set; } = null!;
+        public DbSet<TbNotice> Notices { get; set; } = null!;
+        public DbSet<TbNoticeRead> NoticeReads { get; set; } = null!;
         public DbSet<LutAssessmentType> AssessmentTypes { get; set; } = null!;
         public DbSet<TbClassAssessment> ClassAssessments { get; set; } = null!;
         public DbSet<TbStudentAssessmentMark> StudentAssessmentMarks { get; set; } = null!;

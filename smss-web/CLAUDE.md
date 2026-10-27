@@ -436,3 +436,10 @@ Build these as the foundation BEFORE any feature screens:
 - Reads: `my`, School Admin list and `section/{id}`, `{id}` (owner / School Admin), Student `student/my` (own marks only, most recent first, no averages). Extra endpoints: `types`, `roster` (a subject teacher cannot use Attendance's roster endpoint).
 - UI (`features/assessments`): `/assessments` (Teacher, School Admin; roster form with an Absent toggle per student) and `/assessments/my` ("My Results", Student).
 - NOT built: report cards, grading, averages / ranking, Principal / Guardian access.
+
+## Notices / Communication (Docs/smss-notices.sql — READY, NOT yet run on the real smss-db)
+- `tb_notices` (audience CHECK ALL / STAFF / STUDENTS_GUARDIANS, soft delete via status_id) and `tb_notice_reads` (UNIQUE (notice_id, user_id), ON DELETE CASCADE). Published immediately; no drafts or scheduling.
+- Audience tiers come from `INoticeService.ResolveAudienceTiersAsync` (reuse it, do not re-derive): STAFF = school-id login or Active employee + Active role; STUDENTS_GUARDIANS = Active Student login or user type `Guardian` / role GUARDIAN; ALL = everyone Active.
+- `User.CanManageNotices()` = School Admin or Principal. Edit / delete: School Admin or the creating Principal (other Principal 403). `GET {id}`: tier match or CanManageNotices, always upserts the read; cross-school / deleted = 404.
+- UI (`features/notices`): `/notices` (School Admin, Principal), `/notices/my` (all school roles), topbar bell wired to `NoticeService.unreadCount` (refreshed on every navigation; skipped for users without a school). Day filters use the school (IST) day via `SchoolClock.StartOfDayUtc`.
+- NOT built: scheduling / drafts, email, class targeting, sender-side read report.

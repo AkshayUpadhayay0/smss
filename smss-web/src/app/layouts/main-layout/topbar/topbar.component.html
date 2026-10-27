@@ -47,19 +47,24 @@
     <div class="dropdown">
       <button type="button" class="icon-btn" aria-label="Notifications" [attr.aria-expanded]="openMenu() === 'notifications'" (click)="toggle('notifications')">
         <app-icon name="bell" [size]="20" />
-        <span class="unread-dot"></span>
+        @if (unreadCount() > 0) {
+          <span class="unread-dot" aria-hidden="true"></span>
+        }
       </button>
       @if (openMenu() === 'notifications') {
         <div class="menu wide right-aligned">
-          <div class="menu-title">Notifications</div>
-          @for (n of notifications; track n.title) {
-            <div class="menu-item">
+          <div class="menu-title">Notices @if (unreadCount() > 0) { <span>({{ unreadCount() }} unread)</span> }</div>
+          @for (n of latestUnread(); track n.noticeId) {
+            <a class="menu-item" [routerLink]="'/notices/my'" [queryParams]="{ open: n.noticeId }" (click)="openMenu.set(null)">
               <span class="meta">
                 <span class="name">{{ n.title }}</span>
-                <span class="sub">{{ n.time }}</span>
+                <span class="sub">{{ preview(n.body) }} · {{ published(n.publishedAt) }}</span>
               </span>
-            </div>
+            </a>
+          } @empty {
+            <div class="menu-item"><span class="meta"><span class="sub">{{ bellLoaded() || !hasSchool() ? 'No unread notices.' : 'Loading…' }}</span></span></div>
           }
+          <a class="menu-item action" routerLink="/notices/my" (click)="openMenu.set(null)"><app-icon name="bell" [size]="16" /> View all notices</a>
         </div>
       }
     </div>
