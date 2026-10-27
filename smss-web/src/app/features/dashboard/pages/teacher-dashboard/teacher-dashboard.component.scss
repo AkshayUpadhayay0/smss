@@ -1,0 +1,170 @@
+:host {
+  display: block;
+}
+
+// 12-column grid: three cards across the top (profile, class teacher of, subjects), four stat cards below
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: stretch; // cards in a row share the tallest one's height (app-card fills its grid cell from inside)
+}
+
+.s3 { grid-column: span 3; }
+.s4 { grid-column: span 4; }
+
+// Tablet: profile full width, the two list cards side by side, stats two by two
+@media (max-width: 1100px) {
+  .s3 { grid-column: span 6; }
+  .s4 { grid-column: span 6; }
+  .profile { grid-column: span 12; }
+}
+
+// Phone: one column
+@media (max-width: 640px) {
+  .s3,
+  .s4 { grid-column: span 12; }
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+}
+
+// ---- profile
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-700);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.who {
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font-size: var(--text-lg);
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    margin: var(--space-1) 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+  }
+
+  dl {
+    margin: 0;
+  }
+
+  dt {
+    color: var(--color-text-subtle);
+    font-size: var(--text-xs);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-base);
+  }
+}
+
+// ---- section / subject chips
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-700);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+}
+
+// ---- stat cards
+.stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.stat-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+
+  &.violet { background: var(--color-primary-soft); color: var(--color-primary-700); }
+  &.amber { background: var(--color-warning-soft); color: var(--color-warning); }
+  &.green { background: var(--color-success-soft); color: var(--color-status-active-fg); }
+  &.red { background: var(--color-danger-soft); color: var(--color-danger); }
+}
+
+.stat-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+
+  // a word ("Not applicable") instead of a number
+  &.text {
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+  }
+}
+
+.stat-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.stat-note {
+  margin-top: 2px;
+  color: var(--color-warning);
+  font-size: var(--text-xs);
+}

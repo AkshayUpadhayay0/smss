@@ -213,12 +213,12 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | My Notices | Homework | Assessments | My Leave | Student Leave', 'This screen is coming soon'],
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | My Notices | Homework | Assessments | My Leave | Student Leave', 'Your classroom at a glance'],
       ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results', 'Your school day at a glance'],
     ])('%s login', (role, who, menu, dashboardText) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
 
-      it('lands on the Dashboard (a Student gets their own dashboard, every other role a "coming soon" shell for now) and sees only its own menu', async () => {
+      it('lands on the Dashboard (a Student and a Teacher each get their own dashboard) and sees only its own menu', async () => {
         const { harness, url } = await go('/dashboard');
         expect(url).toBe('/dashboard');
         expect(heading(harness)).toBe('Dashboard');

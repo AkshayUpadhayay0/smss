@@ -32,8 +32,11 @@ namespace smss_api.Controllers
 
         // GET api/FeePayment/students/{studentId}   (payment history, newest first)
         [HttpGet("students/{studentId:length(1,20)}")]
-        public async Task<IActionResult> GetPayments(string studentId, CancellationToken ct) =>
-            Reply(await _service.GetPaymentsAsync(User.GetSchoolId(), studentId, ct));
+        public async Task<IActionResult> GetPayments(string studentId, CancellationToken ct)
+        {
+            if (!User.CanViewFees()) return this.Forbidden("Only a School Admin, Accountant or Principal can view a student's payments.");
+            return Reply(await _service.GetPaymentsAsync(User.GetSchoolId(), studentId, ct));
+        }
 
         // POST api/FeePayment/{paymentId}/void   Body: { voidReason }
         // 403 unless the caller is a School Admin or Accountant. 404 when the payment isn't in the caller's school or is already voided.

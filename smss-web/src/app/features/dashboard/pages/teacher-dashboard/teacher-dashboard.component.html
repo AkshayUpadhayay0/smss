@@ -1,0 +1,68 @@
+<app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your dashboard…</p></app-card>
+} @else if (loadFailed() || !data()) {
+  <app-card><p class="note" role="alert">Your dashboard could not be loaded.</p></app-card>
+} @else {
+  @let d = data()!;
+  <div class="grid">
+    <section class="card profile s4" aria-label="Profile">
+      <div class="avatar">
+        @if (photoUrl(d.profile.photoUrl); as src) {
+          <img [src]="src" [alt]="d.profile.fullName" />
+        } @else {
+          <span aria-hidden="true">{{ initials(d.profile.fullName) }}</span>
+        }
+      </div>
+      <div class="who">
+        <h2>{{ d.profile.fullName }}</h2>
+        <p>{{ d.profile.designationName }}</p>
+        <dl>
+          <div><dt>Department</dt><dd>{{ d.profile.departmentName }}</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <app-card title="Class Teacher Of" class="s4">
+      @if (classTeacherDown()) {
+        <p class="note">This could not be loaded.</p>
+      } @else if (d.classTeacherOf.length === 0) {
+        <p class="note">You are not currently a class teacher.</p>
+      } @else {
+        <ul class="chips" aria-label="Sections you are class teacher of">
+          @for (s of d.classTeacherOf; track s.sectionId) {
+            <li>{{ sectionLabel(s) }}</li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    <app-card title="Subjects Taught" class="s4">
+      @if (subjectsDown()) {
+        <p class="note">This could not be loaded.</p>
+      } @else if (d.subjectsTaught.length === 0) {
+        <p class="note">No subjects assigned yet.</p>
+      } @else {
+        <ul class="chips" aria-label="Subjects you teach">
+          @for (s of d.subjectsTaught; track s) {
+            <li>{{ s }}</li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    @for (s of stats(); track s.key) {
+      <div class="card stat s3" role="group" [attr.aria-label]="s.label + ': ' + s.value">
+        <span class="stat-icon" [class]="'stat-icon ' + s.tone"><app-icon [name]="icons[s.key]" [size]="22" /></span>
+        <span class="stat-body">
+          <span class="stat-value" [class.text]="s.isText">{{ s.value }}</span>
+          <span class="stat-label">{{ s.label }}</span>
+          @if (s.note) {
+            <span class="stat-note">{{ s.note }}</span>
+          }
+        </span>
+      </div>
+    }
+  </div>
+}

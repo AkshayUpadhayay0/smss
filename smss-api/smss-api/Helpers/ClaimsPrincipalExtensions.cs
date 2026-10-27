@@ -57,6 +57,9 @@ namespace smss_api.Helpers
         /// <summary>Whether the caller may record internal tests (class tests): a School Admin or a Teacher, exactly like homework. Whether a TEACHER may do it for a given section + subject is the same per-request Timetable check.</summary>
         public static bool CanManageAssessments(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Teacher);
 
+        /// <summary>A teacher's login (the Teacher dashboard). A School Admin is deliberately not included.</summary>
+        public static bool IsTeacher(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Teacher);
+
         /// <summary>A student's login (reads their own section's homework).</summary>
         public static bool IsStudent(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student);
 

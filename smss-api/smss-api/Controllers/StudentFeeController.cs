@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
-    // A student's fees. Reads: any signed-in user of the school. Changing how the student is billed: School Admin only (CanConfigureFees);
+    // A student's fees. Reading a student's fees and fee dues: School Admin, Accountant, Principal (CanViewFees); `preview` and `fee-items` are still open to any signed-in user. Changing how the student is billed: School Admin only (CanConfigureFees);
     // collecting / voiding payments is the FeePayment controller (School Admin + Accountant). The school comes from the token only (no school id in the route), and the acting user for a
     // concession comes from the token too.
     [ApiController]
@@ -51,14 +51,20 @@ namespace smss_api.Controllers
 
         // GET api/StudentFee/{studentId}/fee-dues   (every installment with its computed status)
         [HttpGet("{studentId:length(1,20)}/fee-dues")]
-        public async Task<IActionResult> GetFeeDues(string studentId, CancellationToken ct) =>
-            Reply(await _billing.GetDuesAsync(User.GetSchoolId(), studentId, ct));
+        public async Task<IActionResult> GetFeeDues(string studentId, CancellationToken ct)
+        {
+            if (!User.CanViewFees()) return this.Forbidden("Only a School Admin, Accountant or Principal can view a student's fee dues.");
+            return Reply(await _billing.GetDuesAsync(User.GetSchoolId(), studentId, ct));
+        }
 
         // GET api/StudentFee/{studentId}
         // The assigned structure's lines, applied concessions, net payable per frequency, and what can still be assigned / applied.
         [HttpGet("{studentId:length(1,20)}")]
-        public async Task<IActionResult> GetFees(string studentId, CancellationToken ct) =>
-            Reply(await _service.GetFeesAsync(User.GetSchoolId(), studentId, ct));
+        public async Task<IActionResult> GetFees(string studentId, CancellationToken ct)
+        {
+            if (!User.CanViewFees()) return this.Forbidden("Only a School Admin, Accountant or Principal can view a student's fees.");
+            return Reply(await _service.GetFeesAsync(User.GetSchoolId(), studentId, ct));
+        }
 
         // PUT api/StudentFee/{studentId}/structure
         [HttpPut("{studentId:length(1,20)}/structure")]
