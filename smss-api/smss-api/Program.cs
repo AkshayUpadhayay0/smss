@@ -86,6 +86,7 @@ builder.Services.AddScoped<ILeaveRepository, LeaveRepository>();
 builder.Services.AddScoped<ILeaveTypeService, LeaveTypeService>();
 builder.Services.AddScoped<IEmployeeLeaveService, EmployeeLeaveService>();
 builder.Services.AddScoped<IStudentLeaveService, StudentLeaveService>();
+builder.Services.AddScoped<IStudentDashboardService, StudentDashboardService>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IClassTeacherRepository, ClassTeacherRepository>();

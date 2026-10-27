@@ -29,5 +29,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<StudentLeaveDto>> CancelAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, long id, CancellationToken ct);
         /// <summary>A School Admin: every request (optionally one section). A class teacher: only their own section(s).</summary>
         Task<ApiResponse<List<StudentLeaveDto>>> ListAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, long? sectionId, string? status, CancellationToken ct);
+        /// <summary>A student's OWN requests (read-only; recorded on their behalf by a class teacher / School Admin), newest first. Dates keep requests overlapping the range. The controller restricts it to the Student role.</summary>
+        Task<ApiResponse<List<StudentLeaveDto>>> GetMyAsync(string? schoolId, long callerUserId, string? status, DateOnly? from, DateOnly? to, CancellationToken ct);
     }
 }

@@ -282,23 +282,51 @@ namespace smss_api_service_layer.service
                         return Result<StudentAttendanceHistoryDto>(403, "You can only view attendance of students in your own section.", null);
                 }
 
-                var days = (await _repo.GetStudentDaysAsync(schoolId, studentId, from, to, ct)).Select(d => new StudentAttendanceDayDto
-                {
-                    Date = d.Date, StatusCode = d.StatusCode, StatusName = d.StatusName, SectionId = d.SectionId, ClassName = d.ClassName, SectionName = d.SectionName,
-                    IsCorrected = d.CorrectedAt != null, CorrectionReason = d.CorrectionReason
-                }).ToList();
-                var byStatus = days.GroupBy(d => d.StatusCode).ToDictionary(g => g.Key, g => g.Count());
-                return Result(200, "Successfully fetched", new StudentAttendanceHistoryDto
-                {
-                    StudentId = studentId, FullName = FullName(student.FirstName, student.MiddleName, student.LastName), From = from, To = to, Days = days,
-                    Summary = new AttendanceSummaryDto
-                    {
-                        MarkedDays = days.Count, ByStatus = byStatus,
-                        PresentPercentage = days.Count == 0 ? null : Math.Round(byStatus.GetValueOrDefault(PresentCode) * 100m / days.Count, 1)
-                    }
-                });
+                return Result(200, "Successfully fetched", await BuildHistoryAsync(schoolId, student, from, to, ct));
             }
             catch (Exception ex) { return Error<StudentAttendanceHistoryDto>(ex, "fetching a student's attendance"); }
+        }
+
+        public async Task<ApiResponse<StudentAttendanceHistoryDto>> GetOwnYearAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentAttendanceHistoryDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                // the caller's login id IS their student id; the student is only ever the caller, never taken from the client
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                var student = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (student == null) return Result<StudentAttendanceHistoryDto>(403, "Your account is not linked to a student record.", null);
+
+                var today = SchoolClock.Today();
+                var year = await _repo.GetYearSpanContainingAsync(schoolId, today, ct);
+                if (year == null) return Result<StudentAttendanceHistoryDto>(409, "No academic year covers today's date.", null);
+
+                var to = today < year.EndDate ? today : year.EndDate;   // nothing is marked in the future
+                var from = year.StartDate;
+                if (to.DayNumber - from.DayNumber + 1 > MaxRangeDays) from = to.AddDays(1 - MaxRangeDays);   // a year longer than the range cap keeps its latest days
+                return Result(200, "Successfully fetched", await BuildHistoryAsync(schoolId, student, from, to, ct));
+            }
+            catch (Exception ex) { return Error<StudentAttendanceHistoryDto>(ex, "fetching a student's own attendance"); }
+        }
+
+        /// <summary>One student's marks for a range with the per-status counts and present percentage: the single place this is computed (class teacher / admin view and the student's own).</summary>
+        private async Task<StudentAttendanceHistoryDto> BuildHistoryAsync(string schoolId, StudentRef student, DateOnly from, DateOnly to, CancellationToken ct)
+        {
+            var days = (await _repo.GetStudentDaysAsync(schoolId, student.StudentId, from, to, ct)).Select(d => new StudentAttendanceDayDto
+            {
+                Date = d.Date, StatusCode = d.StatusCode, StatusName = d.StatusName, SectionId = d.SectionId, ClassName = d.ClassName, SectionName = d.SectionName,
+                IsCorrected = d.CorrectedAt != null, CorrectionReason = d.CorrectionReason
+            }).ToList();
+            var byStatus = days.GroupBy(d => d.StatusCode).ToDictionary(g => g.Key, g => g.Count());
+            return new StudentAttendanceHistoryDto
+            {
+                StudentId = student.StudentId, FullName = FullName(student.FirstName, student.MiddleName, student.LastName), From = from, To = to, Days = days,
+                Summary = new AttendanceSummaryDto
+                {
+                    MarkedDays = days.Count, ByStatus = byStatus,
+                    PresentPercentage = days.Count == 0 ? null : Math.Round(byStatus.GetValueOrDefault(PresentCode) * 100m / days.Count, 1)
+                }
+            };
         }
 
         public async Task<ApiResponse<MissingAttendanceDto>> GetMissingAsync(string? schoolId, DateOnly? date, long? academicYearId, CancellationToken ct)

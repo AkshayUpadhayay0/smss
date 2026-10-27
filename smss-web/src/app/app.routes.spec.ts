@@ -213,24 +213,25 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | My Notices | Homework | Assessments | My Leave | Student Leave'],
-      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results'],
-    ])('%s login', (role, who, menu) => {
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | My Notices | Homework | Assessments | My Leave | Student Leave', 'This screen is coming soon'],
+      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results', 'Your school day at a glance'],
+    ])('%s login', (role, who, menu, dashboardText) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
 
-      it('lands on the Dashboard (a "coming soon" shell for now); the menu has Dashboard and Calendar (+ Mark Attendance for a Teacher)', async () => {
+      it('lands on the Dashboard (a Student gets their own dashboard, every other role a "coming soon" shell for now) and sees only its own menu', async () => {
         const { harness, url } = await go('/dashboard');
         expect(url).toBe('/dashboard');
         expect(heading(harness)).toBe('Dashboard');
         expect(nav(harness)).toBe(menu);
-        expect(harness.routeNativeElement?.textContent).toContain('This screen is coming soon');
+        expect(harness.routeNativeElement?.textContent).toContain(dashboardText);
       });
 
       it.each(['/students', '/employees', '/school-setup/sections', '/fee-dashboard', '/admissions'])('%s is refused: back to the Dashboard, no API call', async (path) => {
         const http = TestBed.inject(HttpTestingController);
         const { url } = await go(path);
         expect(url).toBe('/dashboard');
-        http.expectNone((r) => r.url.includes('/api/Employee') || r.url.includes('/api/Student') || r.url.includes('/api/Sections'));
+        // a Student's own dashboard calls /api/StudentDashboard, which is allowed; any other student / employee / section call is not
+        http.expectNone((r) => r.url.includes('/api/Employee') || (r.url.includes('/api/Student') && !r.url.includes('/api/StudentDashboard')) || r.url.includes('/api/Sections'));
       });
     });
 

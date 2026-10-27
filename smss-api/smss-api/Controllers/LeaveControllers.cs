@@ -124,5 +124,14 @@ namespace smss_api.Controllers
             if (!TryUser(out var userId)) return Unauthorized();
             return Reply(await _service.ListAsync(User.GetSchoolId(), userId, User.IsSchoolAdmin(), sectionId, status, ct));
         }
+
+        // GET api/StudentLeave/my?status=&from=&to=   (a Student: their own requests only, read-only; from / to keep requests whose dates overlap the range)
+        [HttpGet("my")]
+        public async Task<IActionResult> My([FromQuery] string? status, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+        {
+            if (!User.IsStudent()) return this.Forbidden("Only a student can see their own leave requests here.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            return Reply(await _service.GetMyAsync(User.GetSchoolId(), userId, status, from, to, ct));
+        }
     }
 }

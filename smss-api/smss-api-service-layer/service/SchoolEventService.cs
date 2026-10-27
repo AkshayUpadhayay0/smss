@@ -117,6 +117,23 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<List<SchoolEventDto>>(ex, "listing upcoming events"); }
         }
 
+        public async Task<ApiResponse<int>> CountUpcomingInYearAsync(string? schoolId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<int>(400, TenantMessages.NoSchool, default);
+            try
+            {
+                var activeId = await ActiveIdAsync(ct);
+                if (activeId == null) return ConfigError<int>();
+                var today = SchoolClock.Today();
+                var year = await _repo.GetYearContainingAsync(schoolId, today, ct);
+                if (year == null) return Result<int>(409, "No academic year covers today's date.", default);
+                var to = year.EndDate.DayNumber - today.DayNumber + 1 > MaxRangeDays ? today.AddDays(MaxRangeDays - 1) : year.EndDate;   // same cap as the range read
+                var rows = await _repo.GetOverlappingAsync(schoolId, year.AcademicYearId, today, to, activeId.Value, ct);
+                return Result(200, "Successfully fetched", rows.Count);
+            }
+            catch (Exception ex) { return Error<int>(ex, "counting upcoming events"); }
+        }
+
         public async Task<ApiResponse<List<EventCategoryDto>>> GetCategoriesAsync(CancellationToken ct)
         {
             try

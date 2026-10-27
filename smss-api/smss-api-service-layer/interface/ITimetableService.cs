@@ -20,5 +20,10 @@ namespace smss_api_service_layer.@interface
         /// <summary>A teacher's weekly grid across all their sections: a School Admin may ask about anyone, anyone else only about themselves.</summary>
         Task<ApiResponse<TimetableGridDto>> GetTeacherGridAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, string employeeId, long? academicYearId, CancellationToken ct);
         Task<ApiResponse<TimetableGridDto>> GetMyGridAsync(string? schoolId, long callerUserId, long? academicYearId, CancellationToken ct);
+        /// <summary>
+        /// A student's own weekly grid: their section in the school's current academic year (Active student, Active enrollment; the same resolution as Homework and
+        /// Assessments). 404 when they are not enrolled in the current year. No role check here: the controller restricts it to the Student role.
+        /// </summary>
+        Task<ApiResponse<TimetableGridDto>> GetStudentMyGridAsync(string? schoolId, long callerUserId, CancellationToken ct);
     }
 }

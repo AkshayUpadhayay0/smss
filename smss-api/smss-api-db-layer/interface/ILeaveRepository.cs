@@ -50,5 +50,7 @@ namespace smss_api_db_layer.@interface
         Task<LeaveRow?> GetStudentRowAsync(string schoolId, long id, long? academicYearId, CancellationToken ct);
         /// <summary>Student requests, newest first. <paramref name="sectionIds"/> (null = every section) filters by the student's section in <paramref name="academicYearId"/>.</summary>
         Task<List<LeaveRow>> ListStudentRowsAsync(string schoolId, long? academicYearId, IReadOnlyCollection<long>? sectionIds, string? status, CancellationToken ct);
+        /// <summary>ONE student's own requests, newest first. <paramref name="from"/> / <paramref name="to"/> keep the requests whose leave dates overlap that range (either may be null).</summary>
+        Task<List<LeaveRow>> ListStudentOwnRowsAsync(string schoolId, string studentId, long? academicYearId, string? status, DateOnly? from, DateOnly? to, CancellationToken ct);
     }
 }

@@ -65,5 +65,14 @@ namespace smss_api.Controllers
             if (!TryUser(out var userId)) return Unauthorized();
             return Reply(await _service.GetMyGridAsync(User.GetSchoolId(), userId, academicYearId, ct));
         }
+
+        // GET api/Timetable/student/my   (a Student: the weekly grid of their own current section, read-only; 403 for every other role)
+        [HttpGet("student/my")]
+        public async Task<IActionResult> StudentMy(CancellationToken ct)
+        {
+            if (!User.IsStudent()) return this.Forbidden("Only a student can see their own class timetable here.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            return Reply(await _service.GetStudentMyGridAsync(User.GetSchoolId(), userId, ct));
+        }
     }
 }

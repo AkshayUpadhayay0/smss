@@ -110,6 +110,12 @@ namespace smss_api_db_layer.repository
         public Task<List<TtEntryRow>> GetTeacherEntriesAsync(string schoolId, long academicYearId, string employeeId, int activeStatusId, CancellationToken ct) =>
             Rows(_db.TimetableEntries.AsNoTracking().Where(e => e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.EmployeeId == employeeId && e.StatusId == activeStatusId)).ToListAsync(ct);
 
+        public Task<long?> GetStudentSectionAsync(string schoolId, string studentId, long academicYearId, int activeStatusId, CancellationToken ct) =>
+            (from e in _db.StudentEnrollments.AsNoTracking()
+             join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
+             where e.SchoolId == schoolId && s.SchoolId == schoolId && e.StudentId == studentId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId && s.StatusId == activeStatusId
+             select (long?)e.ClassSectionId).FirstOrDefaultAsync(ct);
+
         public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
             _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
     }

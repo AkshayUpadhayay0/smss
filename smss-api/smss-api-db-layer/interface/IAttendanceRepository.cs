@@ -3,6 +3,7 @@ using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.@interface
 {
+    public record AttendanceYearRow(long AcademicYearId, string YearName, DateOnly StartDate, DateOnly EndDate);
     public record AttendanceStatusRow(long Id, string Code, string Name);
     public record RosterStudentRow(string StudentId, string FirstName, string? MiddleName, string LastName, string? RollNumber);
     public record EnrollmentRef(long SectionId, DateOnly EnrollmentDate);
@@ -23,6 +24,8 @@ namespace smss_api_db_layer.@interface
         /// <summary>The academic year whose dates contain <paramref name="date"/> (the current year first if they overlap), or null.</summary>
         Task<YearRef?> GetYearContainingAsync(string schoolId, DateOnly date, CancellationToken ct);
         Task<YearRef?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);
+        /// <summary>Like <see cref="GetYearContainingAsync"/>, with the year's start and end dates.</summary>
+        Task<AttendanceYearRow?> GetYearSpanContainingAsync(string schoolId, DateOnly date, CancellationToken ct);
         Task<SectionRef?> GetSectionAsync(string schoolId, long sectionId, CancellationToken ct);
         Task<List<AttendanceStatusRow>> GetAttendanceStatusesAsync(CancellationToken ct);
 

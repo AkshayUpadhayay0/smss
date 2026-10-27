@@ -191,6 +191,24 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<TimetableGridDto>(ex, "fetching my timetable"); }
         }
 
+        public async Task<ApiResponse<TimetableGridDto>> GetStudentMyGridAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<TimetableGridDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+                if (activeId == null) return ConfigError<TimetableGridDto>();
+                var loginId = await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct);
+                if (string.IsNullOrEmpty(loginId)) return Result<TimetableGridDto>(403, "Your account could not be found.", null);
+                var (year, error) = await YearAsync(schoolId, null, ct);
+                if (year == null) return Result<TimetableGridDto>(error!.Value.Code, error.Value.Message, null);
+                var sectionId = await _repo.GetStudentSectionAsync(schoolId, loginId, year.AcademicYearId, activeId.Value, ct);
+                if (sectionId == null) return Result<TimetableGridDto>(404, "You are not enrolled in a class for the current academic year.", null);
+                return await GetClassGridAsync(schoolId, sectionId.Value, year.AcademicYearId, ct);   // the one place a section's grid is built
+            }
+            catch (Exception ex) { return Error<TimetableGridDto>(ex, "fetching a student's timetable"); }
+        }
+
         // ---------------------------------------------------------------- helpers
         private async Task<ApiResponse<TimetableGridDto>> TeacherGridAsync(string schoolId, string employeeId, long? academicYearId, CancellationToken ct)
         {

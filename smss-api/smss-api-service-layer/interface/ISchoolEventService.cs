@@ -12,5 +12,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<List<SchoolEventDto>>> GetRangeAsync(string? schoolId, long? academicYearId, DateOnly? from, DateOnly? to, CancellationToken ct);
         Task<ApiResponse<List<SchoolEventDto>>> GetUpcomingAsync(string? schoolId, int take, CancellationToken ct);
         Task<ApiResponse<List<EventCategoryDto>>> GetCategoriesAsync(CancellationToken ct);
+        /// <summary>How many Active events fall between today and the end of the academic year that contains today (events still running today included). 409 when no year covers today.</summary>
+        Task<ApiResponse<int>> CountUpcomingInYearAsync(string? schoolId, CancellationToken ct);
     }
 }

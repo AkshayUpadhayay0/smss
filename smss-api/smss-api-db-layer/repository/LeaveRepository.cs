@@ -166,5 +166,14 @@ namespace smss_api_db_layer.repository
             var rows = (await StudentRows(schoolId, filter).ToListAsync(ct)).OrderByDescending(r => r.AppliedAt).ThenByDescending(r => r.LeaveRequestId).ToList();
             return await WithSectionsAsync(schoolId, rows, academicYearId, ct);
         }
+
+        public async Task<List<LeaveRow>> ListStudentOwnRowsAsync(string schoolId, string studentId, long? academicYearId, string? status, DateOnly? from, DateOnly? to, CancellationToken ct)
+        {
+            // a request is in range when its dates overlap [from, to]
+            var rows = (await StudentRows(schoolId, r => r.StudentId == studentId && (status == null || r.Status == status)
+                                                         && (from == null || r.ToDate >= from) && (to == null || r.FromDate <= to)).ToListAsync(ct))
+                .OrderByDescending(r => r.AppliedAt).ThenByDescending(r => r.LeaveRequestId).ToList();
+            return await WithSectionsAsync(schoolId, rows, academicYearId, ct);
+        }
     }
 }

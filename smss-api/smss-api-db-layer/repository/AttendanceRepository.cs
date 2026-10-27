@@ -26,6 +26,11 @@ namespace smss_api_db_layer.repository
             _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.StartDate <= date && y.EndDate >= date)
                 .OrderByDescending(y => y.IsCurrent).ThenByDescending(y => y.StartDate).Select(y => new YearRef(y.AcademicYearId, y.YearName)).FirstOrDefaultAsync(ct);
 
+        public Task<AttendanceYearRow?> GetYearSpanContainingAsync(string schoolId, DateOnly date, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.StartDate <= date && y.EndDate >= date)
+                .OrderByDescending(y => y.IsCurrent).ThenByDescending(y => y.StartDate)
+                .Select(y => new AttendanceYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate)).FirstOrDefaultAsync(ct);
+
         public Task<YearRef?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct) =>
             _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId).Select(y => new YearRef(y.AcademicYearId, y.YearName)).FirstOrDefaultAsync(ct);
 

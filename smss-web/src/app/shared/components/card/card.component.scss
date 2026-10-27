@@ -1,8 +1,15 @@
+// Flex column + full height, styled from inside the component (no ::ng-deep): in a grid / flex row the host stretches to the row's tallest
+// card and the inner .card grows to fill it, so sibling cards sit flush. In a normal block parent (auto height) nothing changes.
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -20,6 +27,7 @@
 }
 
 .card-body {
+  flex: 1;
   padding: var(--space-6);
 
   &.no-padding {

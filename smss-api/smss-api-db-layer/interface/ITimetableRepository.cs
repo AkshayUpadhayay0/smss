@@ -43,6 +43,9 @@ namespace smss_api_db_layer.@interface
         Task<List<TtEntryRow>> GetSectionEntriesAsync(string schoolId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
         Task<List<TtEntryRow>> GetTeacherEntriesAsync(string schoolId, long academicYearId, string employeeId, int activeStatusId, CancellationToken ct);
 
+        /// <summary>The section a student is in for the year: an Active enrollment of an Active student (same rule as Homework / Assessments), or null.</summary>
+        Task<long?> GetStudentSectionAsync(string schoolId, string studentId, long academicYearId, int activeStatusId, CancellationToken ct);
+
         /// <summary>The login id (employee id) and display name of a user in this school.</summary>
         Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
     }

@@ -1,0 +1,156 @@
+<app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your dashboard…</p></app-card>
+} @else if (loadFailed() || !data()) {
+  <app-card><p class="note" role="alert">Your dashboard could not be loaded.</p></app-card>
+} @else {
+  @let d = data()!;
+  <div class="grid">
+    <!-- profile + the three small stat cards -->
+    <section class="card profile s6" aria-label="Profile">
+      <div class="avatar">
+        @if (photoUrl(d.profile.profilePhotoUrl); as src) {
+          <img [src]="src" [alt]="d.profile.fullName" />
+        } @else {
+          <span aria-hidden="true">{{ initials(d.profile.fullName) }}</span>
+        }
+      </div>
+      <div class="who">
+        <h2>{{ d.profile.fullName }}</h2>
+        <p>{{ classLine() }}</p>
+        <dl>
+          <div><dt>Roll no.</dt><dd>{{ d.profile.rollNumber || '–' }}</dd></div>
+          <div><dt>Admission no.</dt><dd>{{ d.profile.admissionNumber }}</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <a class="card stat s2" routerLink="/calendar" aria-label="Events: {{ d.eventsCount }}">
+      <span class="stat-icon violet"><app-icon name="calendar" [size]="22" /></span>
+      <span class="stat-body"><span class="stat-value">{{ d.eventsCount }}</span><span class="stat-label">Events this year</span></span>
+    </a>
+    <a class="card stat s2" routerLink="/notices/my" aria-label="Unread notices: {{ d.unreadNoticesCount }}">
+      <span class="stat-icon amber"><app-icon name="bell" [size]="22" /></span>
+      <span class="stat-body"><span class="stat-value">{{ d.unreadNoticesCount }}</span><span class="stat-label">Unread notices</span></span>
+    </a>
+    <div class="card stat s2" role="group" [attr.aria-label]="'Attendance: ' + percentText()">
+      <span class="stat-icon green"><app-icon name="circle-check" [size]="22" /></span>
+      <span class="stat-body"><span class="stat-value">{{ percentText() }}</span><span class="stat-label">Attendance</span></span>
+    </div>
+
+    <!-- attendance donut: Present / Absent only -->
+    <app-card title="Attendance" class="s6">
+      @if (attendance(); as a) {
+        <div class="attendance">
+          <svg viewBox="0 0 120 120" class="donut" role="img" [attr.aria-label]="'Present ' + a.presentCount + ' days, absent ' + a.absentCount + ' days'">
+            <circle class="ring" cx="60" cy="60" [attr.r]="radius" />
+            @if (a.totalMarkedDays > 0) {
+              <circle class="slice present" cx="60" cy="60" [attr.r]="radius" [attr.stroke-dasharray]="arcs().present.dash" [attr.stroke-dashoffset]="arcs().present.offset" />
+              <circle class="slice absent" cx="60" cy="60" [attr.r]="radius" [attr.stroke-dasharray]="arcs().absent.dash" [attr.stroke-dashoffset]="arcs().absent.offset" />
+            }
+            <text x="60" y="60" class="centre">{{ percentText() }}</text>
+          </svg>
+          <ul class="legend">
+            <li><span class="swatch present"></span>Present</li>
+            <li><span class="swatch absent"></span>Absent</li>
+          </ul>
+        </div>
+        <dl class="numbers">
+          <div><dt>Present</dt><dd>{{ a.presentCount }}</dd></div>
+          <div><dt>Absent</dt><dd>{{ a.absentCount }}</dd></div>
+          <div><dt>Total days</dt><dd>{{ a.totalMarkedDays }}</dd></div>
+          <div><dt>Percentage</dt><dd>{{ percentText() }}</dd></div>
+        </dl>
+        @if (a.totalMarkedDays === 0) {
+          <p class="note">No attendance has been marked yet this year.</p>
+        }
+      } @else {
+        <p class="note">Attendance could not be loaded.</p>
+      }
+    </app-card>
+
+    <!-- today's classes -->
+    <app-card title="Today's Classes" class="s6">
+      @if (d.todayClasses.length === 0) {
+        <p class="note">No classes scheduled for today.</p>
+      } @else {
+        <ul class="rows" aria-label="Today's classes">
+          @for (c of d.todayClasses; track c.periodNumber) {
+            <li>
+              <div class="main">
+                <strong>{{ c.subjectName }}</strong>
+                <span class="sub">{{ time(c.startTime, c.endTime) }} · {{ c.teacherName }}@if (c.roomNo) { · Room {{ c.roomNo }} }</span>
+              </div>
+              <span class="pill" [class]="'pill ' + classTones[c.status]">{{ classLabels[c.status] }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    <!-- test results: no grade / CGPA / status columns -->
+    <app-card title="My Test Results" [noPadding]="true" class="s8">
+      <app-table [columns]="resultColumns" [rows]="resultRows()" emptyMessage="No test results yet." />
+    </app-card>
+
+    <!-- leave status: read-only -->
+    <app-card title="Leave Status" class="s4">
+      @if (d.recentLeave.length === 0) {
+        <p class="note">No leave requests.</p>
+      } @else {
+        <ul class="rows" aria-label="Leave requests">
+          @for (l of d.recentLeave; track l.leaveRequestId) {
+            <li>
+              <div class="main">
+                <strong>{{ l.leaveTypeName }}</strong>
+                <span class="sub">{{ range(l.fromDate, l.toDate) }}</span>
+              </div>
+              <span class="pill" [class]="'pill ' + tone(l.status)">{{ l.status }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    <!-- notice board -->
+    <app-card title="Notice Board" class="s6">
+      @if (d.recentNotices.length === 0) {
+        <p class="note">No notices for you.</p>
+      } @else {
+        <ul class="rows notices" aria-label="Latest notices">
+          @for (n of d.recentNotices; track n.noticeId) {
+            <li>
+              <div class="main">
+                <strong>{{ n.title }} @if (!n.isRead) { <span class="new">New</span> }</strong>
+                <span class="sub">{{ preview(n.body, 110) }}</span>
+              </div>
+              <span class="when">{{ published(n.publishedAt) }}</span>
+            </li>
+          }
+        </ul>
+      }
+      <a class="more" routerLink="/notices/my">View all notices</a>
+    </app-card>
+
+    <!-- upcoming events: the calendar month view lives inside the Calendar page and is not reusable, so this is a list that links there -->
+    <app-card title="Upcoming Events" class="s6">
+      @if (d.upcomingEvents.length === 0) {
+        <p class="note">No upcoming events.</p>
+      } @else {
+        <ul class="rows" aria-label="Upcoming events">
+          @for (e of d.upcomingEvents; track e.eventId) {
+            <li>
+              <span class="dot" [style.background]="e.colorHex" aria-hidden="true"></span>
+              <div class="main">
+                <strong>{{ e.eventTitle }} @if (e.isOngoing) { <span class="new">Ongoing</span> }</strong>
+                <span class="sub">{{ when(e) }} · {{ e.categoryName }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+      <a class="more" routerLink="/calendar">Open calendar</a>
+    </app-card>
+  </div>
+}

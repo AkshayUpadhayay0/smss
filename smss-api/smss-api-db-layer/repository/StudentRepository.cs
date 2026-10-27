@@ -73,6 +73,9 @@ namespace smss_api_db_layer.repository
         public Task<string?> GetSchoolCodeAsync(string schoolId, CancellationToken ct) =>
             _db.Schools.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.SchoolCode).FirstOrDefaultAsync(ct);
 
+        public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
+            _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
+
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 
         public async Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, string studentId, CancellationToken ct)

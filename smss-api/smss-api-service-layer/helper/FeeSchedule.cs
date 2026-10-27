@@ -148,6 +148,9 @@ namespace smss_api_service_layer.helper
 
         public static DateOnly Today() => DateOnly.FromDateTime(India == null ? DateTime.UtcNow : TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, India));
 
+        /// <summary>The wall-clock time in India right now (compared with period start / end times, which are school-local).</summary>
+        public static TimeOnly TimeNow() => TimeOnly.FromDateTime(India == null ? DateTime.UtcNow : TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, India));
+
         private static TimeZoneInfo? Find(string id)
         {
             try { return TimeZoneInfo.FindSystemTimeZoneById(id); }

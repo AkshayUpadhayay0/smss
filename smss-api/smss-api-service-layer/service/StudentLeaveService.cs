@@ -171,6 +171,25 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<List<StudentLeaveDto>>(ex, "listing student leave requests"); }
         }
 
+        // ---------------------------------------------------------------- the student's own view
+        public async Task<ApiResponse<List<StudentLeaveDto>>> GetMyAsync(string? schoolId, long callerUserId, string? status, DateOnly? from, DateOnly? to, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<StudentLeaveDto>>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                if (!LeaveRules.TryNormalizeStatus(status, out var normalized, out var error)) return Result<List<StudentLeaveDto>>(400, error!, null);
+                if (from != null && to != null && to < from) return Result<List<StudentLeaveDto>>(400, "'to' cannot be before 'from'.", null);
+                // the caller's login id IS their student id; a login that is not a student record has nothing to show
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                var student = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (student == null) return Result<List<StudentLeaveDto>>(403, "Your account is not linked to a student record.", null);
+                var yearId = await _repo.GetYearIdContainingAsync(schoolId, SchoolClock.Today(), ct);
+                var rows = await _repo.ListStudentOwnRowsAsync(schoolId, student.StudentId, yearId, normalized, from, to, ct);
+                return Result(200, "Successfully fetched", rows.Select(LeaveRules.ToStudentDto).ToList());
+            }
+            catch (Exception ex) { return Error<List<StudentLeaveDto>>(ex, "listing a student's own leave requests"); }
+        }
+
         // ---------------------------------------------------------------- helpers
         /// <summary>
         /// May the caller act on this student's leave: a School Admin, or the Active class teacher of the section the student is in during the
