@@ -73,6 +73,15 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Subscriptions', icon: 'star', route: '/subscriptions' },
   { label: 'Invoices', icon: 'file-text', route: '/invoices' },
   {
+    label: 'Company Finance',
+    icon: 'building-2',
+    children: [
+      { label: 'Overview', route: '/company/overview' },
+      { label: 'Employees', route: '/company/employees' },
+      { label: 'Expenses', route: '/company/expenses' },
+    ],
+  },
+  {
     label: 'Masters',
     icon: 'layers',
     children: [

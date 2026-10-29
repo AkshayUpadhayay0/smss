@@ -1,0 +1,51 @@
+<app-page-header title="Company Expenses" subtitle="What SMSS spends, by category" icon="file-text" [breadcrumbs]="breadcrumbs">
+  <app-button (click)="adding.set(true)"><app-icon name="plus" [size]="16" />Add Expense</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="filter"><app-select placeholder="All categories" [options]="categoryOptions()" [formControl]="categoryControl" /></div>
+    <div class="filter date"><app-input label="" type="date" aria-label="From date" [formControl]="fromControl" /></div>
+    <span class="to">to</span>
+    <div class="filter date"><app-input label="" type="date" aria-label="To date" [formControl]="toControl" [errorText]="invalidRange() ? 'Start is after end' : undefined" /></div>
+    <div class="filter"><app-select placeholder="All expenses" [options]="statusFilters" [formControl]="statusControl" /></div>
+    <span class="count">{{ total() }} {{ total() === 1 ? 'expense' : 'expenses' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [emptyMessage]="failed() ? 'Could not load expenses.' : 'No expenses match. Add one, or widen the filters.'"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.status === 'Active') {
+        <app-button variant="danger-ghost" size="sm" (click)="voiding.set(row)">Void</app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  <div class="foot">Active total for these filters: <strong>{{ inr(activeTotal()) }}</strong> <span>(voided expenses excluded)</span></div>
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="onPage($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (adding()) {
+  <app-expense-form-modal [categories]="categories()" (saved)="onAdded()" (closed)="adding.set(false)" />
+}
+@if (voiding(); as x) {
+  <app-void-reason-modal
+    title="Void expense"
+    [prompt]="'Void the ' + inr(x.amount) + ' expense “' + x.description + '”? It stays on record, marked Voided, and no longer counts in any total.'"
+    [busy]="voidBusy()"
+    (confirmed)="confirmVoid($event)"
+    (closed)="voiding.set(null)"
+  />
+}

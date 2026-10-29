@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+app-card {
+  display: block;
+  margin-bottom: var(--space-6);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+
+  .filter {
+    flex: 0 1 200px;
+
+    &.date {
+      flex-basis: 170px;
+    }
+  }
+
+  .to {
+    padding-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .count {
+    margin-left: auto;
+    padding-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+.foot {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+
+  span {
+    margin-left: var(--space-2);
+    color: var(--color-text-muted);
+  }
+}

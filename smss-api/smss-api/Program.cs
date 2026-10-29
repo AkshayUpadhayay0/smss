@@ -99,6 +99,11 @@ builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 builder.Services.AddScoped<ISubscriptionPricingService, SubscriptionPricingService>();
 builder.Services.AddScoped<ISubscriptionBillingService, SubscriptionBillingService>();
 builder.Services.AddScoped<ISuperAdminDashboardService, SuperAdminDashboardService>();
+builder.Services.AddScoped<ICompanyFinanceRepository, CompanyFinanceRepository>();
+builder.Services.AddScoped<ICompanyEmployeeService, CompanyEmployeeService>();
+builder.Services.AddScoped<ICompanyExpenseService, CompanyExpenseService>();
+builder.Services.AddScoped<ICompanySalaryService, CompanySalaryService>();
+builder.Services.AddScoped<ICompanyFinanceService, CompanyFinanceService>();
 builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 

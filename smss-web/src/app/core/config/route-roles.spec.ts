@@ -35,6 +35,17 @@ describe('route-roles', () => {
     });
   });
 
+  describe('company finance (Super Admin only)', () => {
+    it('/company/overview, /company/employees and /company/expenses: the Super Admin may open them; no school role may', () => {
+      for (const path of ['/company/overview', '/company/employees', '/company/expenses']) {
+        expect(canAccess(path, [ROLES.SUPER_ADMIN])).toBe(true);
+        for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, 'Test Role']) expect(canAccess(path, [role])).toBe(false);
+      }
+      expect(canAccess('/company/expenses?from=2026-04-01&to=2026-10-31', [ROLES.SUPER_ADMIN])).toBe(true);
+      expect(canAccess('/company/payroll', [ROLES.SUPER_ADMIN])).toBe(false); // anything not listed stays closed
+    });
+  });
+
   describe('student record for the Accountant', () => {
     it('may open /students/:id (Fees tab only, enforced by the page) but not the student list, onboarding or admissions', () => {
       expect(canAccess('/students/DPS001ST001', [ROLES.ACCOUNTANT])).toBe(true);

@@ -87,6 +87,10 @@ namespace smss_api_db_layer.context
         public DbSet<TbSubscriptionInvoice> SubscriptionInvoices { get; set; } = null!;
         public DbSet<TbSubscriptionPayment> SubscriptionPayments { get; set; } = null!;
         public DbSet<TbSubscriptionPaymentAllocation> SubscriptionPaymentAllocations { get; set; } = null!;
+        public DbSet<TbCompanyEmployee> CompanyEmployees { get; set; } = null!;
+        public DbSet<LutExpenseCategory> ExpenseCategories { get; set; } = null!;
+        public DbSet<TbCompanyExpense> CompanyExpenses { get; set; } = null!;
+        public DbSet<TbCompanySalaryPayment> CompanySalaryPayments { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

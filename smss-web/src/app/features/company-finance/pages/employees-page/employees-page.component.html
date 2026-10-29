@@ -1,0 +1,38 @@
+<app-page-header title="Company Employees" subtitle="SMSS's own team and their salary payments" icon="user" [breadcrumbs]="breadcrumbs">
+  <app-button (click)="editing.set('new')"><app-icon name="plus" [size]="16" />Add Employee</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search"><app-input placeholder="Search by name, designation or email…" prefixIcon="search" [formControl]="searchControl" /></div>
+    <div class="filter"><app-select placeholder="All employees" [options]="statusFilters" [formControl]="statusControl" /></div>
+    <span class="count">{{ employees().length }} {{ employees().length === 1 ? 'employee' : 'employees' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [emptyMessage]="failed() ? 'Could not load employees.' : searchControl.value || statusControl.value ? 'No employees match.' : 'No employees yet. Add the first one.'"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" title="Edit employee" aria-label="Edit employee" (click)="editing.set(row)"><app-icon name="pencil" [size]="14" /></app-button>
+      @if (row.statusName === 'Active') {
+        <app-button size="sm" (click)="paying.set(row)">Record salary payment</app-button>
+      }
+      <app-button variant="secondary" size="sm" title="Salary payments" (click)="history.set(row)">Salary history</app-button>
+      <app-button variant="secondary" size="sm" [disabled]="busyId() === row.companyEmployeeId" (click)="toggle(row)">{{ row.statusName === 'Active' ? 'Deactivate' : 'Activate' }}</app-button>
+    </ng-template>
+  </app-table>
+</app-card>
+
+@if (editing(); as e) {
+  <app-company-employee-form-modal [employee]="e === 'new' ? null : e" (saved)="onSaved()" (closed)="editing.set(null)" />
+}
+@if (paying(); as p) {
+  <app-salary-payment-modal [employee]="p" (saved)="paying.set(null)" (closed)="paying.set(null)" />
+}
+@if (history(); as h) {
+  <app-salary-history-modal [employee]="h" (closed)="history.set(null)" />
+}

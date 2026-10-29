@@ -101,6 +101,11 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/subscriptions': [ROLES.SUPER_ADMIN],
   '/invoices': [ROLES.SUPER_ADMIN],
 
+  // Company Finance (SMSS's own employees, expenses, salary payments and financial overview): Super Admin only; the API re-checks every call
+  '/company/overview': [ROLES.SUPER_ADMIN],
+  '/company/employees': [ROLES.SUPER_ADMIN],
+  '/company/expenses': [ROLES.SUPER_ADMIN],
+
   '/masters/board-type': [ROLES.SUPER_ADMIN],
   '/masters/school-type': [ROLES.SUPER_ADMIN],
   '/masters/school-level': [ROLES.SUPER_ADMIN],

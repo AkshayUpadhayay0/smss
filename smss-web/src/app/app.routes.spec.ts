@@ -41,6 +41,10 @@ describe('app routes', () => {
       ['/schools', '/schools', 'Registered Schools'],
       ['/subscriptions', '/subscriptions', 'Subscriptions'],
       ['/invoices', '/invoices', 'Invoices'],
+      ['/company/overview', '/company/overview', 'Financial Overview'],
+      ['/company/employees', '/company/employees', 'Company Employees'],
+      ['/company/expenses', '/company/expenses', 'Company Expenses'],
+      ['/company', '/company/overview', 'Financial Overview'],
       ['/masters', '/masters/board-type', 'Board Type'],
       ['/masters/school-type', '/masters/school-type', 'School Type'],
       ['/masters/school-level', '/masters/school-level', 'School Level'],
@@ -153,7 +157,7 @@ describe('app routes', () => {
         expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Notices | My Notices | Homework | Assessments | My Leave | Leave Requests | Student Leave | School Profile | Students | Admissions | Add Existing Student | School Setup | Employees | Fee Setup | Fees');
       });
 
-      it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
+      it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
         '%s is refused: redirected to /dashboard with a toast, page never rendered, no API call made',
         async (path) => {
           const http = TestBed.inject(HttpTestingController);
@@ -198,14 +202,14 @@ describe('app routes', () => {
     describe('Super Admin', () => {
       beforeEach(() => seedSession());
 
-      it('sees Dashboard, Registered Schools, Subscriptions, Invoices and Masters, and every Masters child', async () => {
+      it('sees Dashboard, Registered Schools, Subscriptions, Invoices, Company Finance and Masters, and every group child', async () => {
         const { harness } = await go('/dashboard');
-        harness.routeNativeElement!.querySelector<HTMLButtonElement>('.group-toggle')?.click();
+        harness.routeNativeElement!.querySelectorAll<HTMLButtonElement>('.group-toggle').forEach((b) => b.click());
         harness.detectChanges();
-        expect(nav(harness)).toBe('Dashboard | Registered Schools | Subscriptions | Invoices | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
+        expect(nav(harness)).toBe('Dashboard | Registered Schools | Subscriptions | Invoices | Company Finance | Overview | Employees | Expenses | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
       });
 
-      it.each(['/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/subscriptions', '/invoices', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(
+      it.each(['/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(
         '%s opens',
         async (path) => {
           expect((await go(path)).url).toBe(path);
