@@ -70,6 +70,8 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Registered Schools', icon: 'building-2', route: '/schools' },
+  { label: 'Subscriptions', icon: 'star', route: '/subscriptions' },
+  { label: 'Invoices', icon: 'file-text', route: '/invoices' },
   {
     label: 'Masters',
     icon: 'layers',

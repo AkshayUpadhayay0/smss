@@ -16,7 +16,10 @@ namespace smss_api_db_layer.@interface
         Task<int> GetSchoolCountForShortCodePrefixAsync(string prefix, CancellationToken ct);
         Task<long?> GetRoleIdByNameAsync(string roleName);
         Task<List<string>> GetDuplicateFieldsAsync(string? schoolCode, string? gstin, string? pan, string? excludeSchoolId = null);
-        Task AddSchoolWithAdminUserAsync(TbSchools school, TbUsers user);
+        /// <summary>Saves the school, its contacts, its admin login and its trial subscription in one transaction.</summary>
+        Task AddSchoolWithAdminUserAsync(TbSchools school, TbUsers user, TbSchoolSubscription subscription);
+        /// <summary>trial_days of the Active subscription pricing row, or null when there is none.</summary>
+        Task<int?> GetActiveTrialDaysAsync();
         /// <summary>The school's own admin login (not its students' logins).</summary>
         Task<TbUsers?> GetUserBySchoolIdAsync(string schoolId, bool track = false);
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType);

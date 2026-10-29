@@ -1,0 +1,90 @@
+<app-modal [title]="'Invoice #' + invoiceId()" [dismissible]="!voidBusy()" (closed)="closed.emit()">
+  @if (failed()) {
+    <p class="state">This invoice could not be loaded.</p>
+  } @else if (invoice(); as inv) {
+    <header class="top">
+      <div>
+        <strong>{{ inv.schoolName }}</strong>
+        <span class="muted">{{ inv.billingFrequency === 'YEARLY' ? 'Yearly' : 'Monthly' }} · {{ date(inv.billingPeriodStart) }} – {{ date(inv.billingPeriodEnd) }}</span>
+      </div>
+      <span class="pill" [class]="'pill tone-' + tone(inv.status)">{{ inv.status }}</span>
+    </header>
+
+    <table class="breakdown" aria-label="Invoice breakdown">
+      <tbody>
+        <tr><th scope="row">Students</th><td>{{ inv.studentCount }} <span class="tag billed">Billed</span></td></tr>
+        <tr><th scope="row">Teachers</th><td>{{ inv.teacherCount }} <span class="tag" [class.billed]="inv.staffBilled">{{ inv.staffBilled ? 'Billed' : 'Not billed' }}</span></td></tr>
+        <tr><th scope="row">Staff</th><td>{{ inv.staffCount }} <span class="tag" [class.billed]="inv.staffBilled">{{ inv.staffBilled ? 'Billed' : 'Not billed' }}</span></td></tr>
+        <tr class="sum"><th scope="row">Billed users</th><td>{{ inv.billableUserCount }}</td></tr>
+        <tr><th scope="row">Rate per billed user per month</th><td>{{ inr(inv.ratePerStudent) }}</td></tr>
+        <tr><th scope="row">Amount before discount</th><td>{{ inr(inv.grossAmount) }}</td></tr>
+        @if (inv.billingFrequency === 'YEARLY') {
+          <tr><th scope="row">Yearly discount used</th><td>{{ inv.discountPercent }}% (− {{ inr(inv.discountAmount) }})</td></tr>
+        }
+        <tr class="sum"><th scope="row">Invoice amount</th><td>{{ inr(inv.netAmount) }}</td></tr>
+        <tr><th scope="row">Paid</th><td>{{ inr(inv.paidAmount) }}</td></tr>
+        <tr class="sum"><th scope="row">Balance</th><td>{{ inr(inv.balanceAmount) }}</td></tr>
+        <tr><th scope="row">Due date</th><td>{{ date(inv.dueDate) }}</td></tr>
+      </tbody>
+    </table>
+    <p class="muted note">
+      {{ inv.billingFrequency === 'YEARLY' ? '12 months × ' : '' }}{{ inv.billableUserCount }} billed {{ inv.billableUserCount === 1 ? 'user' : 'users' }} × {{ inr(inv.ratePerStudent) }}.
+      @if (inv.staffBilled) { Teachers and staff are billed for this school. } @else { Only students are billed for this school. }
+      The counts, rate and discount were captured when the invoice was generated and don't change afterwards.
+    </p>
+
+    <h4>Payments</h4>
+    @if (!inv.payments || inv.payments.length === 0) {
+      <p class="muted">No payments recorded yet.</p>
+    } @else {
+      <ul class="payments">
+        @for (p of inv.payments; track p.paymentId) {
+          <li [class.voided]="p.status === 'Voided'">
+            <div class="line">
+              <span class="amt">{{ inr(toThisInvoice(p, inv.invoiceId)) }}</span>
+              <span>{{ p.paymentMode }}@if (p.referenceNumber) { · {{ p.referenceNumber }} }</span>
+              <time>{{ date(p.paymentDate) }}</time>
+              @if (p.status === 'Active') {
+                <app-button variant="danger-ghost" size="sm" [disabled]="voidBusy()" (click)="startVoid(p)">Void</app-button>
+              } @else {
+                <span class="tag">Voided</span>
+              }
+            </div>
+            @if (p.allocations.length > 1) {
+              <small class="muted">Part of a {{ inr(p.amount) }} payment that also covered {{ otherInvoices(p, inv.invoiceId) }}.@if (p.status === 'Active') { Voiding it reverses all of them. }</small>
+            }
+            @if (p.remarks) { <small class="muted">{{ p.remarks }}</small> }
+            @if (p.status === 'Voided') { <small class="muted">Voided: {{ p.voidReason }}</small> }
+            @if (voidingId() === p.paymentId) {
+              <form class="void" (ngSubmit)="confirmVoid()" novalidate>
+                <app-textarea
+                  label="Reason for voiding"
+                  [required]="true"
+                  [rows]="2"
+                  [maxLength]="500"
+                  [formControl]="voidReason"
+                  [errorText]="voidSubmitted() && voidReason.invalid ? 'A reason is required' : undefined"
+                />
+                <div class="void-actions">
+                  <app-button variant="secondary" size="sm" [disabled]="voidBusy()" (click)="cancelVoid()">Cancel</app-button>
+                  <app-button variant="danger" size="sm" [disabled]="voidBusy()" (click)="confirmVoid()">{{ voidBusy() ? 'Voiding…' : 'Void payment' }}</app-button>
+                </div>
+              </form>
+            }
+          </li>
+        }
+      </ul>
+    }
+  } @else if (loading()) {
+    <p class="state">Loading…</p>
+  }
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" (click)="closed.emit()">Close</app-button>
+    @if (invoice(); as inv) {
+      @if (inv.balanceAmount > 0) {
+        <app-button (click)="pay.emit(inv)">Record payment</app-button>
+      }
+    }
+  </ng-container>
+</app-modal>

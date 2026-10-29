@@ -25,6 +25,16 @@ describe('route-roles', () => {
     });
   });
 
+  describe('subscription billing (Super Admin only)', () => {
+    it('/subscriptions and /invoices: the Super Admin may open them; no school role may', () => {
+      for (const path of ['/subscriptions', '/invoices']) {
+        expect(canAccess(path, [ROLES.SUPER_ADMIN])).toBe(true);
+        for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, 'Test Role']) expect(canAccess(path, [role])).toBe(false);
+        expect(canAccess(path + '?status=TRIAL', [ROLES.SUPER_ADMIN])).toBe(true); // query parameters do not change the route
+      }
+    });
+  });
+
   describe('student record for the Accountant', () => {
     it('may open /students/:id (Fees tab only, enforced by the page) but not the student list, onboarding or admissions', () => {
       expect(canAccess('/students/DPS001ST001', [ROLES.ACCOUNTANT])).toBe(true);

@@ -82,6 +82,11 @@ namespace smss_api_db_layer.context
         public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;
         public DbSet<TbEmployeeLeaveRequest> EmployeeLeaveRequests { get; set; } = null!;
         public DbSet<TbStudentLeaveRequest> StudentLeaveRequests { get; set; } = null!;
+        public DbSet<TbSubscriptionPricing> SubscriptionPricing { get; set; } = null!;
+        public DbSet<TbSchoolSubscription> SchoolSubscriptions { get; set; } = null!;
+        public DbSet<TbSubscriptionInvoice> SubscriptionInvoices { get; set; } = null!;
+        public DbSet<TbSubscriptionPayment> SubscriptionPayments { get; set; } = null!;
+        public DbSet<TbSubscriptionPaymentAllocation> SubscriptionPaymentAllocations { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

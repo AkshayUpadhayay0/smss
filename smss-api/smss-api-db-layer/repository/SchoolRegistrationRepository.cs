@@ -81,12 +81,22 @@ namespace smss_api_db_layer.repository
             return duplicates;
         }
 
-        // One SaveChanges = one transaction: school -> contacts -> user -> user role
-        public async Task AddSchoolWithAdminUserAsync(TbSchools school, TbUsers user)
+        // One SaveChanges = one transaction: school -> contacts -> user -> user role -> trial subscription
+        public async Task AddSchoolWithAdminUserAsync(TbSchools school, TbUsers user, TbSchoolSubscription subscription)
         {
             _dbContext.Schools.Add(school);   // includes school.Contacts
             _dbContext.Users.Add(user);       // includes user.UserRoles
+            _dbContext.SchoolSubscriptions.Add(subscription);   // added last: its school_id FK needs the school row first
             await _dbContext.SaveChangesAsync();
+        }
+
+        // Trial length comes from the one Active row of the global pricing table
+        public async Task<int?> GetActiveTrialDaysAsync()
+        {
+            return await _dbContext.SubscriptionPricing.AsNoTracking()
+                .Where(p => p.IsActive)
+                .Select(p => (int?)p.TrialDays)
+                .FirstOrDefaultAsync();
         }
 
         // The school's admin login is the row whose login id IS the school id. Student logins carry the same school_id,

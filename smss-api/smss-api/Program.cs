@@ -95,6 +95,10 @@ builder.Services.AddScoped<IClassTeacherRepository, ClassTeacherRepository>();
 builder.Services.AddScoped<IClassTeacherService, ClassTeacherService>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<ISubscriptionPricingService, SubscriptionPricingService>();
+builder.Services.AddScoped<ISubscriptionBillingService, SubscriptionBillingService>();
+builder.Services.AddScoped<ISuperAdminDashboardService, SuperAdminDashboardService>();
 builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 

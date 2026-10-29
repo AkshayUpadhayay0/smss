@@ -1,0 +1,52 @@
+<app-modal [title]="'Record payment: ' + schoolName()" [dismissible]="!saving()" (closed)="closed.emit()">
+  @if (loadFailed()) {
+    <p class="state">This school's invoices could not be loaded.</p>
+  } @else if (loading()) {
+    <p class="state">Loading…</p>
+  } @else if (open().length === 0) {
+    <p class="state">This school has no unpaid invoices.</p>
+  } @else {
+    <form class="form" [formGroup]="form" id="record-payment-form" (ngSubmit)="submit()" novalidate>
+      <p class="summary">Unpaid invoices: {{ open().length }}, <strong>{{ inr(totalOwed()) }} owed in total</strong></p>
+
+      <div class="seg" role="radiogroup" aria-label="How to split the payment">
+        <button type="button" role="radio" [attr.aria-checked]="!isManual()" [class.on]="!isManual()" (click)="setSplit('auto')">Oldest invoice first</button>
+        <button type="button" role="radio" [attr.aria-checked]="isManual()" [class.on]="isManual()" (click)="setSplit('manual')">Choose per invoice</button>
+      </div>
+
+      @if (!isManual()) {
+        <app-input label="Amount received (₹)" type="number" formControlName="amount" [errorText]="amountError()" />
+        @if (autoPreview().rows.length > 0) {
+          <ul class="split" aria-label="How this payment will be split">
+            @for (r of autoPreview().rows; track r.invoice.invoiceId) {
+              <li><span>Invoice #{{ r.invoice.invoiceId }} <small>{{ date(r.invoice.billingPeriodStart) }} – {{ date(r.invoice.billingPeriodEnd) }}</small></span><strong>{{ inr(r.amount) }}</strong></li>
+            }
+          </ul>
+        }
+      } @else {
+        <ul class="manual" aria-label="Amount for each invoice">
+          @for (i of open(); track i.invoiceId; let k = $index) {
+            <li>
+              <span>Invoice #{{ i.invoiceId }}
+                <small>{{ date(i.billingPeriodStart) }} – {{ date(i.billingPeriodEnd) }} · balance {{ inr(i.balanceAmount) }}</small></span>
+              <input type="number" min="0" step="0.01" [attr.aria-label]="'Amount for invoice ' + i.invoiceId" [formControl]="manual.at(k)" />
+            </li>
+          }
+        </ul>
+        <p class="total">Payment total <strong>{{ inr(paymentTotal()) }}</strong></p>
+        @if (amountError(); as e) { <span class="error" role="alert">{{ e }}</span> }
+      }
+
+      <app-select label="Payment mode" [required]="true" [options]="modes" formControlName="paymentMode" [errorText]="submitted() && form.controls.paymentMode.invalid ? 'Choose a payment mode' : undefined" />
+      <app-input label="Reference number" placeholder="UTR / cheque / transaction no. (optional)" formControlName="referenceNumber" />
+      <app-textarea label="Remarks" placeholder="Optional" [rows]="2" [maxLength]="500" formControlName="remarks" />
+    </form>
+  }
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    @if (open().length > 0) {
+      <app-button type="submit" [disabled]="saving()" (click)="submit()">{{ saving() ? 'Saving…' : 'Record payment' }}</app-button>
+    }
+  </ng-container>
+</app-modal>

@@ -1,0 +1,39 @@
+<app-page-header title="Invoices" subtitle="Subscription invoices, payments and balances" icon="file-text" [breadcrumbs]="breadcrumbs" />
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="filter wide"><app-select placeholder="All schools" [options]="schoolOptions()" [formControl]="schoolControl" /></div>
+    <div class="filter"><app-select placeholder="All invoices" [options]="invoiceFilters" [formControl]="statusControl" /></div>
+    <span class="count">{{ total() }} {{ total() === 1 ? 'invoice' : 'invoices' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [emptyMessage]="failed() ? 'Could not load invoices.' : schoolControl.value || statusControl.value ? 'No invoices match.' : 'No invoices yet. Generate one from the Subscriptions page.'"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" title="View invoice" aria-label="View invoice" (click)="openInvoice(row)"><app-icon name="eye" [size]="14" /></app-button>
+      @if (row.balanceAmount > 0) {
+        <app-button size="sm" (click)="payInvoice(row)">Record payment</app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="onPage($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (detailInvoiceId(); as id) {
+  <app-invoice-detail-modal [invoiceId]="id" (pay)="payFromDetail($event)" (changed)="load()" (closed)="detailInvoiceId.set(null)" />
+}
+@if (paying(); as pay) {
+  <app-record-payment-modal [schoolId]="pay.schoolId" [schoolName]="pay.schoolName" [preselectInvoiceId]="pay.invoiceId" (saved)="closePayment(true)" (closed)="closePayment(false)" />
+}

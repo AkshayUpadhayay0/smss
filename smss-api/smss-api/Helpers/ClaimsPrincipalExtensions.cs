@@ -78,6 +78,9 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool IsStudentOrGuardianLogin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student, RoleNames.Guardian);
 
+        /// <summary>The platform owner login. Only the Super Admin bootstrap creates it. Subscription and billing is exclusive to this role.</summary>
+        public static bool IsSuperAdmin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SuperAdmin);
+
         public static bool CanConfigureFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
         /// <summary>

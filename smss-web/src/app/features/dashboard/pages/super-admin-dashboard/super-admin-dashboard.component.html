@@ -1,0 +1,109 @@
+<app-page-header title="Dashboard" subtitle="Schools, subscriptions and payments across the platform" icon="layout-dashboard" [breadcrumbs]="[{ label: 'Dashboard' }]">
+  <app-button variant="secondary" (click)="allSchools()"><app-icon name="home" [size]="16" />Registered Schools</app-button>
+  <app-button (click)="addSchool()"><app-icon name="plus" [size]="16" />Add School</app-button>
+</app-page-header>
+
+<!-- ============================================================ A. School management -->
+<h2 class="section">School management</h2>
+
+@if (summaryFailed()) {
+  <app-card>
+    <div class="state"><p>The numbers could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadSummary()">Try again</app-button></div>
+  </app-card>
+} @else if (summary(); as s) {
+  <section class="cards" aria-label="School summary">
+    <a class="stat total" routerLink="/subscriptions">
+      <span class="label">Registered schools</span>
+      <strong>{{ s.totalSchools }}</strong>
+      <small>{{ s.activeSchools }} active, {{ s.totalSchools - s.activeSchools }} inactive</small>
+    </a>
+    <a class="stat trial" routerLink="/subscriptions" [queryParams]="{ status: 'TRIAL' }">
+      <span class="label">On free trial</span>
+      <strong>{{ s.trialCount }}</strong>
+      <small>{{ s.trialExpiredCount }} past the trial end date</small>
+    </a>
+    <a class="stat paying" routerLink="/subscriptions">
+      <span class="label">Paying subscriptions</span>
+      <strong>{{ s.activeCount + s.overdueCount }}</strong>
+      <small>{{ s.cancelledCount }} cancelled</small>
+    </a>
+    @if (s.notSetCount > 0) {
+      <a class="stat notset" routerLink="/subscriptions" [queryParams]="{ status: 'NOT_SET' }">
+        <span class="label">Not set up</span>
+        <strong>{{ s.notSetCount }}</strong>
+        <small>registered before billing was added</small>
+      </a>
+    }
+  </section>
+}
+
+<!-- ============================================================ B. Subscription & payment management -->
+<h2 class="section">Subscription &amp; payments</h2>
+
+@if (summary(); as s) {
+  <section class="cards" aria-label="Subscription summary">
+    <a class="stat trial" routerLink="/subscriptions" [queryParams]="{ status: 'TRIAL' }">
+      <span class="label">Trial</span>
+      <strong>{{ s.trialCount }}</strong>
+      <small>{{ s.trialExpiredCount }} expired</small>
+    </a>
+    <a class="stat active" routerLink="/subscriptions" [queryParams]="{ status: 'ACTIVE' }">
+      <span class="label">Active</span>
+      <strong>{{ s.activeCount }}</strong>
+      <small>paid up</small>
+    </a>
+    <a class="stat overdue" routerLink="/subscriptions" [queryParams]="{ status: 'OVERDUE' }">
+      <span class="label">Overdue</span>
+      <strong>{{ s.overdueCount }}</strong>
+      <small>{{ inr(s.overdueAmount) }} past due</small>
+    </a>
+    <a class="stat collected" routerLink="/invoices">
+      <span class="label">Total collected</span>
+      <strong>{{ inr(s.totalCollected) }}</strong>
+      <small>voided payments excluded</small>
+    </a>
+    <a class="stat outstanding" routerLink="/invoices">
+      <span class="label">Total outstanding</span>
+      <strong>{{ inr(s.totalOutstanding) }}</strong>
+      <small>on unpaid and part-paid invoices</small>
+    </a>
+    <a class="stat renewals" routerLink="/invoices">
+      <span class="label">Renewals in {{ s.upcomingRenewalDays }} days</span>
+      <strong>{{ s.upcomingRenewalCount }}</strong>
+      <small>{{ s.upcomingRenewalCount === 1 ? 'subscription' : 'subscriptions' }} due to renew</small>
+    </a>
+  </section>
+
+  <div class="two">
+    <app-card title="Upcoming renewals">
+      @if (s.upcomingRenewals.length === 0) {
+        <p class="muted">No renewals in the next {{ s.upcomingRenewalDays }} days.</p>
+      } @else {
+        <ul class="renewal-list">
+          @for (r of s.upcomingRenewals; track r.schoolId) {
+            <li>
+              <span>{{ r.schoolName }}<small>{{ r.billingFrequency === 'YEARLY' ? 'Yearly' : 'Monthly' }}</small></span>
+              <time>{{ date(r.nextRenewalDate) }}</time>
+            </li>
+          }
+        </ul>
+        @if (s.upcomingRenewalCount > s.upcomingRenewals.length) {
+          <p class="muted more">and {{ s.upcomingRenewalCount - s.upcomingRenewals.length }} more</p>
+        }
+      }
+    </app-card>
+
+    <app-card title="Current pricing">
+      @if (s.pricing; as p) {
+        <dl class="pricing">
+          <div><dt>Rate</dt><dd>{{ inr(p.ratePerStudentMonthly) }} <small>per student per month</small></dd></div>
+          <div><dt>Yearly discount</dt><dd>{{ p.yearlyDiscountPercent }}%</dd></div>
+          <div><dt>Free trial</dt><dd>{{ p.trialDays }} days</dd></div>
+        </dl>
+        <p class="muted">Schools are billed per active student of the current academic year, counted when an invoice is generated. A school can have its own rate or discount, and can have its teachers and staff billed too (see Terms). This is the global default.</p>
+      } @else {
+        <p class="muted">No pricing is configured.</p>
+      }
+    </app-card>
+  </div>
+}

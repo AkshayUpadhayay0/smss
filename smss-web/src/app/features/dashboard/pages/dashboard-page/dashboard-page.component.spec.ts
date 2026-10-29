@@ -36,7 +36,15 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it.each([['School Admin'], ['Principal'], ['Accountant'], ['Super Admin']])('leaves %s on the existing placeholder and calls nothing', (role) => {
+  it('gives the Super Admin their own dashboard (one summary request: the tables live on /subscriptions and /invoices)', () => {
+    const { fixture, http } = open(['Super Admin']);
+    http.expectOne(`${environment.apiUrl}/api/SuperAdminDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-super-admin-dashboard')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
+    http.verify();
+  });
+
+  it.each([['School Admin'], ['Principal'], ['Accountant']])('leaves %s on the existing placeholder and calls nothing', (role) => {
     const { fixture, http } = open([role]);
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();

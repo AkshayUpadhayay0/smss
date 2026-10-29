@@ -79,6 +79,11 @@ namespace smss_api_service_layer.service
                 if (activeStatusId == null)
                     return ConfigError($"Status '{StatusNames.Active}' ({StatusNames.GeneralType}) is missing in lut_status");
 
+                // Every new school starts a free trial whose length is set by the Active subscription pricing row
+                var trialDays = await _repo.GetActiveTrialDaysAsync();
+                if (trialDays == null)
+                    return ConfigError("No active row in tb_subscription_pricing");
+
                 var now = DateTime.UtcNow;
                 // {prefix}{yyMMdd}{seq}: prefix from the short name (or name), seq = how many schools registered today + 1
                 var prefix = SchoolIdHelper.GenerateSchoolIdPrefix(req.SchoolShortName, req.SchoolName);
@@ -125,7 +130,19 @@ namespace smss_api_service_layer.service
                     UserRoles = { new TbUserRoles { RoleId = roleId.Value, CreatedAt = now } }
                 };
 
-                await _repo.AddSchoolWithAdminUserAsync(school, user);
+                var trialStart = SchoolClock.Today();
+                var subscription = new TbSchoolSubscription
+                {
+                    SchoolId = schoolId,
+                    School = school,                     // makes EF insert the school first
+                    Status = SubscriptionStatuses.Trial,
+                    TrialStartDate = trialStart,
+                    TrialEndDate = trialStart.AddDays(trialDays.Value),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                await _repo.AddSchoolWithAdminUserAsync(school, user, subscription);
 
                 var recipientEmail = school.Contacts.FirstOrDefault(c => c.IsPrimary)?.Email ?? school.Email;
                 var emailSent = false;

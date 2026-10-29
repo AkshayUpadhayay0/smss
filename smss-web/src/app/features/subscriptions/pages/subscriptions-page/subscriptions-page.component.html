@@ -1,0 +1,51 @@
+<app-page-header title="Subscriptions" subtitle="Each school's subscription, billing terms and invoices" icon="star" [breadcrumbs]="breadcrumbs">
+  <app-button variant="secondary" (click)="allSchools()"><app-icon name="home" [size]="16" />Registered Schools</app-button>
+  <app-button (click)="addSchool()"><app-icon name="plus" [size]="16" />Add School</app-button>
+</app-page-header>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search"><app-input placeholder="Search by name, code or id…" prefixIcon="search" [formControl]="searchControl" /></div>
+    <div class="filter"><app-select placeholder="All subscriptions" [options]="statusFilters" [formControl]="statusControl" /></div>
+    <span class="count">{{ total() }} {{ total() === 1 ? 'school' : 'schools' }}</span>
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [hasActions]="true"
+    [emptyMessage]="failed() ? 'Could not load schools.' : searchControl.value || statusControl.value ? 'No schools match.' : 'No schools registered yet.'"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" title="View school" aria-label="View school" (click)="viewSchool(row)"><app-icon name="eye" [size]="14" /></app-button>
+      <app-button variant="secondary" size="sm" title="Edit school" aria-label="Edit school" (click)="editSchool(row)"><app-icon name="pencil" [size]="14" /></app-button>
+      @if (canConfigure(row)) {
+        <app-button size="sm" (click)="configuring.set({ school: row, mode: 'configure' })">Configure billing</app-button>
+      }
+      @if (canEditTerms(row)) {
+        <app-button variant="secondary" size="sm" title="Change this school's rate, discount or staff billing" (click)="configuring.set({ school: row, mode: 'terms' })">Edit terms</app-button>
+      }
+      @if (canGenerate(row)) {
+        <app-button size="sm" [disabled]="generatingFor() === row.schoolId" (click)="generate(row)">
+          <app-icon name="file-text" [size]="14" />{{ generatingFor() === row.schoolId ? 'Generating…' : 'Generate invoice' }}
+        </app-button>
+      }
+      @if (row.subscriptionStatus !== 'NOT_SET' && row.subscriptionStatus !== 'TRIAL') {
+        <app-button variant="secondary" size="sm" title="Show this school's invoices" (click)="showInvoicesOf(row)">Invoices</app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  <app-pagination
+    [currentPage]="page()"
+    [totalItems]="total()"
+    [pageSize]="pageSize()"
+    (pageChange)="onPage($event)"
+    (pageSizeChange)="onPageSize($event)"
+  />
+</app-card>
+
+@if (configuring(); as c) {
+  <app-configure-billing-modal [school]="c.school" [mode]="c.mode" [pricing]="pricing()" (saved)="onConfigured()" (closed)="configuring.set(null)" />
+}
