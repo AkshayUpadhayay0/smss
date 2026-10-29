@@ -1,80 +1,139 @@
-<app-page-header title="Dashboard" subtitle="Schools, subscriptions and payments across the platform" icon="layout-dashboard" [breadcrumbs]="[{ label: 'Dashboard' }]">
-  <app-button variant="secondary" (click)="allSchools()"><app-icon name="home" [size]="16" />Registered Schools</app-button>
-  <app-button (click)="addSchool()"><app-icon name="plus" [size]="16" />Add School</app-button>
-</app-page-header>
+<app-page-header title="Dashboard" subtitle="Schools, subscriptions, payments and company finances across the platform" icon="layout-dashboard" [breadcrumbs]="[{ label: 'Dashboard' }]" />
 
-<!-- ============================================================ A. School management -->
-<h2 class="section">School management</h2>
+<!-- The period for the six cards, the collection bar and the transactions. The two monthly charts always show the last 12 months. -->
+<section class="range" aria-label="Period">
+  <div class="field"><app-input label="From" type="date" [formControl]="fromControl" /></div>
+  <div class="field"><app-input label="To" type="date" [formControl]="toControl" [errorText]="invalidRange() ? 'The start date is after the end date' : undefined" /></div>
+  <app-button variant="secondary" size="sm" (click)="resetRange()">This month</app-button>
+  @if (summary(); as s) {
+    <p class="compare">Compared with {{ date(s.previousFrom) }} to {{ date(s.previousTo) }}. The two monthly charts always show the last 12 months.</p>
+  }
+</section>
 
 @if (summaryFailed()) {
   <app-card>
-    <div class="state"><p>The numbers could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadSummary()">Try again</app-button></div>
+    <div class="state"><p>The numbers could not be loaded.</p><app-button variant="secondary" size="sm" (click)="load(false)">Try again</app-button></div>
   </app-card>
 } @else if (summary(); as s) {
-  <section class="cards" aria-label="School summary">
-    <a class="stat total" routerLink="/subscriptions">
-      <span class="label">Registered schools</span>
-      <strong>{{ s.totalSchools }}</strong>
-      <small>{{ s.activeSchools }} active, {{ s.totalSchools - s.activeSchools }} inactive</small>
-    </a>
-    <a class="stat trial" routerLink="/subscriptions" [queryParams]="{ status: 'TRIAL' }">
-      <span class="label">On free trial</span>
-      <strong>{{ s.trialCount }}</strong>
-      <small>{{ s.trialExpiredCount }} past the trial end date</small>
-    </a>
-    <a class="stat paying" routerLink="/subscriptions">
-      <span class="label">Paying subscriptions</span>
-      <strong>{{ s.activeCount + s.overdueCount }}</strong>
-      <small>{{ s.cancelledCount }} cancelled</small>
-    </a>
-    @if (s.notSetCount > 0) {
-      <a class="stat notset" routerLink="/subscriptions" [queryParams]="{ status: 'NOT_SET' }">
-        <span class="label">Not set up</span>
-        <strong>{{ s.notSetCount }}</strong>
-        <small>registered before billing was added</small>
+  <!-- ============================================================ six headline numbers -->
+  <section class="cards" [class.loading]="loading()" aria-label="Headline numbers">
+    @for (c of cards(); track c.id) {
+      <a class="stat" [class]="c.tone" [routerLink]="c.link" [queryParams]="c.query">
+        <span class="label">{{ c.label }}</span>
+        <strong>{{ c.value }}</strong>
+        <span class="foot">
+          @if (c.trend; as t) {
+            <span class="trend" [class]="t.tone" [title]="c.trendTitle">
+              @if (t.up === true) { <app-icon name="arrow-up" [size]="12" /> } @else if (t.up === false) { <app-icon name="arrow-down" [size]="12" /> }
+              {{ t.text }}
+            </span>
+          }
+          <small>{{ c.note }}</small>
+        </span>
       </a>
     }
   </section>
-}
 
-<!-- ============================================================ B. Subscription & payment management -->
-<h2 class="section">Subscription &amp; payments</h2>
+  <!-- ============================================================ revenue vs expenses + subscription status -->
+  <div class="grid wide-narrow">
+    <app-card title="Revenue vs expenses (last 12 months)">
+      <app-chart [options]="revenueChart()" label="Revenue and expenses by month for the last 12 months" />
+      <p class="muted">Revenue is subscription payments received. Expenses are company expenses plus salary payouts.</p>
+    </app-card>
 
-@if (summary(); as s) {
-  <section class="cards" aria-label="Subscription summary">
-    <a class="stat trial" routerLink="/subscriptions" [queryParams]="{ status: 'TRIAL' }">
-      <span class="label">Trial</span>
-      <strong>{{ s.trialCount }}</strong>
-      <small>{{ s.trialExpiredCount }} expired</small>
-    </a>
-    <a class="stat active" routerLink="/subscriptions" [queryParams]="{ status: 'ACTIVE' }">
-      <span class="label">Active</span>
-      <strong>{{ s.activeCount }}</strong>
-      <small>paid up</small>
-    </a>
-    <a class="stat overdue" routerLink="/subscriptions" [queryParams]="{ status: 'OVERDUE' }">
-      <span class="label">Overdue</span>
-      <strong>{{ s.overdueCount }}</strong>
-      <small>{{ inr(s.overdueAmount) }} past due</small>
-    </a>
-    <a class="stat collected" routerLink="/invoices">
-      <span class="label">Total collected</span>
-      <strong>{{ inr(s.totalCollected) }}</strong>
-      <small>voided payments excluded</small>
-    </a>
-    <a class="stat outstanding" routerLink="/invoices">
-      <span class="label">Total outstanding</span>
-      <strong>{{ inr(s.totalOutstanding) }}</strong>
-      <small>on unpaid and part-paid invoices</small>
-    </a>
-    <a class="stat renewals" routerLink="/invoices">
-      <span class="label">Renewals in {{ s.upcomingRenewalDays }} days</span>
-      <strong>{{ s.upcomingRenewalCount }}</strong>
-      <small>{{ s.upcomingRenewalCount === 1 ? 'subscription' : 'subscriptions' }} due to renew</small>
-    </a>
-  </section>
+    <app-card title="Subscription status">
+      <app-chart [options]="statusChart()" label="Schools by subscription status" />
+      <ul class="legend">
+        @for (sl of statusSlices; track sl.key) {
+          <li>
+            <a [routerLink]="'/subscriptions'" [queryParams]="{ status: sl.status }"><span class="swatch" [class]="sl.key"></span>{{ sl.label }}<strong>{{ statusCount(sl.key) }}</strong></a>
+          </li>
+        }
+        @if (s.notSetCount > 0) {
+          <li><a [routerLink]="'/subscriptions'" [queryParams]="{ status: 'NOT_SET' }"><span class="swatch notset"></span>Not set up<strong>{{ s.notSetCount }}</strong></a></li>
+        }
+      </ul>
+    </app-card>
+  </div>
 
-  <div class="two">
+  <!-- ============================================================ registrations + payment collection -->
+  <div class="grid halves">
+    <app-card title="School registrations (last 12 months)">
+      <app-chart [options]="registrationChart()" label="Schools registered per month for the last 12 months" />
+    </app-card>
+
+    <app-card title="Payment collection">
+      <p class="muted top">Invoices generated {{ date(s.from) }} to {{ date(s.to) }}, by what has been paid on them.</p>
+      @if (invoiceCount() === 0) {
+        <p class="muted">No invoices were generated in this period.</p>
+      } @else {
+        <div class="bar" role="img" [attr.aria-label]="'Invoiced ' + inr(invoicedTotal()) + ' across ' + invoiceCount() + ' invoices'">
+          @for (b of segments(); track b.key) {
+            @if (b.width > 0) { <span class="seg" [class]="b.key" [style.flex-basis.%]="b.width" [title]="b.label + ': ' + inr(b.amount)"></span> }
+          }
+        </div>
+      }
+      <table class="breakdown">
+        <thead><tr><th>Status</th><th class="num">Invoices</th><th class="num">Invoiced</th><th class="num">Still unpaid</th></tr></thead>
+        <tbody>
+          @for (b of segments(); track b.key) {
+            <tr>
+              <td><span class="swatch" [class]="b.key"></span>{{ b.label }}</td>
+              <td class="num">{{ b.count }}</td>
+              <td class="num">{{ inr(b.amount) }}@if (invoicedTotal() > 0) { <small>{{ b.percent.toFixed(0) }}%</small> }</td>
+              <td class="num">{{ inr(b.outstanding) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </app-card>
+  </div>
+
+  <!-- ============================================================ quick actions + alerts -->
+  <div class="grid halves">
+    <app-card title="Quick actions">
+      <div class="actions">
+        <app-button (click)="addSchool()"><app-icon name="plus" [size]="16" />Add school</app-button>
+        <a class="action" routerLink="/invoices"><app-icon name="file-text" [size]="16" />View payments</a>
+        <a class="action" routerLink="/subscriptions"><app-icon name="star" [size]="16" />Manage subscriptions</a>
+      </div>
+    </app-card>
+
+    <app-card title="Alerts &amp; reminders">
+      <ul class="alerts">
+        <li [class.clear]="s.overdueCount === 0">
+          <a routerLink="/invoices" [queryParams]="{ status: 'Overdue' }">
+            <app-icon [name]="s.overdueCount ? 'triangle-alert' : 'circle-check'" [size]="18" />
+            <span>
+              <strong>Payments overdue</strong>
+              <small>{{ s.overdueCount ? s.overdueCount + (s.overdueCount === 1 ? ' school, ' : ' schools, ') + inr(s.overdueAmount) + ' past due' : 'Nothing is past due' }}</small>
+            </span>
+          </a>
+        </li>
+        <li [class.clear]="s.upcomingRenewalCount === 0">
+          <a routerLink="/invoices">
+            <app-icon [name]="s.upcomingRenewalCount ? 'circle-alert' : 'circle-check'" [size]="18" />
+            <span>
+              <strong>Renewals in {{ s.upcomingRenewalDays }} days</strong>
+              <small>{{ s.upcomingRenewalCount ? s.upcomingRenewalCount + (s.upcomingRenewalCount === 1 ? ' subscription' : ' subscriptions') + ' due to renew' : 'No renewals due' }}</small>
+            </span>
+          </a>
+        </li>
+        <li [class.clear]="s.trialCount === 0">
+          <a routerLink="/subscriptions" [queryParams]="{ status: 'TRIAL' }">
+            <app-icon [name]="s.trialCount ? 'circle-alert' : 'circle-check'" [size]="18" />
+            <span>
+              <strong>Schools on free trial</strong>
+              <small>{{ s.trialCount ? s.trialCount + (s.trialCount === 1 ? ' school' : ' schools') + ', ' + s.trialExpiredCount + ' past the trial end date' : 'No schools on trial' }}</small>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </app-card>
+  </div>
+
+  <!-- ============================================================ upcoming renewals + current pricing (unchanged) -->
+  <div class="grid halves">
     <app-card title="Upcoming renewals">
       @if (s.upcomingRenewals.length === 0) {
         <p class="muted">No renewals in the next {{ s.upcomingRenewalDays }} days.</p>
@@ -106,4 +165,15 @@
       }
     </app-card>
   </div>
+
+  <!-- ============================================================ recent activity -->
+  <app-card [noPadding]="true">
+    <div class="table-head"><h3>Recent school registrations</h3><a routerLink="/schools">View all</a></div>
+    <app-table [columns]="schoolColumns" [rows]="schoolRows()" emptyMessage="No schools registered yet." />
+  </app-card>
+
+  <app-card [noPadding]="true">
+    <div class="table-head"><h3>Recent transactions</h3><a routerLink="/invoices">View all</a></div>
+    <app-table [columns]="transactionColumns" [rows]="transactionRows()" emptyMessage="No payments were received in this period." />
+  </app-card>
 }

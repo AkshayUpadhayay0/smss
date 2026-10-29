@@ -28,7 +28,7 @@ namespace smss_api_service_layer.@interface
     /// <summary>The read side of the Super Admin dashboard (sections A and B).</summary>
     public interface ISuperAdminDashboardService
     {
-        Task<ApiResponse<SuperAdminSummaryDto>> GetSummaryAsync(CancellationToken ct);
+        Task<ApiResponse<SuperAdminSummaryDto>> GetSummaryAsync(DateOnly? from, DateOnly? to, CancellationToken ct);
         Task<ApiResponse<SchoolSubscriptionPagedDto>> ListSchoolsAsync(string? search, string? status, int page, int pageSize, CancellationToken ct);
     }
 }

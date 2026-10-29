@@ -183,6 +183,45 @@ namespace smss_api_db_layer.repository
             return new SubscriptionTotals(trial, running.Count - overdue, overdue, cancelled, withoutRow, trialExpired, collected, outstanding, overdueAmount);
         }
 
+        public Task<int> CountSchoolsCreatedBeforeAsync(DateTime beforeUtc, CancellationToken ct) =>
+            TenantSchools().CountAsync(s => s.CreatedAt < beforeUtc, ct);
+
+        public Task<List<DateTime>> GetSchoolCreatedAtAsync(DateTime fromUtc, DateTime toExclusiveUtc, CancellationToken ct) =>
+            TenantSchools().Where(s => s.CreatedAt >= fromUtc && s.CreatedAt < toExclusiveUtc).Select(s => s.CreatedAt).ToListAsync(ct);
+
+        public async Task<List<RecentSchoolRow>> GetRecentSchoolsAsync(int take, CancellationToken ct)
+        {
+            var rows = await (from s in TenantSchools()
+                              join b in _db.LutBoardTypes.AsNoTracking() on s.BoardTypeId equals (long?)b.BoardTypeId into bg
+                              from b in bg.DefaultIfEmpty()
+                              join t in _db.LutSchoolTypes.AsNoTracking() on s.SchoolTypeId equals (long?)t.SchoolTypeId into tg
+                              from t in tg.DefaultIfEmpty()
+                              join st in _db.LutStatus.AsNoTracking() on s.SchoolStatusId equals (int?)st.Sid into sg
+                              from st in sg.DefaultIfEmpty()
+                              orderby s.CreatedAt descending, s.SchoolId descending
+                              select new { s.SchoolId, s.SchoolCode, s.SchoolName, Board = b.BoardName, Type = t.SchoolTypeName, s.CreatedAt, Status = st.Sname })
+                             .Take(take).ToListAsync(ct);
+            return rows.Select(r => new RecentSchoolRow(r.SchoolId, r.SchoolCode, r.SchoolName, r.Board, r.Type, r.CreatedAt, r.Status)).ToList();
+        }
+
+        public async Task<List<RecentPaymentRow>> GetRecentPaymentsAsync(DateTime fromUtc, DateTime toExclusiveUtc, int take, CancellationToken ct)
+        {
+            var rows = await (from p in _db.SubscriptionPayments.AsNoTracking()
+                              join s in _db.Schools.AsNoTracking() on p.SchoolId equals s.SchoolId
+                              where p.PaymentDate >= fromUtc && p.PaymentDate < toExclusiveUtc
+                              orderby p.PaymentDate descending, p.PaymentId descending
+                              select new { p.PaymentId, p.SchoolId, s.SchoolName, p.PaymentDate, p.Amount, p.PaymentMode, p.ReferenceNumber, p.Status })
+                             .Take(take).ToListAsync(ct);
+            return rows.Select(r => new RecentPaymentRow(r.PaymentId, r.SchoolId, r.SchoolName, r.PaymentDate, r.Amount, r.PaymentMode, r.ReferenceNumber, r.Status)).ToList();
+        }
+
+        public async Task<List<InvoiceAmounts>> GetInvoiceAmountsAsync(DateTime fromUtc, DateTime toExclusiveUtc, CancellationToken ct)
+        {
+            var rows = await InvoiceQuery().Where(x => x.Invoice.CreatedAt >= fromUtc && x.Invoice.CreatedAt < toExclusiveUtc)
+                .Select(x => new { x.Invoice.NetAmount, x.Invoice.DueDate, x.Paid }).ToListAsync(ct);
+            return rows.Select(r => new InvoiceAmounts(r.NetAmount, r.DueDate, r.Paid)).ToList();
+        }
+
         public async Task<(List<RenewalRow> Rows, int Total)> GetUpcomingRenewalsAsync(DateOnly today, DateOnly until, int take, CancellationToken ct)
         {
             var q = from sub in _db.SchoolSubscriptions.AsNoTracking()

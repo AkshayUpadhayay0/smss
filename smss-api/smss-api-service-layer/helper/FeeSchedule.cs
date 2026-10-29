@@ -146,6 +146,10 @@ namespace smss_api_service_layer.helper
             return India == null ? DateTime.SpecifyKind(local, DateTimeKind.Utc) : DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(local, India), DateTimeKind.Utc);
         }
 
+        /// <summary>The India calendar date of a stored UTC instant (what the Super Admin sees as the day something happened).</summary>
+        public static DateOnly DateOf(DateTime utc) =>
+            DateOnly.FromDateTime(India == null ? utc : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), India));
+
         public static DateOnly Today() => DateOnly.FromDateTime(India == null ? DateTime.UtcNow : TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, India));
 
         /// <summary>The wall-clock time in India right now (compared with period start / end times, which are school-local).</summary>

@@ -36,6 +36,16 @@ namespace smss_api_service_layer.helper
             new[] { Pending, Paid, Overdue }.FirstOrDefault(s => string.Equals(s, value?.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Dashboard payment-collection buckets: derived from invoices and Active payments, never stored.</summary>
+    public static class CollectionBuckets
+    {
+        public const string Paid = "Paid";
+        public const string PartiallyPaid = "PartiallyPaid";
+        public const string Pending = "Pending";
+        public const string Overdue = "Overdue";
+        public static readonly string[] All = { Paid, Pending, PartiallyPaid, Overdue };
+    }
+
     public static class SubscriptionRules
     {
         /// <summary>Last day of a cycle that starts on <paramref name="start"/>. The next cycle starts the day after, so cycles never overlap or leave a gap.</summary>
@@ -63,6 +73,38 @@ namespace smss_api_service_layer.helper
             paidAmount >= netAmount ? InvoiceStatuses.Paid
             : dueDate < today ? InvoiceStatuses.Overdue
             : InvoiceStatuses.Pending;
+
+        /// <summary>
+        /// Payment-collection bucket of an invoice. Same order as the fee module: fully covered = Paid; otherwise past due = Overdue (even if part-paid, the
+        /// balance is late); otherwise some money in = Partially Paid; otherwise Pending.
+        /// </summary>
+        public static string CollectionBucket(decimal netAmount, decimal paidAmount, DateOnly dueDate, DateOnly today) =>
+            paidAmount >= netAmount ? CollectionBuckets.Paid
+            : dueDate < today ? CollectionBuckets.Overdue
+            : paidAmount > 0 ? CollectionBuckets.PartiallyPaid
+            : CollectionBuckets.Pending;
+
+        /// <summary>
+        /// The period the trend is compared with. A month-to-date range (starts on the 1st, ends in that month) is compared with the same days of the previous
+        /// month (capped at its length); any other range with the equal-length range just before it.
+        /// </summary>
+        public static (DateOnly From, DateOnly To) PreviousPeriod(DateOnly from, DateOnly to)
+        {
+            var days = to.DayNumber - from.DayNumber + 1;
+            if (from.Day == 1 && to.Year == from.Year && to.Month == from.Month)
+            {
+                var prevFrom = from.AddMonths(-1);
+                var prevEnd = new DateOnly(prevFrom.Year, prevFrom.Month, DateTime.DaysInMonth(prevFrom.Year, prevFrom.Month));
+                var prevTo = prevFrom.AddDays(days - 1);
+                return (prevFrom, prevTo > prevEnd ? prevEnd : prevTo);
+            }
+            var end = from.AddDays(-1);
+            return (end.AddDays(-(days - 1)), end);
+        }
+
+        /// <summary>Change from <paramref name="previous"/> to <paramref name="current"/> as a percentage of the previous size; null when there is nothing to compare with (previous is 0).</summary>
+        public static decimal? TrendPercent(decimal current, decimal previous) =>
+            previous == 0 ? null : Math.Round((current - previous) / Math.Abs(previous) * 100m, 1, MidpointRounding.AwayFromZero);
 
         /// <summary>
         /// The state shown to the Super Admin. Nothing flips a subscription to OVERDUE in the database (no scheduler), so an ACTIVE (or OVERDUE) subscription

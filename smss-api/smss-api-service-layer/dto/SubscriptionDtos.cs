@@ -195,6 +195,100 @@ namespace smss_api_service_layer.dto
         /// <summary>The next few, soonest first (UpcomingRenewalCount has the full number).</summary>
         public List<UpcomingRenewalDto> UpcomingRenewals { get; set; } = new();
         public SubscriptionPricingDto? Pricing { get; set; }
+
+        // C. Period view (from / to, default the current month to date) and the fixed trailing-12-month charts. The Alerts panel reads OverdueCount,
+        // OverdueAmount, UpcomingRenewalCount and TrialCount above; the status donut reads Trial / Active / Overdue / Cancelled above.
+        public DateOnly From { get; set; }
+        public DateOnly To { get; set; }
+        public DateOnly PreviousFrom { get; set; }
+        public DateOnly PreviousTo { get; set; }
+        public DashboardStatsDto Stats { get; set; } = new();
+        /// <summary>Last 12 months including this one, whatever From / To say.</summary>
+        public List<RevenueExpenseMonthDto> RevenueVsExpenses { get; set; } = new();
+        public List<MonthCountDto> SchoolRegistrations { get; set; } = new();
+        /// <summary>Always the four buckets, in order Paid, Pending, PartiallyPaid, Overdue.</summary>
+        public List<CollectionBucketDto> PaymentCollection { get; set; } = new();
+        public List<RecentSchoolDto> RecentSchools { get; set; } = new();
+        public List<RecentTransactionDto> RecentTransactions { get; set; } = new();
+    }
+
+    /// <summary>A headline number for the selected period, with the same measure over the previous period. TrendPercent is null when there is no comparable history.</summary>
+    public class DashboardStatDto
+    {
+        public decimal Value { get; set; }
+        public decimal? PreviousValue { get; set; }
+        public decimal? TrendPercent { get; set; }
+    }
+
+    public class DashboardStatsDto
+    {
+        /// <summary>Customer schools registered by the end of the period (trend: growth since the end of the previous period).</summary>
+        public DashboardStatDto TotalSchools { get; set; } = new();
+        /// <summary>Running subscriptions (Active plus Overdue) right now. No trend: subscription status is not kept as history.</summary>
+        public DashboardStatDto ActiveSubscriptions { get; set; } = new();
+        /// <summary>ActiveSubscriptions as a percentage of all schools.</summary>
+        public decimal ActiveSubscriptionsPercentOfTotal { get; set; }
+        /// <summary>Subscription payments received in the period (voided excluded).</summary>
+        public DashboardStatDto PaymentsCollected { get; set; } = new();
+        /// <summary>Owed on unpaid and part-paid invoices right now. No trend: not kept as history.</summary>
+        public DashboardStatDto OutstandingPayments { get; set; } = new();
+        /// <summary>Company expenses plus salary payouts in the period.</summary>
+        public DashboardStatDto Expenses { get; set; } = new();
+        /// <summary>Of Expenses: the salary payouts.</summary>
+        public decimal SalaryPayouts { get; set; }
+        /// <summary>Revenue minus expenses minus salary payouts (the Company Finance net).</summary>
+        public DashboardStatDto CashSurplus { get; set; } = new();
+    }
+
+    public class RevenueExpenseMonthDto
+    {
+        public DateOnly Month { get; set; }
+        public string Label { get; set; } = null!;
+        public decimal Revenue { get; set; }
+        /// <summary>Company expenses plus salary payouts.</summary>
+        public decimal Expenses { get; set; }
+    }
+
+    public class MonthCountDto
+    {
+        public DateOnly Month { get; set; }
+        public string Label { get; set; } = null!;
+        public int Count { get; set; }
+    }
+
+    /// <summary>Invoices generated in the period, by derived payment state. Amount = invoiced (net); Outstanding = still unpaid on them.</summary>
+    public class CollectionBucketDto
+    {
+        /// <summary>Paid, Pending, PartiallyPaid or Overdue.</summary>
+        public string Key { get; set; } = null!;
+        public int Count { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Outstanding { get; set; }
+    }
+
+    public class RecentSchoolDto
+    {
+        public string SchoolId { get; set; } = null!;
+        public string SchoolCode { get; set; } = null!;
+        public string SchoolName { get; set; } = null!;
+        public string? BoardType { get; set; }
+        public string? SchoolType { get; set; }
+        public DateOnly RegisteredOn { get; set; }
+        /// <summary>The school's own status (Active / Inactive), not its subscription.</summary>
+        public string? Status { get; set; }
+    }
+
+    public class RecentTransactionDto
+    {
+        public long PaymentId { get; set; }
+        public string? ReferenceNumber { get; set; }
+        public string SchoolId { get; set; } = null!;
+        public string SchoolName { get; set; } = null!;
+        public DateOnly PaymentDate { get; set; }
+        public decimal Amount { get; set; }
+        public string PaymentMode { get; set; } = null!;
+        /// <summary>Active or Voided.</summary>
+        public string Status { get; set; } = null!;
     }
 
     public class UpcomingRenewalDto

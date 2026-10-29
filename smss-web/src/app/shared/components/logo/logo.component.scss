@@ -20,5 +20,5 @@
   font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   letter-spacing: 0.02em;
-  color: var(--color-text);
+  color: var(--logo-text, var(--color-text));
 }

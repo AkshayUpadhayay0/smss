@@ -18,9 +18,10 @@ namespace smss_api.Controllers
 
         private IActionResult Reply<T>(ApiResponse<T> response) => StatusCode(response.StatusCode, response);
 
-        // GET api/SuperAdminDashboard/summary
+        // GET api/SuperAdminDashboard/summary?from=yyyy-MM-dd&to=yyyy-MM-dd   (default: the current month to date)
         [HttpGet("summary")]
-        public async Task<IActionResult> Summary(CancellationToken ct) => Reply(await _service.GetSummaryAsync(ct));
+        public async Task<IActionResult> Summary([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) =>
+            Reply(await _service.GetSummaryAsync(from, to, ct));
 
         // GET api/SuperAdminDashboard/schools?search=&status=TRIAL|ACTIVE|OVERDUE|CANCELLED|NOT_SET&page=1&pageSize=10
         [HttpGet("schools")]

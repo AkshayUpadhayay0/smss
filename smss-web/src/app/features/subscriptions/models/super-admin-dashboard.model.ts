@@ -20,6 +20,73 @@ export interface UpcomingRenewal {
   nextRenewalDate: string;
 }
 
+/** A headline number for the selected period with the same measure over the previous period; trendPercent is null when there is nothing to compare with. */
+export interface DashboardStat {
+  value: number;
+  previousValue: number | null;
+  trendPercent: number | null;
+}
+
+export interface DashboardStats {
+  totalSchools: DashboardStat;
+  /** Running subscriptions (active + overdue) now; no trend, status is not kept as history. */
+  activeSubscriptions: DashboardStat;
+  activeSubscriptionsPercentOfTotal: number;
+  paymentsCollected: DashboardStat;
+  /** Owed on unpaid and part-paid invoices now; no trend. */
+  outstandingPayments: DashboardStat;
+  /** Company expenses plus salary payouts. */
+  expenses: DashboardStat;
+  salaryPayouts: number;
+  /** Revenue - expenses - salary payouts. */
+  cashSurplus: DashboardStat;
+}
+
+export interface RevenueExpenseMonth {
+  month: string;
+  label: string;
+  revenue: number;
+  /** Expenses plus salary payouts. */
+  expenses: number;
+}
+
+export interface MonthCount {
+  month: string;
+  label: string;
+  count: number;
+}
+
+export type CollectionKey = 'Paid' | 'Pending' | 'PartiallyPaid' | 'Overdue';
+
+/** Invoices generated in the period by payment state. amount = invoiced, outstanding = still unpaid on them. */
+export interface CollectionBucket {
+  key: CollectionKey;
+  count: number;
+  amount: number;
+  outstanding: number;
+}
+
+export interface RecentSchool {
+  schoolId: string;
+  schoolCode: string;
+  schoolName: string;
+  boardType: string | null;
+  schoolType: string | null;
+  registeredOn: string;
+  status: string | null;
+}
+
+export interface RecentTransaction {
+  paymentId: number;
+  referenceNumber: string | null;
+  schoolId: string;
+  schoolName: string;
+  paymentDate: string;
+  amount: number;
+  paymentMode: string;
+  status: 'Active' | 'Voided';
+}
+
 export interface SuperAdminSummary {
   asOf: string;
   totalSchools: number;
@@ -39,6 +106,20 @@ export interface SuperAdminSummary {
   upcomingRenewalCount: number;
   upcomingRenewals: UpcomingRenewal[];
   pricing: SubscriptionPricing | null;
+
+  /** The period the stats, collection bar and transactions cover (default: the current month to date) and the one the trends compare with. */
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  stats: DashboardStats;
+  /** Fixed trailing 12 months, whatever from / to say. */
+  revenueVsExpenses: RevenueExpenseMonth[];
+  schoolRegistrations: MonthCount[];
+  /** Always the four buckets, in order Paid, Pending, PartiallyPaid, Overdue. */
+  paymentCollection: CollectionBucket[];
+  recentSchools: RecentSchool[];
+  recentTransactions: RecentTransaction[];
 }
 
 export interface SchoolSubscriptionRow {

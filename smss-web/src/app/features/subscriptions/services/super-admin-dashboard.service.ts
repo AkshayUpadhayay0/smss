@@ -19,8 +19,12 @@ import {
 export class SuperAdminDashboardService {
   private readonly api = inject(ApiService);
 
-  summary(): Observable<SuperAdminSummary> {
-    return this.api.get<SuperAdminSummary>('/api/SuperAdminDashboard/summary');
+  /** Omit both dates for the server's default: the current month to date. */
+  summary(from = '', to = ''): Observable<SuperAdminSummary> {
+    const params: Record<string, string> = {};
+    if (from) params['from'] = from;
+    if (to) params['to'] = to;
+    return this.api.get<SuperAdminSummary>('/api/SuperAdminDashboard/summary', params);
   }
 
   schools(search: string, status: SubscriptionStatus | '', page: number, pageSize: number): Observable<Paged<SchoolSubscriptionRow>> {

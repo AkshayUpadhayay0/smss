@@ -15,6 +15,13 @@ namespace smss_api_db_layer.@interface
     /// <summary>Students that are billed, plus the teacher / staff head count that is shown for information only.</summary>
     public record SchoolHeadcount(int Students, int Teachers, int Staff);
 
+    public record RecentSchoolRow(string SchoolId, string SchoolCode, string SchoolName, string? BoardName, string? SchoolTypeName, DateTime CreatedAt, string? StatusName);
+
+    public record RecentPaymentRow(long PaymentId, string SchoolId, string SchoolName, DateTime PaymentDate, decimal Amount, string PaymentMode, string? ReferenceNumber, string Status);
+
+    /// <summary>One invoice's size, due date and what Active payments have covered, for classifying it on the dashboard.</summary>
+    public record InvoiceAmounts(decimal NetAmount, DateOnly DueDate, decimal Paid);
+
     public record RenewalRow(string SchoolId, string SchoolName, string? BillingFrequency, DateOnly NextRenewalDate);
 
     public interface ISubscriptionRepository
@@ -56,6 +63,15 @@ namespace smss_api_db_layer.@interface
         // dashboard
         Task<int> CountSchoolsAsync(int? statusId, CancellationToken ct);
         Task<SubscriptionTotals> GetTotalsAsync(DateOnly today, CancellationToken ct);
+        /// <summary>Customer schools registered before this instant.</summary>
+        Task<int> CountSchoolsCreatedBeforeAsync(DateTime beforeUtc, CancellationToken ct);
+        /// <summary>When each customer school registered, in [fromUtc, toExclusiveUtc). The service buckets them by India month.</summary>
+        Task<List<DateTime>> GetSchoolCreatedAtAsync(DateTime fromUtc, DateTime toExclusiveUtc, CancellationToken ct);
+        Task<List<RecentSchoolRow>> GetRecentSchoolsAsync(int take, CancellationToken ct);
+        /// <summary>Latest payments (voided ones too, with their status) dated in [fromUtc, toExclusiveUtc).</summary>
+        Task<List<RecentPaymentRow>> GetRecentPaymentsAsync(DateTime fromUtc, DateTime toExclusiveUtc, int take, CancellationToken ct);
+        /// <summary>Invoices generated in [fromUtc, toExclusiveUtc).</summary>
+        Task<List<InvoiceAmounts>> GetInvoiceAmountsAsync(DateTime fromUtc, DateTime toExclusiveUtc, CancellationToken ct);
         Task<(List<RenewalRow> Rows, int Total)> GetUpcomingRenewalsAsync(DateOnly today, DateOnly until, int take, CancellationToken ct);
         Task<(List<SchoolSubscriptionRow> Rows, int Total)> ListSchoolSubscriptionsAsync(string? search, string? status, DateOnly today, int page, int pageSize, CancellationToken ct);
         /// <summary>Live head counts per school: billable students (active, current academic year) and, for information, active teachers and staff.</summary>
