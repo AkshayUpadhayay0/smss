@@ -14,6 +14,8 @@ const dash = (o: Partial<TeacherDashboard> = {}): TeacherDashboard => ({
   absentToday: 3,
   notMarkedYet: false,
   unmarkedSections: 0,
+  upcomingEvents: [],
+  recentNotices: [],
   partsUnavailable: [],
   ...o,
 });
