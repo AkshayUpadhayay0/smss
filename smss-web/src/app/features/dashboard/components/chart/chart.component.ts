@@ -28,6 +28,7 @@ import type { ApexOptions } from 'ng-apexcharts';
         [legend]="o.legend"
         [tooltip]="o.tooltip"
         [plotOptions]="o.plotOptions"
+        [markers]="o.markers"
       />
     </div>
   `,
