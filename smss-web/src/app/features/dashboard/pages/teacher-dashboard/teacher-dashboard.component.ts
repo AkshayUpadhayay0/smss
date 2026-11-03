@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
 import { CardComponent, IconComponent, IconName, PageHeaderComponent } from '../../../../shared/components';
+import { describeWhen } from '../../../calendar/utils/calendar-dates';
+import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
 import { TeacherDashboard } from '../../models/teacher-dashboard.model';
 import { TeacherDashboardService } from '../../services/teacher-dashboard.service';
 import { TeacherStat, buildTeacherStats, sectionLabel } from '../../utils/teacher-dashboard-format';
@@ -20,7 +23,7 @@ const STAT_ICONS: Record<TeacherStat['key'], IconName> = {
  */
 @Component({
   selector: 'app-teacher-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent],
+  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './teacher-dashboard.component.scss',
   templateUrl: './teacher-dashboard.component.html',
@@ -34,6 +37,9 @@ export class TeacherDashboardComponent implements OnInit {
   protected readonly photoUrl = toUploadUrl;
   protected readonly sectionLabel = sectionLabel;
   protected readonly icons = STAT_ICONS;
+  protected readonly published = publishedLabel;
+  protected readonly preview = snippet;
+  protected readonly when = describeWhen;
 
   protected readonly data = signal<TeacherDashboard | null>(null);
   protected readonly loading = signal(true);
@@ -51,6 +57,9 @@ export class TeacherDashboardComponent implements OnInit {
 
   protected readonly classTeacherDown = computed(() => this.data()?.partsUnavailable.includes('classTeacherOf') ?? false);
   protected readonly subjectsDown = computed(() => this.data()?.partsUnavailable.includes('subjectsTaught') ?? false);
+
+  protected readonly eventsDown = computed(() => this.data()?.partsUnavailable.includes('upcomingEvents') ?? false);
+  protected readonly noticesDown = computed(() => this.data()?.partsUnavailable.includes('recentNotices') ?? false);
 
   ngOnInit(): void {
     this.service

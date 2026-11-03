@@ -21,6 +21,8 @@ const dashboard = (o: Partial<TeacherDashboard> = {}): TeacherDashboard => ({
   absentToday: 3,
   notMarkedYet: false,
   unmarkedSections: 0,
+  upcomingEvents: [],
+  recentNotices: [],
   partsUnavailable: [],
   ...o,
 });
@@ -102,6 +104,39 @@ describe('TeacherDashboardComponent', () => {
       openWith(dashboard({ subjectsTaught: [] }));
       expect(text()).toContain('No subjects assigned yet.');
       expect(text()).not.toContain('You are not currently a class teacher.');
+    });
+  });
+
+  describe('Notice Board and Upcoming Events', () => {
+    const notice = (id: number, title: string, isRead = true) => ({ noticeId: id, title, body: `Body of ${title}`, audience: 'ALL' as const, createdBy: 1, createdByName: 'Admin', publishedAt: '2026-11-02T04:00:00Z', updatedAt: '2026-11-02T04:00:00Z', isRead, statusName: 'Active' });
+    const event = (id: number, title: string, o: object = {}) => ({ eventId: id, academicYearId: 1, eventTitle: title, startDate: '2026-11-08', endDate: '2026-11-10', isAllDay: true, eventCategoryId: 1, categoryName: 'Holiday', categoryCode: 'HOLIDAY', colorHex: '#22c55e', isOngoing: false, ...o });
+
+    it('lists the latest notices and the upcoming events the server sent, with links to the full pages', () => {
+      openWith(dashboard({ recentNotices: [notice(1, 'Welcome back', false), notice(2, 'Staff meeting')], upcomingEvents: [event(1, 'Diwali Holiday'), event(2, 'PTM', { categoryName: 'PTM', isOngoing: true })] }));
+      const notices = [...el().querySelectorAll('[aria-label="Latest notices"] li')];
+      expect(notices).toHaveLength(2);
+      expect(notices[0].textContent).toContain('Welcome back');
+      expect(notices[0].textContent).toContain('New');
+      expect(notices[1].textContent).not.toContain('New');
+      const events = [...el().querySelectorAll('[aria-label="Upcoming events"] li')];
+      expect(events.map((e) => e.querySelector('strong')?.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Diwali Holiday', 'PTM Ongoing']);
+      expect(events[0].textContent).toContain('Holiday');
+      expect(el().querySelector('a[href="/notices/my"]')).not.toBeNull();
+      expect(el().querySelector('a[href="/calendar"]')).not.toBeNull();
+    });
+
+    it('says so when there are none', () => {
+      openWith(dashboard());
+      expect(text()).toContain('No notices for you.');
+      expect(text()).toContain('No upcoming events.');
+    });
+
+    it('shows "could not be loaded" for a failed part only, without blanking the page', () => {
+      openWith(dashboard({ partsUnavailable: ['recentNotices'] }));
+      expect(el().querySelector('[aria-label="Latest notices"]')).toBeNull();
+      expect(text()).toContain('This could not be loaded.');
+      expect(text()).toContain('No upcoming events.');
+      expect(statValue('Total Students')).toBe('30');
     });
   });
 

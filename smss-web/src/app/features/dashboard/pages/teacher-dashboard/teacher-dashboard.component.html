@@ -64,5 +64,47 @@
         </span>
       </div>
     }
+    <!-- the same two reads the student dashboard shows: the next calendar events and the latest notices for the teacher's own audience -->
+    <app-card title="Notice Board" class="s6">
+      @if (noticesDown()) {
+        <p class="note">This could not be loaded.</p>
+      } @else if (d.recentNotices.length === 0) {
+        <p class="note">No notices for you.</p>
+      } @else {
+        <ul class="rows notices" aria-label="Latest notices">
+          @for (n of d.recentNotices; track n.noticeId) {
+            <li>
+              <div class="main">
+                <strong>{{ n.title }} @if (!n.isRead) { <span class="new">New</span> }</strong>
+                <span class="sub">{{ preview(n.body, 110) }}</span>
+              </div>
+              <span class="when">{{ published(n.publishedAt) }}</span>
+            </li>
+          }
+        </ul>
+      }
+      <a class="more" routerLink="/notices/my">View all notices</a>
+    </app-card>
+
+    <app-card title="Upcoming Events" class="s6">
+      @if (eventsDown()) {
+        <p class="note">This could not be loaded.</p>
+      } @else if (d.upcomingEvents.length === 0) {
+        <p class="note">No upcoming events.</p>
+      } @else {
+        <ul class="rows" aria-label="Upcoming events">
+          @for (e of d.upcomingEvents; track e.eventId) {
+            <li>
+              <span class="dot" [style.background]="e.colorHex" aria-hidden="true"></span>
+              <div class="main">
+                <strong>{{ e.eventTitle }} @if (e.isOngoing) { <span class="new">Ongoing</span> }</strong>
+                <span class="sub">{{ when(e) }} · {{ e.categoryName }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+      <a class="more" routerLink="/calendar">Open calendar</a>
+    </app-card>
   </div>
 }

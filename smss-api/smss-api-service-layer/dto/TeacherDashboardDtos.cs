@@ -26,6 +26,8 @@ namespace smss_api_service_layer.dto
         public const string Students = "totalStudents";
         public const string Fees = "feePending";
         public const string Attendance = "attendance";
+        public const string Events = "upcomingEvents";
+        public const string Notices = "recentNotices";
     }
 
     /// <summary>
@@ -50,6 +52,10 @@ namespace smss_api_service_layer.dto
         public bool NotMarkedYet { get; set; }
         /// <summary>With several sections, how many of them are still unmarked today (0 when all are marked, or when none is: then NotMarkedYet is set).</summary>
         public int UnmarkedSections { get; set; }
+        /// <summary>The next 5 calendar events from today (the Calendar's /upcoming read).</summary>
+        public List<SchoolEventDto> UpcomingEvents { get; set; } = new();
+        /// <summary>The latest 5 notices for the teacher's own audience tier (the Notices /my read).</summary>
+        public List<NoticeDto> RecentNotices { get; set; } = new();
         public List<string> PartsUnavailable { get; set; } = new();
     }
 }

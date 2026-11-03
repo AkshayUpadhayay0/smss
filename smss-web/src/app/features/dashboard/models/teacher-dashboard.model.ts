@@ -1,3 +1,6 @@
+import { SchoolEvent } from '../../calendar/models/calendar.model';
+import { Notice } from '../../notices/models/notice.model';
+
 /** GET /api/TeacherDashboard (Teacher role only). Mirrors TeacherDashboardDtos.cs. */
 
 export interface TeacherProfile {
@@ -17,7 +20,7 @@ export interface TeacherSection {
 }
 
 /** Parts the server could not load; the screen shows "Unavailable" for them instead of a wrong number. */
-export type TeacherDashboardPart = 'classTeacherOf' | 'subjectsTaught' | 'totalStudents' | 'feePending' | 'attendance';
+export type TeacherDashboardPart = 'classTeacherOf' | 'subjectsTaught' | 'totalStudents' | 'feePending' | 'attendance' | 'upcomingEvents' | 'recentNotices';
 
 export interface TeacherDashboard {
   today: string;
@@ -35,5 +38,9 @@ export interface TeacherDashboard {
   notMarkedYet: boolean;
   /** With several sections: how many are still unmarked today. */
   unmarkedSections: number;
+  /** The next 5 calendar events from today. */
+  upcomingEvents: SchoolEvent[];
+  /** The latest 5 notices for the teacher's own audience tier. */
+  recentNotices: Notice[];
   partsUnavailable: TeacherDashboardPart[];
 }

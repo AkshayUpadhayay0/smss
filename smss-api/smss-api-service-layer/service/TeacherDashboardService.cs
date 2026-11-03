@@ -10,23 +10,28 @@ namespace smss_api_service_layer.service
     {
         private const string PresentCode = "PRESENT";
         private const string AbsentCode = "ABSENT";
+        private const int RecentCount = 5;
 
         private readonly ITimetableRepository _timetableRepo;
         private readonly IEmployeeRepository _employees;
         private readonly ITimetableService _timetable;
         private readonly IClassTeacherService _classTeachers;
         private readonly IAttendanceService _attendance;
+        private readonly ISchoolEventService _events;
+        private readonly INoticeService _notices;
         private readonly ITeacherDashboardRepository _repo;
         private readonly ILogger<TeacherDashboardService> _logger;
 
         public TeacherDashboardService(ITimetableRepository timetableRepo, IEmployeeRepository employees, ITimetableService timetable, IClassTeacherService classTeachers,
-            IAttendanceService attendance, ITeacherDashboardRepository repo, ILogger<TeacherDashboardService> logger)
+            IAttendanceService attendance, ISchoolEventService events, INoticeService notices, ITeacherDashboardRepository repo, ILogger<TeacherDashboardService> logger)
         {
             _timetableRepo = timetableRepo;
             _employees = employees;
             _timetable = timetable;
             _classTeachers = classTeachers;
             _attendance = attendance;
+            _events = events;
+            _notices = notices;
             _repo = repo;
             _logger = logger;
         }
@@ -51,6 +56,11 @@ namespace smss_api_service_layer.service
                         DesignationName = detail.DesignationName, DepartmentName = detail.DepartmentName, PhotoUrl = detail.Employee.PhotoPath
                     }
                 };
+
+                // The same two reads the Student dashboard composes: the calendar's /upcoming and the notices' /my (a teacher's own audience tier). Filled first so they
+                // survive the early returns below (a teacher with no timetable or no class still sees the school's events and notices).
+                dto.UpcomingEvents = Part(await _events.GetUpcomingAsync(schoolId, RecentCount, ct), TeacherDashboardParts.Events, dto)?.Take(RecentCount).ToList() ?? new();
+                dto.RecentNotices = Part(await _notices.GetMyAsync(schoolId, new NoticeCaller(callerUserId, false, false), false, null, null, ct), TeacherDashboardParts.Notices, dto)?.Take(RecentCount).ToList() ?? new();
 
                 // One DbContext per request, so these run one after another. Each part is guarded on its own: a failure leaves that part empty / null and names it in PartsUnavailable.
                 var grid = Part(await _timetable.GetMyGridAsync(schoolId, callerUserId, null, ct), TeacherDashboardParts.Subjects, dto);
