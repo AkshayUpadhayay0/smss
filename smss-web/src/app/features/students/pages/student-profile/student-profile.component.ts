@@ -42,6 +42,11 @@ export class StudentProfileComponent implements OnInit {
 
   /** Bound from the :studentId route param (withComponentInputBinding). */
   readonly studentId = input.required<string>();
+  /**
+   * Restricted (read-only) mode, set by the /my-students/:studentId route data (a Teacher looking at a student of their own class): loads from the narrow
+   * my-class endpoint and shows the Profile only, with no photo change, no login, no Aadhaar and no Fees tab.
+   */
+  readonly restricted = input(false);
 
   protected readonly student = signal<StudentProfile | null>(null);
   protected readonly loading = signal(true);
@@ -62,7 +67,7 @@ export class StudentProfileComponent implements OnInit {
   });
 
   protected readonly breadcrumbs = computed(() => [
-    { label: 'Students', link: '/students' },
+    this.restricted() ? { label: 'My Students', link: '/my-students' } : { label: 'Students', link: '/students' },
     { label: this.student()?.fullName ?? 'Student' },
   ]);
 
@@ -91,12 +96,27 @@ export class StudentProfileComponent implements OnInit {
    * An Accountant, who is here to collect and void payments, gets the student summary and the Fees tab only.
    */
   protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
-  protected readonly tab = signal<'profile' | 'fees'>(this.isSchoolAdmin() ? 'profile' : 'fees');
-  protected readonly feesOpened = signal(!this.isSchoolAdmin());
+  /** The Profile tab is shown to a School Admin and, read-only, in restricted mode; everyone else (an Accountant) gets the Fees tab only. */
+  protected readonly showProfile = computed(() => this.restricted() || this.isSchoolAdmin());
+  /** Fees are never part of the restricted view. */
+  protected readonly showFees = computed(() => !this.restricted());
+  /**
+   * Derived, not initialised once: the route binds `restricted` AFTER construction, so a field initialiser would still see false and open the Fees tab
+   * (and call the fee endpoints) for a Teacher. The tab the user picked wins; otherwise Profile when it exists, else Fees. The Fees tab is created only when first
+   * opened, so it loads on demand.
+   */
+  private readonly pickedTab = signal<'profile' | 'fees' | null>(null);
+  private readonly feesVisited = signal(false);
+  protected readonly tab = computed<'profile' | 'fees'>(() => {
+    const picked = this.pickedTab();
+    if (picked && (picked === 'profile' ? this.showProfile() : this.showFees())) return picked;
+    return this.showProfile() ? 'profile' : 'fees';
+  });
+  protected readonly feesOpened = computed(() => this.showFees() && (this.feesVisited() || !this.showProfile()));
 
   protected selectTab(tab: 'profile' | 'fees'): void {
-    this.tab.set(tab);
-    if (tab === 'fees') this.feesOpened.set(true);
+    this.pickedTab.set(tab);
+    if (tab === 'fees') this.feesVisited.set(true);
   }
 
   protected readonly loginDialogOpen = signal(false);
@@ -126,8 +146,7 @@ export class StudentProfileComponent implements OnInit {
     }
     this.loading.set(true);
     this.loadFailed.set(false);
-    this.students
-      .getProfile(id)
+    (this.restricted() ? this.students.getMyClassStudent(id) : this.students.getProfile(id))
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (s) => this.student.set(s),
@@ -136,9 +155,13 @@ export class StudentProfileComponent implements OnInit {
   }
 
   /** Where "back" goes: the student list for a School Admin; the class report they came from for anyone else. */
-  protected readonly backLabel = computed(() => (this.isSchoolAdmin() ? 'Back to Students' : 'Back to Class Report'));
+  protected readonly backLabel = computed(() => (this.restricted() ? 'Back to My Students' : this.isSchoolAdmin() ? 'Back to Students' : 'Back to Class Report'));
 
   protected back(): void {
+    if (this.restricted()) {
+      void this.router.navigate(['/my-students']);
+      return;
+    }
     void this.router.navigate([this.isSchoolAdmin() ? '/students' : '/fee-reports/class'], { queryParams: this.filterParams() });
   }
 }

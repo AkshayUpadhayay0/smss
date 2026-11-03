@@ -5,7 +5,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
 import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
-import { StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
+import { MyClass, StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
 
@@ -23,6 +23,16 @@ export class StudentService {
     const params: Record<string, string | number> = { academicYearId, classSectionId };
     if (feeStatus && feeStatus !== 'All') params['feeStatus'] = feeStatus; // filtered on the server
     return this.withSchool((s) => this.api.get<StudentListItem[]>(`${BASE}/${s}`, params)).pipe(map((l) => l ?? []));
+  }
+
+  /** A Teacher's OWN students (class-teacher sections + sections they teach in). The server takes the school and the teacher from the token: nothing is sent. */
+  myClass(): Observable<MyClass> {
+    return this.api.get<MyClass>(`${BASE}/my-class`);
+  }
+
+  /** Read-only profile of one student in the teacher's own sections (the server answers 404 for anyone else; Aadhaar and login id are not sent). */
+  getMyClassStudent(studentId: string): Observable<StudentProfile> {
+    return this.api.get<StudentProfile>(`${BASE}/my-class/${encodeURIComponent(studentId)}`);
   }
 
   getProfile(studentId: string): Observable<StudentProfile> {

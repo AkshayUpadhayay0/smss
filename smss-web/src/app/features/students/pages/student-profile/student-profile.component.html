@@ -22,10 +22,12 @@
 } @else {
   @if (student(); as s) {
     <div class="tabs" role="tablist" aria-label="Student sections">
-      @if (isSchoolAdmin()) {
+      @if (showProfile()) {
         <button type="button" role="tab" id="tab-profile" [attr.aria-selected]="tab() === 'profile'" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
       }
-      <button type="button" role="tab" id="tab-fees" [attr.aria-selected]="tab() === 'fees'" [class.active]="tab() === 'fees'" (click)="selectTab('fees')">Fees</button>
+      @if (showFees()) {
+        <button type="button" role="tab" id="tab-fees" [attr.aria-selected]="tab() === 'fees'" [class.active]="tab() === 'fees'" (click)="selectTab('fees')">Fees</button>
+      }
     </div>
 
     @if (feesOpened()) {
@@ -34,7 +36,7 @@
       </div>
     }
 
-    @if (isSchoolAdmin()) {
+    @if (showProfile()) {
     <div class="sections" role="tabpanel" aria-labelledby="tab-profile" [hidden]="tab() !== 'profile'">
       <app-card>
         <div class="hero">
@@ -49,9 +51,11 @@
             <h2>{{ s.fullName }}</h2>
             <p>{{ s.admissionNumber }}@if (s.className) { · {{ s.className }}{{ s.sectionName ? ' – ' + s.sectionName : '' }} }</p>
           </div>
-          <app-button variant="secondary" (click)="photoDialogOpen.set(true)">
-            <app-icon name="upload" [size]="16" />{{ photoUrl() ? 'Update Photo' : 'Add Photo' }}
-          </app-button>
+          @if (!restricted()) {
+            <app-button variant="secondary" (click)="photoDialogOpen.set(true)">
+              <app-icon name="upload" [size]="16" />{{ photoUrl() ? 'Update Photo' : 'Add Photo' }}
+            </app-button>
+          }
         </div>
       </app-card>
 
@@ -61,7 +65,9 @@
           <div><dt>Gender</dt><dd>{{ s.genderName || '—' }}</dd></div>
           <div><dt>Blood group</dt><dd>{{ s.bloodGroupName || '—' }}</dd></div>
           <div><dt>Student category</dt><dd>{{ s.studentCategoryName || '—' }}</dd></div>
-          <div><dt>Aadhaar number</dt><dd>{{ s.aadharNumberMasked || '—' }}</dd></div>
+          @if (!restricted()) {
+            <div><dt>Aadhaar number</dt><dd>{{ s.aadharNumberMasked || '—' }}</dd></div>
+          }
         </dl>
       </app-card>
 
@@ -88,6 +94,7 @@
         </dl>
       </app-card>
 
+      @if (!restricted()) {
       <app-card title="Login">
         @if (s.loginId) {
           <dl class="grid">
@@ -102,6 +109,7 @@
           </div>
         }
       </app-card>
+      }
 
       <app-card title="Guardians" [noPadding]="true">
         <app-table

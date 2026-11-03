@@ -37,6 +37,9 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-profile': [ROLES.SCHOOL_ADMIN],
   '/students': [ROLES.SCHOOL_ADMIN],
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
+  // A Teacher's own students (read-only; the API scopes them to the sections they are class teacher of or teach in)
+  '/my-students': [ROLES.TEACHER],
+  '/my-students/:studentId': [ROLES.TEACHER],
   // The Accountant opens a student to collect / void payments; the page shows them the Fees tab only (no Profile tab)
   '/students/:studentId': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT],
   // Admission applications: School Admin, Principal and Admission Staff work them (the API re-checks; only School Admin / Principal see Approve / Reject).

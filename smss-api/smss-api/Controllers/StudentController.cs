@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using smss_api.Helpers;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.helper;
@@ -14,11 +15,13 @@ namespace smss_api.Controllers
     {
         private readonly IStudentService _service;
         private readonly IStudentLoginService _loginService;
+        private readonly IMyStudentsService _myStudents;
 
-        public StudentController(IStudentService service, IStudentLoginService loginService)
+        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents)
         {
             _service = service;
             _loginService = loginService;
+            _myStudents = myStudents;
         }
 
         // The routes carry {schoolId}, but it is never trusted: the caller can only reach their OWN school (the JWT
@@ -44,6 +47,28 @@ namespace smss_api.Controllers
         // Writes (photo upload / remove, create login): School Admin only.
         private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
             User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
+
+        // GET api/Student/my-class   (a Teacher's OWN students: the sections they are the Active class teacher of, plus the sections they are timetabled to teach in)
+        // Self-scoped on purpose: it takes no school or section id (both come from the token and the Class-Teacher / Timetable modules), so it cannot be pointed
+        // anywhere else. The broad {schoolId} reads below are left exactly as they were. Literal routes beat {schoolId}, so "my-class" is never read as a school id.
+        [HttpGet("my-class")]
+        public async Task<IActionResult> GetMyClass(CancellationToken ct)
+        {
+            if (!User.IsTeacher()) return Respond(403, "Only a Teacher can see their own class list.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _myStudents.GetMyClassAsync(User.GetSchoolId(), userId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/Student/my-class/{studentId}   (read-only profile of one student in the caller's own sections; Aadhaar and login id are not sent; 404 for anyone else)
+        [HttpGet("my-class/{studentId:length(1,20)}")]
+        public async Task<IActionResult> GetMyClassStudent(string studentId, CancellationToken ct)
+        {
+            if (!User.IsTeacher()) return Respond(403, "Only a Teacher can see their own class list.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _myStudents.GetMyClassStudentAsync(User.GetSchoolId(), userId, studentId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
 
         // GET api/Student/{schoolId}?academicYearId=1&classSectionId=5&feeStatus=Overdue   (feeStatus is optional; classSectionId = tb_sections.section_id)
         [HttpGet("{schoolId}")]

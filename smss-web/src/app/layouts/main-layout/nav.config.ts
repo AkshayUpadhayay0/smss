@@ -25,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Student Leave', icon: 'user', route: '/leave/students' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   { label: 'Students', icon: 'graduation-cap', route: '/students' },
+  { label: 'My Students', icon: 'graduation-cap', route: '/my-students' },
   { label: 'Admissions', icon: 'user', route: '/admissions' },
   { label: 'Add Existing Student', icon: 'inbox', route: '/students/onboard-existing' },
   {

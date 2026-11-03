@@ -109,3 +109,44 @@ export interface GuardianRow extends Record<string, unknown> {
   emergencyLabel: string;
   pickupLabel: string;
 }
+
+// ---- GET /api/Student/my-class (a Teacher's own students). Mirrors MyClassDtos.cs. No fee, login, contact or Aadhaar fields exist on these.
+export interface MyClassStudent {
+  studentId: string;
+  admissionNumber: string;
+  fullName: string;
+  rollNumber?: string | null;
+  genderName?: string | null;
+  statusName: string;
+  /** Relative public URL (/uploads/...); null = no photo. */
+  profilePhotoUrl?: string | null;
+}
+
+export interface MyClassSection {
+  classId: number;
+  className: string;
+  sectionId: number;
+  sectionName: string;
+  /** The teacher is the section's Active class teacher (listed first). */
+  isClassTeacher: boolean;
+  /** Subjects the teacher is timetabled to teach in this section; empty when they are only its class teacher. */
+  subjects: string[];
+  students: MyClassStudent[];
+}
+
+export interface MyClass {
+  academicYearId: number;
+  academicYearName: string;
+  sections: MyClassSection[];
+}
+
+/** Table row of the My Students page. */
+export interface MyClassStudentRow extends Record<string, unknown> {
+  studentId: string;
+  photoUrl: string;
+  rollNumber: string;
+  admissionNumber: string;
+  fullName: string;
+  genderName: string;
+  statusName: string;
+}
