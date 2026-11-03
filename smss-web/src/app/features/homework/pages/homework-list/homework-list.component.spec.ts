@@ -5,9 +5,12 @@ import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
+import { todayYmd } from '../../utils/homework-format';
 import { HomeworkListComponent } from './homework-list.component';
 
 const API = environment.apiUrl;
+// a due date a week from the day the tests run, so the form's "not in the past" rule never makes these go stale
+const NEXT_WEEK = todayYmd(new Date(Date.now() + 7 * 24 * 3600 * 1000));
 const env = <T>(data: T, statusCode = 200) => ({ status: true, statusCode, message: 'ok', data });
 
 const YEARS = [
@@ -126,7 +129,7 @@ describe('HomeworkListComponent', () => {
     fixture.detectChanges();
     const m = modal();
     m['form'].patchValue({ sectionId: '2' });
-    m['form'].patchValue({ subjectId: '7', title: 'Chapter 4', dueDate: '2026-10-30' });
+    m['form'].patchValue({ subjectId: '7', title: 'Chapter 4', dueDate: NEXT_WEEK });
     m['file'].set(new File(['x'], 'a.pdf'));
     m['submit']();
     http.expectOne(`${API}/api/Homework`).flush(env(hw(9, 'Chapter 4'), 201));
@@ -141,7 +144,7 @@ describe('HomeworkListComponent', () => {
     fixture.detectChanges();
     const m = modal();
     m['form'].patchValue({ sectionId: '2' });
-    m['form'].patchValue({ subjectId: '7', title: 'Chapter 4', dueDate: '2026-10-30' });
+    m['form'].patchValue({ subjectId: '7', title: 'Chapter 4', dueDate: NEXT_WEEK });
     m['submit']();
     http.expectOne(`${API}/api/Homework`).flush({ status: false, statusCode: 403, message: "You don't currently teach Maths", data: null }, { status: 403, statusText: 'Forbidden' });
     expect(cmp()['modal']()).not.toBeNull();
@@ -227,7 +230,7 @@ describe('HomeworkListComponent', () => {
     expect(m['teacherOptions']().map((o: { value: string }) => o.value)).toEqual(['S001EM002']);
     m['submit']();
     expect(m['error']('employeeId')).toBe('This field is required');   // the admin must name the owner
-    m['form'].patchValue({ subjectId: '8', employeeId: 'S001EM002', title: 'Essay', dueDate: '2026-10-30' });
+    m['form'].patchValue({ subjectId: '8', employeeId: 'S001EM002', title: 'Essay', dueDate: NEXT_WEEK });
     m['submit']();
     const post = http.expectOne(`${API}/api/Homework`);
     expect(post.request.body).toMatchObject({ academicYearId: 6, sectionId: 3, subjectId: 8, employeeId: 'S001EM002', title: 'Essay' });
