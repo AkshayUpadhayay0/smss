@@ -106,6 +106,20 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<EmployeeDto>(ex, "fetching an employee"); }
         }
 
+        public async Task<ApiResponse<EmployeeDto>> GetMyAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<EmployeeDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var loginId = await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct);
+                if (string.IsNullOrEmpty(loginId)) return Result<EmployeeDto>(403, "Your account could not be found.", null);
+                // an employee login's id IS the employee id; a School Admin / Student login id matches no employee, which reads as "no employee record"
+                var row = await _repo.GetDetailAsync(schoolId, loginId, ct);
+                return row == null ? Result<EmployeeDto>(404, "No employee record is linked to your account.", null) : Result(200, "Successfully fetched", ToDto(row));
+            }
+            catch (Exception ex) { return Error<EmployeeDto>(ex, "fetching my employee record"); }
+        }
+
         // ---------------------------------------------------------------- create / update
         public async Task<ApiResponse<EmployeeDto>> CreateAsync(string? schoolId, EmployeeRequest req, CancellationToken ct)
         {

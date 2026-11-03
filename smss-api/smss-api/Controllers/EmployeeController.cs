@@ -35,6 +35,16 @@ namespace smss_api.Controllers
             [FromQuery] string? employeeType, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default) =>
             Refuse() ?? Reply(await _service.ListAsync(User.GetSchoolId(), search, designationId, departmentId, employmentStatusId, employeeType, status, page, pageSize, ct));
 
+        // GET api/Employee/me   (any employee login: Teacher, Principal, Accountant, Admission Staff, ... - their OWN record only; there is no id to change)
+        // Declared apart from the School Admin reads above on purpose: the general Employee module stays School Admin only (section 29).
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMe(CancellationToken ct)
+        {
+            if (User.IsStudentOrGuardianLogin()) return this.Forbidden("Student and Guardian accounts have no employee record.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            return Reply(await _service.GetMyAsync(User.GetSchoolId(), userId, ct));
+        }
+
         // GET api/Employee/{employeeId}
         [HttpGet("{employeeId:length(1,20)}")]
         public async Task<IActionResult> Get(string employeeId, CancellationToken ct) =>

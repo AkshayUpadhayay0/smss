@@ -30,6 +30,11 @@ export class EmployeeService {
     return this.api.get<EmployeePage>(BASE, params);
   }
 
+  /** The signed-in employee's OWN record (Teacher, Principal, Accountant, Admission Staff ...): there is no id to send. */
+  me(): Observable<Employee> {
+    return this.api.get<Employee>(`${BASE}/me`);
+  }
+
   get(employeeId: string): Observable<Employee> {
     return this.api.get<Employee>(`${BASE}/${encodeURIComponent(employeeId)}`);
   }

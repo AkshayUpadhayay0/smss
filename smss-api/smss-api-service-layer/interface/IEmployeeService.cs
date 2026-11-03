@@ -9,6 +9,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<EmployeePagedDto>> ListAsync(string? schoolId, string? search, long? designationId, long? departmentId, long? employmentStatusId,
             string? employeeType, string? status, int page, int pageSize, CancellationToken ct);
         Task<ApiResponse<EmployeeDto>> GetAsync(string? schoolId, string employeeId, CancellationToken ct);
+        /// <summary>The caller's OWN employee record (their login id is their employee id). Never takes an id, so it can't be pointed at anyone else.</summary>
+        Task<ApiResponse<EmployeeDto>> GetMyAsync(string? schoolId, long callerUserId, CancellationToken ct);
         Task<ApiResponse<EmployeeDto>> CreateAsync(string? schoolId, EmployeeRequest req, CancellationToken ct);
         Task<ApiResponse<EmployeeDto>> UpdateAsync(string? schoolId, string employeeId, EmployeeRequest req, CancellationToken ct);
         Task<ApiResponse<EmployeeDto>> ToggleStatusAsync(string? schoolId, string employeeId, CancellationToken ct);

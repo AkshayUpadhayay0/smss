@@ -21,6 +21,15 @@ describe('EmployeeService', () => {
   });
   afterEach(() => { http.verify(); clearSessions(); });
 
+  it('me() reads GET /api/Employee/me: the caller\'s own record, no id in the URL', () => {
+    let got: unknown;
+    service.me().subscribe((e) => (got = e));
+    const req = http.expectOne(`${API}/api/Employee/me`);
+    expect(req.request.method).toBe('GET');
+    req.flush(env({ employeeId: 'DPS001EM001' }));
+    expect(got).toEqual({ employeeId: 'DPS001EM001' });
+  });
+
   it('list sends paging + only the filters that are set ("All" and blanks are not sent)', () => {
     service.list({ search: ' ', designationId: '2', status: 'All', employeeType: '' }, 3, 25).subscribe();
     const req = http.expectOne((r) => r.url === `${API}/api/Employee`);

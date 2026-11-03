@@ -1,0 +1,48 @@
+<app-page-header title="My Profile" subtitle="Your employee record, as the school holds it" icon="user" [breadcrumbs]="breadcrumbs" />
+
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your profile…</p></app-card>
+} @else if (loadFailed() || !employee()) {
+  <app-card><p class="note" role="alert">Your profile could not be loaded.</p></app-card>
+} @else {
+  @if (employee(); as e) {
+    <div class="sections">
+      <app-card>
+        <div class="hero">
+          <span class="photo">
+            @if (photoUrl(); as src) {
+              <img [src]="src" [alt]="e.fullName + ' photo'" />
+            } @else {
+              <span class="initials" aria-hidden="true">{{ initials() }}</span>
+            }
+          </span>
+          <div class="who">
+            <h2>{{ e.fullName }}</h2>
+            <p class="sub">{{ e.designationName }} · {{ e.departmentName }} · {{ e.employeeType }}</p>
+            <div class="badges">
+              <span class="pill tone-{{ tone(e.employmentStatusName) }}">{{ e.employmentStatusName }}</span>
+            </div>
+          </div>
+        </div>
+      </app-card>
+
+      <app-card title="Details">
+        <dl class="details">
+          <div><dt>Employee ID</dt><dd>{{ e.employeeId }}</dd></div>
+          <div><dt>Designation</dt><dd>{{ e.designationName }}</dd></div>
+          <div><dt>Department</dt><dd>{{ e.departmentName }}</dd></div>
+          <div><dt>Date of joining</dt><dd>{{ fmt(e.dateOfJoining) }}</dd></div>
+          <div><dt>Date of birth</dt><dd>{{ fmt(e.dateOfBirth) }}</dd></div>
+          <div><dt>Gender</dt><dd>{{ e.genderName || '—' }}</dd></div>
+          <div><dt>Blood group</dt><dd>{{ e.bloodGroupName || '—' }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ e.mobileNumber }}</dd></div>
+          <div><dt>Alternate mobile</dt><dd>{{ e.alternateMobile || '—' }}</dd></div>
+          <div><dt>Email</dt><dd>{{ e.email || '—' }}</dd></div>
+          <div class="wide"><dt>Qualification</dt><dd>{{ e.qualification || '—' }}</dd></div>
+          <div class="wide"><dt>Address</dt><dd>{{ e.address }}</dd></div>
+        </dl>
+        <p class="note small">To correct any of these details, ask your School Admin. You can change your password from the user menu: <a routerLink="/change-password">Change password</a>.</p>
+      </app-card>
+    </div>
+  }
+}

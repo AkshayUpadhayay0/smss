@@ -4,6 +4,11 @@ import { Routes } from '@angular/router';
 // 'new' is listed before ':employeeId' so it can't be swallowed by the parameter.
 export const EMPLOYEES_ROUTES: Routes = [
   {
+    // any employee's own read-only record (the API answers /api/Employee/me)
+    path: 'my-profile',
+    loadComponent: () => import('./pages/my-profile/my-profile.component').then((m) => m.MyProfileComponent),
+  },
+  {
     path: 'employees',
     loadComponent: () => import('./pages/employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
   },

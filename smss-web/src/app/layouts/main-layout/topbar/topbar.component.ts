@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListene
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
 import { Notice } from '../../../features/notices/models/notice.model';
 import { NoticeService } from '../../../features/notices/services/notice.service';
@@ -39,6 +40,8 @@ export class TopbarComponent implements OnInit {
     // displayName is the person's name; the login ID is orgUserId.
     return { name: u?.displayName ?? '', role: u?.roles?.[0] ?? u?.userType ?? '' };
   });
+  /** "My profile" is offered to employee logins only (the same role list as the /my-profile route, read from ROUTE_ROLES and not repeated). */
+  protected readonly canSeeProfile = computed(() => canAccess('/my-profile', this.auth.user()?.roles ?? []));
   /** The bell: the unread count (shared with My Notices) and the latest unread notices, loaded when the dropdown opens. Only users of a school have notices. */
   protected readonly unreadCount = this.notices.unreadCount;
   protected readonly latestUnread = signal<Notice[]>([]);

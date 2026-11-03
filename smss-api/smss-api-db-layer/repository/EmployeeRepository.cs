@@ -180,5 +180,8 @@ namespace smss_api_db_layer.repository
             await _db.Users.AddAsync(user, ct);
             await _db.SaveChangesAsync(ct);
         }
+
+        public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
+            _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
     }
 }

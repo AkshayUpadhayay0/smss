@@ -80,6 +80,11 @@
       </button>
       @if (openMenu() === 'user') {
         <div class="menu right-aligned">
+          @if (canSeeProfile()) {
+            <a class="menu-item action" routerLink="/my-profile" (click)="openMenu.set(null)">
+              <app-icon name="user" [size]="16" /> My profile
+            </a>
+          }
           <a class="menu-item action" routerLink="/change-password" (click)="openMenu.set(null)">
             <app-icon name="lock" [size]="16" /> Change password
           </a>

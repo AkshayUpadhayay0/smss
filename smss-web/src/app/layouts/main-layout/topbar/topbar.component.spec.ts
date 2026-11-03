@@ -56,6 +56,29 @@ describe('TopbarComponent notification bell', () => {
     expect(items[0].getAttribute('href')).toContain('/notices/my?open=9');
   });
 
+  it('the user menu offers "My profile" to an employee login (Teacher) and links it to /my-profile', () => {
+    create('S');
+    http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
+    (el().querySelector('button.user') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const link = [...el().querySelectorAll('.menu a.menu-item')].find((a) => a.textContent?.includes('My profile'));
+    expect(link?.getAttribute('href')).toBe('/my-profile');
+  });
+
+  it('the user menu does not offer "My profile" to a School Admin (their login is the school, not an employee)', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(TopbarComponent);
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
+    (el().querySelector('button.user') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('My profile');
+    expect(el().textContent).toContain('Change password');
+  });
+
   it('a user without a school (Super Admin) makes no notice requests at all', () => {
     create(null);
     bell().click();

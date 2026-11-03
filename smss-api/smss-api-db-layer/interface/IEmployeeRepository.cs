@@ -61,5 +61,7 @@ namespace smss_api_db_layer.@interface
         Task<TbUsers?> GetLoginUserAsync(string schoolId, string employeeId, CancellationToken ct);
         Task<List<LutRole>> GetRolesByIdsAsync(IReadOnlyCollection<long> roleIds, CancellationToken ct);
         Task AddUserAsync(TbUsers user, CancellationToken ct);
+        /// <summary>The login id (org_user_id) of a user of this school; for an employee login it is their employee id.</summary>
+        Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
     }
 }
