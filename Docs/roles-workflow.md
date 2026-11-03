@@ -350,7 +350,7 @@ School → Fee Structure → Student Fee Assignment → Fee Due → Payment → 
 Other income: `Other Income → Transaction → Ledger`
 Expenses: `Expense → Approval → Payment → Transaction → Ledger`
 
-See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports schema — this module is complete. Ledger/Other Income/Expenses are a separate future module, not yet designed (now explicitly Stage 2 of the Super Admin's own business layer — see section 39's closing note). Refunds of actual money paid out are also part of that future module — voiding a payment (section 28) only reverses the fee-due bookkeeping, it does not track or move cash. This entire section is about a school's own internal finances, distinct from the Super Admin's platform-level Subscription & Billing (section 39), which bills schools for using SMSS itself.
+See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports schema — this module is complete. Ledger/Other Income/Expenses are a separate future module, not yet designed (this is now built as Stage 2 of the Super Admin's own business layer — see section 42). Refunds of actual money paid out are also part of that future module — voiding a payment (section 28) only reverses the fee-due bookkeeping, it does not track or move cash. This entire section is about a school's own internal finances, distinct from the Super Admin's platform-level Subscription & Billing (section 39), which bills schools for using SMSS itself.
 
 ## 24. Role responsibility summary
 
@@ -389,7 +389,7 @@ See section 28 for the full Fee Due / Payment / Receipt / Dashboard / Reports sc
 †† Admissions (section 36) is live (it already existed — this is not a new module, see section 10). `CanManageApplications()` (School Admin, Principal, Admission Staff) covers intake, document collection, and review. `CanDecideAdmission()` (School Admin, Principal only — not Admission Staff) covers the final Approve/Reject and the Confirm Admission step that creates the student and assigns a fee structure. Student Management's row is now ❌ for Admission Staff specifically because a real gap was closed this round: student-creation endpoints previously had no role check at all beyond same-school, so this table's earlier "✅" for Admission under Student Management reflected an unintentional hole, not a design choice — Admission Staff's actual job is the application pipeline, not general student-record management.
 ‡‡ Internal Assessment/Class Tests (section 37) is live, built as a direct sibling of Homework and reusing its shape. `CanManageAssessments()` = School Admin or an eligible Teacher — eligibility requires an Active Timetable slot for that section+subject; School Admin bypasses the timetable check but not Class-Subject Mapping. Only the creating teacher or School Admin can edit/delete/re-submit a test's marks — not another eligible teacher. Student reads only their own marks across all subjects, with no average, rank, or classmate comparison in the payload. Principal, Accountant, Admission, and Guardian all have ❌ — not built yet, same conservative default Homework shipped with.
 §§ Notices (section 38) is live, replacing the earlier placeholder row (which had generically assumed a platform-wide Super Admin tier and a broad "Publish" right for Principal — neither matches what was actually built). `CanManageNotices()` = School Admin or Principal; ownership is stricter than eligibility, same pattern as Homework/Assessments — only the creating Principal, or School Admin regardless of creator, can edit/delete a notice, so Principal's cell reads "Manage own" rather than a flat "Manage." Every other role gets "View (tier)" — `/notices/my` strictly filtered to whichever of ALL/STAFF/STUDENTS_GUARDIANS matches that login, with an unread count in the topbar bell. Super Admin is ❌ here because the platform-wide notice tier the original section 20 sketch implied was explicitly scoped out — this module is single-school only.
-‖‖ Dashboards: Super Admin's Subscription & Billing dashboard (section 39, stats-only) is a different thing from a school's own operational dashboards — Student (section 40) and Teacher (section 41) each get a single aggregate landing page built from their own module's existing data, with no new tables. Principal, School Admin, and Accountant have no dedicated aggregate dashboard of this kind yet.
+‖‖ Dashboards: Super Admin's Subscription & Billing dashboard (section 39, redesigned in section 43) is a different thing from a school's own operational dashboards — Student (section 40) and Teacher (section 41) each get a single aggregate landing page built from their own module's existing data, with no new tables. Principal, School Admin, and Accountant have no dedicated aggregate dashboard of this kind yet.
 
 ## 25. Most important RBAC principle
 
@@ -1179,7 +1179,7 @@ Backup `smss-db-before-notices.dump` (270 KB) taken first. Migration `Docs/smss-
 ### Build status — COMPLETE
 78 backend checks on the test copy, 0 failures, plus the full existing regression suite (18 scripts) still green. Frontend: 543 tests across 60 files pass, `ng build` clean. Deployed and smoke-tested on real `smss-db`, 31 real-data checks, 0 failures, existing data confirmed untouched. No open items — granular class/section targeting, automatic alerts, and email delivery were all deliberately scoped out up front (see section 20), not gaps.
 
-## 39. Subscription & Billing module (Super Admin) — STAGE 1 COMPLETE, DEPLOYED
+## 39. Subscription & Billing module (Super Admin) — STAGE 1 & 2 COMPLETE, DEPLOYED
 
 The Super Admin's own business/billing layer — how SMSS charges the schools using it. Architecturally separate from everything else in this doc: every module through section 38 is something a school's own staff use to run that school; this module is exclusively Super-Admin-facing and has nothing to do with any school's internal fee/finance data (section 28's Fee module, section 23's Finance workflow). The biggest single subsystem built in this project's history to date, across several design rounds, and the first module built directly off a long, structured requirements document the user wrote rather than a short feature request.
 
@@ -1274,8 +1274,8 @@ Two backups taken across the build (`smss-db-before-subscription-billing.dump`, 
 
 Kept as **one combined local commit** (`4d7693f`, 55 files — amending through the per-student/allocation redesign, the per-school-terms-plus-staff-toggle extension, a Code-column display fix, and the three-page UI split) rather than preserving the earlier, abandoned per-user-model commit in history — reasoned and agreed: the per-user shape was never pushed to any shared branch, so there's no value in keeping it as a separate, confusing step in the project's permanent history.
 
-### Build status — STAGE 1 COMPLETE, DEPLOYED
-132/132 real-data smoke checks, 0 failures. Full regression suite green. Deployed to real `smss-db`. No open items for Stage 1. **Stage 2 is explicit future work, not yet started**: Expense Management, Company Employee/Salary (school-level payroll, distinct from a school's own existing Employee module, section 29), and a Financial Overview — all deliberately deferred out of this build, consistent with the scoping decisions above, and to be designed fresh when actually taken up rather than assumed from the external advisory documents' larger vision.
+### Build status — STAGE 1 & 2 COMPLETE, DEPLOYED
+132/132 real-data smoke checks, 0 failures. Full regression suite green. Deployed to real `smss-db`. No open items for Stage 1. **Stage 2 (Expense Management, Company Employees/Salary and the Financial Overview) was taken up afterwards and is now complete and deployed — see section 42** (company payroll there is distinct from a school's own Employee module, section 29). The Super Admin's `/dashboard` was later redesigned on top of both stages — see section 43.
 
 ## 40. Student Dashboard — COMPLETE, DEPLOYED
 
@@ -1311,10 +1311,66 @@ Backend smoke re-run: 42 passed, 0 failed, once a database contention issue (ano
 ### Build status — FEATURE COMPLETE; RBAC FIX DEPLOYED SEPARATELY
 The dashboard itself: built, screenshot-confirmed, backend re-verified (42/42). The Fee-endpoint RBAC fix it surfaced: closed, deployed, confirmed on real `smss-db` (see section 28). Commit/deploy status of the dashboard feature itself should be confirmed directly with current state before treating it as fully closed out, since the last report on it predates this write-up.
 
-**Status check:** every module identified in the original roadmap discussion — Class-Teacher Assignment, Attendance, Employee Management Stage 1, Academic Calendar, Teacher Timetable, Leave Management, Homework, the Admission pipeline (extended rather than newly built, section 36), Internal Assessment/Class Tests, and Notice/Communication — is complete and deployed to real `smss-db`. Beyond that original list, this round of work also delivered the Subscription & Billing module (section 39, Stage 1 of 2 — Stage 2's Expense/Salary/Financial Overview remains future work) and two new Student/Teacher-facing dashboards (sections 40, 41) built on top of existing modules with no new tables. No pre-identified candidates remain; the next module to tackle will need to be chosen fresh rather than picked off any existing roadmap list.
+**Status check:** every module identified in the original roadmap discussion — Class-Teacher Assignment, Attendance, Employee Management Stage 1, Academic Calendar, Teacher Timetable, Leave Management, Homework, the Admission pipeline (extended rather than newly built, section 36), Internal Assessment/Class Tests, and Notice/Communication — is complete and deployed to real `smss-db`. Beyond that original list, this round of work also delivered the Subscription & Billing module (section 39, Stages 1 and 2 — Stage 2's Expense/Salary/Financial Overview is section 42) and two new Student/Teacher-facing dashboards (sections 40, 41) built on top of existing modules with no new tables. No pre-identified candidates remain; the next module to tackle will need to be chosen fresh rather than picked off any existing roadmap list.
 
 
-## 42. School Admin Dashboard — COMPLETE, SMOKE-TESTED ON REAL `smss-db` (no schema change)
+## 42. Company Finance module (Super Admin) — Stage 2 of Subscription & Billing — COMPLETE, DEPLOYED
+
+SMSS's **own** business data — the company that runs the SaaS — kept completely separate from any school: no `tb_schools` row, no `tb_employees` row, no `school_id` anywhere. Super Admin only, throughout, exactly like Stage 1 (section 39). It is also distinct from a school's own Employee module (section 29) and from a school's own Fee/finance (section 28).
+
+### Scoping / decisions (as written in `Docs/smss-company-finance.sql`)
+- "Delete" never removes a row. A company employee is hidden with `status_id` → Inactive (the project's hide-row pattern); an expense or a salary payment is **voided** (status `Voided`, with who / when / why — required by a CHECK constraint), the same soft-void shape as `tb_fee_payments` (section 28) and `tb_subscription_payments` (section 39).
+- A salary payment's amount is its own value, locked when recorded: later changes to the employee's `monthly_salary` never rewrite a past payment. It defaults to the current salary but may differ (bonus / partial month).
+- **One ACTIVE salary payment per employee per month**, enforced by a partial unique index; once a payment is voided the month can be paid again. The service also checks first, and maps the index violation to a 409 if two requests race.
+- No deductions, tax slabs or approval workflow: a flat amount per payment, logged directly by the Super Admin.
+- The Financial Overview is **cash basis**: revenue = money actually collected from schools (Active subscription payments), expenses = Active company expenses by their date, salary payouts = Active salary payments by payment date. Net profit = revenue − expenses − salary payouts. Months use the India calendar.
+
+### Schema (4 new tables, nothing existing altered; migration `Docs/smss-company-finance.sql`, safe to run twice)
+- `tb_company_employees` — name, free-text `designation` (a small internal team needs no designation master), email, mobile, `date_of_joining`, optional `date_of_leaving` (CHECK not before joining), `monthly_salary` NUMERIC(12,2) ≥ 0, `status_id` → `lut_status`.
+- `lut_expense_category` — global, small and fixed (the `lut_event_category` pattern), seeded: Rent, Utilities, Marketing, Software/Tools, Office Supplies, Travel, Professional Services, Other.
+- `tb_company_expenses` — `expense_date`, category, description, `amount` > 0, `payment_mode` (Cash, Cheque, UPI, Card, Bank Transfer, Online), `recorded_by` from the token, `status` Active/Voided + void details.
+- `tb_company_salary_payments` — employee, `period_month`/`period_year`, `amount` > 0, `payment_date`, `payment_mode`, remarks, `recorded_by`, status + void details, and the one-active-per-month partial unique index.
+
+### API (all `[SuperAdminOnly]`)
+- `/api/CompanyEmployee` — list, get, create, update, `POST {id}/toggle-status` (POST by the project's PATCH convention).
+- `/api/CompanyExpense` — `GET categories`, list (filters: date range, category, status), get, create, `POST {id}/void`. An expense date in the future is refused; a void needs a non-blank reason.
+- `/api/CompanySalary` — record, `POST {id}/void`, list, `GET employee/{id}` (history). Refused: inactive employee (409), a month before they joined or after they left (400), a payment date in the future, a month already paid (409).
+- `GET /api/CompanyFinance/overview?from=&to=` — per-month revenue / expenses / salary payouts / net profit plus totals; defaults to the year to date; the range is capped at a maximum number of months; `from` after `to` is a 400.
+
+### Authorization
+Super Admin only on every endpoint; every other role gets 403. The frontend routes carry the same rule in `ROUTE_ROLES` (single source of truth), fail-closed.
+
+### Frontend (`features/company-finance`)
+Sidebar group **Company Finance** with `/company/overview`, `/company/employees`, `/company/expenses` (`/company` redirects to the overview). Employees page: list, add/edit modal, activate/deactivate, record-salary modal and salary-history modal (with void). Expenses page: filters (the page also takes `from`, `to`, `categoryId`, `status` as query parameters), add modal, void-with-reason modal. Overview page: the monthly revenue / expenses / salary / net figures for a chosen period.
+
+### Deployment
+Backup `smss-db-before-company-finance.dump` taken first; migration `Docs/smss-company-finance.sql` run on real `smss-db` (the four tables exist there). New tables only, so existing data was untouched.
+
+### Build status — COMPLETE, DEPLOYED
+No open items. The Super Admin dashboard reads revenue / expenses / salary from this overview (see section 43), so the two can never disagree. Not built, deliberately: deductions/tax, payroll approval, recurring expenses, budgets, and any link to a school's own finances.
+
+
+## 43. Super Admin Dashboard redesign — COMPLETE, DEPLOYED
+
+A redesign of the Super Admin's `/dashboard` (first built as the stats-only dashboard in section 39) on top of Subscription & Billing (section 39) and Company Finance (section 42). **No schema change** — the same dashboard-as-aggregate-endpoint pattern, still computed live per request.
+
+### Scoping / decisions
+- The date range (From / To, default **month to date**) moves the six cards, the payment-collection bar and the transactions; the two monthly charts always show the last 12 months. Each headline number is compared with the previous period: a month-to-date range is compared with the same days of the previous month (capped at its length), any other range with the equal-length range just before it. `TrendPercent` is null when there is nothing to compare with (previous is 0), and no trend is shown for figures that are not kept as history (active subscriptions, outstanding payments).
+- Revenue, expenses, salary and cash surplus come from the Company Finance overview (section 42), not a second computation.
+- Payment-collection buckets are **derived, never stored**, in the same order as the fee module: fully covered = Paid; past due = Overdue (even if part-paid); some money in = Partially Paid; otherwise Pending.
+- Dark sidebar app-wide (the only dark surface; topbar and content stay light), via `--sidebar-*` design tokens.
+
+### API
+`GET /api/SuperAdminDashboard/summary?from=&to=` (Super Admin only) keeps every field it had and adds: `stats` (total schools, active subscriptions and their share of all schools, payments collected, outstanding payments, expenses with the salary included, cash surplus — each with its previous value and trend where one exists), `revenueVsExpenses` and `schoolRegistrations` (12 months), `paymentCollection` (the four buckets with count, invoiced, still unpaid), `recentSchools` and `recentTransactions` (voided payments are shown with their status). `GET .../schools` (the schools-with-subscription list) is unchanged. New repository reads (school registration dates, recent schools / payments, invoice amounts) and `SubscriptionRules` helpers (`CollectionBucket`, `PreviousPeriod`, `TrendPercent`).
+
+### Frontend
+Six trend cards (each links to the page that explains it), revenue-vs-expenses area chart, school-registrations bar chart, subscription-status donut, payment-collection bar with breakdown table, quick actions, alerts & reminders (overdue payments, renewals in 30 days, schools on trial), upcoming renewals, current pricing, and recent registrations / transactions tables. Charts use ApexCharts (`apexcharts`, `ng-apexcharts`) through one `app-chart` host component fed by pure option builders in `utils/super-admin-charts.ts`.
+
+### Build status — COMPLETE, DEPLOYED
+No open items. The School Admin dashboard (section 44) reuses its chart host and chart helpers.
+
+
+## 44. School Admin Dashboard — COMPLETE, SMOKE-TESTED ON REAL `smss-db` (no schema change)
 
 The same dashboard-as-aggregate-endpoint pattern as sections 28, 40 and 41. `GET /api/SchoolDashboard/summary`, **School Admin only** (`User.IsSchoolAdmin()`; 403 for Principal, Teacher, Accountant, Admission Staff, Student and Super Admin). The school comes from the token. Computed live on every request; no new table, job or cache.
 
