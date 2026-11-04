@@ -10,5 +10,8 @@ namespace smss_api_service_layer.@interface
 
         /// <summary>A whole section's cards on A4 sheets. 404 when the section is not in the caller's school; 400 over the per-request cap.</summary>
         Task<ApiResponse<IdCardBulkResultDto>> GetSectionCardsAsync(string? schoolId, long sectionId, CancellationToken ct);
+
+        /// <summary>Both faces of a template as PNG, using the given (possibly unsaved) settings; a real student of the caller's school, or built-in sample data.</summary>
+        Task<ApiResponse<IdCardPreviewDto>> PreviewAsync(string? schoolId, IdCardPreviewRequest request, CancellationToken ct);
     }
 }

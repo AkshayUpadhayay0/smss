@@ -43,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Employee Department', route: '/school-setup/employee-departments' },
       { label: 'Admission Type', route: '/school-setup/admission-types' },
       { label: 'Document Types', route: '/school-setup/document-types' },
+      { label: 'ID Card Settings', route: '/school-setup/id-card' },
     ],
   },
   {

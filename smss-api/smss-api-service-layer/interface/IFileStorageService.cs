@@ -22,6 +22,8 @@ namespace smss_api_service_layer.@interface
         Task<string> SaveHomeworkAttachmentAsync(string schoolCode, long homeworkId, Stream content, string extension, CancellationToken ct);
         // An admission application's documents go to the same PRIVATE store: {schoolCode}/admissions/{admissionId}/documents/<random file>.
         Task<string> SaveAdmissionDocumentAsync(string schoolCode, long admissionId, Stream content, string extension, CancellationToken ct);
+        // A school's principal signature for ID cards goes to the same PRIVATE store: {schoolCode}/id-card/signature_<timestamp><ext>. The returned key is what the database keeps.
+        Task<string> SavePrincipalSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
         Stream? OpenPrivate(string storageKey);
         void DeletePrivate(string storageKey);
 

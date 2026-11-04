@@ -122,6 +122,19 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/admissions/{admissionId}/documents/{fileName}";
         }
 
+        public async Task<string> SavePrincipalSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct)
+        {
+            if (!SchoolCodeRules.IsFolderSafe(schoolCode)) throw new InvalidOperationException("School code is not a valid folder name.");
+            var folder = Path.Combine(_privateRootPath, schoolCode, "id-card");
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"signature_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{schoolCode}/id-card/{fileName}";
+        }
+
         public Stream? OpenPrivate(string storageKey)
         {
             try

@@ -1,26 +1,29 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using QuestPDF.Infrastructure;
 using smss_api_db_layer.@interface;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.helper;
+using smss_api_service_layer.helper.idcard;
 using smss_api_service_layer.@interface;
 
 namespace smss_api_service_layer.service
 {
     public class StudentIdCardService : IStudentIdCardService
     {
-        /// <summary>The most cards one bulk request prints (10 A4 sheets). A section larger than this is refused, not truncated.</summary>
+        /// <summary>The most cards one bulk request prints (12 A4 sheets of 9). A section larger than this is refused, not truncated.</summary>
         public const int MaxCardsPerRequest = 100;
         private const int MaxImageBytes = 5 * 1024 * 1024;   // uploads are capped at 2 MB; anything bigger on disk is not a photo we made
 
         private readonly IStudentIdCardRepository _repo;
+        private readonly IIdCardSettingsService _settings;
         private readonly IFileStorageService _storage;
         private readonly ILogger<StudentIdCardService> _logger;
 
-        public StudentIdCardService(IStudentIdCardRepository repo, IFileStorageService storage, ILogger<StudentIdCardService> logger)
+        public StudentIdCardService(IStudentIdCardRepository repo, IIdCardSettingsService settings, IFileStorageService storage, ILogger<StudentIdCardService> logger)
         {
             _repo = repo;
+            _settings = settings;
             _storage = storage;
             _logger = logger;
         }
@@ -43,11 +46,11 @@ namespace smss_api_service_layer.service
                 if (row == null) return Result<IdCardFileDto>(400, $"This student has no enrollment in the current academic year ({year.YearName}), so no card can be issued.", null);
                 if (ExclusionReason(row, activeId.Value, year.YearName) is { } why) return Result<IdCardFileDto>(400, $"No card can be issued: {why}.", null);
 
-                var guardians = await _repo.GetGuardiansAsync(schoolId, new[] { studentId }, ct);
-                var (model, _) = BuildCard(school, year, row, guardians);
+                var brand = await _settings.GetBrandAsync(schoolId, ct);
+                var (cards, _) = await BuildCardsAsync(school, year, new[] { row }, brand.Options, ct);
                 var schoolModel = BuildSchool(school);
 
-                var pdf = await Task.Run(() => IdCardPdf.RenderSingle(schoolModel, model), ct);
+                var pdf = await Task.Run(() => IdCardPdf.RenderSingle(schoolModel, brand, cards[0]), ct);
                 return Result(200, "Successfully generated", new IdCardFileDto { FileName = $"IDCard_{Safe(row.AdmissionNumber)}.pdf", Content = pdf });
             }
             catch (Exception ex) { return Error<IdCardFileDto>(ex, "generating a student ID card"); }
@@ -84,17 +87,13 @@ namespace smss_api_service_layer.service
                 if (eligible.Count == 0)
                     return Result(200, "No student in this section can be issued a card.", result);
 
-                var guardians = await _repo.GetGuardiansAsync(schoolId, eligible.Select(e => e.StudentId).ToList(), ct);
-                var schoolModel = BuildSchool(school);
-                var cards = new List<IdCardModel>(eligible.Count);
-                foreach (var r in eligible)
-                {
-                    var (model, hadPhoto) = BuildCard(school, year, r, guardians);
-                    cards.Add(model);
-                    if (!hadPhoto) result.NoPhoto.Add(Ref(r, null));
-                }
+                var brand = await _settings.GetBrandAsync(schoolId, ct);
+                var (cards, hadPhoto) = await BuildCardsAsync(school, year, eligible, brand.Options, ct);
+                for (var i = 0; i < eligible.Count; i++)
+                    if (!hadPhoto[i]) result.NoPhoto.Add(Ref(eligible[i], null));
 
-                var (pdf, sheets) = await Task.Run(() => IdCardPdf.RenderSheets(schoolModel, cards), ct);
+                var schoolModel = BuildSchool(school);
+                var (pdf, sheets) = await Task.Run(() => IdCardPdf.RenderSheets(schoolModel, brand, cards), ct);
                 var first = eligible[0];
                 result.FileName = $"IDCards_{Safe(first.ClassName)}_{Safe(first.SectionName)}_{Safe(year.YearName)}.pdf";
                 result.PdfBase64 = Convert.ToBase64String(pdf);
@@ -105,7 +104,50 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<IdCardBulkResultDto>(ex, "generating section ID cards"); }
         }
 
+        public async Task<ApiResponse<IdCardPreviewDto>> PreviewAsync(string? schoolId, IdCardPreviewRequest request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<IdCardPreviewDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var (clean, error) = IdCardSettingsRules.Validate(request);
+                if (clean == null) return Result<IdCardPreviewDto>(400, error!, null);
+
+                var school = await _repo.GetSchoolAsync(schoolId, ct);
+                if (school == null) return Result<IdCardPreviewDto>(404, "School not found.", null);
+                var year = await _repo.GetCurrentYearAsync(schoolId, ct) ?? new IdCardYearRow(0, "2026-27");
+
+                // the screen's (possibly unsaved) choices, with the signature already on file
+                var brand = new IdCardBrand(clean.TemplateCode, clean.PrimaryColor, clean.SecondaryColor, clean.Tagline, clean.Website, clean.Email, clean.TermsText,
+                    await _settings.GetSignatureAsync(schoolId, ct), new IdCardOptions(clean.ShowDob, clean.ShowAddress, clean.ShowBloodGroup, clean.ShowMotherName));
+
+                IdCardModel card;
+                var isSample = string.IsNullOrWhiteSpace(request.StudentId);
+                if (isSample) card = SampleCard(school, year);
+                else
+                {
+                    // a real student of THIS school (404 for anyone else's); any status, so a school can preview before the year starts
+                    if (!await _repo.StudentExistsAsync(schoolId, request.StudentId!, ct)) return Result<IdCardPreviewDto>(404, "Student not found.", null);
+                    var row = await _repo.GetStudentAsync(schoolId, year.AcademicYearId, request.StudentId!, ct);
+                    if (row == null) return Result<IdCardPreviewDto>(400, $"This student has no enrollment in the current academic year ({year.YearName}).", null);
+                    card = (await BuildCardsAsync(school, year, new[] { row }, brand.Options, ct)).Cards[0];
+                }
+
+                var schoolModel = BuildSchool(school);
+                var (front, back) = await Task.Run(() => IdCardPdf.RenderPreview(schoolModel, brand, card), ct);
+                return Result(200, "Successfully generated", new IdCardPreviewDto
+                {
+                    TemplateCode = clean.TemplateCode, FrontPng = Convert.ToBase64String(front), BackPng = Convert.ToBase64String(back), IsSample = isSample
+                });
+            }
+            catch (Exception ex) { return Error<IdCardPreviewDto>(ex, "rendering an ID card preview"); }
+        }
+
         // ---- helpers ----------------------------------------------------------------------------------------------------------------
+
+        /// <summary>Built-in dummy data so a school can see a template before it has any students.</summary>
+        private static IdCardModel SampleCard(IdCardSchoolRow school, IdCardYearRow year) =>
+            new("Aarav Sharma", "Class 5", "A", "12", "ADM2026001", year.YearName, null, "Rajesh Sharma", "Sunita Sharma", "Rajesh Sharma", "Father", "98765 43210",
+                "14 Aug 2015", "B+", "12 Rajpur Road, Dehradun - 248001", IdCardQr.Payload(school.SchoolCode, "ADM2026001"), IsSample: true);
 
         private static string? ExclusionReason(IdCardStudentRow r, int activeId, string yearName)
         {
@@ -128,22 +170,51 @@ namespace smss_api_service_layer.service
 
         private IdCardSchoolModel BuildSchool(IdCardSchoolRow s)
         {
-            var logo = IdCardPdf.TryLoadImage(ReadUpload(s.LogoUrl));
+            var logo = IdCardPicture.TryCreate(ReadUpload(s.LogoUrl));
             var tail = string.Join(", ", new[] { s.CityName, s.StateName }.Where(p => !string.IsNullOrWhiteSpace(p)));
             if (!string.IsNullOrWhiteSpace(s.Pincode)) tail = tail.Length > 0 ? $"{tail} - {s.Pincode}" : s.Pincode!;
             var address = string.Join(", ", new[] { s.AddressLine1, s.AddressLine2, tail }.Where(p => !string.IsNullOrWhiteSpace(p)));
             return new IdCardSchoolModel(s.SchoolName, logo, address.Length > 0 ? address : null, string.IsNullOrWhiteSpace(s.MobileNumber) ? null : s.MobileNumber);
         }
 
-        // The photo is read straight from the uploads folder on the server and embedded in the PDF; no photo URL is created or returned.
-        private (IdCardModel Model, bool HadPhoto) BuildCard(IdCardSchoolRow school, IdCardYearRow year, IdCardStudentRow r,
-            Dictionary<string, (string Name, string Relationship, string Mobile)> guardians)
+        /// <summary>
+        /// Card content for the given students, with the lookups done once for the whole batch (guardians, blood groups, cities) rather than once per card.
+        /// The photo is read straight from the uploads folder on the server and embedded in the PDF; no photo URL is created or returned.
+        /// </summary>
+        private async Task<(List<IdCardModel> Cards, List<bool> HadPhoto)> BuildCardsAsync(IdCardSchoolRow school, IdCardYearRow year, IReadOnlyList<IdCardStudentRow> rows,
+            IdCardOptions options, CancellationToken ct)
         {
-            var photo = IdCardPdf.TryLoadImage(ReadUpload(r.ProfilePhotoUrl));
-            guardians.TryGetValue(r.StudentId, out var g);
-            var model = new IdCardModel(FullName(r), $"{r.ClassName} - {r.SectionName}", r.RollNumber, r.AdmissionNumber, year.YearName, photo,
-                g.Name, g.Relationship, g.Mobile, IdCardQr.Payload(school.SchoolCode, r.AdmissionNumber));
-            return (model, photo != null);
+            var ids = rows.Select(r => r.StudentId).ToList();
+            var guardians = (await _repo.GetGuardiansAsync(school.SchoolId, ids, ct)).GroupBy(g => g.StudentId).ToDictionary(g => g.Key, g => g.ToList());
+            var bloodNames = await _repo.GetBloodGroupNamesAsync(ct);
+            var cities = await _repo.GetCityNamesAsync(rows.Where(r => r.CityId.HasValue).Select(r => r.CityId!.Value).Distinct().ToList(), ct);
+
+            var cards = new List<IdCardModel>(rows.Count);
+            var had = new List<bool>(rows.Count);
+            foreach (var r in rows)
+            {
+                var photo = IdCardPicture.TryCreate(ReadUpload(r.ProfilePhotoUrl));
+                guardians.TryGetValue(r.StudentId, out var gs);
+                gs ??= new();
+                string? Parent(string relationship) => gs.FirstOrDefault(g => string.Equals(g.Relationship, relationship, StringComparison.OrdinalIgnoreCase))?.Name;
+                var primary = gs.FirstOrDefault(g => g.IsPrimary) ?? gs.FirstOrDefault();
+
+                string? city = r.CityId.HasValue && r.CountryId.HasValue && r.StateId.HasValue && r.DistrictId.HasValue
+                    && cities.TryGetValue((r.CountryId.Value, r.StateId.Value, r.DistrictId.Value, r.CityId.Value), out var cn) ? cn : null;
+                var tail = string.Join(", ", new[] { city }.Where(p => !string.IsNullOrWhiteSpace(p)));
+                if (!string.IsNullOrWhiteSpace(r.Pincode)) tail = tail.Length > 0 ? $"{tail} - {r.Pincode}" : r.Pincode!;
+                var address = string.Join(", ", new[] { r.AddressLine1, r.AddressLine2, tail }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+                cards.Add(new IdCardModel(FullName(r), r.ClassName, r.SectionName, r.RollNumber, r.AdmissionNumber, year.YearName, photo,
+                    Parent("FATHER"), Parent("MOTHER"), primary?.Name, primary?.Relationship,
+                    primary?.Mobile ?? (string.IsNullOrWhiteSpace(r.MobileNumber) ? null : r.MobileNumber),
+                    r.DateOfBirth == default ? null : r.DateOfBirth.ToString("dd MMM yyyy", CultureInfo.InvariantCulture),
+                    r.BloodGroupId.HasValue && bloodNames.TryGetValue(r.BloodGroupId.Value, out var bg) ? bg : null,
+                    address.Length > 0 ? address : null,
+                    IdCardQr.Payload(school.SchoolCode, r.AdmissionNumber)));
+                had.Add(photo != null);
+            }
+            return (cards, had);
         }
 
         private byte[]? ReadUpload(string? relativeUrl)

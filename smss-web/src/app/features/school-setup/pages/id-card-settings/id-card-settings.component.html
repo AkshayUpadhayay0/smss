@@ -1,0 +1,149 @@
+<app-page-header
+  title="ID Card Settings"
+  subtitle="Pick a design and brand it with your school colours. Every card you print uses it."
+  icon="id-card"
+  [breadcrumbs]="breadcrumbs"
+>
+  @if (dirty()) {
+    <span class="unsaved">Unsaved changes</span>
+  }
+  <app-button [disabled]="!canSave() || loading()" (click)="save()">
+    <app-icon [name]="saving() ? 'loader-circle' : 'circle-check'" [size]="16" />{{ saving() ? 'Saving…' : 'Save settings' }}
+  </app-button>
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="note">Loading your ID card settings…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="note">
+      <p>Your ID card settings could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  <div class="layout">
+    <div class="main">
+      <section class="gallery" aria-labelledby="gallery-title">
+        <div class="section-head">
+          <h2 id="gallery-title">Choose a design</h2>
+          <p>Each preview is a live render of the real card, front and back, in your colours.</p>
+        </div>
+        <div class="grid">
+          @for (t of templates(); track t.code) {
+            <button type="button" class="tpl" [class.selected]="t.code === selected()" [attr.aria-pressed]="t.code === selected()" (click)="select(t.code)">
+              <span class="faces">
+                @for (side of ['front', 'back']; track side) {
+                  <span class="face" [class.loading]="!src(t.code, $any(side))">
+                    @if (src(t.code, $any(side)); as image) {
+                      <img [src]="image" [alt]="t.name + ' ' + side" />
+                    }
+                  </span>
+                }
+              </span>
+              <span class="meta">
+                <span class="name">{{ t.name }}</span>
+                @if (t.code === selected()) {
+                  <span class="chip"><app-icon name="circle-check" [size]="13" />Selected</span>
+                }
+                <span class="desc">{{ t.description }}</span>
+              </span>
+            </button>
+          }
+        </div>
+      </section>
+
+      <form class="settings" [formGroup]="form" (ngSubmit)="save()">
+        <app-card title="Brand colours">
+          <div class="colors">
+            <app-color-field
+              label="Primary colour"
+              [value]="form.controls.primaryColor.value"
+              [defaultValue]="selectedTemplate()?.defaultPrimaryColor ?? '#1E5BD8'"
+              (valueChange)="setColor('primaryColor', $event)"
+            />
+            <app-color-field
+              label="Secondary colour"
+              [value]="form.controls.secondaryColor.value"
+              [defaultValue]="selectedTemplate()?.defaultSecondaryColor ?? '#F5A623'"
+              (valueChange)="setColor('secondaryColor', $event)"
+            />
+          </div>
+          <p class="help">Text on the card switches between light and dark automatically, so any colour stays readable.</p>
+        </app-card>
+
+        <app-card title="Printed details">
+          <div class="fields">
+            <app-input label="Tagline" placeholder="e.g. Learning with Love" formControlName="tagline" [errorText]="err('tagline')" />
+            <app-input label="Website" placeholder="www.yourschool.edu" formControlName="website" [errorText]="err('website')" />
+            <app-input label="School e-mail" type="email" placeholder="office@yourschool.edu" formControlName="email" [errorText]="err('email')" />
+          </div>
+          <div class="terms">
+            <app-textarea
+              label="Terms on the back"
+              [rows]="4"
+              placeholder="One short line each, e.g. Carry this card every day."
+              formControlName="termsText"
+              [errorText]="err('termsText')"
+              [helpText]="termsLength() + ' / ' + maxTerms + ' characters · up to 5 short lines · shown on designs with a terms area'"
+            />
+          </div>
+        </app-card>
+
+        <app-card title="Show on the card">
+          <div class="toggles">
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showDob" /><span class="track"></span><span class="text">Date of birth</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showBloodGroup" /><span class="track"></span><span class="text">Blood group</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showMotherName" /><span class="track"></span><span class="text">Mother's name</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showAddress" /><span class="track"></span><span class="text">Student address</span></label>
+          </div>
+          <p class="help">A design prints only the lines it has room for. Aadhaar is never printed.</p>
+        </app-card>
+
+        <app-card title="Principal signature">
+          <div class="signature">
+            <div class="sig-state">
+              @if (hasSignature()) {
+                <span class="chip ok"><app-icon name="circle-check" [size]="13" />Signature on file</span>
+              } @else {
+                <span class="chip muted">No signature yet</span>
+              }
+              <p class="help">PNG, JPG or WEBP up to 2 MB, ideally dark ink on a white or transparent background. It is stored privately and only appears on printed cards.</p>
+            </div>
+            <div class="sig-actions">
+              <label class="file-btn" [class.disabled]="signatureBusy()">
+                <app-icon [name]="signatureBusy() ? 'loader-circle' : 'upload'" [size]="16" />{{ hasSignature() ? 'Replace' : 'Upload' }}
+                <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="signatureBusy()" (change)="onSignature($event)" />
+              </label>
+              @if (hasSignature()) {
+                <app-button variant="secondary" [disabled]="signatureBusy()" (click)="removeSignature()"><app-icon name="trash-2" [size]="16" />Remove</app-button>
+              }
+            </div>
+          </div>
+        </app-card>
+      </form>
+    </div>
+
+    <aside class="preview" aria-label="Live preview of the selected card">
+      <app-card>
+        <div class="preview-head">
+          <h2>{{ selectedTemplate()?.name }}</h2>
+          @if (previewing()) {
+            <span class="busy"><app-icon name="loader-circle" [size]="14" />Updating…</span>
+          }
+        </div>
+        <div class="big-faces">
+          @for (side of ['front', 'back']; track side) {
+            <figure class="big-face" [class.loading]="!src(selected(), $any(side))">
+              @if (src(selected(), $any(side)); as image) {
+                <img [src]="image" [alt]="'Selected design, ' + side" />
+              }
+              <figcaption>{{ side === 'front' ? 'Front' : 'Back' }}</figcaption>
+            </figure>
+          }
+        </div>
+        <p class="help">Shown with sample data. Real cards use each student's own details and photo; a student without a photo gets their initials.</p>
+      </app-card>
+    </aside>
+  </div>
+}

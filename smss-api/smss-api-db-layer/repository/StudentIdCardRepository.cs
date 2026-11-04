@@ -43,7 +43,8 @@ namespace smss_api_db_layer.repository
                   && (sectionId == null || e.ClassSectionId == sectionId)
                   && (studentId == null || e.StudentId == studentId)
             select new IdCardStudentRow(s.StudentId, s.AdmissionNumber, s.FirstName, s.MiddleName, s.LastName, e.RollNumber,
-                s.ProfilePhotoUrl, s.StatusId, e.StatusId, c.ClassName, sec.SectionName);
+                s.ProfilePhotoUrl, s.StatusId, e.StatusId, c.ClassName, sec.SectionName,
+                s.DateOfBirth, s.BloodGroupId, s.MobileNumber, s.AddressLine1, s.AddressLine2, s.CountryId, s.StateId, s.DistrictId, s.CityId, s.Pincode);
 
         public Task<List<IdCardStudentRow>> GetSectionStudentsAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct) =>
             Rows(schoolId, academicYearId, sectionId, null).ToListAsync(ct);
@@ -54,7 +55,7 @@ namespace smss_api_db_layer.repository
         public Task<bool> StudentExistsAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.AsNoTracking().AnyAsync(s => s.SchoolId == schoolId && s.StudentId == studentId, ct);
 
-        public async Task<Dictionary<string, (string Name, string Relationship, string Mobile)>> GetGuardiansAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        public async Task<List<IdCardGuardianRow>> GetGuardiansAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
         {
             if (studentIds.Count == 0) return new();
             var ids = studentIds.ToArray();
@@ -62,14 +63,21 @@ namespace smss_api_db_layer.repository
                 from sg in _db.StudentGuardians.AsNoTracking()
                 join g in _db.Guardians.AsNoTracking() on sg.GuardianId equals g.GuardianId
                 where ids.Contains(sg.StudentId) && g.SchoolId == schoolId
-                select new { sg.StudentId, g.FirstName, g.LastName, sg.Relationship, g.MobileNumber, sg.IsPrimary, g.GuardianId }).ToListAsync(ct);
-            return rows.GroupBy(r => r.StudentId).ToDictionary(
-                grp => grp.Key,
-                grp =>
-                {
-                    var g = grp.OrderByDescending(r => r.IsPrimary).ThenBy(r => r.GuardianId).First();
-                    return (string.Join(' ', new[] { g.FirstName, g.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))), g.Relationship, g.MobileNumber);
-                });
+                orderby sg.IsPrimary descending, g.GuardianId
+                select new { sg.StudentId, g.FirstName, g.LastName, sg.Relationship, g.MobileNumber, sg.IsPrimary }).ToListAsync(ct);
+            return rows.Select(r => new IdCardGuardianRow(r.StudentId,
+                string.Join(' ', new[] { r.FirstName, r.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))), r.Relationship, r.MobileNumber, r.IsPrimary)).ToList();
+        }
+
+        public async Task<Dictionary<int, string>> GetBloodGroupNamesAsync(CancellationToken ct) =>
+            (await _db.LutBloodGroups.AsNoTracking().ToListAsync(ct)).ToDictionary(b => (int)b.BloodGroupId, b => b.BloodGroupName);
+
+        public async Task<Dictionary<(int, int, int, int), string>> GetCityNamesAsync(IReadOnlyCollection<int> cityIds, CancellationToken ct)
+        {
+            if (cityIds.Count == 0) return new();
+            var ids = cityIds.ToArray();
+            var rows = await _db.LutCities.AsNoTracking().Where(c => ids.Contains(c.CityId)).ToListAsync(ct);
+            return rows.ToDictionary(c => (c.Cid, c.Sid, c.Did, c.CityId), c => c.CityName);
         }
 
         public Task<int?> GetActiveStatusIdAsync(CancellationToken ct) =>

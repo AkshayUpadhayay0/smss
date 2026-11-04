@@ -48,6 +48,8 @@ builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();
 builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();
+builder.Services.AddScoped<IIdCardSettingsRepository, IdCardSettingsRepository>();
+builder.Services.AddScoped<IIdCardSettingsService, IdCardSettingsService>();
 builder.Services.AddScoped<IMyStudentsService, MyStudentsService>();
 builder.Services.AddScoped<IStudentLoginRepository, StudentLoginRepository>();
 builder.Services.AddScoped<IStudentLoginService, StudentLoginService>();

@@ -70,6 +70,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbStudentAttendance> StudentAttendance { get; set; } = null!;
         public DbSet<LutEventCategory> LutEventCategories { get; set; } = null!;
         public DbSet<TbSchoolEvent> SchoolEvents { get; set; } = null!;
+        public DbSet<TbSchoolIdCardSettings> SchoolIdCardSettings { get; set; } = null!;
         public DbSet<TbPeriod> Periods { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
         public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;

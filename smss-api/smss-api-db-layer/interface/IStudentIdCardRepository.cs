@@ -8,7 +8,11 @@ namespace smss_api_db_layer.@interface
 
     /// <summary>One student's enrollment for the current year, with everything a card shows. Status ids are raw; the service compares them to "Active".</summary>
     public record IdCardStudentRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
-        string? RollNumber, string? ProfilePhotoUrl, int StudentStatusId, int EnrollmentStatusId, string ClassName, string SectionName);
+        string? RollNumber, string? ProfilePhotoUrl, int StudentStatusId, int EnrollmentStatusId, string ClassName, string SectionName,
+        DateTime DateOfBirth, int? BloodGroupId, string? MobileNumber, string? AddressLine1, string? AddressLine2, int? CountryId, int? StateId, int? DistrictId, int? CityId, string? Pincode);
+
+    /// <summary>One guardian of a student, as stored (relationship values are upper-case, e.g. FATHER / MOTHER).</summary>
+    public record IdCardGuardianRow(string StudentId, string Name, string Relationship, string Mobile, bool IsPrimary);
 
     /// <summary>Read-only. Every method takes the school id: another school's rows can never come back.</summary>
     public interface IStudentIdCardRepository
@@ -22,8 +26,12 @@ namespace smss_api_db_layer.@interface
         /// <summary>One student's enrollment for that year; null when the student is not in this school or has no enrollment that year.</summary>
         Task<IdCardStudentRow?> GetStudentAsync(string schoolId, long academicYearId, string studentId, CancellationToken ct);
         Task<bool> StudentExistsAsync(string schoolId, string studentId, CancellationToken ct);
-        /// <summary>Each student's primary guardian (else the first one): name, relationship, mobile. Students with no guardian are absent.</summary>
-        Task<Dictionary<string, (string Name, string Relationship, string Mobile)>> GetGuardiansAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
+        /// <summary>All guardians of the given students (primary first). Students with no guardian are simply absent.</summary>
+        Task<List<IdCardGuardianRow>> GetGuardiansAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
+        /// <summary>Blood group names by id (a tiny global lookup).</summary>
+        Task<Dictionary<int, string>> GetBloodGroupNamesAsync(CancellationToken ct);
+        /// <summary>City names for the given students' addresses, keyed by (country, state, district, city) ids.</summary>
+        Task<Dictionary<(int, int, int, int), string>> GetCityNamesAsync(IReadOnlyCollection<int> cityIds, CancellationToken ct);
         /// <summary>Id of the lut_status row "Active" of type "general status" (resolved by name, never hardcoded); null if the lookup is missing.</summary>
         Task<int?> GetActiveStatusIdAsync(CancellationToken ct);
     }
