@@ -24,9 +24,11 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { toUploadUrl } from '../../../../core/utils/upload-url';
+import { ToastService } from '../../../../core/services/toast.service';
 import { dueStatusTone } from '../../models/student-billing.model';
-import { StudentListItem, StudentRow } from '../../models/student.model';
+import { IdCardBulkResult, StudentListItem, StudentRow } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
+import { idCardSummary, savePdfBase64 } from '../../utils/id-card';
 
 const COLUMNS: TableColumn<StudentRow>[] = [
   { key: 'photoUrl', label: '', type: 'avatar', width: '64px', avatarLabel: (r) => r.fullName },
@@ -69,6 +71,7 @@ export class StudentListComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   protected readonly columns = COLUMNS;
   protected readonly breadcrumbs = [{ label: 'Students' }];
@@ -190,6 +193,7 @@ export class StudentListComponent implements OnInit {
 
   private reload(): void {
     this.items.set([]);
+    this.cardResult.set(null);
     this.loadFailed.set(false);
     this.page.set(1);
     if (!this.ready()) return;
@@ -202,6 +206,43 @@ export class StudentListComponent implements OnInit {
         next: (list) => this.items.set(list),
         error: () => this.loadFailed.set(true), // already toasted by the interceptor
       });
+  }
+
+  // ── ID cards ─────────────────────────────────────────────────────────
+  /** The last bulk run for the chosen section (kept so the no-photo / excluded lists stay on screen). Cleared when the section changes. */
+  protected readonly cardResult = signal<IdCardBulkResult | null>(null);
+  protected readonly cardsBusy = signal(false);
+  protected readonly cardSummary = computed(() => {
+    const r = this.cardResult();
+    return r ? idCardSummary(r.cardCount, r.sheetCount) : '';
+  });
+
+  /** Generates the section's ID cards (current academic year) and downloads the PDF, then shows who had no photo and who was left out. */
+  protected printIdCards(): void {
+    if (!this.ready() || this.cardsBusy()) return;
+    this.cardsBusy.set(true);
+    this.cardResult.set(null);
+    this.students
+      .printSectionIdCards(Number(this.sectionControl.value))
+      .pipe(finalize(() => this.cardsBusy.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (r) => {
+          this.cardResult.set(r);
+          if (r.pdfBase64) {
+            savePdfBase64(r.pdfBase64, r.fileName);
+            this.toast.success(`ID cards downloaded (${idCardSummary(r.cardCount, r.sheetCount)}).`);
+          } else {
+            this.toast.warning('No student in this section can be issued an ID card.');
+          }
+        },
+        error: () => undefined, // the server reason (e.g. over the per-request limit) is toasted by the interceptor
+      });
+  }
+
+  /** Saves the PDF of the last run again without calling the server. */
+  protected downloadAgain(): void {
+    const r = this.cardResult();
+    if (r?.pdfBase64) savePdfBase64(r.pdfBase64, r.fileName);
   }
 
   protected retry(): void {

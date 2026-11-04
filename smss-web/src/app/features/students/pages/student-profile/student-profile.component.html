@@ -51,6 +51,11 @@
             <h2>{{ s.fullName }}</h2>
             <p>{{ s.admissionNumber }}@if (s.className) { · {{ s.className }}{{ s.sectionName ? ' – ' + s.sectionName : '' }} }</p>
           </div>
+          @if (isSchoolAdmin() && !restricted()) {
+            <app-button variant="secondary" [disabled]="cardBusy()" (click)="downloadIdCard()">
+              <app-icon [name]="cardBusy() ? 'loader-circle' : 'id-card'" [size]="16" />{{ cardBusy() ? 'Preparing…' : 'Download ID Card' }}
+            </app-button>
+          }
           @if (!restricted()) {
             <app-button variant="secondary" (click)="photoDialogOpen.set(true)">
               <app-icon name="upload" [size]="16" />{{ photoUrl() ? 'Update Photo' : 'Add Photo' }}

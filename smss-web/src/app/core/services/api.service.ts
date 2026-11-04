@@ -24,8 +24,8 @@ export class ApiService {
   }
 
   /** A file from an authenticated endpoint (the token is attached by the interceptor): the raw bytes, not the ApiResponse envelope. */
-  download(path: string): Observable<Blob> {
-    return this.http.get(this.url(path), { responseType: 'blob' });
+  download(path: string, options?: ApiRequestOptions): Observable<Blob> {
+    return this.http.get(this.url(path), { responseType: 'blob', context: this.context(options) });
   }
 
   post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Observable<T> {

@@ -25,6 +25,10 @@ namespace smss_api_service_layer.@interface
         Stream? OpenPrivate(string storageKey);
         void DeletePrivate(string storageKey);
 
+        // Server-side read of a file saved under the uploads root, by the relative URL the database keeps (logo, student photo). Used to embed
+        // images in generated documents; it creates no new URL. Null when the file is missing or the URL points outside the uploads root. Never throws.
+        Stream? OpenUpload(string relativeUrl);
+
         // Best-effort delete by the URL returned from Save. Never throws.
         void Delete(string relativeUrl);
     }

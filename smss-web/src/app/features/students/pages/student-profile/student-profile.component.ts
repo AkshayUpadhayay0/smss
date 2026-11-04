@@ -6,6 +6,8 @@ import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
 import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
@@ -39,6 +41,7 @@ export class StudentProfileComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   /** Bound from the :studentId route param (withComponentInputBinding). */
   readonly studentId = input.required<string>();
@@ -89,6 +92,26 @@ export class StudentProfileComponent implements OnInit {
   protected readonly photoUrl = computed(() => toUploadUrl(this.student()?.profilePhotoUrl));
   protected readonly initials = computed(() => initialsOf(this.student()?.fullName));
   protected readonly photoDialogOpen = signal(false);
+
+  /** "Download ID Card" is running. */
+  protected readonly cardBusy = signal(false);
+
+  /** The student ID card (front + back) as a PDF. School Admin only; the server refuses anyone else and explains why a card cannot be issued (inactive, not enrolled). */
+  protected downloadIdCard(): void {
+    const s = this.student();
+    if (!s || this.cardBusy()) return;
+    this.cardBusy.set(true);
+    this.students
+      .downloadIdCard(s.studentId)
+      .pipe(finalize(() => this.cardBusy.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          saveBlob(blob, `IDCard_${s.admissionNumber}.pdf`);
+          this.toast.success('ID card downloaded.');
+        },
+        error: (e: Error) => this.toast.error(e.message),
+      });
+  }
 
   /** Profile (default) or Fees. The Fees tab is created only when first opened, so it loads on demand. */
   /**

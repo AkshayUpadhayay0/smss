@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
+import { ToastService } from '../../../../core/services/toast.service';
 import { StudentProfileComponent } from './student-profile.component';
 
 const API = 'https://localhost:7037';
@@ -41,6 +42,57 @@ describe('StudentProfileComponent', () => {
     }
   };
   const el = () => fixture.nativeElement as HTMLElement;
+
+  describe('ID card', () => {
+    const buttonText = () => [...el().querySelectorAll('app-button')].map((b) => b.textContent?.trim() ?? '');
+    const idCardUrl = `${API}/api/StudentIdCard/student/DPS001ST001`;
+    let clicked: ReturnType<typeof vi.fn>;
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => 'blob:id-card');
+      URL.revokeObjectURL = vi.fn();
+      clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined) as unknown as ReturnType<typeof vi.fn>;
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it('School Admin sees Download ID Card; the download is the authenticated GET and is saved as IDCard_<admission>.pdf', () => {
+      openAs(['School Admin']);
+      expect(buttonText().some((t) => t.includes('Download ID Card'))).toBe(true);
+
+      (fixture.componentInstance as unknown as { downloadIdCard(): void }).downloadIdCard();
+      const req = http.expectOne(idCardUrl);
+      expect(req.request.method).toBe('GET');
+      expect(req.request.responseType).toBe('blob');
+      req.flush(new Blob(['%PDF-'], { type: 'application/pdf' }));
+      expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it('a failed download shows the server reason (read out of the blob body) and saves nothing', async () => {
+      openAs(['School Admin']);
+      (fixture.componentInstance as unknown as { downloadIdCard(): void }).downloadIdCard();
+      const body = JSON.stringify({ status: false, statusCode: 400, message: 'No card can be issued: the student is inactive.', data: null });
+      http.expectOne(idCardUrl).flush(new Blob([body], { type: 'application/json' }), { status: 400, statusText: 'Bad Request' });
+      await fixture.whenStable();
+      await new Promise((r) => setTimeout(r));
+      const toasts = (TestBed.inject(ToastService).toasts() ?? []).map((t) => t.message);
+      expect(toasts).toContain('No card can be issued: the student is inactive.');
+      expect(clicked).not.toHaveBeenCalled();
+    });
+
+    it('is not offered to an Accountant', () => {
+      openAs(['Accountant']);
+      expect(buttonText().some((t) => t.includes('ID Card'))).toBe(false);
+    });
+
+    it('is not offered in the restricted (Teacher) view', () => {
+      setup(['Teacher']);
+      fixture.componentRef.setInput('studentId', 'DPS001ST001');
+      fixture.componentRef.setInput('restricted', true);
+      fixture.detectChanges();
+      http.expectOne(`${API}/api/Student/my-class/DPS001ST001`).flush(env(PROFILE));
+      fixture.detectChanges();
+      expect(buttonText().some((t) => t.includes('ID Card'))).toBe(false);
+    });
+  });
 
   it('School Admin: Profile and Fees tabs, with the profile editing actions', () => {
     openAs(['School Admin']);

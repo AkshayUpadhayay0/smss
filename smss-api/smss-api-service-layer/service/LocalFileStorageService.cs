@@ -152,6 +152,24 @@ namespace smss_api_service_layer.service
             }
         }
 
+        public Stream? OpenUpload(string relativeUrl)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(relativeUrl) || !relativeUrl.StartsWith(_requestPath + "/", StringComparison.Ordinal)) return null;
+                var relative = relativeUrl[(_requestPath.Length + 1)..].Replace('/', Path.DirectorySeparatorChar);
+                var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relative));
+                // Never open anything outside the uploads root
+                if (!fullPath.StartsWith(_rootPath + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(fullPath)) return null;
+                return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not open upload {Url}", relativeUrl);
+                return null;
+            }
+        }
+
         public void Delete(string relativeUrl)
         {
             try

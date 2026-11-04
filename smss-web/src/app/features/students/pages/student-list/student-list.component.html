@@ -31,7 +31,47 @@
         <app-input placeholder="Search by name, number…" prefixIcon="search" (input)="onSearch($event)" />
       </div>
       <span class="count">{{ total() }} {{ total() === 1 ? 'student' : 'students' }}</span>
+      <app-button variant="secondary" [disabled]="cardsBusy() || loading()" (click)="printIdCards()">
+        <app-icon [name]="cardsBusy() ? 'loader-circle' : 'id-card'" [size]="16" />{{ cardsBusy() ? 'Generating…' : 'Print ID Cards' }}
+      </app-button>
     </div>
+
+    @if (cardResult(); as r) {
+      <section class="cards-report" aria-live="polite">
+        <div class="cards-head">
+          <h3>ID cards · {{ r.academicYearName }}</h3>
+          @if (r.pdfBase64) {
+            <span class="cards-sum">{{ cardSummary() }}</span>
+            <app-button variant="secondary" size="sm" (click)="downloadAgain()"><app-icon name="download" [size]="14" />Download again</app-button>
+          } @else {
+            <span class="cards-sum">Nothing to print</span>
+          }
+        </div>
+        @if (r.noPhoto.length) {
+          <div class="cards-list">
+            <p><strong>{{ r.noPhoto.length }}</strong> printed without a photo (initials shown). Add a photo from the student profile and print again:</p>
+            <ul>
+              @for (n of r.noPhoto; track n.studentId) {
+                <li>{{ n.fullName }} <span class="muted">· {{ n.admissionNumber }}</span></li>
+              }
+            </ul>
+          </div>
+        }
+        @if (r.excluded.length) {
+          <div class="cards-list warn">
+            <p><strong>{{ r.excluded.length }}</strong> left out of the PDF:</p>
+            <ul>
+              @for (x of r.excluded; track x.studentId) {
+                <li>{{ x.fullName }} <span class="muted">· {{ x.admissionNumber }} · {{ x.reason }}</span></li>
+              }
+            </ul>
+          </div>
+        }
+        @if (r.pdfBase64 && !r.noPhoto.length && !r.excluded.length) {
+          <p class="cards-ok">Every student has a photo and was included.</p>
+        }
+      </section>
+    }
 
     <app-table
       [columns]="columns"

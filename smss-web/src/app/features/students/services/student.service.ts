@@ -1,11 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable, catchError, from, map, switchMap, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
 import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
-import { MyClass, StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
+import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
 
@@ -54,6 +55,19 @@ export class StudentService {
   /** Creates the student's login; the response carries the generated Login ID and temporary password (shown once). */
   createLogin(studentId: string): Observable<StudentLoginCreated> {
     return this.withSchool((s) => this.api.post<StudentLoginCreated>(`${BASE}/${s}/${encodeURIComponent(studentId)}/create-login`, {}));
+  }
+
+  // ---- ID cards (School Admin only; the school comes from the token, so no school id is sent)
+  /** One student's ID card as a PDF. A failure carries the server's reason as the Error message (the body of a failed blob request is itself a blob). */
+  downloadIdCard(studentId: string): Observable<Blob> {
+    return this.api.download(`/api/StudentIdCard/student/${encodeURIComponent(studentId)}`, { skipErrorToast: true }).pipe(
+      catchError((e: unknown) => from(readBlobError(e)).pipe(switchMap((message) => throwError(() => new Error(message))))),
+    );
+  }
+
+  /** A section's cards on A4 sheets (the current academic year). The PDF comes back as base64 inside the usual envelope, with the no-photo / excluded lists. */
+  printSectionIdCards(sectionId: number): Observable<IdCardBulkResult> {
+    return this.api.post<IdCardBulkResult>(`/api/StudentIdCard/section/${sectionId}`, {});
   }
 
   // ---- fee items and installments (the server takes the school from the token)
@@ -115,4 +129,18 @@ export class StudentService {
     const schoolId = this.auth.user()?.schoolId;
     return schoolId ? call(encodeURIComponent(schoolId)) : throwError(() => new Error('Your account is not linked to a school.'));
   }
+}
+
+/** The `message` of a standard error envelope that arrived as a Blob, else a generic line. */
+async function readBlobError(e: unknown): Promise<string> {
+  const fallback = 'The ID card could not be generated. Please try again.';
+  if (!(e instanceof HttpErrorResponse)) return fallback;
+  try {
+    const body: unknown = e.error instanceof Blob ? JSON.parse(await e.error.text()) : e.error;
+    const message = (body as { message?: unknown } | null)?.message;
+    if (typeof message === 'string' && message) return message;
+  } catch {
+    /* not JSON: fall through */
+  }
+  return e.status === 403 ? 'Only a School Admin can print student ID cards.' : e.status === 0 ? 'Cannot reach the server. Check your connection and try again.' : fallback;
 }

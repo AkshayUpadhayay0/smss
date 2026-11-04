@@ -150,3 +150,27 @@ export interface MyClassStudentRow extends Record<string, unknown> {
   genderName: string;
   statusName: string;
 }
+
+/** Mirrors IdCardStudentRefDto: a student named in the bulk ID-card report (`reason` only on excluded ones). */
+export interface IdCardStudentRef {
+  studentId: string;
+  admissionNumber: string;
+  fullName: string;
+  rollNumber: string | null;
+  reason: string | null;
+}
+
+/** Mirrors IdCardBulkResultDto. `pdfBase64` is null when no student of the section qualified. */
+export interface IdCardBulkResult {
+  fileName: string;
+  contentType: string;
+  pdfBase64: string | null;
+  cardCount: number;
+  sheetCount: number;
+  maxCardsPerRequest: number;
+  academicYearName: string;
+  /** Printed with the initials placeholder: no (readable) photo. */
+  noPhoto: IdCardStudentRef[];
+  /** Left out of the PDF, each with the reason. */
+  excluded: IdCardStudentRef[];
+}

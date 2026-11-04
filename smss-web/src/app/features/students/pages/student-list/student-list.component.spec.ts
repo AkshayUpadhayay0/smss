@@ -148,6 +148,93 @@ describe('StudentListComponent', () => {
     req.flush(env(STUDENTS));
   });
 
+  describe('Print ID Cards', () => {
+    const ref = (n: number, reason: string | null = null) => ({ studentId: `S${n}`, admissionNumber: `ADM${n}`, fullName: `Student ${n}`, rollNumber: String(n), reason });
+    const RESULT = {
+      fileName: 'IDCards_Nursery_A_2026-27.pdf', contentType: 'application/pdf', pdfBase64: 'JVBERi0=', cardCount: 12, sheetCount: 2, maxCardsPerRequest: 100,
+      academicYearName: '2026-27', noPhoto: [ref(1), ref(2)], excluded: [ref(3, 'The student is inactive')],
+    };
+    const open = () => {
+      create();
+      cmp()['classControl'].setValue('4');
+      cmp()['sectionControl'].setValue('13');
+      studentRequests().forEach((r) => r.flush(env(STUDENTS)));
+      fixture.detectChanges();
+    };
+    const printButton = () => [...el().querySelectorAll('app-button')].find((b) => b.textContent?.includes('Print ID Cards')) as HTMLElement | undefined;
+    const idCardRequests = () => http.match((r) => r.url === `${API}/api/StudentIdCard/section/13`);
+    let clicked: ReturnType<typeof vi.fn>;
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => 'blob:cards');
+      URL.revokeObjectURL = vi.fn();
+      clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined) as unknown as ReturnType<typeof vi.fn>;
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it('is not shown until a class and section are chosen', () => {
+      create();
+      expect(printButton()).toBeUndefined();
+    });
+
+    it('posts for the chosen section, downloads the PDF, and lists the no-photo and excluded students', () => {
+      open();
+      expect(printButton()).toBeDefined();
+      cmp()['printIdCards']();
+      const [req] = idCardRequests();
+      expect(req.request.method).toBe('POST');
+      req.flush(env(RESULT));
+      fixture.detectChanges();
+
+      expect(clicked).toHaveBeenCalledTimes(1);
+      const text = el().textContent ?? '';
+      expect(text).toContain('12 cards on 2 sheets');
+      expect(text).toContain('2 printed without a photo');
+      expect(text).toContain('Student 1');
+      expect(text).toContain('1 left out of the PDF');
+      expect(text).toContain('The student is inactive');
+    });
+
+    it('when nobody qualifies there is no download, and the excluded list still shows', () => {
+      open();
+      cmp()['printIdCards']();
+      idCardRequests()[0].flush(env({ ...RESULT, pdfBase64: null, cardCount: 0, sheetCount: 0, noPhoto: [] }));
+      fixture.detectChanges();
+      expect(clicked).not.toHaveBeenCalled();
+      expect(el().textContent).toContain('Nothing to print');
+      expect(el().textContent).toContain('left out of the PDF');
+    });
+
+    it('ignores a second click while generating, and re-enables afterwards', () => {
+      open();
+      cmp()['printIdCards']();
+      cmp()['printIdCards']();
+      const reqs = idCardRequests();
+      expect(reqs).toHaveLength(1);
+      reqs[0].flush(env({ ...RESULT, noPhoto: [], excluded: [] }));
+      expect(cmp()['cardsBusy']()).toBe(false);
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Every student has a photo and was included.');
+    });
+
+    it('a failed run (e.g. over the limit) leaves no stale report and does not download', () => {
+      open();
+      cmp()['printIdCards']();
+      idCardRequests()[0].flush({ status: false, statusCode: 400, message: 'over the limit', data: null }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+      expect(cmp()['cardResult']()).toBeNull();
+      expect(clicked).not.toHaveBeenCalled();
+      expect(cmp()['cardsBusy']()).toBe(false);
+    });
+
+    it('changing the section clears the previous report', () => {
+      open();
+      cmp()['printIdCards']();
+      idCardRequests()[0].flush(env(RESULT));
+      cmp()['classControl'].setValue('7');
+      expect(cmp()['cardResult']()).toBeNull();
+    });
+  });
+
   it('restores the filter it was opened with (Back to Students)', () => {
     create({ academicYearId: '2', classId: '4', sectionId: '13' });
     const [req] = studentRequests();
