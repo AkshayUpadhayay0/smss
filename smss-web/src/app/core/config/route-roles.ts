@@ -105,6 +105,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/employees/:employeeId/edit': [ROLES.SCHOOL_ADMIN],
   // Fee dashboard + reports: read-only for the Principal (the API sends canManage=false; the screens hide drill-down / export)
   '/fee-dashboard': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
+  // Fee Status of a class teacher's own section (read-only; the API checks WHICH teacher). The School Admin has the fee dashboard and reports instead.
+  '/fee-status': [ROLES.TEACHER],
   '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
 
   '/schools': [ROLES.SUPER_ADMIN],

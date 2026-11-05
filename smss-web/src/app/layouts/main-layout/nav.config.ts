@@ -42,6 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Admissions', route: '/admissions' },
       { label: 'Add Existing Student', route: '/students/onboard-existing' },
       { label: 'Student Leave', route: '/leave/students' },
+      { label: 'Fee Status', route: '/fee-status' },
     ],
   },
   {

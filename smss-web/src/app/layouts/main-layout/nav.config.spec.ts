@@ -12,8 +12,8 @@ describe('visibleNav: Students group', () => {
     for (const l of ['Admissions', 'Add Existing Student', 'Student Leave', 'My Students']) expect(flat).not.toContain(l);
   });
 
-  it('Teacher sees My Students and Student Leave in the group', () => {
-    expect(childLabels([ROLES.TEACHER])).toEqual(['My Students', 'Student Leave']);
+  it('Teacher sees My Students, Student Leave and Fee Status in the group', () => {
+    expect(childLabels([ROLES.TEACHER])).toEqual(['My Students', 'Student Leave', 'Fee Status']);
   });
 
   it('a role that would see one child gets it as a flat item (Admission Staff, Principal -> Admissions)', () => {

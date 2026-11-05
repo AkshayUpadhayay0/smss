@@ -1,0 +1,71 @@
+<app-page-header title="Fee Status" subtitle="How your class stands on fees" icon="file-text" [breadcrumbs]="breadcrumbs" />
+
+@if (loadingSections()) {
+  <app-card><p class="note" role="status">Loading your sections…</p></app-card>
+} @else if (sectionsFailed()) {
+  <app-card><div class="note"><p role="alert">Your sections could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadSections()">Try again</app-button></div></app-card>
+} @else if (sections().length === 0) {
+  <app-card>
+    <div class="note empty">
+      <app-icon name="inbox" [size]="36" />
+      <p>You are not the class teacher of any section{{ yearName() ? ' for ' + yearName() : '' }}.</p>
+      <p class="small">Fee status is shown to a section's class teacher. Ask your School Admin to assign you to a section.</p>
+    </div>
+  </app-card>
+} @else {
+  <app-card>
+    <div class="filters">
+      <app-select label="Section" [options]="sectionOptions()" [formControl]="sectionControl" />
+      <app-select label="Status" [options]="statusOptions" [formControl]="statusControl" />
+      <label class="search">
+        <span>Search</span>
+        <input type="search" placeholder="Name or roll number" aria-label="Search students" (input)="setSearch($event)" />
+      </label>
+    </div>
+  </app-card>
+
+  @if (loading() && !data()) {
+    <app-card><p class="note" role="status">Loading the fee status…</p></app-card>
+  } @else if (loadFailed()) {
+    <app-card><div class="note"><p role="alert">The fee status could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadStatus()">Try again</app-button></div></app-card>
+  } @else if (data(); as d) {
+    <div class="tiles" role="status" aria-label="Summary" [class.refreshing]="loading()">
+      <div class="tile"><span class="num">{{ d.summary.students }}</span><span class="lbl">Students</span></div>
+      <div class="tile"><span class="num ok">{{ d.summary.fullyPaid }}</span><span class="lbl">Fully paid</span></div>
+      <div class="tile"><span class="num">{{ d.summary.partiallyPaid }}</span><span class="lbl">Partially paid</span></div>
+      <div class="tile"><span class="num">{{ d.summary.unpaid }}</span><span class="lbl">Unpaid</span></div>
+      <div class="tile" [class.warn]="d.summary.overdue > 0"><span class="num">{{ d.summary.overdue }}</span><span class="lbl">Overdue</span></div>
+    </div>
+
+    <app-card [noPadding]="true">
+      <div class="toolbar">
+        <div class="title"><strong>{{ d.className }} – {{ d.sectionName }}</strong><span>{{ d.academicYearName }} · {{ rows().length }} of {{ d.students.length }} shown · highest balance first</span></div>
+        <app-button variant="secondary" size="sm" [disabled]="rows().length === 0" (click)="exportCsv()"><app-icon name="download" [size]="16" />CSV</app-button>
+      </div>
+
+      @if (d.students.length === 0) {
+        <p class="note pad">This section has no active students.</p>
+      } @else if (rows().length === 0) {
+        <p class="note pad">No student matches the filter.</p>
+      } @else {
+        <div class="scroll">
+          <table class="list">
+            <thead><tr><th>Roll</th><th>Student</th><th>Status</th><th class="num">Total due</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+            <tbody>
+              @for (s of rows(); track $index) {
+                <tr>
+                  <td>{{ s.rollNumber || '–' }}</td>
+                  <td class="name">{{ s.fullName }}</td>
+                  <td><span class="pill {{ tone(s.status) }}">{{ s.status }}</span></td>
+                  <td class="num">{{ inr(s.totalDue) }}</td>
+                  <td class="num">{{ inr(s.totalPaid) }}</td>
+                  <td class="num bal" [class.owes]="s.balance > 0">{{ inr(s.balance) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </app-card>
+  }
+}

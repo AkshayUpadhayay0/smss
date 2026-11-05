@@ -8,6 +8,7 @@ import { AcademicYearService } from '../../school-setup/services/academic-year.s
 import { ClassService } from '../../school-setup/services/class.service';
 import { SectionService } from '../../school-setup/services/section.service';
 import { ClassFeeReport, FeeDashboard } from '../models/fee-report.model';
+import { SectionFeeStatus } from '../models/section-fee-status.model';
 
 /** Always the caller's own school: the server takes it from the token. */
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,11 @@ export class FeeReportService {
     if (classId) params['classId'] = classId;
     if (sectionId) params['sectionId'] = sectionId;
     return this.api.get<FeeDashboard>('/api/FeeDashboard', params);
+  }
+
+  /** A class teacher's read-only fee status for their own section (the current academic year); the server checks WHICH teacher (a School Admin may ask for any section). */
+  sectionStatus(sectionId: number, academicYearId?: number): Observable<SectionFeeStatus> {
+    return this.api.get<SectionFeeStatus>('/api/Fee/section-status', { sectionId, ...(academicYearId ? { academicYearId } : {}) });
   }
 
   classReport(classId: number, academicYearId: number, sectionId: number | null): Observable<ClassFeeReport> {
