@@ -13,6 +13,9 @@ namespace smss_api_db_layer.@interface
     public record StudentEnrollmentRow(long EnrollmentId, string? RollNumber, int StatusId, long AcademicYearId, string AcademicYearName,
         DateOnly AcademicYearStart, bool AcademicYearIsCurrent, string ClassName, string SectionName);
 
+    /// <summary>One instalment of a student (tb_student_fee_dues): when it falls due, what it is for and what the payment allocations have applied to it so far.</summary>
+    public record StudentDueRow(string StudentId, DateOnly DueDate, decimal AmountDue, decimal AmountPaid);
+
     public record StudentGuardianRow(long GuardianId, string FirstName, string? LastName, string Relationship, string MobileNumber,
         string? Email, bool IsPrimary, bool IsEmergencyContact, bool CanPickupStudent);
 
@@ -28,6 +31,8 @@ namespace smss_api_db_layer.@interface
         /// overdue (still owed and due before <paramref name="today"/>). Students with no fee items at all are simply absent from the result (a student with items but no installments is present with zero totals).
         /// </summary>
         Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct);
+        /// <summary>ONE read: every instalment of the given students for the academic year (school id on both tables). The class teacher's month view and year grid are built from it.</summary>
+        Task<List<StudentDueRow>> GetFeeDueRowsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>The student, tracked, for changing their photo.</summary>
         Task<TbStudent?> GetStudentForUpdateAsync(string schoolId, string studentId, CancellationToken ct);

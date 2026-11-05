@@ -48,9 +48,72 @@
   }
 }
 
+.month-picker {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: end;
+
+  app-select {
+    min-width: 0;
+  }
+
+  .arrow {
+    height: 40px;
+    width: 40px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface, #fff);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.view-switch {
+  display: inline-flex;
+  align-self: end;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  button {
+    flex: 1;
+    padding: 0 var(--space-4);
+    border: 0;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    white-space: nowrap;
+
+    &.on {
+      background: var(--color-primary-soft);
+      color: var(--color-primary-700);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
+  }
+}
+
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-4);
   margin: var(--space-5) 0;
   transition: opacity 0.15s;
@@ -67,10 +130,20 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
 
+    &.wide {
+      grid-column: span 2;
+    }
+
     .num {
       font-size: var(--text-2xl, 1.6rem);
       font-weight: var(--weight-semibold);
       line-height: 1.1;
+
+      small {
+        font-size: var(--text-sm);
+        font-weight: var(--weight-regular, 400);
+        color: var(--color-text-muted);
+      }
 
       &.ok {
         color: var(--color-status-active-fg, #15803d);
@@ -84,6 +157,12 @@
 
     &.warn .num {
       color: var(--color-danger);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .tile.wide {
+      grid-column: span 1;
     }
   }
 }
@@ -130,6 +209,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-text-muted);
+    white-space: normal;
   }
 
   .num {
@@ -141,12 +221,14 @@
     font-weight: var(--weight-medium);
   }
 
-  .bal.owes {
+  .owes {
     font-weight: var(--weight-semibold);
   }
 }
 
 .pill {
+  display: inline-flex;
+  gap: 4px;
   padding: 2px var(--space-3);
   border-radius: 999px;
   font-size: var(--text-xs);
@@ -157,4 +239,106 @@
   &.green { background: var(--color-success-soft); color: var(--color-status-active-fg); }
   &.yellow { background: var(--color-warning-soft); color: var(--color-warning); }
   &.red { background: var(--color-danger-soft); color: var(--color-danger); }
+  &.orange { background: #fff1e0; color: #b45309; }
+  &.blue { background: var(--color-info-soft); color: var(--color-info); }
+}
+
+// ---- year grid: students as rows, months as columns; the roll and name stay pinned
+.grid-wrap {
+  max-height: min(70vh, 720px);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.year {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--text-sm);
+
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface, #fff);
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-surface-muted, #f7f7fb);
+    font-weight: var(--weight-semibold);
+  }
+
+  .sticky {
+    position: sticky;
+    z-index: 1;
+    text-align: left;
+  }
+
+  thead .sticky {
+    z-index: 3;
+  }
+
+  .roll {
+    left: 0;
+    width: 48px;
+    min-width: 48px;
+  }
+
+  .name {
+    left: 48px;
+    min-width: 170px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 2px 0 0 var(--color-border);
+  }
+
+  // the current month is highlighted top to bottom
+  th.current,
+  td.current {
+    background: var(--color-primary-soft);
+  }
+}
+
+.dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  background: var(--color-status-inactive-bg);
+  color: var(--color-status-inactive-fg);
+
+  &.c-p { background: var(--color-success-soft); color: var(--color-status-active-fg); }
+  &.c-partial { background: var(--color-warning-soft); color: var(--color-warning); }
+  &.c-o { background: var(--color-danger-soft); color: var(--color-danger); }
+  &.c-u { background: #fff1e0; color: #b45309; }
+  &.c-n { background: var(--color-info-soft); color: var(--color-info); }
+  &.c-none { background: transparent; color: var(--color-text-muted); }
+}
+
+.legend {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+
+  .dot {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    margin: 0 4px 0 var(--space-3);
+  }
 }

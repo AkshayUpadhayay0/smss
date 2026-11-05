@@ -64,6 +64,17 @@ namespace smss_api_db_layer.repository
             return rows.ToDictionary(r => r.StudentId, r => new StudentFeeAggregate(r.StudentId, r.TotalDue, r.TotalPaid, r.Overdue));
         }
 
+        public async Task<List<StudentDueRow>> GetFeeDueRowsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        {
+            if (studentIds.Count == 0) return new();
+            var ids = studentIds.ToArray();
+            return await (
+                from i in _db.StudentFeeItems.AsNoTracking()
+                join d in _db.StudentFeeDues.AsNoTracking() on i.StudentFeeItemId equals d.StudentFeeItemId
+                where i.SchoolId == schoolId && d.SchoolId == schoolId && i.AcademicYearId == academicYearId && ids.Contains(i.StudentId)
+                select new StudentDueRow(i.StudentId, d.DueDate, d.AmountDue, d.AmountPaid)).ToListAsync(ct);
+        }
+
         public Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 

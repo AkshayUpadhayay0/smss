@@ -1,4 +1,4 @@
-<app-page-header title="Fee Status" subtitle="How your class stands on fees" icon="file-text" [breadcrumbs]="breadcrumbs" />
+<app-page-header title="Fee Status" subtitle="Has this month's fee been submitted?" icon="file-text" [breadcrumbs]="breadcrumbs" />
 
 @if (loadingSections()) {
   <app-card><p class="note" role="status">Loading your sections…</p></app-card>
@@ -16,56 +16,123 @@
   <app-card>
     <div class="filters">
       <app-select label="Section" [options]="sectionOptions()" [formControl]="sectionControl" />
-      <app-select label="Status" [options]="statusOptions" [formControl]="statusControl" />
-      <label class="search">
-        <span>Search</span>
-        <input type="search" placeholder="Name or roll number" aria-label="Search students" (input)="setSearch($event)" />
-      </label>
+      <div class="month-picker" role="group" aria-label="Month">
+        <button type="button" class="arrow" aria-label="Previous month" [disabled]="!canPrev()" (click)="step(-1)">‹</button>
+        <app-select label="Month" [options]="monthOptions()" [formControl]="monthControl" />
+        <button type="button" class="arrow" aria-label="Next month" [disabled]="!canNext()" (click)="step(1)">›</button>
+      </div>
+      <div class="view-switch" role="group" aria-label="View">
+        <button type="button" [class.on]="view() === 'month'" [attr.aria-pressed]="view() === 'month'" (click)="setView('month')">Month view</button>
+        <button type="button" [class.on]="view() === 'year'" [attr.aria-pressed]="view() === 'year'" (click)="setView('year')">Year grid</button>
+      </div>
     </div>
   </app-card>
 
-  @if (loading() && !data()) {
-    <app-card><p class="note" role="status">Loading the fee status…</p></app-card>
-  } @else if (loadFailed()) {
-    <app-card><div class="note"><p role="alert">The fee status could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadStatus()">Try again</app-button></div></app-card>
-  } @else if (data(); as d) {
-    <div class="tiles" role="status" aria-label="Summary" [class.refreshing]="loading()">
-      <div class="tile"><span class="num">{{ d.summary.students }}</span><span class="lbl">Students</span></div>
-      <div class="tile"><span class="num ok">{{ d.summary.fullyPaid }}</span><span class="lbl">Fully paid</span></div>
-      <div class="tile"><span class="num">{{ d.summary.partiallyPaid }}</span><span class="lbl">Partially paid</span></div>
-      <div class="tile"><span class="num">{{ d.summary.unpaid }}</span><span class="lbl">Unpaid</span></div>
-      <div class="tile" [class.warn]="d.summary.overdue > 0"><span class="num">{{ d.summary.overdue }}</span><span class="lbl">Overdue</span></div>
-    </div>
-
-    <app-card [noPadding]="true">
-      <div class="toolbar">
-        <div class="title"><strong>{{ d.className }} – {{ d.sectionName }}</strong><span>{{ d.academicYearName }} · {{ rows().length }} of {{ d.students.length }} shown · highest balance first</span></div>
-        <app-button variant="secondary" size="sm" [disabled]="rows().length === 0" (click)="exportCsv()"><app-icon name="download" [size]="16" />CSV</app-button>
-      </div>
-
-      @if (d.students.length === 0) {
-        <p class="note pad">This section has no active students.</p>
-      } @else if (rows().length === 0) {
-        <p class="note pad">No student matches the filter.</p>
+  @if (view() === 'month') {
+    @if (loading() && !data()) {
+      <app-card><p class="note" role="status">Loading the fee status…</p></app-card>
+    } @else if (loadFailed()) {
+      <app-card><div class="note"><p role="alert">The fee status could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadStatus(false)">Try again</app-button></div></app-card>
+    } @else if (data(); as d) {
+      @if (!d.monthInAcademicYear) {
+        <app-card><p class="note" role="status">{{ d.monthLabel }} is outside the academic year {{ d.academicYearName }}. Pick a month from the list.</p></app-card>
       } @else {
-        <div class="scroll">
-          <table class="list">
-            <thead><tr><th>Roll</th><th>Student</th><th>Status</th><th class="num">Total due</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
-            <tbody>
-              @for (s of rows(); track $index) {
-                <tr>
-                  <td>{{ s.rollNumber || '–' }}</td>
-                  <td class="name">{{ s.fullName }}</td>
-                  <td><span class="pill {{ tone(s.status) }}">{{ s.status }}</span></td>
-                  <td class="num">{{ inr(s.totalDue) }}</td>
-                  <td class="num">{{ inr(s.totalPaid) }}</td>
-                  <td class="num bal" [class.owes]="s.balance > 0">{{ inr(s.balance) }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="tiles" role="status" aria-label="Summary for {{ d.monthLabel }}" [class.refreshing]="loading()">
+          <div class="tile"><span class="num ok">{{ d.summary.paid }}</span><span class="lbl">✓ Paid</span></div>
+          <div class="tile"><span class="num">{{ d.summary.partial }}</span><span class="lbl">◐ Partially paid</span></div>
+          <div class="tile"><span class="num">{{ d.summary.unpaid }}</span><span class="lbl">○ Unpaid</span></div>
+          <div class="tile" [class.warn]="d.summary.overdue > 0"><span class="num">{{ d.summary.overdue }}</span><span class="lbl">! Overdue</span></div>
+          <div class="tile"><span class="num">{{ d.summary.notDueYet }}</span><span class="lbl">… Not due yet</span></div>
+          <div class="tile"><span class="num">{{ d.summary.noFeeThisMonth }}</span><span class="lbl">– No fee this month</span></div>
+          <div class="tile wide"><span class="num">{{ inr(d.summary.collectedTotal) }} <small>of {{ inr(d.summary.dueTotal) }}</small></span><span class="lbl">Collected vs due for {{ d.monthLabel }}</span></div>
         </div>
+
+        @if (noStructure()) {
+          <app-card><p class="note">No fee structure has been assigned to the students of this class yet, so there is no fee to show. Ask the school office.</p></app-card>
+        } @else {
+          <app-card>
+            <div class="filters">
+              <app-select label="Status" [options]="statusOptions" [formControl]="statusControl" />
+              <label class="search">
+                <span>Search</span>
+                <input type="search" placeholder="Name or roll number" aria-label="Search students" (input)="setSearch($event)" />
+              </label>
+            </div>
+          </app-card>
+
+          <app-card [noPadding]="true">
+            <div class="toolbar">
+              <div class="title"><strong>{{ d.className }} – {{ d.sectionName }} · {{ d.monthLabel }}</strong><span>{{ d.academicYearName }} · {{ rows().length }} of {{ d.students.length }} shown · who still owes first, then highest balance</span></div>
+              <app-button variant="secondary" size="sm" [disabled]="rows().length === 0" (click)="exportCsv()"><app-icon name="download" [size]="16" />CSV</app-button>
+            </div>
+
+            @if (d.students.length === 0) {
+              <p class="note pad">This section has no active students.</p>
+            } @else if (rows().length === 0) {
+              <p class="note pad">No student matches the filter.</p>
+            } @else {
+              <div class="scroll">
+                <table class="list">
+                  <thead>
+                    <tr><th>Roll</th><th>Student</th><th>This month's status</th><th class="num">Due this month</th><th class="num">Paid</th><th class="num">Balance this month</th><th class="num">Total outstanding till date</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (s of rows(); track $index) {
+                      <tr>
+                        <td>{{ s.rollNumber || '–' }}</td>
+                        <td class="name">{{ s.fullName }}</td>
+                        <td><span class="pill {{ tone(s.monthStatus) }}"><span aria-hidden="true">{{ mark[s.monthStatus] }}</span> {{ s.monthStatus }}</span></td>
+                        <td class="num">{{ s.monthStatus === 'No fee this month' ? '–' : inr(s.dueThisMonth) }}</td>
+                        <td class="num">{{ s.monthStatus === 'No fee this month' ? '–' : inr(s.paidThisMonth) }}</td>
+                        <td class="num bal" [class.owes]="s.balanceThisMonth > 0">{{ s.monthStatus === 'No fee this month' ? '–' : inr(s.balanceThisMonth) }}</td>
+                        <td class="num" [class.owes]="s.totalOutstandingTillDate > 0">{{ inr(s.totalOutstandingTillDate) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </app-card>
+        }
       }
-    </app-card>
+    }
+  } @else {
+    @if (gridLoading() && !grid()) {
+      <app-card><p class="note" role="status">Loading the year grid…</p></app-card>
+    } @else if (gridFailed()) {
+      <app-card><div class="note"><p role="alert">The year grid could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadGrid()">Try again</app-button></div></app-card>
+    } @else if (grid(); as g) {
+      <app-card [noPadding]="true">
+        <div class="toolbar">
+          <div class="title"><strong>{{ g.className }} – {{ g.sectionName }} · {{ g.academicYearName }}</strong><span>Status of each month's fee. Hover or tap a dot for its meaning.</span></div>
+        </div>
+        @if (g.students.length === 0) {
+          <p class="note pad">This section has no active students.</p>
+        } @else {
+          <div class="scroll grid-wrap" tabindex="0" role="region" aria-label="Year grid, scrolls sideways">
+            <table class="year">
+              <thead>
+                <tr>
+                  <th class="sticky roll">Roll</th><th class="sticky name">Student</th>
+                  @for (m of g.months; track m.month) { <th [class.current]="m.isCurrent" [attr.aria-current]="m.isCurrent ? 'date' : null">{{ m.label }}</th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of g.students; track $index) {
+                  <tr>
+                    <td class="sticky roll">{{ s.rollNumber || '–' }}</td>
+                    <td class="sticky name">{{ s.fullName }}</td>
+                    @for (c of s.cells; track $index) {
+                      <td [class.current]="g.months[$index].isCurrent"><span class="dot c-{{ c === '-' ? 'none' : c.toLowerCase() }}" [title]="g.months[$index].label + ': ' + codeStatus(c)" [attr.aria-label]="g.months[$index].label + ': ' + codeStatus(c)" role="img">{{ codeMark(c) }}</span></td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="legend"><span class="dot c-p">✓</span> Paid <span class="dot c-partial">◐</span> Partially paid <span class="dot c-u">○</span> Unpaid <span class="dot c-o">!</span> Overdue <span class="dot c-n">…</span> Not due yet <span class="dot c-none">–</span> No fee that month</p>
+        }
+      </app-card>
+    }
   }
 }
