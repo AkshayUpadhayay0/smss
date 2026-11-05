@@ -42,29 +42,32 @@ namespace smss_api_service_layer.helper.idcard
         public override string Description => "Curved header band with a large round photo and a clean details list.";
         public override string DefaultPrimary => "#1E5BD8";
         public override string DefaultSecondary => "#F5A623";
-        private static readonly Spot Photo = Spot.Circle(27, 32, 10.5f);
+        private static readonly Spot Photo = Spot.Circle(27, 33.2f, 11f);
 
         public override void Front(IContainer c, CardCtx x)
         {
             var p = x.Pal;
             var art = Rect(0, 0, 540, 856, "#FFFFFF")
-                + Path("M0 0H540V236C420 300 120 300 0 236Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
-                + Path("M0 236C120 300 420 300 540 236V252C420 316 120 316 0 252Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Path("M0 0H540V240C420 304 120 304 0 240Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M0 240C120 304 420 304 540 240V262C420 326 120 326 0 262Z", p.PrimaryDark, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
                 + Circle(505, 30, 95, "#FFFFFF", "fill-opacity=\".09\"") + Circle(20, 170, 70, "#FFFFFF", "fill-opacity=\".08\"")
                 + Rect(0, 808, 540, 48, p.Primary) + Rect(0, 804, 540, 5, p.Secondary);
-            var ring = Photo.Shape("fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"13\"", 0.6f) + Photo.Shape($"fill=\"none\" stroke=\"{p.Secondary}\" stroke-width=\"4\"", 1.5f);
+            var ring = Photo.Shape("fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"14\"", 0.7f) + Photo.Shape($"fill=\"none\" stroke=\"{p.PrimaryDark}\" stroke-width=\"7\"", 1.7f);
+            var tag = !string.IsNullOrWhiteSpace(x.Brand.Tagline);
 
             c.Layers(l =>
             {
                 Backdrop(l, x, Photo);
                 l.PrimaryLayer().Svg(Art(Photo, art, ring));
                 InitialsOver(l, x, Photo);
-                if (HasLogo(x)) Logo(l.At(22.5f, 1.8f, 9, 9), x);
-                Fit(l.At(4, HasLogo(x) ? 11 : 4.5f, 46, HasLogo(x) ? 8 : 12), x.School.Name, 9.5f, p.OnPrimary, bold: true);
-                Fit(l.At(3, 44.5f, 48, 6), x.Card.FullName, 13, p.PrimaryText, bold: true);
-                l.At(14, 51.4f, 26, 4.8f).Background(p.Secondary).CornerRadius(100).AlignMiddle().AlignCenter().ScaleToFit()
+                if (HasLogo(x)) Logo(l.At(2.8f, 2.6f, 8, 8), x);
+                var nameX = HasLogo(x) ? 12f : 3f;
+                Fit(l.At(nameX, 2.2f, 54 - nameX - 3, tag ? 10.6f : 14), x.School.Name, 10.8f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true);
+                if (tag) Fit(l.At(nameX, 12.9f, 54 - nameX - 3, 3.6f), x.Brand.Tagline!, 6.2f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, spacing: 0.06f);
+                Fit(l.At(3, 46.4f, 48, 5.6f), x.Card.FullName, 12.6f, p.PrimaryText, bold: true);
+                l.At(14, 52.4f, 26, 4.6f).Background(p.Secondary).CornerRadius(100).AlignMiddle().AlignCenter().ScaleToFit()
                     .Text(x.Card.ClassSection).FontFamily(Sans).FontSize(7.8f).SemiBold().FontColor(p.OnSecondary).AlignCenter();
-                Rows(l.At(5.5f, 58.2f, 43, 22), x.Rows("adm", "roll", "father", "contact", "dob", "blood"), 14, 6.8f, p.Muted, p.Ink);
+                Rows(l.At(5.5f, 59f, 43, 21.4f), x.Rows("adm", "roll", "father", "contact", "dob", "blood"), 12.5f, 6.8f, p.Muted, p.Ink);
                 Fit(l.At(0, 81.2f, 54, 4.4f), $"Session {x.Card.YearName}", 6.4f, p.OnPrimary, semi: true);
             });
         }
@@ -73,28 +76,25 @@ namespace smss_api_service_layer.helper.idcard
         {
             var p = x.Pal;
             var art = Rect(0, 0, 540, 856, "#FFFFFF")
-                + Path("M0 0H540V126C400 166 140 166 0 126Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
-                + Path("M0 126C140 166 400 166 540 126V140C400 180 140 180 0 140Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
-                + Circle(500, 20, 80, "#FFFFFF", "fill-opacity=\".08\"")
-                + Rect(0, 818, 540, 38, p.Primary) + Rect(0, 814, 540, 5, p.Secondary);
+                + Path("M0 0H540V46C400 82 140 82 0 46Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M0 856V772C130 726 330 762 540 698V856Z", p.PrimaryDark, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M0 772C130 726 330 762 540 698V712C330 776 130 740 0 786Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Circle(500, 20, 70, "#FFFFFF", "fill-opacity=\".08\"");
+            var onDark = IdCardPalette.On(p.PrimaryDark);
             c.Layers(l =>
             {
                 l.PrimaryLayer().Svg(Plain(art));
-                if (HasLogo(x)) Logo(l.At(23, 1.5f, 8, 8), x);
-                Fit(l.At(4, HasLogo(x) ? 9.4f : 3.5f, 46, HasLogo(x) ? 4.6f : 9), x.School.Name, 8.6f, p.OnPrimary, bold: true);
-                if (!string.IsNullOrWhiteSpace(x.Brand.Tagline)) Fit(l.At(6, 17.4f, 42, 3.2f), x.Brand.Tagline!, 5.6f, p.Muted, semi: true);
-
-                Fit(l.At(5, 21.4f, 44, 3.6f), "SCHOOL CONTACT", 6.2f, p.PrimaryText, Align.Left, bold: true, spacing: 0.08f);
-                l.At(5, 24.8f, 12, 0.5f).Background(p.Secondary);
-                Contact(l.At(5, 26.2f, 44, 14), x, 6.2f, p.Muted, p.Ink);
-
-                Fit(l.At(5, 42, 44, 3.6f), "TERMS & CONDITIONS", 6.2f, p.PrimaryText, Align.Left, bold: true, spacing: 0.08f);
-                l.At(5, 45.4f, 12, 0.5f).Background(p.Secondary);
-                Terms(l.At(5, 46.8f, 44, 11.6f), x, 5.6f, p.Ink, "•");
-
-                Qr(l, x, 27, 60.4f, 16.4f, p.Muted);
-                QrCaption(l.At(5, 78.6f, 44, 2.2f), x, p.Muted);
-                Fit(l.At(0, 81.8f, 54, 3.6f), $"Valid for session {x.Card.YearName}", 5.8f, p.OnPrimary, semi: true);
+                Fit(l.At(4, 0.6f, 46, 4.6f), x.Brand.Tagline ?? "", 5.8f, p.OnPrimary, semi: true, spacing: 0.06f);
+                l.At(8, 11.2f, 38, 5.4f).Background(p.Primary).CornerRadius(0.8f).AlignMiddle().AlignCenter().ScaleToFit()
+                    .Text("TERMS AND CONDITIONS").FontFamily(Sans).FontSize(6.6f).Bold().FontColor(p.OnPrimary).LetterSpacing(0.06f).AlignCenter();
+                Terms(l.At(6.5f, 18.6f, 41, 13.6f), x, 5.6f, p.Ink, "•");
+                Rows(l.At(6.5f, 33.6f, 41, 15f), x.SchoolContact(), 8.5f, 6.2f, p.Muted, p.Ink);
+                Signature(l, x, 16, 49.6f, 22, 11.6f, p.Ink, p.Muted);
+                Fit(l.At(6.5f, 62.2f, 41, 3.6f), $"Valid for session {x.Card.YearName}", 5.8f, p.PrimaryText, semi: true);
+                if (HasLogo(x)) Logo(l.At(4.5f, 73.8f, 10, 10), x);
+                Fit(l.At(HasLogo(x) ? 15.5f : 4.5f, 73.6f, HasLogo(x) ? 19 : 27, 10.4f), x.School.Name, 7.2f, onDark, Align.Left, bold: true);
+                Qr(l, x, 43.8f, 71.4f, 11.2f, onDark);
+                Fit(l.At(32.5f, 83.4f, 22, 1.6f), x.Card.QrPayload.Replace(IdCardQr.Separator, " / "), 3.1f, onDark);
             });
         }
     }
@@ -130,7 +130,7 @@ namespace smss_api_service_layer.helper.idcard
                 l.PrimaryLayer().Svg(Art(Photo, art, ring));
                 InitialsOver(l, x, Photo);
                 if (HasLogo(x)) Logo(l.At(4, 3, 9.5f, 9.5f), x);
-                Fit(l.At(HasLogo(x) ? 15 : 4, 2.5f, HasLogo(x) ? 35 : 46, 10.5f), x.School.Name, 9, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true);
+                Fit(l.At(HasLogo(x) ? 15 : 4, 2.5f, HasLogo(x) ? 35 : 46, 10.5f), x.School.Name, 9.6f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true, serif: true);
                 Fit(l.At(3, 52.5f, 48, 6), x.Card.FullName, 12.5f, p.PrimaryText, bold: true);
                 Fit(l.At(3, 58.4f, 48, 4), x.Card.ClassSection, 8, p.Ink, semi: true, spacing: 0.04f);
                 var pair = new List<(string, string)>();
@@ -156,7 +156,7 @@ namespace smss_api_service_layer.helper.idcard
             {
                 l.PrimaryLayer().Svg(Plain(art));
                 if (HasLogo(x)) Logo(l.At(22, 5, 10, 10), x);
-                Fit(l.At(4, HasLogo(x) ? 16.5f : 8, 46, HasLogo(x) ? 9 : 13), x.School.Name, 10.5f, p.OnPrimary, bold: true);
+                Fit(l.At(4, HasLogo(x) ? 16.5f : 8, 46, HasLogo(x) ? 9 : 13), x.School.Name, 11.5f, p.OnPrimary, bold: true, serif: true);
                 if (!string.IsNullOrWhiteSpace(x.Brand.Tagline)) Fit(l.At(6, 26, 42, 4), x.Brand.Tagline!, 6, p.OnPrimary, semi: true);
                 Qr(l, x, 27, 36.5f, 19f, p.Muted, "#FFFFFF");
                 QrCaption(l.At(5, 58.5f, 44, 2.4f), x, p.Muted);
@@ -195,12 +195,14 @@ namespace smss_api_service_layer.helper.idcard
                 l.PrimaryLayer().Svg(Art(Photo, art, ring));
                 InitialsOver(l, x, Photo);
                 if (HasLogo(x)) Logo(l.At(3.5f, 2.6f, 9, 9), x);
-                Fit(l.At(HasLogo(x) ? 13.5f : 4, 2.2f, HasLogo(x) ? 37 : 46, 9.5f), x.School.Name, 9.4f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true);
-                l.At(15, 12.2f, 24, 4.2f).Background(p.Secondary).CornerRadius(100).AlignMiddle().AlignCenter().ScaleToFit()
+                Fit(l.At(HasLogo(x) ? 13.5f : 4, 1.8f, HasLogo(x) ? 37 : 46, 8.2f), x.School.Name, 10f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true);
+                if (!string.IsNullOrWhiteSpace(x.School.Address)) Fit(l.At(HasLogo(x) ? 13.5f : 4, 10f, HasLogo(x) ? 37 : 46, 2.8f), x.School.Address!, 4.7f, IdCardPalette.Mix(p.Primary, p.OnPrimary, 0.85), HasLogo(x) ? Align.Left : Align.Center);
+                l.At(15, 13.4f, 24, 4.2f).Background(p.Secondary).CornerRadius(100).AlignMiddle().AlignCenter().ScaleToFit()
                     .Text($"SESSION {x.Card.YearName}").FontFamily(Sans).FontSize(6.2f).Bold().FontColor(p.OnSecondary).LetterSpacing(0.05f).AlignCenter();
-                Fit(l.At(3, 43.3f, 48, 5.4f), x.Card.FullName, 12, p.PrimaryText, bold: true);
-                Fit(l.At(3, 48.6f, 48, 3.8f), x.Card.ClassSection, 7.6f, p.Ink, semi: true);
-                Rows(l.At(5, 53.6f, 44, 27), x.Rows("adm", "roll", "dob", "blood", "father", "mother", "contact", "address"), 12, 6.3f, p.Muted, p.Ink);
+                var plate = l.At(5, 43.4f, 44, 5.6f).Background(p.Primary).CornerRadius(0.8f);
+                plate.AlignMiddle().AlignCenter().ScaleToFit().Text(x.Card.FullName).FontFamily(Sans).FontSize(11.2f).Bold().FontColor(p.OnPrimary).AlignCenter();
+                Fit(l.At(3, 49.2f, 48, 3.6f), x.Card.ClassSection, 7.4f, p.Ink, semi: true);
+                Rows(l.At(5, 54f, 44, 27), x.Rows("adm", "roll", "dob", "blood", "father", "mother", "contact", "address"), 11.5f, 6.3f, p.Muted, p.Ink);
             });
         }
 
@@ -277,11 +279,13 @@ namespace smss_api_service_layer.helper.idcard
                 l.PrimaryLayer().Svg(Plain(art));
                 if (HasLogo(x)) Logo(l.At(22.5f, 4, 9, 9), x, p.PrimaryTint);
                 Fit(l.At(6, HasLogo(x) ? 13.2f : 6, 42, HasLogo(x) ? 5.6f : 10), x.School.Name, 9, p.PrimaryText, bold: true);
-                if (!string.IsNullOrWhiteSpace(x.Brand.Tagline)) Fit(l.At(7, 19, 40, 3.6f), x.Brand.Tagline!, 6.2f, p.Muted, semi: true);
-                Qr(l, x, 27, 24.5f, 22f, p.Muted, p.PrimaryTint);
-                QrCaption(l.At(5, 49.4f, 44, 2.6f), x, p.Muted, 4.8f);
-                Contact(l.At(7, 54, 40, 14), x, 6.2f, p.Muted, p.Ink);
-                if (x.TermsLines().Count > 0) Terms(l.At(7, 69, 40, 9.5f), x, 5.2f, p.Muted, "•");
+                l.At(14, 22.2f, 26, 0.5f).Background(p.Secondary);
+                Fit(l.At(6, 23.2f, 42, 3.2f), "For more information, scan this", 5.8f, p.Ink, semi: true);
+                Qr(l, x, 27, 27.6f, 21f, p.Muted, p.PrimaryTint);
+                QrCaption(l.At(5, 51.4f, 44, 2.4f), x, p.Muted, 4.6f);
+                Fit(l.At(6, 56f, 42, 3.4f), "SCHOOL ADDRESS", 6.6f, p.Ink, bold: true, spacing: 0.16f);
+                Contact(l.At(7, 59.8f, 40, 12.4f), x, 6.2f, p.Muted, p.Ink);
+                if (x.TermsLines().Count > 0) Terms(l.At(7, 72.4f, 40, 8f), x, 5f, p.Muted, "•");
             });
         }
     }
@@ -293,23 +297,25 @@ namespace smss_api_service_layer.helper.idcard
     {
         public override string Code => "modern-navy";
         public override string Name => "Modern Navy";
-        public override string Description => "Dark base with accent curves, a big round photo and a grade badge.";
+        public override string Description => "Dark curves, a big round photo and a grade badge.";
         public override string DefaultPrimary => "#14213D";
         public override string DefaultSecondary => "#FF7A18";
-        private static readonly Spot Photo = Spot.Circle(27, 29, 12);
+        private static readonly Spot Photo = Spot.Circle(30.5f, 33f, 12.2f);
 
         public override void Front(IContainer c, CardCtx x)
         {
             var p = x.Pal;
-            var soft = IdCardPalette.Mix(p.Primary, p.OnPrimary, 0.12);
-            var art = Rect(0, 0, 540, 856, p.Primary)
-                + Path("M540 0V230C430 215 340 120 372 0Z", soft)
-                + Path("M0 690C140 640 330 720 540 660V856H0Z", soft)
-                + Path("M0 624C140 600 330 650 540 612V622C330 660 140 610 0 634Z", p.Secondary)
-                + Path("M0 856V812C200 782 380 846 540 798V856Z", p.Secondary);
-            var ring = Photo.Shape($"fill=\"none\" stroke=\"{p.Secondary}\" stroke-width=\"11\"", 0.5f) + Photo.Shape($"fill=\"none\" stroke=\"{p.OnPrimary}\" stroke-opacity=\".25\" stroke-width=\"3\"", 1.9f);
-            var on = p.OnPrimary;
-            var dim = IdCardPalette.Mix(p.Primary, on, 0.72);
+            var onP = p.OnPrimary;
+            var art = Rect(0, 0, 540, 856, "#FFFFFF")
+                + Path("M0 0H540V318C500 452 392 506 262 506C130 506 36 450 0 338Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M0 338C36 450 130 506 262 506C392 506 500 452 540 318V332C500 470 392 522 262 522C124 522 30 462 0 352Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Path("M540 0V230C460 214 372 130 392 0Z", IdCardPalette.Mix(p.Primary, onP, 0.12))
+                + Path("M0 856V812C150 792 330 836 540 800V856Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M0 812C150 792 330 836 540 800V810C330 846 150 802 0 822Z", p.Secondary);
+            var ring = Photo.Shape($"fill=\"none\" stroke=\"{p.Primary}\" stroke-width=\"16\"", 0.8f) + Photo.Shape("fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"5\"", 1.8f)
+                + Rosette(78, 478, 52, p.Primary) + Circle(78, 478, 41, "none", $"stroke=\"{onP}\" stroke-width=\"3\" stroke-dasharray=\"3 4\"")
+                + Rect(50, 566, 8, 226, p.Secondary, "rx=\"4\"");
+            var ink = p.Ink;
 
             c.Layers(l =>
             {
@@ -317,39 +323,60 @@ namespace smss_api_service_layer.helper.idcard
                 l.PrimaryLayer().Svg(Art(Photo, art, ring));
                 InitialsOver(l, x, Photo);
                 if (HasLogo(x)) Logo(l.At(4, 3, 8, 8), x);
-                Fit(l.At(HasLogo(x) ? 13.5f : 4, 2.8f, HasLogo(x) ? 36.5f : 46, 8.4f), x.School.Name, 8.4f, on, HasLogo(x) ? Align.Left : Align.Center, bold: true);
-                Fit(l.At(3, 42.8f, 48, 6.6f), x.Card.FullName, 13.5f, on, bold: true);
+                Fit(l.At(HasLogo(x) ? 13.5f : 4, 2.8f, HasLogo(x) ? 36.5f : 46, 8.4f), x.School.Name, 8.6f, onP, HasLogo(x) ? Align.Left : Align.Center, bold: true);
+                // grade badge (rosette) on the left
+                Fit(l.At(2.8f, 44.6f, 10.4f, 2.6f), "GRADE", 3.9f, onP, semi: true, spacing: 0.1f);
+                Fit(l.At(2.8f, 46.8f, 10.4f, 5.4f), IdCardKit_Grade(x), 11f, onP, bold: true);
+                // labelled details with the accent bar
+                var rows = new List<(string L, string V)>();
+                rows.Add(("Name:", x.Card.FullName));
                 var father = x.Rows("father").FirstOrDefault();
-                if (!string.IsNullOrEmpty(father.Value)) Fit(l.At(3, 49.4f, 48, 4), $"{(father.Label == "Father" ? "S/o" : father.Label)}  {father.Value}", 7.4f, dim, semi: true);
-                l.At(14, 54.4f, 26, 6).Background(p.Secondary).CornerRadius(1.6f).AlignMiddle().AlignCenter().ScaleToFit()
-                    .Text(x.Card.ClassSection.ToUpperInvariant()).FontFamily(Sans).FontSize(8.6f).Bold().FontColor(p.OnSecondary).LetterSpacing(0.04f).AlignCenter();
-                Rows(l.At(6, 65f, 42, 15f), x.Rows("adm", "roll", "contact", "dob", "blood"), 13, 6.4f, dim, on);
-                Fit(l.At(0, 81.4f, 54, 4), $"Session {x.Card.YearName}", 6.2f, p.OnSecondary, semi: true);
+                if (!string.IsNullOrEmpty(father.Value)) rows.Add((father.Label == "Father" ? "Father Name:" : father.Label + ":", father.Value));
+                rows.Add(("ID Number:", x.Card.AdmissionNumber));
+                var extra = string.Join("   ", new[] { x.Card.ClassSection, string.IsNullOrWhiteSpace(x.Card.RollNumber) ? null : "Roll " + x.Card.RollNumber }.Where(v => v != null));
+                rows.Add(("Class:", extra));
+                var dob = x.Rows("dob", "blood");
+                if (dob.Count > 0) rows.Add(("DOB / Blood:", string.Join("   ", dob.Select(r => r.Value))));
+                l.At(6.6f, 56.4f, 44, 23.6f).AlignTop().ScaleToFit().Column(col =>
+                {
+                    col.Spacing(0.5f, Mm);
+                    foreach (var (lab, val) in rows)
+                        col.Item().Column(cc =>
+                        {
+                            cc.Item().Text(lab).FontFamily(Sans).FontSize(5.2f).FontColor(p.Muted).LineHeight(1f);
+                            cc.Item().Text(val).FontFamily(Sans).FontSize(lab == "Name:" ? 9.8f : 7.2f).SemiBold().FontColor(ink).LineHeight(1.05f);
+                        });
+                });
+                Fit(l.At(0, 82.1f, 54, 3.2f), $"Session {x.Card.YearName}", 5.8f, p.OnPrimary, semi: true);
             });
         }
+
+        private static string IdCardKit_Grade(CardCtx x) => GradeLabel(x.Card.ClassName);
 
         public override void Back(IContainer c, CardCtx x)
         {
             var p = x.Pal;
             var soft = IdCardPalette.Mix(p.Primary, p.OnPrimary, 0.12);
-            var art = Rect(0, 0, 540, 856, p.Primary)
-                + Path("M540 0V180C440 170 350 100 372 0Z", soft)
-                + Rect(30, 150, 480, 650, "#FFFFFF", "rx=\"34\"")
-                + Path("M0 856V812C200 782 380 846 540 798V856Z", p.Secondary)
-                + Rect(30, 150, 480, 14, p.Secondary, "rx=\"7\"");
+            var art = Rect(0, 0, 540, 856, "#FFFFFF")
+                + Path("M0 0H356C336 160 214 262 0 282Z", p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Path("M356 0C336 160 214 262 0 282V296C230 274 360 172 382 0Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Path("M0 0H190C170 90 100 150 0 170Z", soft)
+                + Path("M0 856V790C0 716 118 664 270 664C422 664 540 716 540 790V856Z", p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark));
             c.Layers(l =>
             {
                 l.PrimaryLayer().Svg(Plain(art));
-                if (HasLogo(x)) Logo(l.At(4, 4, 9, 9), x);
-                Fit(l.At(HasLogo(x) ? 14.5f : 4, 3.6f, HasLogo(x) ? 35.5f : 46, 10), x.School.Name, 9.4f, p.OnPrimary, HasLogo(x) ? Align.Left : Align.Center, bold: true);
-                Fit(l.At(6, 18.5f, 42, 3.6f), "TERMS & CONDITIONS", 6.4f, p.Ink, Align.Left, bold: true, spacing: 0.08f);
-                Terms(l.At(6, 22.4f, 42, 14), x, 5.6f, p.Ink, "•");
-                Fit(l.At(6, 38.2f, 42, 3.6f), "SCHOOL CONTACT", 6.4f, p.Ink, Align.Left, bold: true, spacing: 0.08f);
-                Contact(l.At(6, 42, 42, 12.5f), x, 6, p.Muted, p.Ink);
-                Qr(l, x, 38.5f, 58f, 13f, p.Muted, "#FFFFFF");
-                QrCaption(l.At(28, 72.6f, 21, 2.2f), x, p.Muted, 3.9f);
-                Signature(l, x, 6, 57.5f, 19, 14, p.Ink, p.Muted);
-                Fit(l.At(0, 81.8f, 54, 3.6f), $"Valid for session {x.Card.YearName}", 5.8f, p.OnSecondary, semi: true);
+                Fit(l.At(4, 3.6f, 30, 2.8f), "This card is valid for", 5.2f, p.OnPrimary, Align.Left);
+                Fit(l.At(4, 6.4f, 30, 4.6f), $"Session {x.Card.YearName}", 8f, p.OnPrimary, Align.Left, bold: true);
+                if (HasLogo(x)) Logo(l.At(41.5f, 3.4f, 8.6f, 8.6f), x);
+                Fit(l.At(6, 30.4f, 42, 5), "Terms & Conditions", 9.4f, p.PrimaryText, bold: true);
+                Terms(l.At(7.5f, 36.2f, 39, 13), x, 5.6f, p.Ink, "•");
+                Signature(l, x, 5.5f, 50.4f, 21, 10.8f, p.Ink, p.Muted);
+                Qr(l, x, 40f, 49.6f, 11.4f, p.Muted);
+                Fit(l.At(30, 63.2f, 21, 2f), x.Card.QrPayload.Replace(IdCardQr.Separator, " / "), 3.6f, p.Muted);
+                Rows(l.At(6.5f, 62.2f, 23, 6.6f), x.SchoolContact().Where(r => r.Label == "Phone" || (r.Label == "Email" && r.Value.Length <= 22)).ToList(), 6.2f, 5.2f, p.Muted, p.Ink);
+                Fit(l.At(6, 72.4f, 42, 3.2f), x.School.Address ?? "", 4.9f, IdCardPalette.On(p.Secondary), semi: true);
+                Fit(l.At(6, 75.6f, 42, 5.6f), x.School.Name, 8.6f, IdCardPalette.On(p.Secondary), bold: true);
+                if (!string.IsNullOrWhiteSpace(x.Brand.Tagline)) Fit(l.At(6, 81.2f, 42, 3), x.Brand.Tagline!, 5.2f, IdCardPalette.On(p.Secondary), semi: true);
             });
         }
     }
@@ -361,41 +388,47 @@ namespace smss_api_service_layer.helper.idcard
     {
         public override string Code => "formal-classic";
         public override string Name => "Formal Classic";
-        public override string Description => "Traditional serif header, framed photo and formal rows with a signature.";
+        public override string Description => "Traditional serif header, framed photo, session strip and a signature.";
         public override string DefaultPrimary => "#1B2A5C";
         public override string DefaultSecondary => "#B08D2A";
-        private static readonly Spot Photo = Spot.Box(4.5f, 25.6f, 19.5f, 24.5f, 0.6f);
+        private static readonly Spot Photo = Spot.Box(8.6f, 25.2f, 19.4f, 24.2f, 2.4f);
 
         public override void Front(IContainer c, CardCtx x)
         {
             var p = x.Pal;
             var art = Rect(0, 0, 540, 856, "#FFFFFF")
-                + Rect(0, 0, 540, 210, p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
-                + Rect(0, 214, 540, 5, p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark)) + Rect(0, 225, 540, 2, p.Secondary)
-                + Rect(0, 826, 540, 30, p.Primary) + Rect(0, 820, 540, 4, p.Secondary);
-            var frame = Photo.Shape($"fill=\"none\" stroke=\"{p.Secondary}\" stroke-width=\"7\"", 0.3f) + Photo.Shape($"fill=\"none\" stroke=\"{p.Primary}\" stroke-width=\"2\"", 1.1f);
+                + Rect(0, 0, 540, 214, p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Rect(0, 218, 540, 5, p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Rect(0, 223, 62, 633, p.Primary, PaleEdge(p.PrimaryIsPale, p.PrimaryDark))
+                + Rect(62, 223, 5, 633, p.Secondary, PaleEdge(p.SecondaryIsPale, p.PrimaryDark))
+                + Rect(67, 826, 473, 30, p.Primary) + Rect(67, 820, 473, 4, p.Secondary);
+            var frame = Photo.Shape($"fill=\"none\" stroke=\"{p.Secondary}\" stroke-width=\"7\"", 0.3f) + Photo.Shape($"fill=\"none\" stroke=\"{p.Primary}\" stroke-width=\"2.5\"", 1.2f);
 
             c.Layers(l =>
             {
                 Backdrop(l, x, Photo);
                 l.PrimaryLayer().Svg(Art(Photo, art, frame));
                 InitialsOver(l, x, Photo);
-                if (HasLogo(x)) Logo(l.At(3.2f, 4.4f, 11.5f, 11.5f), x);
-                var hasTag = !string.IsNullOrWhiteSpace(x.Brand.Tagline);
-                Fit(l.At(HasLogo(x) ? 15.5f : 3, 2.6f, HasLogo(x) ? 36 : 48, hasTag ? 13 : 16.2f), x.School.Name, 10.4f, p.OnPrimary, bold: true, serif: true);
-                if (hasTag) Fit(l.At(HasLogo(x) ? 15.5f : 3, 15.4f, HasLogo(x) ? 36 : 48, 3.6f), x.Brand.Tagline!, 5.6f, IdCardPalette.Mix(p.Primary, p.OnPrimary, 0.8), serif: true);
+                // header: name in serif, then address and phone / tagline
+                var line1 = x.School.Address;
+                var line2 = string.Join("  ·  ", new[] { string.IsNullOrWhiteSpace(x.School.Phone) ? null : "Ph: " + x.School.Phone, x.Brand.Tagline }.Where(v => !string.IsNullOrWhiteSpace(v)));
+                var muted = IdCardPalette.Mix(p.Primary, p.OnPrimary, 0.82);
+                Fit(l.At(3, 1.4f, 48, (line1 != null || line2.Length > 0) ? 11.2f : 16), x.School.Name, 10.2f, p.OnPrimary, bold: true, serif: true);
+                if (!string.IsNullOrWhiteSpace(line1)) Fit(l.At(3, 12.6f, 48, 4.6f), line1!, 4.9f, muted, serif: true);
+                if (line2.Length > 0) Fit(l.At(3, 17.2f, 48, 3.2f), line2, 4.9f, muted, serif: true);
+                // session strip (vertical)
+                l.At(0, 22.6f, 6.2f, 62.6f).RotateLayoutCounterclockwise().AlignMiddle().AlignCenter().ScaleToFit()
+                    .Text($"SESSION  {x.Card.YearName}").FontFamily(new[] { Serif, Sans }).FontSize(6.8f).Bold().FontColor(p.OnPrimary).LetterSpacing(0.14f);
 
-                Fit(l.At(26, 26.2f, 24, 4), "IDENTITY CARD", 7.4f, p.PrimaryText, Align.Left, bold: true, serif: true, spacing: 0.1f);
-                l.At(26, 30.4f, 10, 0.5f).Background(p.Secondary);
-                Fit(l.At(26, 32f, 24, 3.6f), $"Session {x.Card.YearName}", 6.6f, p.Muted, Align.Left, serif: true);
-                Fit(l.At(26, 36.4f, 24, 3.2f), "Admission No.", 5.6f, p.Muted, Align.Left, serif: true);
-                Fit(l.At(26, 39.4f, 24, 5), x.Card.AdmissionNumber, 9.4f, p.PrimaryText, Align.Left, bold: true, serif: true);
+                Fit(l.At(30, 24.2f, 21, 3.4f), "IDENTITY CARD", 6.4f, p.PrimaryText, Align.Left, bold: true, serif: true, spacing: 0.08f);
+                l.At(30, 27.8f, 9, 0.5f).Background(p.Secondary);
+                if (HasLogo(x)) Logo(l.At(32, 30.4f, 15, 15), x, "#FFFFFF");
+                Fit(l.At(30, HasLogo(x) ? 46.4f : 31f, 21, 2.8f), "Admission No.", 5f, p.Muted, Align.Left, serif: true);
+                Fit(l.At(30, HasLogo(x) ? 49f : 33.8f, 21, 4.2f), x.Card.AdmissionNumber, 7.8f, p.PrimaryText, Align.Left, bold: true, serif: true);
 
-                Rows(l.At(4.5f, 52.2f, 45, 20.4f), x.Rows("roll", "name", "class", "dob", "contact", "address"), 13.5f, 6.4f, p.Muted, p.Ink, serif: true);
-                Signature(l, x, 31, 73f, 19, 9.4f, p.Ink, p.Muted, 5.4f, serif: true);
-                Fit(l.At(4.5f, 75.6f, 24, 3f), "Valid for the session", 5, p.Muted, Align.Left, serif: true);
-                Fit(l.At(4.5f, 78.4f, 24, 3.6f), x.Card.YearName, 6.6f, p.PrimaryText, Align.Left, bold: true, serif: true);
-                Fit(l.At(0, 83.2f, 54, 2.4f), "STUDENT IDENTITY CARD", 4.6f, p.OnPrimary, semi: true, spacing: 0.12f);
+                Rows(l.At(8.6f, 53.2f, 42.4f, 19.6f), x.Rows("roll", "name", "class", "dob", "contact", "address"), 13.2f, 6.2f, p.Ink, p.Ink, serif: true);
+                Signature(l, x, 31, 73.4f, 19, 9f, p.Ink, p.Muted, 5.2f, serif: true);
+                Fit(l.At(8.6f, 82.4f, 40, 2.6f), "STUDENT IDENTITY CARD", 4.4f, p.OnPrimary, Align.Left, semi: true, spacing: 0.12f);
             });
         }
 
@@ -417,8 +450,9 @@ namespace smss_api_service_layer.helper.idcard
                 Terms(l.At(5, 40.4f, 44, 14), x, 5.6f, p.Ink, "•", serif: true);
                 Qr(l, x, 27, 58.3f, 17f, p.Muted);
                 QrCaption(l.At(5, 76.4f, 44, 2.4f), x, p.Muted);
-                Fit(l.At(0, 83.2f, 54, 2.4f), $"VALID FOR SESSION {x.Card.YearName}", 4.6f, p.OnPrimary, semi: true, spacing: 0.1f);
+                Fit(l.At(0, 83.2f, 54, 2.4f), $"VALID FOR SESSION {x.Card.YearName}", 4.6f, p.OnPrimary, semi: true, spacing: 0.12f);
             });
         }
     }
+
 }

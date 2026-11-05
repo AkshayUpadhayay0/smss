@@ -119,6 +119,28 @@ namespace smss_api_service_layer.helper.idcard
         /// <summary>Outline for a shape drawn in a very pale brand colour, so it still shows on white.</summary>
         public static string PaleEdge(bool pale, string color) => pale ? $"stroke=\"{color}\" stroke-opacity=\".35\" stroke-width=\"3\"" : "";
 
+        /// <summary>A scalloped rosette (the grade badge): a ring of bumps around a solid disc, as one SVG polygon.</summary>
+        public static string Rosette(double cx, double cy, double r, string fill, int teeth = 18)
+        {
+            var pts = new System.Text.StringBuilder();
+            for (var i = 0; i < teeth * 2; i++)
+            {
+                var a = Math.PI * i / teeth;
+                var rr = i % 2 == 0 ? r : r * 0.9;
+                pts.Append(N(cx + rr * Math.Cos(a))).Append(',').Append(N(cy + rr * Math.Sin(a))).Append(' ');
+            }
+            return $"<polygon points=\"{pts}\" fill=\"{fill}\"/>";
+        }
+
+        /// <summary>The number in a class name ("Class 5" -> "5", "UKG" -> "UKG"), for the grade badge.</summary>
+        public static string GradeLabel(string className)
+        {
+            var digits = new string(className.Where(char.IsDigit).ToArray());
+            if (digits.Length is > 0 and <= 2) return digits;
+            var word = className.Trim();
+            return word.Length <= 4 ? word.ToUpperInvariant() : word[..3].ToUpperInvariant();
+        }
+
         // ---- the photo ----------------------------------------------------------------------------------------------------------
 
         /// <summary>
@@ -192,6 +214,7 @@ namespace smss_api_service_layer.helper.idcard
                     col.Item().Row(r =>
                     {
                         r.ConstantItem(labelWidth, Mm).Text(upperLabels ? label.ToUpperInvariant() : label).FontFamily(fam).FontSize(size * (upperLabels ? 0.85f : 1f)).FontColor(labelColor).LineHeight(1.05f);
+                        r.ConstantItem(1.5f, Mm).Text(":").FontFamily(fam).FontSize(size).FontColor(labelColor).LineHeight(1.05f);
                         r.RelativeItem().Text(value).FontFamily(fam).FontSize(size).FontColor(valueColor).SemiBold().LineHeight(1.05f);
                     });
             });
