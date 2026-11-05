@@ -69,6 +69,46 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<List<StudentListItemDto>>(ex, "fetching students"); }
         }
 
+        public async Task<ApiResponse<StudentMyProfileDto>> GetMyProfileAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentMyProfileDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                // the student is the caller: their login id IS their student id (the school and the caller both come from the token)
+                var loginId = await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct);
+                var s = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (s == null) return Result<StudentMyProfileDto>(404, "Your student record was not found.", null);
+
+                var statuses = await _repo.GetGeneralStatusNamesAsync(ct);
+                var genders = await _repo.GetGenderNamesAsync(ct);
+                var enrollments = await _repo.GetEnrollmentsAsync(schoolId, s.StudentId, ct);
+                var guardians = await _repo.GetGuardiansAsync(schoolId, s.StudentId, ct);
+                var (city, state) = await _repo.GetPlaceNamesAsync(s.CountryId, s.StateId, s.DistrictId, s.CityId, ct);
+
+                var activeId = statuses.FirstOrDefault(kv => kv.Value == "Active").Key;
+                var current = enrollments
+                    .OrderByDescending(e => e.AcademicYearIsCurrent).ThenByDescending(e => e.StatusId == activeId)
+                    .ThenByDescending(e => e.AcademicYearStart).ThenByDescending(e => e.EnrollmentId).FirstOrDefault();
+
+                var address = string.Join(", ", new[] { s.AddressLine1, s.AddressLine2, city, state }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
+                if (!string.IsNullOrWhiteSpace(s.Pincode)) address = address.Length == 0 ? s.Pincode.Trim() : $"{address} - {s.Pincode.Trim()}";
+
+                return Result(200, "Successfully fetched", new StudentMyProfileDto
+                {
+                    StudentId = s.StudentId, FullName = FullName(s.FirstName, s.MiddleName, s.LastName), AdmissionNumber = s.AdmissionNumber,
+                    StatusName = statuses.GetValueOrDefault(s.StatusId, "Unknown"), ProfilePhotoUrl = s.ProfilePhotoUrl,
+                    AcademicYearName = current?.AcademicYearName, ClassName = current?.ClassName, SectionName = current?.SectionName, RollNumber = current?.RollNumber,
+                    GenderName = s.GenderId.HasValue ? genders.GetValueOrDefault(s.GenderId.Value) : null, DateOfBirth = s.DateOfBirth,
+                    BloodGroupName = s.BloodGroupId.HasValue ? await _repo.GetBloodGroupNameAsync(s.BloodGroupId.Value, ct) : null,
+                    StudentCategoryName = s.StudentCategoryId.HasValue ? await _repo.GetStudentCategoryNameAsync(s.StudentCategoryId.Value, ct) : null,
+                    MobileNumber = s.MobileNumber, Email = s.Email, Address = address.Length == 0 ? null : address,
+                    Guardians = guardians.OrderByDescending(g => g.IsPrimary).ThenBy(g => g.FirstName)
+                        .Select(g => new MyGuardianDto { FullName = FullName(g.FirstName, null, g.LastName), Relationship = g.Relationship, MobileNumber = g.MobileNumber, Email = g.Email }).ToList()
+                });
+            }
+            catch (Exception ex) { return Error<StudentMyProfileDto>(ex, "fetching a student's own profile"); }
+        }
+
         public async Task<ApiResponse<StudentProfileDto>> GetStudentProfileAsync(string schoolId, string studentId, bool limited, CancellationToken ct)
         {
             try

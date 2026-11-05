@@ -14,6 +14,11 @@ export const STUDENTS_ROUTES: Routes = [
     data: { restricted: true },
     loadComponent: () => import('./pages/student-profile/student-profile.component').then((m) => m.StudentProfileComponent),
   },
+  // A Student's own read-only profile (the API answers /api/Student/me)
+  {
+    path: 'my-student-profile',
+    loadComponent: () => import('./pages/my-student-profile/my-student-profile.component').then((m) => m.MyStudentProfileComponent),
+  },
   {
     path: 'students',
     loadComponent: () => import('./pages/student-list/student-list.component').then((m) => m.StudentListComponent),

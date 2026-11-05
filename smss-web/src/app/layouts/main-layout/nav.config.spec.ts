@@ -37,6 +37,18 @@ describe('visibleNav: Students group', () => {
   });
 });
 
+describe('visibleNav: Student sidebar', () => {
+  it('a Student gets My Profile and none of the staff student pages', () => {
+    const l = labels([ROLES.STUDENT]);
+    expect(l).toContain('My Profile');
+    for (const x of ['Students', 'Admissions', 'Add Existing Student', 'Student Leave', 'My Students']) expect(l).not.toContain(x);
+  });
+
+  it('nobody else gets the Student My Profile item', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.GUARDIAN]) expect(labels([role])).not.toContain('My Profile');
+  });
+});
+
 describe('visibleNav: My Leave', () => {
   it('is hidden for a login with no employee record, even with an allowed role', () => {
     expect(labels([ROLES.SCHOOL_ADMIN])).toContain('My Leave'); // default: roles only

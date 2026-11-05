@@ -125,6 +125,16 @@ namespace smss_api_db_layer.repository
         public Task<string?> GetStudentCategoryNameAsync(long id, CancellationToken ct) =>
             _db.LutStudentCategories.AsNoTracking().Where(c => c.StudentCategoryId == id).Select(c => c.CategoryName).FirstOrDefaultAsync(ct);
 
+        public async Task<(string? City, string? State)> GetPlaceNamesAsync(int? countryId, int? stateId, int? districtId, int? cityId, CancellationToken ct)
+        {
+            string? city = null, state = null;
+            if (cityId.HasValue)
+                city = await _db.LutCities.AsNoTracking().Where(c => c.CityId == cityId && (!countryId.HasValue || c.Cid == countryId) && (!stateId.HasValue || c.Sid == stateId) && (!districtId.HasValue || c.Did == districtId)).Select(c => c.CityName).FirstOrDefaultAsync(ct);
+            if (countryId.HasValue && stateId.HasValue)
+                state = await _db.LutStates.AsNoTracking().Where(x => x.Cid == countryId && x.Sid == stateId).Select(x => x.Sname).FirstOrDefaultAsync(ct);
+            return (city, state);
+        }
+
         public Task<string?> GetAdmissionTypeNameAsync(string schoolId, long id, CancellationToken ct) =>
             _db.AdmissionTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && t.AdmissionTypeId == id)
                 .Select(t => t.TypeName).FirstOrDefaultAsync(ct);

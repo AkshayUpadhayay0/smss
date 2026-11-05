@@ -65,6 +65,20 @@ describe('TopbarComponent notification bell', () => {
     expect(link?.getAttribute('href')).toBe('/my-profile');
   });
 
+  it('the user menu offers a Student "My profile" and links it to /my-student-profile', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'Student', roles: ['Student'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(TopbarComponent);
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
+    (el().querySelector('button.user') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const link = [...el().querySelectorAll('.menu a.menu-item')].find((a) => a.textContent?.includes('My profile'));
+    expect(link?.getAttribute('href')).toBe('/my-student-profile');
+  });
+
   it('the user menu does not offer "My profile" to a School Admin (their login is the school, not an employee)', () => {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'] }) });

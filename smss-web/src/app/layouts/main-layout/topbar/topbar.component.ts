@@ -41,7 +41,12 @@ export class TopbarComponent implements OnInit {
     return { name: u?.displayName ?? '', role: u?.roles?.[0] ?? u?.userType ?? '' };
   });
   /** "My profile" is offered to employee logins only (the same role list as the /my-profile route, read from ROUTE_ROLES and not repeated). */
-  protected readonly canSeeProfile = computed(() => canAccess('/my-profile', this.auth.user()?.roles ?? []));
+  protected readonly canSeeProfile = computed(() => this.profileLink() !== null);
+  /** Where "My profile" goes: an employee's own record, or a Student's own (each route's roles are read from ROUTE_ROLES). */
+  protected readonly profileLink = computed(() => {
+    const roles = this.auth.user()?.roles ?? [];
+    return ['/my-profile', '/my-student-profile'].find((r) => canAccess(r, roles)) ?? null;
+  });
   /** The bell: the unread count (shared with My Notices) and the latest unread notices, loaded when the dropdown opens. Only users of a school have notices. */
   protected readonly unreadCount = this.notices.unreadCount;
   protected readonly latestUnread = signal<Notice[]>([]);

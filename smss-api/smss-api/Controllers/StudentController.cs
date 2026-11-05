@@ -48,6 +48,17 @@ namespace smss_api.Controllers
         private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
             User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
 
+        // GET api/Student/me   (a Student login's OWN profile only; there is no id to change: school and student come from the token)
+        // Declared apart from the staff reads on purpose: those stay closed to Student logins (section 36's lockdown). Same pattern as GET api/Employee/me.
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMe(CancellationToken ct)
+        {
+            if (!User.IsStudent()) return Respond(403, "Only a Student can see their own profile here.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _service.GetMyProfileAsync(User.GetSchoolId(), userId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
         // GET api/Student/my-class   (a Teacher's OWN students: the sections they are the Active class teacher of, plus the sections they are timetabled to teach in)
         // Self-scoped on purpose: it takes no school or section id (both come from the token and the Class-Teacher / Timetable modules), so it cannot be pointed
         // anywhere else. The broad {schoolId} reads below are left exactly as they were. Literal routes beat {schoolId}, so "my-class" is never read as a school id.

@@ -30,6 +30,40 @@ namespace smss_api_service_layer.dto
         public bool CanPickupStudent { get; set; }
     }
 
+    /// <summary>One guardian as the student / parent sees them: no primary / emergency / pickup flags.</summary>
+    public class MyGuardianDto
+    {
+        public string FullName { get; set; } = null!;
+        public string Relationship { get; set; } = null!;
+        public string? MobileNumber { get; set; }
+        public string? Email { get; set; }
+    }
+
+    /// <summary>
+    /// GET api/Student/me. Deliberately NOT the staff StudentProfileDto: no Aadhaar (not even masked), login id, fee data, admission type / date or other internal fields.
+    /// </summary>
+    public class StudentMyProfileDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string FullName { get; set; } = null!;
+        public string AdmissionNumber { get; set; } = null!;
+        public string StatusName { get; set; } = null!;
+        public string? ProfilePhotoUrl { get; set; }   // existing public photo URL, as everywhere else
+        public string? AcademicYearName { get; set; }
+        public string? ClassName { get; set; }
+        public string? SectionName { get; set; }
+        public string? RollNumber { get; set; }
+        public string? GenderName { get; set; }
+        public DateTime DateOfBirth { get; set; }
+        public string? BloodGroupName { get; set; }
+        public string? StudentCategoryName { get; set; }
+        public string? MobileNumber { get; set; }
+        public string? Email { get; set; }
+        /// <summary>Address lines, city, state and pincode joined into one display string; null when nothing is recorded.</summary>
+        public string? Address { get; set; }
+        public List<MyGuardianDto> Guardians { get; set; } = new();
+    }
+
     public class StudentPhotoDto
     {
         public string StudentId { get; set; } = null!;

@@ -90,6 +90,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/timetable/my': [ROLES.TEACHER],
   // My Profile: an employee login's own record, read-only (Teacher, Principal, Accountant, Admission Staff). A School Admin login is the school itself, not an employee.
   '/my-profile': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF],
+  // My Profile for a Student login: their own record, read-only (GET /api/Student/me; every other student read stays closed to Student logins)
+  '/my-student-profile': [ROLES.STUDENT],
   // Employees (staff records, documents, creating logins): School Admin only
   '/employees': [ROLES.SCHOOL_ADMIN],
   '/employees/new': [ROLES.SCHOOL_ADMIN],

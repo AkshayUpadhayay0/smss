@@ -1,0 +1,102 @@
+<app-page-header title="My Profile" subtitle="Your details, as the school holds them" icon="user" [breadcrumbs]="breadcrumbs" />
+
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your profile…</p></app-card>
+} @else if (loadFailed() || !profile()) {
+  <app-card><p class="note" role="alert">Your profile could not be loaded.</p></app-card>
+} @else {
+  @if (profile(); as p) {
+    <app-card>
+      <div class="header">
+        <div class="identity">
+          <span class="photo">
+            @if (photoUrl(); as src) {
+              <img [src]="src" [alt]="p.fullName + ' photo'" />
+            } @else {
+              <span class="initials" aria-hidden="true">{{ initials() }}</span>
+            }
+          </span>
+          <h2>{{ p.fullName }}</h2>
+          <p class="adm">Admission No: <strong>{{ p.admissionNumber }}</strong></p>
+        </div>
+
+        <div class="info">
+          <div class="info-head">
+            <h3>Personal Info</h3>
+            <span class="pill" [class.on]="isActive()">{{ p.statusName }}</span>
+          </div>
+          <dl class="kv">
+            <div><dt>Class</dt><dd>{{ p.className || '—' }}</dd></div>
+            <div><dt>Section</dt><dd>{{ p.sectionName || '—' }}</dd></div>
+            <div><dt>Roll No</dt><dd>{{ p.rollNumber || '—' }}</dd></div>
+            <div><dt>Gender</dt><dd>{{ p.genderName || '—' }}</dd></div>
+            <div><dt>Date Of Birth</dt><dd>{{ fmt(p.dateOfBirth) || '—' }}</dd></div>
+            @if (p.studentCategoryName) {
+              <div><dt>Category</dt><dd>{{ p.studentCategoryName }}</dd></div>
+            }
+            <div><dt>Academic Year</dt><dd>{{ p.academicYearName || '—' }}</dd></div>
+            <div><dt>Phone Number</dt><dd>{{ p.mobileNumber || '—' }}</dd></div>
+            <div><dt>Email</dt><dd>{{ p.email || '—' }}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </app-card>
+
+    <div class="tabs" role="tablist" aria-label="Profile sections">
+      <button type="button" role="tab" id="tab-details" [attr.aria-selected]="tab() === 'details'" [class.active]="tab() === 'details'" (click)="selectTab('details')">Student Details</button>
+      <button type="button" role="tab" id="tab-attendance" [attr.aria-selected]="tab() === 'attendance'" [class.active]="tab() === 'attendance'" (click)="selectTab('attendance')">Attendance</button>
+    </div>
+
+    <div class="panel" role="tabpanel" aria-labelledby="tab-details" [hidden]="tab() !== 'details'">
+      <app-card title="Parent Guardian Detail">
+        @if (p.guardians.length === 0) {
+          <p class="note">No guardian details are recorded.</p>
+        } @else {
+          <ul class="guardians">
+            @for (g of p.guardians; track $index) {
+              <li>
+                <span class="avatar" aria-hidden="true">{{ initialsOf(g.fullName) }}</span>
+                <div class="g-name"><strong>{{ g.fullName }}</strong><span>{{ g.relationship }}</span></div>
+                <div class="g-field"><strong>Phone</strong><span>{{ g.mobileNumber || '—' }}</span></div>
+                <div class="g-field"><strong>Email</strong><span>{{ g.email || '—' }}</span></div>
+              </li>
+            }
+          </ul>
+        }
+      </app-card>
+
+      <div class="two">
+        <app-card title="Address">
+          <p class="plain">{{ p.address || 'No address is recorded.' }}</p>
+        </app-card>
+        <app-card title="Medical Details">
+          <div class="field"><strong>Blood Group</strong><span>{{ p.bloodGroupName || '—' }}</span></div>
+        </app-card>
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" aria-labelledby="tab-attendance" [hidden]="tab() !== 'attendance'">
+      <app-card title="Attendance this year">
+        @if (attendanceLoading()) {
+          <p class="note" role="status">Loading attendance…</p>
+        } @else if (attendanceFailed()) {
+          <p class="note" role="alert">Your attendance could not be loaded.</p>
+        } @else if (attendance(); as a) {
+          @if (a.totalMarkedDays === 0) {
+            <p class="note">No attendance has been marked for you yet this year.</p>
+          } @else {
+            <div class="stats">
+              <div><span class="num">{{ a.presentCount }}</span><span class="lbl">Present</span></div>
+              <div><span class="num">{{ a.absentCount }}</span><span class="lbl">Absent</span></div>
+              <div><span class="num">{{ a.totalMarkedDays }}</span><span class="lbl">Days marked</span></div>
+              <div><span class="num">{{ a.presentPercentage != null ? a.presentPercentage + '%' : '—' }}</span><span class="lbl">Attendance</span></div>
+            </div>
+            <p class="note small">From {{ fmt(a.from) }} to {{ fmt(a.to) }}.</p>
+          }
+        } @else {
+          <p class="note">Attendance is not available right now.</p>
+        }
+      </app-card>
+    </div>
+  }
+}

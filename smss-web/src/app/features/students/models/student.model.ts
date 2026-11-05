@@ -174,3 +174,32 @@ export interface IdCardBulkResult {
   /** Left out of the PDF, each with the reason. */
   excluded: IdCardStudentRef[];
 }
+
+/** Mirrors MyGuardianDto: a guardian as the student / parent sees them. */
+export interface MyGuardian {
+  fullName: string;
+  relationship: string;
+  mobileNumber?: string | null;
+  email?: string | null;
+}
+
+/** Mirrors StudentMyProfileDto (GET /api/Student/me): only what a student / parent should see (no Aadhaar, login id, fees or internal fields). */
+export interface StudentMyProfile {
+  studentId: string;
+  fullName: string;
+  admissionNumber: string;
+  statusName: string;
+  profilePhotoUrl?: string | null;
+  academicYearName?: string | null;
+  className?: string | null;
+  sectionName?: string | null;
+  rollNumber?: string | null;
+  genderName?: string | null;
+  dateOfBirth: string;
+  bloodGroupName?: string | null;
+  studentCategoryName?: string | null;
+  mobileNumber?: string | null;
+  email?: string | null;
+  address?: string | null;
+  guardians: MyGuardian[];
+}
