@@ -1,3 +1,6 @@
 
 # Private employee documents (never commit; never served by URL)
 uploads-private/
+
+# Generated demo-school credentials (plaintext passwords; never commit)
+# Docs/demo-credentials.txt
