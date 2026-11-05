@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.switch {
+  display: inline-flex;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  button {
+    padding: var(--space-2) var(--space-5);
+    border: 0;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+
+    &.on {
+      background: var(--color-primary-soft);
+      color: var(--color-primary-700);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
+  }
+}
+
+// the card is portrait (54 x 85.6 mm): keep its shape and never let it grow past a comfortable size
+.card-frame {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--color-surface-sunken, #f3f4f8);
+  border-radius: var(--radius-lg);
+
+  img {
+    display: block;
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    aspect-ratio: 54 / 85.6;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(20, 20, 50, 0.18);
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-4);
+}

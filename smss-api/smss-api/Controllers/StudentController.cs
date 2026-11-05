@@ -17,10 +17,12 @@ namespace smss_api.Controllers
         private readonly IStudentLoginService _loginService;
         private readonly IMyStudentsService _myStudents;
         private readonly IStudentMyFeesService _myFees;
+        private readonly IStudentIdCardService _idCards;
 
-        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents, IStudentMyFeesService myFees)
+        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents, IStudentMyFeesService myFees, IStudentIdCardService idCards)
         {
             _myFees = myFees;
+            _idCards = idCards;
             _service = service;
             _loginService = loginService;
             _myStudents = myStudents;
@@ -69,6 +71,29 @@ namespace smss_api.Controllers
             if (!User.IsStudent()) return Respond(403, "Only a Student can see their own fees here.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var response = await _myFees.GetMyFeesAsync(User.GetSchoolId(), userId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/Student/me/id-card   (a Student login's OWN ID card as a PDF; the school's saved template and settings)
+        // Success: the PDF itself. Nothing in the request selects the student (the id comes from the token). The staff ID-card endpoints stay School Admin only.
+        // 404 with a calm message when the card cannot be issued (left / inactive / not enrolled this year). The photo is read server-side; no new public URL.
+        [HttpGet("me/id-card")]
+        public async Task<IActionResult> GetMyIdCard(CancellationToken ct)
+        {
+            if (!User.IsStudent()) return Respond(403, "Only a Student can download their own ID card here.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _idCards.GetMyCardAsync(User.GetSchoolId(), userId, ct);
+            if (!response.Status || response.Data == null) return StatusCode(response.StatusCode, response);
+            return File(response.Data.Content, "application/pdf", response.Data.FileName);
+        }
+
+        // GET api/Student/me/id-card/preview   (both faces of the same card as PNG, base64 in the usual envelope; same rules as the PDF)
+        [HttpGet("me/id-card/preview")]
+        public async Task<IActionResult> GetMyIdCardPreview(CancellationToken ct)
+        {
+            if (!User.IsStudent()) return Respond(403, "Only a Student can see their own ID card here.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _idCards.GetMyCardPreviewAsync(User.GetSchoolId(), userId, ct);
             return StatusCode(response.StatusCode, response);
         }
 

@@ -99,8 +99,8 @@
     }
 
     .row {
-      grid-template-columns: 1fr 1fr;
-      gap: 2px var(--space-4);
+      grid-template-columns: 1fr;
+      gap: 2px 0;
       padding: var(--space-4) 0;
 
       > span {

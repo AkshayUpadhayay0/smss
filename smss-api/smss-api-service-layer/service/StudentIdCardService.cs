@@ -18,10 +18,12 @@ namespace smss_api_service_layer.service
         private readonly IStudentIdCardRepository _repo;
         private readonly IIdCardSettingsService _settings;
         private readonly IFileStorageService _storage;
+        private readonly IStudentRepository _students;
         private readonly ILogger<StudentIdCardService> _logger;
 
-        public StudentIdCardService(IStudentIdCardRepository repo, IIdCardSettingsService settings, IFileStorageService storage, ILogger<StudentIdCardService> logger)
+        public StudentIdCardService(IStudentIdCardRepository repo, IIdCardSettingsService settings, IFileStorageService storage, IStudentRepository students, ILogger<StudentIdCardService> logger)
         {
+            _students = students;
             _repo = repo;
             _settings = settings;
             _storage = storage;
@@ -54,6 +56,54 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully generated", new IdCardFileDto { FileName = $"IDCard_{Safe(row.AdmissionNumber)}.pdf", Content = pdf });
             }
             catch (Exception ex) { return Error<IdCardFileDto>(ex, "generating a student ID card"); }
+        }
+
+        // ---- a student's own card -------------------------------------------------------------------------------------------------
+
+        private const string NotAvailable = "Your ID card is not available right now. Please ask the school office.";
+
+        /// <summary>The caller's own card inputs, or a calm 404: no client value picks the student (the login id IS the student id).</summary>
+        private async Task<(ApiResponse<T>? Error, IdCardSchoolRow? School, IdCardBrand? Brand, IdCardModel? Card, IdCardStudentRow? Row)> PrepareMineAsync<T>(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return (Result<T>(400, TenantMessages.NoSchool, default), null, null, null, null);
+            var loginId = await _students.GetUserLoginIdAsync(schoolId, callerUserId, ct);
+            if (string.IsNullOrEmpty(loginId) || !await _repo.StudentExistsAsync(schoolId, loginId, ct)) return (Result<T>(404, NotAvailable, default), null, null, null, null);
+            var school = await _repo.GetSchoolAsync(schoolId, ct);
+            var year = await _repo.GetCurrentYearAsync(schoolId, ct);
+            var activeId = await _repo.GetActiveStatusIdAsync(ct);
+            if (school == null || year == null || activeId == null) return (Result<T>(404, NotAvailable, default), null, null, null, null);
+            var row = await _repo.GetStudentAsync(schoolId, year.AcademicYearId, loginId, ct);
+            // inactive, left, or not enrolled this year: no card (the staff path says why; a student just gets the calm line)
+            if (row == null || ExclusionReason(row, activeId.Value, year.YearName) != null) return (Result<T>(404, NotAvailable, default), null, null, null, null);
+            var brand = await _settings.GetBrandAsync(schoolId, ct);
+            var (cards, _) = await BuildCardsAsync(school, year, new[] { row }, brand.Options, ct);
+            return (null, school, brand, cards[0], row);
+        }
+
+        public async Task<ApiResponse<IdCardFileDto>> GetMyCardAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            try
+            {
+                var p = await PrepareMineAsync<IdCardFileDto>(schoolId, callerUserId, ct);
+                if (p.Error != null) return p.Error;
+                var schoolModel = BuildSchool(p.School!);
+                var pdf = await Task.Run(() => IdCardPdf.RenderSingle(schoolModel, p.Brand!, p.Card!), ct);
+                return Result(200, "Successfully generated", new IdCardFileDto { FileName = $"IDCard_{Safe(p.Row!.AdmissionNumber)}.pdf", Content = pdf });
+            }
+            catch (Exception ex) { return Error<IdCardFileDto>(ex, "generating a student's own ID card"); }
+        }
+
+        public async Task<ApiResponse<IdCardPreviewDto>> GetMyCardPreviewAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        {
+            try
+            {
+                var p = await PrepareMineAsync<IdCardPreviewDto>(schoolId, callerUserId, ct);
+                if (p.Error != null) return p.Error;
+                var schoolModel = BuildSchool(p.School!);
+                var (front, back) = await Task.Run(() => IdCardPdf.RenderPreview(schoolModel, p.Brand!, p.Card!), ct);
+                return Result(200, "Successfully generated", new IdCardPreviewDto { TemplateCode = p.Brand!.TemplateCode, FrontPng = Convert.ToBase64String(front), BackPng = Convert.ToBase64String(back), IsSample = false });
+            }
+            catch (Exception ex) { return Error<IdCardPreviewDto>(ex, "rendering a student's own ID card preview"); }
         }
 
         public async Task<ApiResponse<IdCardBulkResultDto>> GetSectionCardsAsync(string? schoolId, long sectionId, CancellationToken ct)

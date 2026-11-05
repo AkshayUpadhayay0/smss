@@ -58,7 +58,7 @@ describe('MyStudentProfileComponent', () => {
     open((r) => r.flush(env({ ...ME, studentCategoryName: null })));
     expect([...el().querySelectorAll('.kv dt')].map((d) => d.textContent)).not.toContain('Category');
     expect(el().querySelectorAll('input, textarea, select').length).toBe(0);
-    expect([...el().querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance', 'Leave', 'Fees']);
+    expect([...el().querySelectorAll('button[role="tab"]')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance', 'Leave', 'Fees']);
   });
 
   it('does not show Aadhaar or the login id (fees live on their own tab)', () => {
@@ -82,6 +82,19 @@ describe('MyStudentProfileComponent', () => {
     fixture.detectChanges();
     expect(el().querySelector('app-student-my-leave')).not.toBeNull();
     expect(text()).toContain('New Leave Request');
+  });
+
+  it('the Student Details tab has a Download ID Card button that asks for the student\'s own PDF', () => {
+    open((r) => r.flush(env(ME)));
+    const btn = [...el().querySelectorAll('button')].find((b) => b.textContent?.includes('Download ID Card')) as HTMLButtonElement;
+    expect(btn).toBeTruthy();
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { names.push(this.download); });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    btn.click();
+    http.expectOne(`${API}/api/Student/me/id-card`).flush(new Blob(['%PDF'], { type: 'application/pdf' }));
+    expect(names).toEqual(['IDCard_AD1256589.pdf']);
   });
 
   it('the Fees tab is the shared read-only fees component and loads only when opened', () => {

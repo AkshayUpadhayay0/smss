@@ -2,12 +2,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { toUploadUrl } from '../../../../core/utils/upload-url';
-import { CardComponent, PageHeaderComponent } from '../../../../shared/components';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { DashboardAttendance } from '../../../dashboard/models/student-dashboard.model';
 import { StudentDashboardService } from '../../../dashboard/services/student-dashboard.service';
 import { StudentMyLeaveComponent } from '../../../leave/components/student-my-leave/student-my-leave.component';
 import { StudentMyFeesComponent } from '../../components/student-my-fees/student-my-fees.component';
+import { ToastService } from '../../../../core/services/toast.service';
+import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentMyProfile } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
@@ -23,7 +25,7 @@ function initialsOf(name?: string | null): string {
  */
 @Component({
   selector: 'app-my-student-profile',
-  imports: [CardComponent, PageHeaderComponent, StudentMyLeaveComponent, StudentMyFeesComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentMyLeaveComponent, StudentMyFeesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './my-student-profile.component.scss',
   templateUrl: './my-student-profile.component.html',
@@ -32,6 +34,7 @@ export class MyStudentProfileComponent implements OnInit {
   private readonly students = inject(StudentService);
   private readonly dashboard = inject(StudentDashboardService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   protected readonly profile = signal<StudentMyProfile | null>(null);
   protected readonly loading = signal(true);
@@ -59,6 +62,25 @@ export class MyStudentProfileComponent implements OnInit {
       .me()
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({ next: (p) => this.profile.set(p), error: () => this.loadFailed.set(true) }); // already toasted by the interceptor
+  }
+
+  protected readonly cardBusy = signal(false);
+
+  /** The student's OWN ID card as a PDF (the server answers a calm message when no card can be issued). */
+  protected downloadIdCard(): void {
+    const p = this.profile();
+    if (!p || this.cardBusy()) return;
+    this.cardBusy.set(true);
+    this.students
+      .downloadMyIdCard()
+      .pipe(finalize(() => this.cardBusy.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          saveBlob(blob, `IDCard_${p.admissionNumber}.pdf`);
+          this.toast.success('ID card downloaded.');
+        },
+        error: (e: Error) => this.toast.error(e.message),
+      });
   }
 
   protected selectTab(tab: Tab): void {

@@ -245,3 +245,11 @@ export interface StudentMyFees {
   dues: MyFeeDue[];
   payments: MyFeePayment[];
 }
+
+/** Mirrors IdCardPreviewDto as GET /api/Student/me/id-card/preview returns it: both faces of the student's own card, PNG as base64. */
+export interface MyIdCardPreview {
+  templateCode: string;
+  frontPng: string;
+  backPng: string;
+  isSample: boolean;
+}

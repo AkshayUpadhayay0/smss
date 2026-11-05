@@ -6,7 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
 import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
-import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, StudentMyFees, StudentMyProfile, StudentPhoto, StudentProfile } from '../models/student.model';
+import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, MyIdCardPreview, StudentMyFees, StudentMyProfile, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
 
@@ -34,6 +34,18 @@ export class StudentService {
   /** The signed-in Student's OWN fees, read-only (Student logins only; nothing is sent, the server takes the student from the token). */
   myFees(): Observable<StudentMyFees> {
     return this.api.get<StudentMyFees>(`${BASE}/me/fees`);
+  }
+
+  /** The signed-in Student's OWN ID card as PNG (front + back). A card that cannot be issued answers 404 with a calm message, shown in place by the caller (no toast). */
+  myIdCardPreview(): Observable<MyIdCardPreview> {
+    return this.api.get<MyIdCardPreview>(`${BASE}/me/id-card/preview`, undefined, { skipErrorToast: true });
+  }
+
+  /** The Student's OWN ID card as a PDF. The server's calm message (card not available) is surfaced as the error. */
+  downloadMyIdCard(): Observable<Blob> {
+    return this.api.download(`${BASE}/me/id-card`, { skipErrorToast: true }).pipe(
+      catchError((e: unknown) => from(readBlobError(e)).pipe(switchMap((message) => throwError(() => new Error(message))))),
+    );
   }
 
   /** A Teacher's OWN students (class-teacher sections + sections they teach in). The server takes the school and the teacher from the token: nothing is sent. */

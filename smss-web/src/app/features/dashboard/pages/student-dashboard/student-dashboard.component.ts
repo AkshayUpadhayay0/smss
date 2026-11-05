@@ -7,6 +7,7 @@ import { CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableCo
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { day } from '../../../homework/utils/homework-format';
 import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
+import { StudentMyIdCardComponent } from '../../../students/components/student-my-id-card/student-my-id-card.component';
 import { StudentDashboard } from '../../models/student-dashboard.model';
 import { StudentDashboardService } from '../../services/student-dashboard.service';
 import {
@@ -45,7 +46,7 @@ const RESULT_COLUMNS: TableColumn<ResultRow>[] = [
  */
 @Component({
   selector: 'app-student-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, TableComponent],
+  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, StudentMyIdCardComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-dashboard.component.scss',
   templateUrl: './student-dashboard.component.html',

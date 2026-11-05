@@ -9,6 +9,8 @@ import { StudentDashboardComponent } from './student-dashboard.component';
 
 const URL = `${environment.apiUrl}/api/StudentDashboard`;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
+const CARD_URL = `${environment.apiUrl}/api/Student/me/id-card/preview`;
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 const dashboard = (overrides: Partial<StudentDashboard> = {}): StudentDashboard => ({
   profile: { studentId: 'DPS001ST001', fullName: 'Asha Verma', admissionNumber: 'ADMNO20260001', className: 'Class 5', sectionName: 'A', rollNumber: '7', profilePhotoUrl: null },
@@ -45,8 +47,25 @@ describe('StudentDashboardComponent', () => {
     fixture.detectChanges();
     flush(http.expectOne(URL));
     fixture.detectChanges();
+    // the ID-card card makes its own request once the dashboard is on screen
+    http.match(CARD_URL).forEach((r) => r.flush(env({ templateCode: 'classic-blue', frontPng: PNG, backPng: PNG, isSample: false })));
+    fixture.detectChanges();
   }
   const openWith = (d: StudentDashboard) => open((req) => req.flush(env(d)));
+
+  it('shows My ID Card with a Front / Back switch and a Download button', () => {
+    openWith(dashboard());
+    expect(text()).toContain('My ID Card');
+    const img = el().querySelector('app-student-my-id-card img') as HTMLImageElement;
+    expect(img.alt).toBe('Front of your ID card');
+    expect(img.src).toContain('data:image/png;base64,');
+    const switches = [...el().querySelectorAll('app-student-my-id-card .switch button')] as HTMLButtonElement[];
+    expect(switches.map((b) => b.textContent?.trim())).toEqual(['Front', 'Back']);
+    switches[1].click();
+    fixture.detectChanges();
+    expect((el().querySelector('app-student-my-id-card img') as HTMLImageElement).alt).toBe('Back of your ID card');
+    expect(text()).toContain('Download ID card');
+  });
 
   afterEach(() => {
     http.verify();
@@ -65,7 +84,9 @@ describe('StudentDashboardComponent', () => {
     expect(text()).toContain('Class 5 – A');
     expect(text()).toContain('7');
     expect(text().toLowerCase()).not.toContain('edit profile');
-    expect(el().querySelectorAll('button')).toHaveLength(0);
+    // the only buttons on the dashboard belong to the ID-card card (Front / Back / Download); the profile card itself has none
+    expect(el().querySelectorAll('section.profile button')).toHaveLength(0);
+    expect([...el().querySelectorAll('button')].every((b) => b.closest('app-student-my-id-card'))).toBe(true);
   });
 
   it('shows the three stat cards: events, unread notices, attendance %', () => {

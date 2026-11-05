@@ -50,6 +50,9 @@
     </div>
 
     <div class="panel" role="tabpanel" aria-labelledby="tab-details" [hidden]="tab() !== 'details'">
+      <div class="tab-actions">
+        <app-button variant="secondary" size="sm" [disabled]="cardBusy()" (click)="downloadIdCard()"><app-icon name="id-card" [size]="16" />{{ cardBusy() ? 'Preparing…' : 'Download ID Card' }}</app-button>
+      </div>
       <app-card title="Parent Guardian Detail">
         @if (p.guardians.length === 0) {
           <p class="note">No guardian details are recorded.</p>

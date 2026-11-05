@@ -19,8 +19,8 @@ export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiUrl;
 
-  get<T>(path: string, params?: Record<string, string | number | boolean>): Observable<T> {
-    return this.unwrap(this.http.get<ApiResponse<T>>(this.url(path), { params }));
+  get<T>(path: string, params?: Record<string, string | number | boolean>, options?: ApiRequestOptions): Observable<T> {
+    return this.unwrap(this.http.get<ApiResponse<T>>(this.url(path), { params, context: this.context(options) }));
   }
 
   /** A file from an authenticated endpoint (the token is attached by the interceptor): the raw bytes, not the ApiResponse envelope. */
