@@ -1,12 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
-import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { LogoComponent } from '../../../shared/components/logo/logo.component';
-import { NAV_ITEMS, NavItem } from '../nav.config';
+import { NAV_ITEMS, NavItem, visibleNav } from '../nav.config';
 
 @Component({
   selector: 'app-sidebar',
@@ -43,19 +42,19 @@ export class SidebarComponent {
    * Only what the signed-in user may open, decided by the same ROUTE_ROLES the route guard uses. A group
    * (e.g. Masters) disappears entirely when none of its children are allowed.
    */
-  protected readonly items = computed<NavItem[]>(() => {
-    const roles = this.auth.currentUserRoles();
-    return NAV_ITEMS.flatMap((item) => {
-      if (item.children) {
-        const children = item.children.filter((c) => canAccess(c.route, roles));
-        return children.length ? [{ ...item, children }] : [];
-      }
-      return item.route && canAccess(item.route, roles) ? [item] : [];
-    });
-  });
+  protected readonly items = computed<NavItem[]>(() => visibleNav(this.auth.currentUserRoles()));
   private readonly openGroups = signal<Set<string>>(
     new Set(NAV_ITEMS.filter((i) => this.containsUrl(i, this.router.url)).map((i) => i.label)),
   );
+
+  constructor() {
+    // A group opens by itself whenever the current route is inside it (deep link, or navigating from elsewhere).
+    effect(() => {
+      const path = this.path();
+      const inside = NAV_ITEMS.filter((i) => this.containsUrl(i, path)).map((i) => i.label);
+      if (inside.length) this.openGroups.update((s) => (inside.every((l) => s.has(l)) ? s : new Set([...s, ...inside])));
+    });
+  }
 
   /**
    * A link is active for its own URL and anything below it (/students/DPS001ST001 keeps "Students" lit), unless a MORE

@@ -1,3 +1,4 @@
+import { canAccess } from '../../core/config/route-roles';
 import { IconName } from '../../shared/components/icon/icons';
 
 export interface NavItem {
@@ -6,6 +7,8 @@ export interface NavItem {
   /** Leaf items have a route; groups have children. */
   route?: string;
   children?: { label: string; route: string }[];
+  /** A group that shows a single child for the signed-in role renders that child as a plain item instead. */
+  flatWhenSingle?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -22,12 +25,19 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
   { label: 'My Leave', icon: 'file-text', route: '/leave/my' },
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
-  { label: 'Student Leave', icon: 'user', route: '/leave/students' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
-  { label: 'Students', icon: 'graduation-cap', route: '/students' },
-  { label: 'My Students', icon: 'graduation-cap', route: '/my-students' },
-  { label: 'Admissions', icon: 'user', route: '/admissions' },
-  { label: 'Add Existing Student', icon: 'inbox', route: '/students/onboard-existing' },
+  {
+    label: 'Students',
+    icon: 'graduation-cap',
+    flatWhenSingle: true,
+    children: [
+      { label: 'Students', route: '/students' },
+      { label: 'My Students', route: '/my-students' },
+      { label: 'Admissions', route: '/admissions' },
+      { label: 'Add Existing Student', route: '/students/onboard-existing' },
+      { label: 'Student Leave', route: '/leave/students' },
+    ],
+  },
   {
     label: 'School Setup',
     icon: 'graduation-cap',
@@ -99,3 +109,20 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
 ];
+
+/**
+ * What the sidebar shows for `roles`: leaves the role may open, groups cut down to the children it may open (a group
+ * with none disappears; a `flatWhenSingle` group with one becomes that child as a plain item). Presentation only: the
+ * route guard still decides who may actually enter a route, from the same ROUTE_ROLES.
+ */
+export function visibleNav(roles: readonly string[]): NavItem[] {
+  return NAV_ITEMS.flatMap((item): NavItem[] => {
+    if (item.children) {
+      const children = item.children.filter((c) => canAccess(c.route, roles));
+      if (!children.length) return [];
+      if (children.length === 1 && item.flatWhenSingle) return [{ label: children[0].label, icon: item.icon, route: children[0].route }];
+      return [{ ...item, children }];
+    }
+    return item.route && canAccess(item.route, roles) ? [item] : [];
+  });
+}
