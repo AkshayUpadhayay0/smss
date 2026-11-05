@@ -42,7 +42,7 @@ export class SidebarComponent {
    * Only what the signed-in user may open, decided by the same ROUTE_ROLES the route guard uses. A group
    * (e.g. Masters) disappears entirely when none of its children are allowed.
    */
-  protected readonly items = computed<NavItem[]>(() => visibleNav(this.auth.currentUserRoles()));
+  protected readonly items = computed<NavItem[]>(() => visibleNav(this.auth.currentUserRoles(), this.auth.hasEmployeeRecord()));
   private readonly openGroups = signal<Set<string>>(
     new Set(NAV_ITEMS.filter((i) => this.containsUrl(i, this.router.url)).map((i) => i.label)),
   );

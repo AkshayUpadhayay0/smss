@@ -30,6 +30,13 @@ export class AuthService {
    */
   readonly currentUserRoles = computed<readonly string[]>(() => this.session()?.user.roles ?? []);
 
+  /**
+   * True for a login that is an employee's own (user type "Employee": created together with the employee record, its
+   * login id IS the employee id). A School Admin login (user type "School Id") is the school itself and has none, even
+   * though it holds the School Admin role; an employee who also holds that role is still "Employee".
+   */
+  readonly hasEmployeeRecord = computed(() => this.session()?.user.userType === 'Employee');
+
   isLoggedIn(): boolean {
     return this.hasValidSession();
   }

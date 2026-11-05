@@ -36,3 +36,15 @@ describe('visibleNav: Students group', () => {
     expect(group([ROLES.SCHOOL_ADMIN])?.children?.map((c) => c.route)).toEqual(['/students', '/admissions', '/students/onboard-existing', '/leave/students']);
   });
 });
+
+describe('visibleNav: My Leave', () => {
+  it('is hidden for a login with no employee record, even with an allowed role', () => {
+    expect(labels([ROLES.SCHOOL_ADMIN])).toContain('My Leave'); // default: roles only
+    expect(visibleNav([ROLES.SCHOOL_ADMIN], false).map((i) => i.label)).not.toContain('My Leave');
+  });
+
+  it('stays for an employee login, including one that also holds School Admin', () => {
+    expect(visibleNav([ROLES.SCHOOL_ADMIN], true).map((i) => i.label)).toContain('My Leave');
+    expect(visibleNav([ROLES.TEACHER], true).map((i) => i.label)).toContain('My Leave');
+  });
+});

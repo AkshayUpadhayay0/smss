@@ -9,6 +9,8 @@ export interface NavItem {
   children?: { label: string; route: string }[];
   /** A group that shows a single child for the signed-in role renders that child as a plain item instead. */
   flatWhenSingle?: boolean;
+  /** Shown only to logins that have an employee record (a School Admin login is the school itself and has none). */
+  needsEmployeeRecord?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -23,7 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'My Homework', icon: 'file-text', route: '/homework/my' },
   { label: 'Assessments', icon: 'file-text', route: '/assessments' },
   { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
-  { label: 'My Leave', icon: 'file-text', route: '/leave/my' },
+  { label: 'My Leave', icon: 'file-text', route: '/leave/my', needsEmployeeRecord: true },
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   {
@@ -115,7 +117,7 @@ export const NAV_ITEMS: NavItem[] = [
  * with none disappears; a `flatWhenSingle` group with one becomes that child as a plain item). Presentation only: the
  * route guard still decides who may actually enter a route, from the same ROUTE_ROLES.
  */
-export function visibleNav(roles: readonly string[]): NavItem[] {
+export function visibleNav(roles: readonly string[], hasEmployeeRecord = true): NavItem[] {
   return NAV_ITEMS.flatMap((item): NavItem[] => {
     if (item.children) {
       const children = item.children.filter((c) => canAccess(c.route, roles));
@@ -123,6 +125,7 @@ export function visibleNav(roles: readonly string[]): NavItem[] {
       if (children.length === 1 && item.flatWhenSingle) return [{ label: children[0].label, icon: item.icon, route: children[0].route }];
       return [{ ...item, children }];
     }
+    if (item.needsEmployeeRecord && !hasEmployeeRecord) return [];
     return item.route && canAccess(item.route, roles) ? [item] : [];
   });
 }

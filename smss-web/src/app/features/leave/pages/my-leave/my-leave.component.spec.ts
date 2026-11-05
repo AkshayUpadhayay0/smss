@@ -108,9 +108,9 @@ describe('MyLeaveComponent', () => {
     http.expectNone(`${API}/api/EmployeeLeave`);
   });
 
-  it('an account that is not an employee gets a clear message and cannot apply', () => {
+  it('an employee whose leave cannot be loaded gets a clear message and cannot apply', () => {
     clearSessions();
-    seedSession({ user: makeUser({ schoolId: 'S', roles: ['School Admin'] }) });
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'Employee', roles: ['Teacher'] }) });
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(MyLeaveComponent);
@@ -120,5 +120,23 @@ describe('MyLeaveComponent', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('linked to an employee record');
     expect([...el().querySelectorAll('button')].find((b) => b.textContent?.includes('Apply for Leave'))?.disabled).toBe(true);
+  });
+});
+
+describe('MyLeaveComponent without an employee record', () => {
+  afterEach(() => clearSessions());
+
+  it('a School Admin login (user type School Id) sees only the notice: no API call, no Apply button, no error', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(MyLeaveComponent);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain("school's own account");
+    expect([...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].some((b) => b.textContent?.includes('Apply'))).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    http.verify(); // nothing requested
   });
 });

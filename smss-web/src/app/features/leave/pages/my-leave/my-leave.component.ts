@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
@@ -25,10 +26,18 @@ const COLUMNS: TableColumn<LeaveRow>[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header title="My Leave" subtitle="Apply for leave and follow your requests" icon="calendar" [breadcrumbs]="breadcrumbs">
-      <app-button [disabled]="loadFailed() || types().length === 0" (click)="applying.set(true)"><app-icon name="plus" [size]="16" />Apply for Leave</app-button>
+      @if (hasEmployee) {
+        <app-button [disabled]="loadFailed() || types().length === 0" (click)="applying.set(true)"><app-icon name="plus" [size]="16" />Apply for Leave</app-button>
+      }
     </app-page-header>
 
-    @if (loadFailed()) {
+    @if (!hasEmployee) {
+      <app-card>
+        <p class="note" role="status">
+          This login is the school's own account, not an employee, so there is no personal leave to apply for here. Staff leave is recorded and decided from the Leave Requests page.
+        </p>
+      </app-card>
+    } @else if (loadFailed()) {
       <app-card>
         <p class="note" role="alert">
           Your leave requests could not be loaded. Leave is for staff, so this account needs to be linked to an employee record. A School Admin can record leave for you from the Leave Requests page.
@@ -68,6 +77,7 @@ const COLUMNS: TableColumn<LeaveRow>[] = [
 })
 export class MyLeaveComponent implements OnInit {
   private readonly service = inject(LeaveService);
+  protected readonly hasEmployee = inject(AuthService).hasEmployeeRecord();
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
@@ -86,6 +96,7 @@ export class MyLeaveComponent implements OnInit {
   protected readonly pendingCount = computed(() => this.requests().filter((r) => r.status === 'Pending').length);
 
   ngOnInit(): void {
+    if (!this.hasEmployee) return; // a login with no employee record has nothing to load: show the notice, call nothing
     this.load();
     this.service.types('employee').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (t) => this.types.set(t), error: () => undefined });
   }
