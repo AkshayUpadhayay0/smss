@@ -89,6 +89,15 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool IsAccountantOnly(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Accountant) && !HasAnyRole(user, RoleNames.SchoolAdmin);
 
+        /// <summary>
+        /// Whether the caller may ASK for the monthly attendance report at all: School Admin, Principal (read-only, and the first attendance read the Principal has), and a Teacher
+        /// (who must additionally be the class teacher of the section: the service checks that). Everyone else is refused.
+        /// </summary>
+        public static bool CanViewAttendanceReport(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.Teacher);
+
+        /// <summary>The report's "any section" tier: School Admin and Principal (read-only). A Teacher is limited to the section they are class teacher of.</summary>
+        public static bool CanViewAllAttendanceReports(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

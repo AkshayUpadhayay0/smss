@@ -160,6 +160,43 @@ namespace smss_api_db_layer.repository
             return rows.Select(r => new TeacherSectionRow(r.SectionId, r.ClassId, r.ClassName, r.SectionName, r.Roster, r.Marked)).ToList();
         }
 
+        public Task<AttendanceYearRow?> GetYearSpanAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId)
+                .Select(y => new AttendanceYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate)).FirstOrDefaultAsync(ct);
+
+        public Task<List<AttendanceYearRow>> GetYearsAsync(string schoolId, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId).OrderByDescending(y => y.StartDate)
+                .Select(y => new AttendanceYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate)).ToListAsync(ct);
+
+        public Task<long?> GetCurrentYearIdAsync(string schoolId, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.IsCurrent).OrderByDescending(y => y.StartDate).Select(y => (long?)y.AcademicYearId).FirstOrDefaultAsync(ct);
+
+        public async Task<List<ReportRosterRow>> GetReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct)
+        {
+            // Filtered by school on BOTH tables, so an enrollment row can never pull in another school's student
+            var rows = await (
+                from e in _db.StudentEnrollments.AsNoTracking()
+                join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
+                where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == sectionId
+                select new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, e.EnrollmentDate, EnrollmentStatus = e.StatusId, StudentStatus = s.StatusId }).ToListAsync(ct);
+            return rows.Select(r => new ReportRosterRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, DateOnly.FromDateTime(r.EnrollmentDate), r.EnrollmentStatus, r.StudentStatus)).ToList();
+        }
+
+        public Task<List<MonthMarkRow>> GetMonthMarksAsync(string schoolId, long sectionId, DateOnly fromDate, DateOnly toDate, CancellationToken ct) =>
+            (from a in _db.StudentAttendance.AsNoTracking()
+             where a.SchoolId == schoolId && a.SectionId == sectionId && a.AttendanceDate >= fromDate && a.AttendanceDate <= toDate
+             join st in _db.LutAttendanceStatuses.AsNoTracking() on a.AttendanceStatusId equals st.AttendanceStatusId
+             select new MonthMarkRow(a.StudentId, a.AttendanceDate, st.StatusCode)).ToListAsync(ct);
+
+        public Task<List<HolidayRow>> GetHolidaysAsync(string schoolId, DateOnly fromDate, DateOnly toDate, int activeStatusId, CancellationToken ct) =>
+            (from e in _db.SchoolEvents.AsNoTracking()
+             join c in _db.LutEventCategories.AsNoTracking() on e.EventCategoryId equals c.EventCategoryId
+             where e.SchoolId == schoolId && e.StatusId == activeStatusId && c.CategoryCode == "HOLIDAY" && e.StartDate <= toDate && e.EndDate >= fromDate
+             select new HolidayRow(e.EventTitle, e.StartDate, e.EndDate)).ToListAsync(ct);
+
+        public Task<string?> GetSchoolNameAsync(string schoolId, CancellationToken ct) =>
+            _db.Schools.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.SchoolName).FirstOrDefaultAsync(ct);
+
         public async Task<(string? LoginId, string? Name)> GetUserAsync(string schoolId, long userId, CancellationToken ct)
         {
             var u = await _db.Users.AsNoTracking().Where(x => x.UserId == userId && x.SchoolId == schoolId).Select(x => new { x.OrgUserId, Name = x.DisplayName ?? x.OrgUserId }).FirstOrDefaultAsync(ct);

@@ -1,0 +1,276 @@
+:host {
+  display: block;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+
+  &.pad {
+    padding: var(--space-5);
+  }
+
+  &.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-6) 0;
+    text-align: center;
+  }
+
+  .small,
+  &.small {
+    font-size: var(--text-sm);
+  }
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+  transition: opacity 0.15s;
+
+  &.refreshing {
+    opacity: 0.55;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    .num {
+      font-size: var(--text-2xl, 1.6rem);
+      font-weight: var(--weight-semibold);
+      line-height: 1.1;
+    }
+
+    .lbl {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+
+    &.warn .num {
+      color: var(--color-danger);
+    }
+  }
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+
+  .title {
+    display: flex;
+    flex-direction: column;
+
+    span {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+}
+
+// The grid scrolls sideways inside its own box; the roll and name columns stay pinned on the left.
+.grid-wrap {
+  overflow: auto;
+  max-height: min(70vh, 720px);
+  border-bottom: 1px solid var(--color-border);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--text-sm);
+
+  th,
+  td {
+    padding: 6px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border-subtle, var(--color-border));
+    background: var(--color-surface, #fff);
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-surface-muted, #f7f7fb);
+    font-weight: var(--weight-semibold);
+  }
+
+  .sticky {
+    position: sticky;
+    z-index: 1;
+    text-align: left;
+  }
+
+  thead .sticky {
+    z-index: 3;
+  }
+
+  .roll {
+    left: 0;
+    min-width: 48px;
+    max-width: 48px;
+    width: 48px;
+    padding-left: var(--space-3);
+  }
+
+  .name {
+    left: 48px;
+    min-width: 190px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 2px 0 0 var(--color-border);
+  }
+
+  .day {
+    min-width: 30px;
+    width: 30px;
+    cursor: default;
+
+    .dn {
+      display: block;
+      line-height: 1.1;
+    }
+
+    .dw {
+      display: block;
+      font-size: 10px;
+      font-weight: var(--weight-regular, 400);
+      color: var(--color-text-muted);
+    }
+
+    // a working day on which nobody marked anything: underlined so the missed days stand out
+    &.unmarked .dn {
+      text-decoration: underline wavy var(--color-danger);
+    }
+  }
+
+  .off {
+    background: var(--color-surface-sunken, #ececf2);
+    color: var(--color-text-muted);
+  }
+
+  .mk {
+    font-weight: var(--weight-semibold);
+
+    &.p {
+      color: var(--color-status-active-fg, #15803d);
+    }
+
+    &.a {
+      color: var(--color-danger);
+      background: var(--color-danger-soft, #fde8e8);
+    }
+
+    &.nm {
+      color: var(--color-text-muted);
+      font-weight: var(--weight-regular, 400);
+    }
+  }
+
+  // The three totals stay pinned on the right, so they are visible whichever day you have scrolled to.
+  .tot {
+    position: sticky;
+    z-index: 1;
+    min-width: 58px;
+    width: 58px;
+    font-variant-numeric: tabular-nums;
+
+    &:nth-last-child(1) {
+      right: 0;
+    }
+
+    &:nth-last-child(2) {
+      right: 58px;
+    }
+
+    &:nth-last-child(3) {
+      right: 116px;
+      box-shadow: -2px 0 0 var(--color-border);
+    }
+  }
+
+  thead .tot {
+    z-index: 3;
+  }
+
+  .pct {
+    font-weight: var(--weight-semibold);
+
+    &.low {
+      color: var(--color-danger);
+      background: var(--color-danger-soft, #fde8e8);
+    }
+  }
+
+  tr.left .name {
+    color: var(--color-text-muted);
+  }
+
+  .tag {
+    margin-left: var(--space-2);
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: var(--color-status-inactive-bg);
+    color: var(--color-status-inactive-fg);
+  }
+}
+
+.legend {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+
+  .key {
+    display: inline-block;
+    min-width: 1.2em;
+    margin: 0 2px 0 var(--space-3);
+    text-align: center;
+    font-weight: var(--weight-semibold);
+
+    &.p {
+      color: var(--color-status-active-fg, #15803d);
+    }
+
+    &.a {
+      color: var(--color-danger);
+    }
+  }
+}

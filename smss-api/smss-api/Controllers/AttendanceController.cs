@@ -67,6 +67,38 @@ namespace smss_api.Controllers
             !User.IsSchoolAdmin() ? this.Forbidden("Only a School Admin can see which sections have not marked attendance.")
                                   : Reply(await _service.GetMissingAsync(User.GetSchoolId(), date, academicYearId, ct));
 
+        // GET api/Attendance/report/options?academicYearId=   (School Admin, Principal, class teacher: the report's year and section pickers)
+        [HttpGet("report/options")]
+        public async Task<IActionResult> GetReportOptions([FromQuery] long? academicYearId, CancellationToken ct)
+        {
+            if (!User.CanViewAttendanceReport()) return this.Forbidden("You can't see the attendance report.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            return Reply(await _service.GetReportOptionsAsync(User.GetSchoolId(), userId, User.CanViewAllAttendanceReports(), academicYearId, ct));
+        }
+
+        // GET api/Attendance/report/monthly?sectionId=&year=&month=[&academicYearId=]
+        // School Admin and Principal (read-only): any section. A Teacher: only the section they are the class teacher of (403 otherwise). Another school's section: 404.
+        [HttpGet("report/monthly")]
+        public async Task<IActionResult> GetMonthlyReport([FromQuery] long? sectionId, [FromQuery] int? year, [FromQuery] int? month, [FromQuery] long? academicYearId, CancellationToken ct)
+        {
+            if (!User.CanViewAttendanceReport()) return this.Forbidden("You can't see the attendance report.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            if (sectionId is null || year is null || month is null) return BadRequestMessage("sectionId, year and month are required.");
+            return Reply(await _service.GetMonthlyReportAsync(User.GetSchoolId(), userId, User.CanViewAllAttendanceReports(), sectionId.Value, year.Value, month.Value, academicYearId, ct));
+        }
+
+        // GET api/Attendance/report/monthly/pdf?...   (same query and the same authorization; success is the PDF itself, any failure the JSON envelope)
+        [HttpGet("report/monthly/pdf")]
+        public async Task<IActionResult> GetMonthlyReportPdf([FromQuery] long? sectionId, [FromQuery] int? year, [FromQuery] int? month, [FromQuery] long? academicYearId, CancellationToken ct)
+        {
+            if (!User.CanViewAttendanceReport()) return this.Forbidden("You can't see the attendance report.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            if (sectionId is null || year is null || month is null) return BadRequestMessage("sectionId, year and month are required.");
+            var response = await _service.GetMonthlyReportPdfAsync(User.GetSchoolId(), userId, User.CanViewAllAttendanceReports(), sectionId.Value, year.Value, month.Value, academicYearId, ct);
+            if (!response.Status || response.Data == null) return Reply(response);
+            return File(response.Data.Content, "application/pdf", response.Data.FileName);
+        }
+
         // GET api/Attendance/my-sections   (the sections the caller can mark today: a teacher's own; a School Admin's: all active ones)
         [HttpGet("my-sections")]
         public async Task<IActionResult> GetMySections(CancellationToken ct)

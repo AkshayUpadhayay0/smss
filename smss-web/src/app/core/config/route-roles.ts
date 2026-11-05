@@ -68,6 +68,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
   // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
   '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
+  // Monthly attendance report: School Admin and Principal (read-only) for any section; a Teacher gets it for the section they are class teacher of (the API enforces which)
+  '/attendance/report': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER],
   // Homework (publish + view): a Teacher sets it for what the Timetable says they teach, a School Admin for any section; a Student reads their own section's.
   // Principal / Accountant / Guardian have no access yet. The API re-checks every action (eligibility, ownership, section).
   '/homework': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],

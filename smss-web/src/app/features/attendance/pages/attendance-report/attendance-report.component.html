@@ -1,0 +1,115 @@
+<app-page-header title="Attendance Report" subtitle="Who was present on each day of a month" icon="circle-check" [breadcrumbs]="breadcrumbs" />
+
+@if (loadingOptions() && !options()) {
+  <app-card><p class="note" role="status">Loading…</p></app-card>
+} @else if (optionsFailed()) {
+  <app-card><div class="note"><p role="alert">The report could not be set up.</p><app-button variant="secondary" size="sm" (click)="loadOptions()">Try again</app-button></div></app-card>
+} @else if (noSections()) {
+  <app-card>
+    <div class="note empty">
+      <app-icon name="inbox" [size]="36" />
+      @if (allSections()) {
+        <p>There are no active sections{{ yearName() ? ' for ' + yearName() : '' }} yet.</p>
+      } @else {
+        <p>You are not the class teacher of any section{{ yearName() ? ' for ' + yearName() : '' }}.</p>
+        <p class="small">This report is for a section's class teacher, the Principal and the School Admin. Ask your School Admin to assign you to a section.</p>
+      }
+    </div>
+  </app-card>
+} @else {
+  <app-card>
+    <div class="filters">
+      <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
+      @if (allSections()) {
+        <app-select label="Class" [options]="classOptions()" [formControl]="classControl" />
+      }
+      <app-select [label]="allSections() ? 'Section' : 'Class and section'" [options]="sectionOptions()" [formControl]="sectionControl" />
+      <app-select label="Month" [options]="monthOptions()" [formControl]="monthControl" />
+    </div>
+  </app-card>
+
+  @if (loading() && !report()) {
+    <app-card><p class="note" role="status">Loading the report…</p></app-card>
+  } @else if (loadFailed()) {
+    <app-card><div class="note"><p role="alert">The report could not be loaded.</p><app-button variant="secondary" size="sm" (click)="loadReport()">Try again</app-button></div></app-card>
+  } @else if (report(); as r) {
+    <div class="summary" role="status" aria-label="Summary" [class.refreshing]="loading()">
+      <div class="tile">
+        <span class="num">{{ r.summary.averagePercentage ?? '–' }}{{ r.summary.averagePercentage != null ? '%' : '' }}</span>
+        <span class="lbl">Average attendance</span>
+      </div>
+      <div class="tile" [class.warn]="r.summary.studentsBelowThreshold > 0">
+        <span class="num">{{ r.summary.studentsBelowThreshold }}</span>
+        <span class="lbl">Students below {{ r.summary.thresholdPercentage }}%</span>
+      </div>
+      <div class="tile">
+        <span class="num">{{ r.summary.workingDays }}</span>
+        <span class="lbl">Working days so far</span>
+      </div>
+      <div class="tile" [class.warn]="r.summary.daysNotMarked > 0" [title]="r.summary.notMarkedDates.length ? 'Not marked: ' + r.summary.notMarkedDates.join(', ') : ''">
+        <span class="num">{{ r.summary.daysNotMarked }}</span>
+        <span class="lbl">Days not marked</span>
+      </div>
+    </div>
+
+    <app-card [noPadding]="true">
+      <div class="toolbar">
+        <div class="title">
+          <strong>{{ r.className }} – {{ r.sectionName }}</strong>
+          <span>{{ r.monthName }} · {{ r.academicYearName }} · {{ r.summary.studentCount }} {{ r.summary.studentCount === 1 ? 'student' : 'students' }}</span>
+        </div>
+        <div class="actions">
+          <app-button variant="secondary" size="sm" [disabled]="r.students.length === 0" (click)="exportCsv()"><app-icon name="download" [size]="16" />CSV</app-button>
+          <app-button variant="secondary" size="sm" [disabled]="r.students.length === 0 || exporting()" (click)="exportPdf()"><app-icon name="download" [size]="16" />{{ exporting() ? 'Preparing…' : 'PDF' }}</app-button>
+        </div>
+      </div>
+
+      @if (r.students.length === 0) {
+        <p class="note pad">This section has no students for {{ r.monthName }}.</p>
+      } @else {
+        <div class="grid-wrap" tabindex="0" role="region" aria-label="Attendance grid, scrolls sideways">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th class="sticky roll" scope="col">Roll</th>
+                <th class="sticky name" scope="col">Student</th>
+                @for (d of r.days; track d.date) {
+                  <th scope="col" class="day" [class.off]="!d.isWorkingDay" [class.unmarked]="d.isWorkingDay && !d.isFuture && d.markedCount === 0" [title]="dayTitle(d)">
+                    <span class="dn">{{ +d.date.slice(8, 10) }}</span>
+                    <span class="dw">{{ weekday(d.dayOfWeek) }}</span>
+                  </th>
+                }
+                <th scope="col" class="tot">Present</th>
+                <th scope="col" class="tot">Absent</th>
+                <th scope="col" class="tot">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of r.students; track s.studentId) {
+                <tr [class.low]="s.belowThreshold" [class.left]="!s.isActive">
+                  <td class="sticky roll">{{ s.rollNumber || '–' }}</td>
+                  <td class="sticky name">
+                    {{ s.fullName }}
+                    @if (!s.isActive) {
+                      <span class="tag" title="No longer enrolled; shown because they have marks this month">left</span>
+                    }
+                  </td>
+                  @for (m of s.marks; track $index) {
+                    @let c = cell(m, $index);
+                    <td class="mk" [class.p]="c.cls === 'p'" [class.a]="c.cls === 'a'" [class.nm]="c.cls === 'nm'" [class.off]="!r.days[$index].isWorkingDay || m === 'NotEnrolled'">{{ c.text }}</td>
+                  }
+                  <td class="tot">{{ s.presentDays }}</td>
+                  <td class="tot">{{ s.absentDays }}</td>
+                  <td class="tot pct" [class.low]="s.belowThreshold">{{ s.percentage ?? '–' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="legend">
+          <span class="key p">P</span> present <span class="key a">A</span> absent <span class="key nm">–</span> not marked · grey: Sunday, holiday or not yet enrolled · % = present ÷ (present + absent) over marked working days · red: below {{ r.summary.thresholdPercentage }}%
+        </p>
+      }
+    </app-card>
+  }
+}

@@ -14,6 +14,15 @@ namespace smss_api_service_layer.@interface
         /// <summary>The caller's OWN marks for the school's current academic year (start to today) with the per-status summary: the same computation as <see cref="GetStudentAsync"/>, scoped to the caller. The student is the caller; there is no id to pass.</summary>
         Task<ApiResponse<StudentAttendanceHistoryDto>> GetOwnYearAsync(string? schoolId, long callerUserId, CancellationToken ct);
         Task<ApiResponse<MissingAttendanceDto>> GetMissingAsync(string? schoolId, DateOnly? date, long? academicYearId, CancellationToken ct);
+        /// <summary>
+        /// The monthly report of one section. `callerSeesAllSections` (School Admin / Principal, read-only) may ask for any section of the school; anyone else must be the section's
+        /// Active class teacher for the report's academic year (403 otherwise). A section of another school is 404. `academicYearId` defaults to the year containing the month.
+        /// </summary>
+        Task<ApiResponse<MonthlyAttendanceReportDto>> GetMonthlyReportAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long sectionId, int year, int month, long? academicYearId, CancellationToken ct);
+        /// <summary>The same report as a print-ready A4 landscape PDF (same authorization).</summary>
+        Task<ApiResponse<AttendanceReportFileDto>> GetMonthlyReportPdfAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long sectionId, int year, int month, long? academicYearId, CancellationToken ct);
+        /// <summary>What the report screen's pickers offer: the academic years and the sections this caller may report on (a class teacher: only their own).</summary>
+        Task<ApiResponse<AttendanceReportOptionsDto>> GetReportOptionsAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long? academicYearId, CancellationToken ct);
         Task<ApiResponse<MySectionsDto>> GetMySectionsAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, CancellationToken ct);
     }
 }

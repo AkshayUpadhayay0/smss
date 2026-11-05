@@ -384,6 +384,102 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<MySectionsDto>(ex, "listing the sections a user can mark"); }
         }
 
+        // ---------------------------------------------------------------- monthly report
+        public async Task<ApiResponse<MonthlyAttendanceReportDto>> GetMonthlyReportAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long sectionId, int year, int month, long? academicYearId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<MonthlyAttendanceReportDto>(400, TenantMessages.NoSchool, null);
+            if (month is < 1 or > 12) return Result<MonthlyAttendanceReportDto>(400, "month must be between 1 and 12.", null);
+            if (year is < 2000 or > 2100) return Result<MonthlyAttendanceReportDto>(400, "year must be between 2000 and 2100.", null);
+            try
+            {
+                // 404 for a section of another school (or none): nothing can be probed, whoever asks
+                var section = await _repo.GetSectionAsync(schoolId, sectionId, ct);
+                if (section == null) return Result<MonthlyAttendanceReportDto>(404, "Section not found.", null);
+
+                var first = new DateOnly(year, month, 1);
+                var last = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+                AttendanceYearRow? ay;
+                if (academicYearId != null)
+                {
+                    ay = await _repo.GetYearSpanAsync(schoolId, academicYearId.Value, ct);
+                    if (ay == null) return Result<MonthlyAttendanceReportDto>(404, "The selected academic year was not found for your school.", null);
+                }
+                else
+                {
+                    ay = await _repo.GetYearSpanContainingAsync(schoolId, first, ct) ?? await _repo.GetYearSpanContainingAsync(schoolId, last, ct);
+                    if (ay == null) return Result<MonthlyAttendanceReportDto>(400, "No academic year covers that month.", null);
+                }
+
+                if (!callerSeesAllSections && !await MayMarkAsync(schoolId, callerUserId, false, sectionId, ay.AcademicYearId, ct))
+                    return Result<MonthlyAttendanceReportDto>(403, "You can only see the attendance report of the section you are the class teacher of.", null);
+
+                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+                if (activeId == null) return ConfigError<MonthlyAttendanceReportDto>();
+
+                // three grouped reads, whatever the class size
+                var roster = await _repo.GetReportRosterAsync(schoolId, ay.AcademicYearId, sectionId, ct);
+                var marks = await _repo.GetMonthMarksAsync(schoolId, sectionId, first, last, ct);
+                var holidays = await _repo.GetHolidaysAsync(schoolId, first, last, activeId.Value, ct);
+
+                return Result(200, "Successfully fetched", AttendanceReportBuilder.Build(section, ay.AcademicYearId, ay.YearName, ay.StartDate, ay.EndDate, year, month, SchoolClock.Today(), holidays, roster, marks, activeId.Value));
+            }
+            catch (Exception ex) { return Error<MonthlyAttendanceReportDto>(ex, "building the monthly attendance report"); }
+        }
+
+        public async Task<ApiResponse<AttendanceReportFileDto>> GetMonthlyReportPdfAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long sectionId, int year, int month, long? academicYearId, CancellationToken ct)
+        {
+            var report = await GetMonthlyReportAsync(schoolId, callerUserId, callerSeesAllSections, sectionId, year, month, academicYearId, ct);
+            if (!report.Status || report.Data == null) return Result<AttendanceReportFileDto>(report.StatusCode, report.Message, null);
+            try
+            {
+                var school = await _repo.GetSchoolNameAsync(schoolId!, ct) ?? "School";
+                var d = report.Data;
+                var safe = new string($"{d.ClassName}-{d.SectionName}".Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+                return Result(200, "Successfully fetched", new AttendanceReportFileDto { Content = AttendanceReportPdf.Render(d, school), FileName = $"attendance-{safe}-{year:0000}-{month:00}.pdf" });
+            }
+            catch (Exception ex) { return Error<AttendanceReportFileDto>(ex, "rendering the monthly attendance report PDF"); }
+        }
+
+        public async Task<ApiResponse<AttendanceReportOptionsDto>> GetReportOptionsAsync(string? schoolId, long callerUserId, bool callerSeesAllSections, long? academicYearId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<AttendanceReportOptionsDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var years = await _repo.GetYearsAsync(schoolId, ct);
+                var currentId = await _repo.GetCurrentYearIdAsync(schoolId, ct);
+                var today = SchoolClock.Today();
+                var chosen = academicYearId != null ? years.FirstOrDefault(y => y.AcademicYearId == academicYearId)
+                                                    : years.FirstOrDefault(y => y.AcademicYearId == currentId) ?? years.FirstOrDefault(y => y.StartDate <= today && today <= y.EndDate) ?? years.FirstOrDefault();
+                if (academicYearId != null && chosen == null) return Result<AttendanceReportOptionsDto>(404, "The selected academic year was not found for your school.", null);
+
+                var dto = new AttendanceReportOptionsDto
+                {
+                    AcademicYearId = chosen?.AcademicYearId ?? 0, AllSections = callerSeesAllSections,
+                    Years = years.Select(y => new AttendanceReportYearOptionDto { AcademicYearId = y.AcademicYearId, YearName = y.YearName, IsCurrent = y.AcademicYearId == currentId, StartDate = y.StartDate, EndDate = y.EndDate }).ToList()
+                };
+                if (chosen == null) return Result(200, "Successfully fetched", dto);
+
+                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+                if (activeId == null) return ConfigError<AttendanceReportOptionsDto>();
+                string? employeeId = null;
+                if (!callerSeesAllSections)
+                {
+                    var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                    if (string.IsNullOrEmpty(loginId)) return Result<AttendanceReportOptionsDto>(403, "Your account could not be found.", null);
+                    employeeId = loginId;
+                }
+                var rows = await _repo.GetMarkableSectionsAsync(schoolId, chosen.AcademicYearId, today, employeeId, activeId.Value, ct);
+                foreach (var r in rows)
+                {
+                    // a class teacher is only offered a section the Class-Teacher module still confirms (Active assignment AND still an eligible teacher)
+                    if (employeeId != null && !await MayMarkAsync(schoolId, callerUserId, false, r.SectionId, chosen.AcademicYearId, ct)) continue;
+                    dto.Sections.Add(new AttendanceReportSectionOptionDto { ClassId = r.ClassId, ClassName = r.ClassName, SectionId = r.SectionId, SectionName = r.SectionName });
+                }
+                return Result(200, "Successfully fetched", dto);
+            }
+            catch (Exception ex) { return Error<AttendanceReportOptionsDto>(ex, "listing the attendance report options"); }
+        }
+
         // ---------------------------------------------------------------- helpers
         /// <summary>A School Admin, or the section's Active class teacher for that year (asked of the Class-Teacher module, which also checks they are still an eligible teacher).</summary>
         private async Task<bool> MayMarkAsync(string schoolId, long callerUserId, bool callerIsSchoolAdmin, long sectionId, long academicYearId, CancellationToken ct)

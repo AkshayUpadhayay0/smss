@@ -67,3 +67,16 @@ describe('visibleNav: My Leave', () => {
     expect(visibleNav([ROLES.TEACHER], true).map((i) => i.label)).toContain('My Leave');
   });
 });
+
+describe('visibleNav: Attendance Report', () => {
+  it('is offered to School Admin, Principal and Teacher, next to Mark Attendance, and to nobody else', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER]) expect(labels([role])).toContain('Attendance Report');
+    for (const role of [ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) expect(labels([role])).not.toContain('Attendance Report');
+    const l = labels([ROLES.SCHOOL_ADMIN]);
+    expect(l.indexOf('Attendance Report')).toBe(l.indexOf('Mark Attendance') + 1);
+  });
+
+  it('a Principal sees Attendance Report but not Mark Attendance (read-only)', () => {
+    expect(labels([ROLES.PRINCIPAL])).not.toContain('Mark Attendance');
+  });
+});

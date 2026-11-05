@@ -11,6 +11,12 @@ namespace smss_api_db_layer.@interface
     public record StudentRef(string StudentId, string FirstName, string? MiddleName, string LastName);
     public record StudentDayRow(DateOnly Date, long SectionId, string ClassName, string SectionName, string StatusCode, string StatusName, DateTime? CorrectedAt, string? CorrectionReason);
     public record UnmarkedSectionRow(long SectionId, long ClassId, string ClassName, string SectionName, int RosterCount, string? ClassTeacherId, string? ClassTeacherName);
+    /// <summary>One enrollment of the section for the year (any status) with the student's own status, for the monthly report.</summary>
+    public record ReportRosterRow(string StudentId, string FirstName, string? MiddleName, string LastName, string? RollNumber, DateOnly EnrollmentDate, int EnrollmentStatusId, int StudentStatusId);
+    /// <summary>One mark of the section: who, which day, and the status code (PRESENT / ABSENT).</summary>
+    public record MonthMarkRow(string StudentId, DateOnly Date, string StatusCode);
+    /// <summary>A Holiday calendar event (Active) overlapping the month.</summary>
+    public record HolidayRow(string Title, DateOnly StartDate, DateOnly EndDate);
     public record TeacherSectionRow(long SectionId, long ClassId, string ClassName, string SectionName, int RosterCount, int MarkedToday);
 
     // Every method takes the school id: another school's students, sections and marks can never be reached through this repository.
@@ -49,6 +55,19 @@ namespace smss_api_db_layer.@interface
         Task<List<UnmarkedSectionRow>> GetUnmarkedSectionsAsync(string schoolId, long academicYearId, DateOnly date, int activeStatusId, CancellationToken ct);
         /// <summary>Sections a teacher may mark (their Active class-teacher assignments for the year), or every active section when <paramref name="employeeId"/> is null.</summary>
         Task<List<TeacherSectionRow>> GetMarkableSectionsAsync(string schoolId, long academicYearId, DateOnly today, string? employeeId, int activeStatusId, CancellationToken ct);
+
+        // ---- monthly report: a fixed number of grouped reads (roster, marks, holidays), never one per student
+        Task<AttendanceYearRow?> GetYearSpanAsync(string schoolId, long academicYearId, CancellationToken ct);
+        Task<List<AttendanceYearRow>> GetYearsAsync(string schoolId, CancellationToken ct);
+        /// <summary>The year the school marks as current, or null.</summary>
+        Task<long?> GetCurrentYearIdAsync(string schoolId, CancellationToken ct);
+        /// <summary>Every enrollment of the section for the year (any status) with its student's status.</summary>
+        Task<List<ReportRosterRow>> GetReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        /// <summary>The section's marks between two dates, one row per mark.</summary>
+        Task<List<MonthMarkRow>> GetMonthMarksAsync(string schoolId, long sectionId, DateOnly from, DateOnly to, CancellationToken ct);
+        /// <summary>Active calendar events of the Holiday category that overlap the dates (school-wide).</summary>
+        Task<List<HolidayRow>> GetHolidaysAsync(string schoolId, DateOnly from, DateOnly to, int activeStatusId, CancellationToken ct);
+        Task<string?> GetSchoolNameAsync(string schoolId, CancellationToken ct);
 
         /// <summary>The login id (employee / student id) and display name of a user in this school.</summary>
         Task<(string? LoginId, string? Name)> GetUserAsync(string schoolId, long userId, CancellationToken ct);
