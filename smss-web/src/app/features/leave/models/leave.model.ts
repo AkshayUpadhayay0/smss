@@ -62,6 +62,9 @@ export interface ApplyStudentLeaveRequest {
   reason: string;
 }
 
+/** A Student applying for themselves (POST /api/StudentLeave/my): no student id, the server takes it from the login. */
+export type ApplyMyStudentLeaveRequest = Omit<ApplyStudentLeaveRequest, 'studentId'>;
+
 export interface DecideLeaveRequest {
   decision: 'Approve' | 'Reject';
   /** Required when rejecting. */

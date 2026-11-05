@@ -23,7 +23,25 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------------------------------------------------------- apply (recorded on the student's behalf)
-        public async Task<ApiResponse<StudentLeaveDto>> ApplyAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, ApplyStudentLeaveRequest req, CancellationToken ct)
+        public Task<ApiResponse<StudentLeaveDto>> ApplyAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, ApplyStudentLeaveRequest req, CancellationToken ct) =>
+            ApplyCoreAsync(schoolId, callerUserId, callerIsSchoolAdmin, selfApply: false, req, ct);
+
+        /// <summary>The student applying for themselves: the student id is the caller's own login id, whatever the client sent (the request type has no such field).</summary>
+        public async Task<ApiResponse<StudentLeaveDto>> ApplyMyAsync(string? schoolId, long callerUserId, ApplyMyStudentLeaveRequest req, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentLeaveDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                var me = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (me == null) return Result<StudentLeaveDto>(403, "Your account is not linked to a student record.", null);
+                return await ApplyCoreAsync(schoolId, callerUserId, false, selfApply: true,
+                    new ApplyStudentLeaveRequest { StudentId = me.StudentId, LeaveTypeId = req.LeaveTypeId, FromDate = req.FromDate, ToDate = req.ToDate, Reason = req.Reason }, ct);
+            }
+            catch (Exception ex) { return Error<StudentLeaveDto>(ex, "applying for own student leave"); }
+        }
+
+        private async Task<ApiResponse<StudentLeaveDto>> ApplyCoreAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, bool selfApply, ApplyStudentLeaveRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentLeaveDto>(400, TenantMessages.NoSchool, null);
             try
@@ -43,7 +61,7 @@ namespace smss_api_service_layer.service
                 var type = await _repo.GetLeaveTypeAsync(req.LeaveTypeId!.Value, ct);
                 if (type == null || !type.IsActive || !type.AppliesToStudent) return Result<StudentLeaveDto>(400, "The selected leave type is not available for students.", null);
 
-                var (allowed, yearId) = await MayHandleAsync(schoolId, callerUserId, callerIsSchoolAdmin, studentId, ct);
+                var (allowed, yearId) = selfApply ? (true, await _repo.GetYearIdContainingAsync(schoolId, SchoolClock.Today(), ct)) : await MayHandleAsync(schoolId, callerUserId, callerIsSchoolAdmin, studentId, ct);
                 if (!allowed) return Result<StudentLeaveDto>(403, "Only a School Admin or the student's class teacher can record a leave request for a student.", null);
 
                 var now = DateTime.UtcNow;
@@ -54,7 +72,7 @@ namespace smss_api_service_layer.service
                 };
                 await _repo.AddStudentRequestAsync(entity, ct);
                 await _repo.SaveChangesAsync(ct);
-                return await ReplyAsync(schoolId, entity.LeaveRequestId, yearId, 201, "Leave request recorded.", ct);
+                return await ReplyAsync(schoolId, entity.LeaveRequestId, yearId, 201, selfApply ? "Leave request sent to your class teacher." : "Leave request recorded.", ct);
             }
             catch (Exception ex) { return Error<StudentLeaveDto>(ex, "applying for student leave"); }
         }
@@ -126,6 +144,33 @@ namespace smss_api_service_layer.service
                 return await ReplyAsync(schoolId, id, yearId, 200, "Leave request cancelled.", ct);
             }
             catch (Exception ex) { return Error<StudentLeaveDto>(ex, "cancelling student leave"); }
+        }
+
+        public async Task<ApiResponse<StudentLeaveDto>> CancelMyAsync(string? schoolId, long callerUserId, long id, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentLeaveDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                var me = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (me == null) return Result<StudentLeaveDto>(403, "Your account is not linked to a student record.", null);
+
+                // somebody else's request (or another school's, or none) is "not found": nothing can be probed
+                var peek = await _repo.GetStudentRequestAsync(schoolId, id, false, ct);
+                if (peek == null || !string.Equals(peek.StudentId, me.StudentId, StringComparison.Ordinal)) return Result<StudentLeaveDto>(404, "Leave request not found.", null);
+
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockPersonAsync("student", schoolId, me.StudentId, ct);
+                var request = await _repo.GetStudentRequestAsync(schoolId, id, true, ct);
+                if (request == null || !string.Equals(request.StudentId, me.StudentId, StringComparison.Ordinal)) return Result<StudentLeaveDto>(404, "Leave request not found.", null);
+                if (request.Status != LeaveStatuses.Pending)
+                    return Result<StudentLeaveDto>(409, $"Only a pending request can be cancelled; this one is already {request.Status.ToLowerInvariant()}.", null);
+                request.Status = LeaveStatuses.Cancelled; request.UpdatedAt = DateTime.UtcNow;
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                return await ReplyAsync(schoolId, id, await _repo.GetYearIdContainingAsync(schoolId, SchoolClock.Today(), ct), 200, "Leave request cancelled.", ct);
+            }
+            catch (Exception ex) { return Error<StudentLeaveDto>(ex, "cancelling own student leave"); }
         }
 
         // ---------------------------------------------------------------- queue

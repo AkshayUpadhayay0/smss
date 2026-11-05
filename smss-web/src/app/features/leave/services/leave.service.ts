@@ -3,6 +3,7 @@ import { Observable, map } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import {
   ApplyEmployeeLeaveRequest,
+  ApplyMyStudentLeaveRequest,
   ApplyStudentLeaveRequest,
   DecideLeaveRequest,
   EmployeeLeave,
@@ -64,6 +65,19 @@ export class LeaveService {
 
   decideStudent(id: number, request: DecideLeaveRequest): Observable<StudentLeave> {
     return this.api.put<StudentLeave>(`${STUDENT}/${id}/decide`, request);
+  }
+
+  // ---- a Student's own leave (Student logins only; the student always comes from the token)
+  myStudentLeave(): Observable<StudentLeave[]> {
+    return this.api.get<StudentLeave[]>(`${STUDENT}/my`).pipe(map((l) => l ?? []));
+  }
+
+  applyMyStudent(request: ApplyMyStudentLeaveRequest): Observable<StudentLeave> {
+    return this.api.post<StudentLeave>(`${STUDENT}/my`, request);
+  }
+
+  cancelMyStudent(id: number): Observable<StudentLeave> {
+    return this.api.post<StudentLeave>(`${STUDENT}/my/${id}/cancel`);
   }
 
   cancelStudent(id: number): Observable<StudentLeave> {

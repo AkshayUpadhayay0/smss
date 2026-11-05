@@ -67,7 +67,8 @@ export class LeaveApplyModalComponent implements OnInit {
   private readonly service = inject(LeaveService);
   private readonly toast = inject(ToastService);
 
-  readonly kind = input.required<'employee' | 'student'>();
+  /** 'self-student' = a Student applying for themselves: no person picker, own endpoint. */
+  readonly kind = input.required<'employee' | 'student' | 'self-student'>();
   /** Who the request is for. null (employee kind) = the signed-in employee, so no picker is shown. */
   readonly people = input<SelectOption[] | null>(null);
   readonly types = input<LeaveType[]>([]);
@@ -77,7 +78,7 @@ export class LeaveApplyModalComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly typeOptions = computed<SelectOption[]>(() => this.types().map((t) => ({ label: t.typeName, value: String(t.leaveTypeId) })));
-  protected readonly title = computed(() => (this.kind() === 'student' ? 'Record Student Leave' : this.people() ? 'Record Employee Leave' : 'Apply for Leave'));
+  protected readonly title = computed(() => (this.kind() === 'student' ? 'Record Student Leave' : this.kind() === 'self-student' ? 'New Leave Request' : this.people() ? 'Record Employee Leave' : 'Apply for Leave'));
 
   protected readonly form = new FormGroup(
     {
@@ -117,9 +118,11 @@ export class LeaveApplyModalComponent implements OnInit {
     const v = this.form.getRawValue();
     const common = { leaveTypeId: Number(v.leaveTypeId), fromDate: v.fromDate, toDate: v.toDate, reason: v.reason.trim() };
     const request$: Observable<unknown> =
-      this.kind() === 'student'
-        ? this.service.applyStudent({ studentId: v.personId, ...common })
-        : this.service.applyEmployee(this.people() ? { employeeId: v.personId, ...common } : common);
+      this.kind() === 'self-student'
+        ? this.service.applyMyStudent(common)
+        : this.kind() === 'student'
+          ? this.service.applyStudent({ studentId: v.personId, ...common })
+          : this.service.applyEmployee(this.people() ? { employeeId: v.personId, ...common } : common);
 
     this.saving.set(true);
     request$.pipe(finalize(() => this.saving.set(false))).subscribe({

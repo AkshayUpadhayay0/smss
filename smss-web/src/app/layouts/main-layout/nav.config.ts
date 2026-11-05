@@ -26,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Assessments', icon: 'file-text', route: '/assessments' },
   { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
   { label: 'My Leave', icon: 'file-text', route: '/leave/my', needsEmployeeRecord: true },
+  { label: 'My Leave', icon: 'file-text', route: '/leave/mine' },
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
   { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },

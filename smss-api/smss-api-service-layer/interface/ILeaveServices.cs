@@ -25,8 +25,12 @@ namespace smss_api_service_layer.@interface
     {
         /// <summary>A Pending request recorded on the student's behalf by a School Admin or the student's current class teacher.</summary>
         Task<ApiResponse<StudentLeaveDto>> ApplyAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, ApplyStudentLeaveRequest req, CancellationToken ct);
+        /// <summary>A Student's own request: the student is the caller (their login id), never taken from the client. Same rules and Pending status as ApplyAsync; it lands in the class teacher's queue.</summary>
+        Task<ApiResponse<StudentLeaveDto>> ApplyMyAsync(string? schoolId, long callerUserId, ApplyMyStudentLeaveRequest req, CancellationToken ct);
         Task<ApiResponse<StudentLeaveDto>> DecideAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, long id, DecideLeaveRequest req, CancellationToken ct);
         Task<ApiResponse<StudentLeaveDto>> CancelAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, long id, CancellationToken ct);
+        /// <summary>A Student cancelling one of their OWN requests (Pending only). Another student's request answers 404, so ids cannot be probed.</summary>
+        Task<ApiResponse<StudentLeaveDto>> CancelMyAsync(string? schoolId, long callerUserId, long id, CancellationToken ct);
         /// <summary>A School Admin: every request (optionally one section). A class teacher: only their own section(s).</summary>
         Task<ApiResponse<List<StudentLeaveDto>>> ListAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, long? sectionId, string? status, CancellationToken ct);
         /// <summary>A student's OWN requests (read-only; recorded on their behalf by a class teacher / School Admin), newest first. Dates keep requests overlapping the range. The controller restricts it to the Student role.</summary>

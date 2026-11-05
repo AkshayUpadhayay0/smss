@@ -93,6 +93,25 @@ namespace smss_api.Controllers
         private IActionResult Reply<T>(ApiResponse<T> response) => StatusCode(response.StatusCode, response);
         private bool TryUser(out long userId) => long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
+        // POST api/StudentLeave/my   Body: { leaveTypeId, fromDate, toDate, reason }   (a Student applying for THEMSELVES; there is no student id to send: it comes from the token)
+        // The same rules as the staff path (dates, 366 days, reason, student-applicable type, Pending); approval stays with the class teacher / School Admin, via the existing queue.
+        [HttpPost("my")]
+        public async Task<IActionResult> ApplyMy([FromBody] ApplyMyStudentLeaveRequest request, CancellationToken ct)
+        {
+            if (!User.IsStudent()) return this.Forbidden("Only a student can apply for their own leave here.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            return Reply(await _service.ApplyMyAsync(User.GetSchoolId(), userId, request, ct));
+        }
+
+        // POST api/StudentLeave/my/{id}/cancel   (a Student cancelling their OWN Pending request; anyone else's is 404)
+        [HttpPost("my/{id:long}/cancel")]
+        public async Task<IActionResult> CancelMy(long id, CancellationToken ct)
+        {
+            if (!User.IsStudent()) return this.Forbidden("Only a student can cancel their own leave request here.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            return Reply(await _service.CancelMyAsync(User.GetSchoolId(), userId, id, ct));
+        }
+
         // POST api/StudentLeave   Body: { studentId, leaveTypeId, fromDate, toDate, reason }
         [HttpPost]
         public async Task<IActionResult> Apply([FromBody] ApplyStudentLeaveRequest request, CancellationToken ct)

@@ -58,7 +58,7 @@ describe('MyStudentProfileComponent', () => {
     open((r) => r.flush(env({ ...ME, studentCategoryName: null })));
     expect([...el().querySelectorAll('.kv dt')].map((d) => d.textContent)).not.toContain('Category');
     expect(el().querySelectorAll('input, textarea, select').length).toBe(0);
-    expect([...el().querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance']);
+    expect([...el().querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance', 'Leave']);
   });
 
   it('does not show Aadhaar, login id or fee fields', () => {
@@ -69,6 +69,19 @@ describe('MyStudentProfileComponent', () => {
   it('a failed load shows one calm message', () => {
     open((r) => r.flush({ status: false, statusCode: 404, message: 'nope', data: null }, { status: 404, statusText: 'Not Found' }));
     expect(el().querySelector('[role="alert"]')?.textContent).toContain('could not be loaded');
+  });
+
+  it('the Leave tab is the shared own-leave component and loads only when opened', () => {
+    open((r) => r.flush(env(ME)));
+    http.expectNone(`${API}/api/StudentLeave/my`);
+    expect(el().querySelector('app-student-my-leave')).toBeNull();
+    (el().querySelectorAll('button[role="tab"]')[2] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/StudentLeave/my`).flush(env([]));
+    http.expectOne((r) => r.url === `${API}/api/LeaveType` && r.params.get('appliesTo') === 'student').flush(env([]));
+    fixture.detectChanges();
+    expect(el().querySelector('app-student-my-leave')).not.toBeNull();
+    expect(text()).toContain('New Leave Request');
   });
 
   it('the Attendance tab reads the existing dashboard summary, once', () => {

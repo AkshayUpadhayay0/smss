@@ -83,6 +83,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
   '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN],
   '/leave/requests': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  // A Student's own leave (apply, follow, cancel while Pending); the class teacher / School Admin still decide it from Student Leave
+  '/leave/mine': [ROLES.STUDENT],
   '/leave/students': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   // Timetable: the School Admin builds it (bell schedule + weekly grid per section); a Teacher reads their own
   '/school-setup/periods': [ROLES.SCHOOL_ADMIN],

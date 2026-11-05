@@ -30,6 +30,15 @@ namespace smss_api_service_layer.dto
         [Required(ErrorMessage = "A reason is required."), StringLength(500, ErrorMessage = "The reason can be at most 500 characters.")] public string? Reason { get; set; }
     }
 
+    /// <summary>A Student applying for their OWN leave: no student id (it comes from the login, never from the client).</summary>
+    public class ApplyMyStudentLeaveRequest
+    {
+        [Required(ErrorMessage = "Leave type is required.")] public long? LeaveTypeId { get; set; }
+        [Required(ErrorMessage = "From date is required.")] public DateOnly? FromDate { get; set; }
+        [Required(ErrorMessage = "To date is required.")] public DateOnly? ToDate { get; set; }
+        [Required(ErrorMessage = "A reason is required."), StringLength(500, ErrorMessage = "The reason can be at most 500 characters.")] public string? Reason { get; set; }
+    }
+
     public class DecideLeaveRequest
     {
         /// <summary>"Approve" or "Reject" (also accepted: "Approved" / "Rejected"), case-insensitive.</summary>

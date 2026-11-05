@@ -44,6 +44,13 @@ describe('visibleNav: Student sidebar', () => {
     for (const x of ['Students', 'Admissions', 'Add Existing Student', 'Student Leave', 'My Students']) expect(l).not.toContain(x);
   });
 
+  it('a Student gets My Leave (own leave) and no staff leave pages; employees never get the Student one', () => {
+    const l = visibleNav([ROLES.STUDENT], false).map((i) => i.route);
+    expect(l).toContain('/leave/mine');
+    for (const r of ['/leave/my', '/leave/requests', '/leave/students']) expect(l).not.toContain(r);
+    for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect(visibleNav([role]).map((i) => i.route)).not.toContain('/leave/mine');
+  });
+
   it('nobody else gets the Student My Profile item', () => {
     for (const role of [ROLES.SCHOOL_ADMIN, ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.GUARDIAN]) expect(labels([role])).not.toContain('My Profile');
   });
