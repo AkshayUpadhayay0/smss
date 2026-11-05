@@ -203,3 +203,45 @@ export interface StudentMyProfile {
   address?: string | null;
   guardians: MyGuardian[];
 }
+
+/** Mirrors StudentMyFeesDto (GET /api/Student/me/fees): a student's own fees, read-only. */
+export interface MyFeeHead {
+  feeTypeName: string;
+  frequencyName: string;
+  amount: number;
+  concession: number;
+  netAmount: number;
+  annualNetAmount: number;
+}
+
+export interface MyFeeDue {
+  feeTypeName: string;
+  /** yyyy-MM-dd */
+  dueDate: string;
+  amountDue: number;
+  amountPaid: number;
+  balance: number;
+  /** Paid / Partially Paid / Pending / Overdue */
+  status: string;
+}
+
+export interface MyFeePayment {
+  paymentDate: string;
+  amount: number;
+  receiptNumber: string;
+  paymentMode: string;
+}
+
+export interface StudentMyFees {
+  academicYearName?: string | null;
+  hasFees: boolean;
+  overallStatus: string;
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+  overdueAmount: number;
+  overdueCount: number;
+  heads: MyFeeHead[];
+  dues: MyFeeDue[];
+  payments: MyFeePayment[];
+}

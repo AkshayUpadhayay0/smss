@@ -51,6 +51,11 @@ describe('visibleNav: Student sidebar', () => {
     for (const role of [ROLES.TEACHER, ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect(visibleNav([role]).map((i) => i.route)).not.toContain('/leave/mine');
   });
 
+  it('a Student gets My Fees; no other role does', () => {
+    expect(labels([ROLES.STUDENT])).toContain('My Fees');
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.GUARDIAN]) expect(labels([role])).not.toContain('My Fees');
+  });
+
   it('nobody else gets the Student My Profile item', () => {
     for (const role of [ROLES.SCHOOL_ADMIN, ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.GUARDIAN]) expect(labels([role])).not.toContain('My Profile');
   });

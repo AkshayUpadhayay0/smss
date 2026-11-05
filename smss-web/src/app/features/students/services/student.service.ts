@@ -6,7 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
 import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
-import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, StudentMyProfile, StudentPhoto, StudentProfile } from '../models/student.model';
+import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, StudentMyFees, StudentMyProfile, StudentPhoto, StudentProfile } from '../models/student.model';
 
 const BASE = '/api/Student';
 
@@ -29,6 +29,11 @@ export class StudentService {
   /** The signed-in Student's OWN profile (Student logins only; the server takes the school and the student from the token, nothing is sent). */
   me(): Observable<StudentMyProfile> {
     return this.api.get<StudentMyProfile>(`${BASE}/me`);
+  }
+
+  /** The signed-in Student's OWN fees, read-only (Student logins only; nothing is sent, the server takes the student from the token). */
+  myFees(): Observable<StudentMyFees> {
+    return this.api.get<StudentMyFees>(`${BASE}/me/fees`);
   }
 
   /** A Teacher's OWN students (class-teacher sections + sections they teach in). The server takes the school and the teacher from the token: nothing is sent. */

@@ -7,10 +7,11 @@ import { formatDate } from '../../../admissions/models/admission.model';
 import { DashboardAttendance } from '../../../dashboard/models/student-dashboard.model';
 import { StudentDashboardService } from '../../../dashboard/services/student-dashboard.service';
 import { StudentMyLeaveComponent } from '../../../leave/components/student-my-leave/student-my-leave.component';
+import { StudentMyFeesComponent } from '../../components/student-my-fees/student-my-fees.component';
 import { StudentMyProfile } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
-type Tab = 'details' | 'attendance' | 'leave';
+type Tab = 'details' | 'attendance' | 'leave' | 'fees';
 
 function initialsOf(name?: string | null): string {
   return (name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
@@ -22,7 +23,7 @@ function initialsOf(name?: string | null): string {
  */
 @Component({
   selector: 'app-my-student-profile',
-  imports: [CardComponent, PageHeaderComponent, StudentMyLeaveComponent],
+  imports: [CardComponent, PageHeaderComponent, StudentMyLeaveComponent, StudentMyFeesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './my-student-profile.component.scss',
   templateUrl: './my-student-profile.component.html',
@@ -49,6 +50,8 @@ export class MyStudentProfileComponent implements OnInit {
   protected readonly initials = computed(() => initialsOf(this.profile()?.fullName));
   /** The Leave tab loads its requests the first time it is opened. */
   protected readonly leaveOpened = signal(false);
+  /** The Fees tab loads the fees the first time it is opened. */
+  protected readonly feesOpened = signal(false);
   protected readonly isActive = computed(() => this.profile()?.statusName === 'Active');
 
   ngOnInit(): void {
@@ -61,6 +64,7 @@ export class MyStudentProfileComponent implements OnInit {
   protected selectTab(tab: Tab): void {
     this.tab.set(tab);
     if (tab === 'leave') this.leaveOpened.set(true);
+    if (tab === 'fees') this.feesOpened.set(true);
     if (tab === 'attendance' && !this.attendanceLoaded) this.loadAttendance();
   }
 

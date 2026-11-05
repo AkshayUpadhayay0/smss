@@ -46,6 +46,7 @@
       <button type="button" role="tab" id="tab-details" [attr.aria-selected]="tab() === 'details'" [class.active]="tab() === 'details'" (click)="selectTab('details')">Student Details</button>
       <button type="button" role="tab" id="tab-attendance" [attr.aria-selected]="tab() === 'attendance'" [class.active]="tab() === 'attendance'" (click)="selectTab('attendance')">Attendance</button>
       <button type="button" role="tab" id="tab-leave" [attr.aria-selected]="tab() === 'leave'" [class.active]="tab() === 'leave'" (click)="selectTab('leave')">Leave</button>
+      <button type="button" role="tab" id="tab-fees" [attr.aria-selected]="tab() === 'fees'" [class.active]="tab() === 'fees'" (click)="selectTab('fees')">Fees</button>
     </div>
 
     <div class="panel" role="tabpanel" aria-labelledby="tab-details" [hidden]="tab() !== 'details'">
@@ -99,6 +100,12 @@
         }
       </app-card>
     </div>
+
+    @if (feesOpened()) {
+      <div class="panel" role="tabpanel" aria-labelledby="tab-fees" [hidden]="tab() !== 'fees'">
+        <app-student-my-fees />
+      </div>
+    }
 
     @if (leaveOpened()) {
       <div class="panel" role="tabpanel" aria-labelledby="tab-leave" [hidden]="tab() !== 'leave'">

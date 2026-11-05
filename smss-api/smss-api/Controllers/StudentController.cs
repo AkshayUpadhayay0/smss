@@ -16,9 +16,11 @@ namespace smss_api.Controllers
         private readonly IStudentService _service;
         private readonly IStudentLoginService _loginService;
         private readonly IMyStudentsService _myStudents;
+        private readonly IStudentMyFeesService _myFees;
 
-        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents)
+        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents, IStudentMyFeesService myFees)
         {
+            _myFees = myFees;
             _service = service;
             _loginService = loginService;
             _myStudents = myStudents;
@@ -56,6 +58,17 @@ namespace smss_api.Controllers
             if (!User.IsStudent()) return Respond(403, "Only a Student can see their own profile here.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var response = await _service.GetMyProfileAsync(User.GetSchoolId(), userId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/Student/me/fees   (a Student login's OWN fees: items, instalments with status, totals, payment history; read-only)
+        // Same pattern as /me: school and student come from the token, nothing in the request selects a student. The staff fee endpoints stay closed to Student logins.
+        [HttpGet("me/fees")]
+        public async Task<IActionResult> GetMyFees(CancellationToken ct)
+        {
+            if (!User.IsStudent()) return Respond(403, "Only a Student can see their own fees here.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _myFees.GetMyFeesAsync(User.GetSchoolId(), userId, ct);
             return StatusCode(response.StatusCode, response);
         }
 

@@ -1,0 +1,68 @@
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your fees…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card><div class="note"><p role="alert">Your fees could not be loaded.</p><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div></app-card>
+} @else if (fees(); as f) {
+  @if (!f.hasFees) {
+    <app-card><p class="note">No fees have been assigned to you yet{{ f.academicYearName ? ' for ' + f.academicYearName : '' }}. If you think this is a mistake, please ask the school office.</p></app-card>
+  } @else {
+    <div class="tiles" role="status" aria-label="Fee summary">
+      <div class="tile"><span class="num">{{ inr(f.totalDue) }}</span><span class="lbl">Total fees{{ f.academicYearName ? ' · ' + f.academicYearName : '' }}</span></div>
+      <div class="tile"><span class="num ok">{{ inr(f.totalPaid) }}</span><span class="lbl">Paid</span></div>
+      <div class="tile" [class.warn]="f.balance > 0"><span class="num">{{ inr(f.balance) }}</span><span class="lbl">Balance</span></div>
+      <div class="tile"><span class="pill {{ tone(f.overallStatus) }}">{{ f.overallStatus }}</span>
+        @if (f.overdueCount > 0) { <span class="lbl">{{ f.overdueCount }} overdue · {{ inr(f.overdueAmount) }}</span> } @else { <span class="lbl">Overall status</span> }
+      </div>
+    </div>
+
+    <app-card title="Instalments">
+      @if (f.dues.length === 0) {
+        <p class="note">No instalments yet.</p>
+      } @else {
+        <div class="dues" role="table" aria-label="Fee instalments">
+          <div class="row head" role="row">
+            <span role="columnheader">Fee</span><span role="columnheader">Due date</span><span role="columnheader" class="num">Amount</span><span role="columnheader" class="num">Paid</span><span role="columnheader" class="num">Balance</span><span role="columnheader">Status</span>
+          </div>
+          @for (d of f.dues; track $index) {
+            <div class="row" role="row">
+              <span role="cell" class="fee" data-label="Fee">{{ d.feeTypeName }}</span>
+              <span role="cell" data-label="Due date">{{ fmt(d.dueDate) }}</span>
+              <span role="cell" class="num" data-label="Amount">{{ inr(d.amountDue) }}</span>
+              <span role="cell" class="num" data-label="Paid">{{ inr(d.amountPaid) }}</span>
+              <span role="cell" class="num" data-label="Balance">{{ inr(d.balance) }}</span>
+              <span role="cell" data-label="Status"><span class="pill {{ tone(d.status) }}">{{ d.status }}</span></span>
+            </div>
+          }
+        </div>
+      }
+    </app-card>
+
+    <app-card title="Fee heads">
+      <ul class="heads">
+        @for (h of f.heads; track $index) {
+          <li>
+            <span class="fee">{{ h.feeTypeName }}</span>
+            <span class="muted">{{ inr(h.netAmount) }} / {{ h.frequencyName }}@if (h.concession > 0) { · includes a concession of {{ inr(h.concession) }} }</span>
+            <span class="num">{{ inr(h.annualNetAmount) }} a year</span>
+          </li>
+        }
+      </ul>
+    </app-card>
+
+    <app-card title="Payments made">
+      @if (f.payments.length === 0) {
+        <p class="note">No payment has been recorded yet.</p>
+      } @else {
+        <ul class="payments">
+          @for (p of f.payments; track p.receiptNumber) {
+            <li>
+              <span class="fee">{{ paidOn(p.paymentDate) }}</span>
+              <span class="muted">Receipt {{ p.receiptNumber }} · {{ p.paymentMode }}</span>
+              <span class="num ok">{{ inr(p.amount) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+  }
+}

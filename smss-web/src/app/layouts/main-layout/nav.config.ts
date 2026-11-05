@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'My Leave', icon: 'file-text', route: '/leave/mine' },
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
   { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
+  { label: 'My Fees', icon: 'file-text', route: '/my-fees' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   {
     label: 'Students',

@@ -58,12 +58,12 @@ describe('MyStudentProfileComponent', () => {
     open((r) => r.flush(env({ ...ME, studentCategoryName: null })));
     expect([...el().querySelectorAll('.kv dt')].map((d) => d.textContent)).not.toContain('Category');
     expect(el().querySelectorAll('input, textarea, select').length).toBe(0);
-    expect([...el().querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance', 'Leave']);
+    expect([...el().querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Student Details', 'Attendance', 'Leave', 'Fees']);
   });
 
-  it('does not show Aadhaar, login id or fee fields', () => {
+  it('does not show Aadhaar or the login id (fees live on their own tab)', () => {
     open((r) => r.flush(env(ME)));
-    for (const bad of ['Aadhaar', 'Aadhar', 'Login', 'Fee']) expect(text()).not.toContain(bad);
+    for (const bad of ['Aadhaar', 'Aadhar', 'Login']) expect(text()).not.toContain(bad);
   });
 
   it('a failed load shows one calm message', () => {
@@ -82,6 +82,18 @@ describe('MyStudentProfileComponent', () => {
     fixture.detectChanges();
     expect(el().querySelector('app-student-my-leave')).not.toBeNull();
     expect(text()).toContain('New Leave Request');
+  });
+
+  it('the Fees tab is the shared read-only fees component and loads only when opened', () => {
+    open((r) => r.flush(env(ME)));
+    http.expectNone(`${API}/api/Student/me/fees`);
+    expect(el().querySelector('app-student-my-fees')).toBeNull();
+    (el().querySelectorAll('button[role="tab"]')[3] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/Student/me/fees`).flush(env({ hasFees: false, overallStatus: 'Not Set', totalDue: 0, totalPaid: 0, balance: 0, overdueAmount: 0, overdueCount: 0, heads: [], dues: [], payments: [] }));
+    fixture.detectChanges();
+    expect(el().querySelector('app-student-my-fees')).not.toBeNull();
+    expect(text()).toContain('No fees have been assigned');
   });
 
   it('the Attendance tab reads the existing dashboard summary, once', () => {

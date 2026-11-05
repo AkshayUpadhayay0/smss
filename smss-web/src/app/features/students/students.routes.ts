@@ -19,6 +19,11 @@ export const STUDENTS_ROUTES: Routes = [
     path: 'my-student-profile',
     loadComponent: () => import('./pages/my-student-profile/my-student-profile.component').then((m) => m.MyStudentProfileComponent),
   },
+  // A Student's own fees (read-only; the API answers /api/Student/me/fees)
+  {
+    path: 'my-fees',
+    loadComponent: () => import('./pages/my-fees/my-fees-page.component').then((m) => m.MyFeesPageComponent),
+  },
   {
     path: 'students',
     loadComponent: () => import('./pages/student-list/student-list.component').then((m) => m.StudentListComponent),
