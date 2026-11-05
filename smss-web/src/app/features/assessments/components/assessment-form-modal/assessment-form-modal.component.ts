@@ -249,7 +249,8 @@ export class AssessmentFormModalComponent implements OnInit {
     if (!this.submitted()) return false;
     const row = this.rows.at(i);
     if (row.controls.absent.value) return false;
-    const raw = row.controls.marks.value.trim();
+    // a type=number input hands the control a number (or null when emptied), not a string: read it safely, empty = not entered
+    const raw = String(row.controls.marks.value ?? '').trim();
     const max = Number(this.form.controls.maxMarks.value);
     const n = Number(raw);
     return raw === '' || Number.isNaN(n) || n < 0 || (max > 0 && n > max) || !twoDecimals(n);

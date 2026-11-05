@@ -67,7 +67,7 @@ export class MasterFormModalComponent implements OnInit {
     const body: Record<string, unknown> = {};
     for (const f of cfg.fields) {
       if (editing && f.createOnly) continue; // not part of the update DTO
-      const value = this.form.controls[f.key].value.trim();
+      const value = String(this.form.controls[f.key].value ?? '').trim();
       body[f.key] = value === '' ? null : value; // blank optional fields go out as null
     }
 
