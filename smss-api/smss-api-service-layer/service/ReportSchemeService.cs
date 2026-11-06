@@ -9,10 +9,13 @@ using smss_api_service_layer.@interface;
 
 namespace smss_api_service_layer.service
 {
-    /// <summary>Stage 1 default: nothing can have been entered yet. Stage 2 registers the real check in its place.</summary>
-    public class NoEntriesGuard : IReportEntryGuard
+    /// <summary>The real guard (Stage 2): asks the database what has been entered, so only the parts that have entries are protected.</summary>
+    public class ReportEntryGuard : IReportEntryGuard
     {
-        public Task<bool> HasEntriesAsync(string schoolId, long schemeId, CancellationToken ct) => Task.FromResult(false);
+        private readonly IReportMarksRepository _repo;
+        public ReportEntryGuard(IReportMarksRepository repo) { _repo = repo; }
+        public async Task<bool> HasEntriesAsync(string schoolId, long schemeId, CancellationToken ct) => (await _repo.GetFootprintAsync(schoolId, schemeId, ct)).Any;
+        public Task<EntryFootprint> FootprintAsync(string schoolId, long schemeId, CancellationToken ct) => _repo.GetFootprintAsync(schoolId, schemeId, ct);
     }
 
     /// <summary>Report schemes: header, classes, terms and exams, subjects, the exam x subject matrix, skills, presets and clone. Stage 1: setup only.</summary>
@@ -146,7 +149,16 @@ namespace smss_api_service_layer.service
                     return Result<SchemeDto>(409, string.Join(" ", conflicts.Select(c => $"{names[c.ClassId]} is already in \"{c.SchemeName}\" for this academic year.")) + " A class can be in one scheme per year.", null);
 
                 var removed = g.Classes.Where(c => !wanted.Contains(c.ClassId)).ToList();
-                if (removed.Count > 0 && await _guard.HasEntriesAsync(schoolId, schemeId, ct)) return Result<SchemeDto>(409, "Marks have been entered, so a class can't be taken out of this scheme.", null);
+                if (removed.Count > 0)
+                {
+                    var fp = await _guard.FootprintAsync(schoolId, schemeId, ct);
+                    var blocked = removed.Where(c => fp.ClassIds.Contains(c.ClassId)).Select(c => c.ClassId).ToList();
+                    if (blocked.Count > 0)
+                    {
+                        var blockedNames = await _repo.ClassNamesAsync(schoolId, blocked, active.Value, ct);
+                        return Result<SchemeDto>(409, $"Marks or class-teacher inputs have been entered for {string.Join(", ", blocked.Select(id => blockedNames.GetValueOrDefault(id, "a class")))}, so it can't be taken out of this scheme.", null);
+                    }
+                }
                 _repo.RemoveRange(removed.Cast<object>());
                 var now = DateTime.UtcNow;
                 _repo.AddRange(wanted.Where(id => g.Classes.All(c => c.ClassId != id)).Select(id => (object)new TbReportSchemeClass { SchemeId = schemeId, SchoolId = schoolId, AcademicYearId = g.Scheme.AcademicYearId, ClassId = id, CreatedAt = now }));
@@ -200,8 +212,23 @@ namespace smss_api_service_layer.service
                 var keepExams = terms.SelectMany(t => t.Exams!).Where(e => e.ExamId != null).Select(e => e.ExamId!.Value).ToHashSet();
                 var droppedTerms = g.Terms.Where(t => !keepTerms.Contains(t.TermId)).ToList();
                 var droppedExams = g.Exams.Where(e => !keepExams.Contains(e.ExamId)).ToList();
-                if ((droppedTerms.Count > 0 || droppedExams.Count > 0) && await _guard.HasEntriesAsync(schoolId, schemeId, ct))
-                    return Result<SchemeDto>(409, "Marks have been entered, so a term or an exam can't be removed.", null);
+                var fp = await _guard.FootprintAsync(schoolId, schemeId, ct);
+                if (droppedTerms.Any(t => fp.TermIds.Contains(t.TermId)))
+                    return Result<SchemeDto>(409, $"Entries exist for {string.Join(", ", droppedTerms.Where(t => fp.TermIds.Contains(t.TermId)).Select(t => t.TermName))}, so that term can't be removed.", null);
+                if (droppedExams.Any(e => fp.ExamIds.Contains(e.ExamId)))
+                    return Result<SchemeDto>(409, $"Marks have been entered for {string.Join(", ", droppedExams.Where(e => fp.ExamIds.Contains(e.ExamId)).Select(e => e.ExamName))}, so that exam can't be removed.", null);
+                foreach (var t in terms.Where(t => t.TermId != null))
+                {
+                    var cur = g.Terms.First(x => x.TermId == t.TermId);
+                    if (fp.LockedTermIds.Contains(cur.TermId) && (cur.StartDate != t.StartDate || cur.EndDate != t.EndDate))
+                        return Result<SchemeDto>(409, $"{cur.TermName} is locked for a section, so its dates can't change (they decide the attendance on the report card). Unlock it first.", null);
+                    foreach (var e in t.Exams!.Where(e => e.ExamId != null))
+                    {
+                        var ex = g.Exams.First(x => x.ExamId == e.ExamId);
+                        if (fp.ExamIds.Contains(ex.ExamId) && (ex.DefaultMaxMarks != e.DefaultMaxMarks || ex.WeightPoints != (e.WeightPoints ?? e.DefaultMaxMarks)))
+                            return Result<SchemeDto>(409, $"Marks have been entered for {ex.ExamName}, so its default maximum marks and weight can't change. The name and the order still can.", null);
+                    }
+                }
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 foreach (var t in g.Terms) t.Sequence = (short)(t.Sequence + Gap);
@@ -260,7 +287,16 @@ namespace smss_api_service_layer.service
 
                 var keep = items.Select(i => (i.ClassId!.Value, i.SubjectId!.Value)).ToHashSet();
                 var dropped = g.Subjects.Where(s => !keep.Contains((s.ClassId, s.SubjectId))).ToList();
-                if (dropped.Count > 0 && await _guard.HasEntriesAsync(schoolId, schemeId, ct)) return Result<SchemeDto>(409, "Marks have been entered, so a subject can't be removed from this scheme.", null);
+                if (dropped.Count > 0)
+                {
+                    var fp = await _guard.FootprintAsync(schoolId, schemeId, ct);
+                    var blocked = dropped.Where(s => fp.SchemeSubjectIds.Contains(s.SchemeSubjectId)).ToList();
+                    if (blocked.Count > 0)
+                    {
+                        var blockedNames = await _repo.SubjectNamesAsync(schoolId, blocked.Select(b => b.SubjectId).Distinct().ToList(), ct);
+                        return Result<SchemeDto>(409, $"Marks have been entered for {string.Join(", ", blocked.Select(b => blockedNames.GetValueOrDefault(b.SubjectId, "a subject")))}, so it can't be removed from this scheme. Its label and order can still change.", null);
+                    }
+                }
                 _repo.RemoveRange(dropped.Cast<object>());      // its matrix cells and skills go with it
                 foreach (var i in items)
                 {
@@ -300,7 +336,15 @@ namespace smss_api_service_layer.service
 
                 var keep = cells.Select(c => (c.ExamId!.Value, c.SchemeSubjectId!.Value)).ToHashSet();
                 var dropped = g.Cells.Where(c => !keep.Contains((c.ExamId, c.SchemeSubjectId))).ToList();
-                if (dropped.Count > 0 && await _guard.HasEntriesAsync(schoolId, schemeId, ct)) return Result<SchemeDto>(409, "Marks have been entered, so a subject can't be taken out of an exam.", null);
+                var fp = await _guard.FootprintAsync(schoolId, schemeId, ct);
+                if (dropped.Any(d => fp.ExamSubjectIds.Contains(d.ExamSubjectId)))
+                    return Result<SchemeDto>(409, "Marks have been entered for a subject you are taking out of an exam, so it can't be removed.", null);
+                foreach (var c in cells)
+                {
+                    var cur = g.Cells.FirstOrDefault(x => x.ExamId == c.ExamId && x.SchemeSubjectId == c.SchemeSubjectId);
+                    if (cur != null && fp.ExamSubjectIds.Contains(cur.ExamSubjectId) && (cur.EntryMode != c.EntryMode || cur.MaxMarks != c.MaxMarks || cur.WeightPoints != c.WeightPoints))
+                        return Result<SchemeDto>(409, "Marks have been entered for this subject in this exam, so its maximum marks, weight and entry mode can't change.", null);
+                }
                 _repo.RemoveRange(dropped.Cast<object>());
                 foreach (var c in cells)
                 {
@@ -335,13 +379,24 @@ namespace smss_api_service_layer.service
                 }
                 if (req.Subjects!.Select(s => s.SchemeSubjectId).Distinct().Count() != req.Subjects!.Count) return Result<SchemeDto>(400, "A subject was listed twice.", null);
                 var touched = req.Subjects!.Select(s => s.SchemeSubjectId!.Value).ToHashSet();
+                var fp = await _guard.FootprintAsync(schoolId, schemeId, ct);
+                // a subject whose skills would come out exactly the same is left alone; one that has entries and would change is refused
+                var unchanged = new HashSet<long>();
+                foreach (var s in req.Subjects!)
+                {
+                    var current = g.Skills.Where(k => k.SchemeSubjectId == s.SchemeSubjectId).OrderBy(k => k.Sequence).Select(k => k.SkillName).ToList();
+                    var wanted = (s.Skills ?? new()).Select(n => (n ?? "").Trim()).ToList();
+                    if (current.SequenceEqual(wanted)) { unchanged.Add(s.SchemeSubjectId!.Value); continue; }
+                    if (fp.SchemeSubjectIds.Contains(s.SchemeSubjectId!.Value))
+                        return Result<SchemeDto>(409, "Marks have been entered for this subject, so its skills can't be added, removed or renamed.", null);
+                }
+                touched.ExceptWith(unchanged);
                 var existing = g.Skills.Where(k => touched.Contains(k.SchemeSubjectId)).ToList();
-                if (existing.Count > 0 && await _guard.HasEntriesAsync(schoolId, schemeId, ct)) return Result<SchemeDto>(409, "Marks have been entered, so skills can't be changed.", null);
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 _repo.RemoveRange(existing.Cast<object>());
                 await _repo.SaveChangesAsync(ct);                 // replaced as a set: delete first, then insert (the names and sequence are unique per subject)
-                foreach (var s in req.Subjects!)
+                foreach (var s in req.Subjects!.Where(s => touched.Contains(s.SchemeSubjectId!.Value)))
                     _repo.AddRange((s.Skills ?? new()).Select((n, i) => (object)new TbReportSubjectSkill { SchemeSubjectId = s.SchemeSubjectId!.Value, SchemeId = schemeId, SchoolId = schoolId, SkillName = n.Trim(), Sequence = (short)(i + 1) }));
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);

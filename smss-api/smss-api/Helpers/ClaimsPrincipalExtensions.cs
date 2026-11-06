@@ -107,6 +107,12 @@ namespace smss_api.Helpers
         /// <summary>Reads the exam dates: the above plus every Teacher.</summary>
         public static bool CanViewExamSchedule(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.Teacher);
 
+        /// <summary>Marks entry and the class teacher's report-card inputs: School Admin, Principal (read-only) and Teacher. What a Teacher may do in a given section is decided by the service.</summary>
+        public static bool CanUseReportInputs(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.Teacher);
+
+        public static smss_api_service_layer.@interface.ReportCaller ToReportCaller(this ClaimsPrincipal user, long userId) =>
+            new(userId, HasAnyRole(user, RoleNames.SchoolAdmin), HasAnyRole(user, RoleNames.Principal), HasAnyRole(user, RoleNames.Teacher));
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

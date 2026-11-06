@@ -1,14 +1,17 @@
+using smss_api_db_layer.@interface;
 using smss_api_service_layer.dto;
 
 namespace smss_api_service_layer.@interface
 {
     /// <summary>
-    /// Asks whether anything has been ENTERED against a scheme (marks, grades, results). Stage 1 has no entries, so the default answer is "no"; Stage 2 replaces the
-    /// implementation, and every destructive setup change (removing a term, exam, subject, class or scheme) already asks it first, so the rule is in place before there is anything to protect.
+    /// Asks what has been ENTERED against a scheme (marks, submitted grids, class-teacher inputs, locks). Every destructive or structural setup change asks it first, and only the parts that have
+    /// entries are protected. The database backs this up: the foreign keys from the entries to the setup rows do not cascade.
     /// </summary>
     public interface IReportEntryGuard
     {
         Task<bool> HasEntriesAsync(string schoolId, long schemeId, CancellationToken ct);
+        /// <summary>Which exams, exam subjects, scheme subjects, terms and classes of the scheme already have entries (or a lock): only those are protected.</summary>
+        Task<EntryFootprint> FootprintAsync(string schoolId, long schemeId, CancellationToken ct);
     }
 
     public interface IReportSchemeService

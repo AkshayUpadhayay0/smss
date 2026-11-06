@@ -90,6 +90,13 @@ namespace smss_api_db_layer.context
         public DbSet<TbReportExamSubject> ReportExamSubjects { get; set; } = null!;
         public DbSet<TbReportSubjectSkill> ReportSubjectSkills { get; set; } = null!;
         public DbSet<TbReportActivityArea> ReportActivityAreas { get; set; } = null!;
+        public DbSet<TbReportEntryStatus> ReportEntryStatuses { get; set; } = null!;
+        public DbSet<TbReportMark> ReportMarks { get; set; } = null!;
+        public DbSet<TbReportTermSection> ReportTermSections { get; set; } = null!;
+        public DbSet<TbReportStudentActivityGrade> ReportActivityGrades { get; set; } = null!;
+        public DbSet<TbReportTermStudent> ReportTermStudents { get; set; } = null!;
+        public DbSet<TbReportYearStudent> ReportYearStudents { get; set; } = null!;
+        public DbSet<TbReportAudit> ReportAudit { get; set; } = null!;
         public DbSet<TbClassAssessment> ClassAssessments { get; set; } = null!;
         public DbSet<TbStudentAssessmentMark> StudentAssessmentMarks { get; set; } = null!;
         public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;
@@ -112,6 +119,11 @@ namespace smss_api_db_layer.context
             // Report card setup: composite keys
             modelBuilder.Entity<TbReportSchemeClass>().HasKey(x => new { x.SchemeId, x.ClassId });
             modelBuilder.Entity<TbReportExamClassDate>().HasKey(x => new { x.ExamId, x.ClassId }); 
+            modelBuilder.Entity<TbReportEntryStatus>().HasKey(x => new { x.ExamSubjectId, x.SectionId });
+            modelBuilder.Entity<TbReportTermSection>().HasKey(x => new { x.TermId, x.SectionId });
+            modelBuilder.Entity<TbReportStudentActivityGrade>().HasKey(x => new { x.TermId, x.StudentId, x.AreaId });
+            modelBuilder.Entity<TbReportTermStudent>().HasKey(x => new { x.TermId, x.StudentId });
+            modelBuilder.Entity<TbReportYearStudent>().HasKey(x => new { x.SchemeId, x.StudentId });
         
             // ===================================================== // LUT COUNTRY // =====================================================
             modelBuilder.Entity<LutCountry>() .HasKey(x => x.Cid); 

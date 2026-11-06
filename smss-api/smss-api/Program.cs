@@ -50,7 +50,11 @@ builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentMyFeesService, StudentMyFeesService>();
 builder.Services.AddScoped<IReportSetupRepository, ReportSetupRepository>();
-builder.Services.AddSingleton<IReportEntryGuard, NoEntriesGuard>();   // Stage 2 replaces this with the real "has anything been entered" check
+builder.Services.AddScoped<IReportEntryGuard, ReportEntryGuard>();   // Stage 2: the real "has anything been entered" check (marks, submitted grids, locks, class-teacher inputs)
+builder.Services.AddScoped<IReportMarksRepository, ReportMarksRepository>();
+builder.Services.AddScoped<IReportMarksService, ReportMarksService>();
+builder.Services.AddScoped<IReportClassService, ReportClassService>();
+builder.Services.AddScoped<ReportAccess>();
 builder.Services.AddScoped<IGradeScaleService, GradeScaleService>();
 builder.Services.AddScoped<IReportSchemeService, ReportSchemeService>();
 builder.Services.AddScoped<IReportActivityAreaService, ReportActivityAreaService>();
