@@ -13,7 +13,7 @@ export interface DashboardProfile {
   sectionName?: string | null;
   rollNumber?: string | null;
   academicYearName?: string | null;
-  /** Relative upload path; run it through toUploadUrl(). */
+  /** The authenticated photo path (/api/Student/{id}/photo?v=...); show it with <app-secure-img>, never as a plain img src. */
   profilePhotoUrl?: string | null;
 }
 
