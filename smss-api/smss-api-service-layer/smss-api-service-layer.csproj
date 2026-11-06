@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <!-- ClosedXML pulls SixLabors.Fonts. 1.x is Apache-2.0; 2.x moves to the Six Labors Split License. Keep it below 2.0. -->
+    <PackageReference Include="SixLabors.Fonts" Version="[1.0.0,2.0.0)" />
     <PackageReference Include="MailKit" Version="4.18.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
