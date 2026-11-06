@@ -5,7 +5,7 @@ One-off migration: move student profile photos from the PUBLIC uploads folder to
   python scripts/migrate-student-photos.py --apply --i-have-a-backup (does it)
 
 Options: --db NAME (default smss-db), --uploads PATH, --private PATH, --host/--user (default localhost / postgres; the password is read from
-smss-api/smss-api/appsettings.json unless PGPASSWORD is set).
+user-secrets (or PGPASSWORD)).
 
 For every student whose profile_photo_url is still a public path (/uploads/<school>/students/<id>/<file>):
   1. copy the file to <private>/<school>/students/<id>/<file> (skipped when an identical copy is already there),
@@ -24,9 +24,12 @@ PSQL = r'C:\OSGeo4W\bin\psql.exe'
 
 
 def password():
+    """The local database password: PGPASSWORD if set, else the user-secrets connection string (dotnet user-secrets list). It is never kept in a committed file."""
     if os.environ.get('PGPASSWORD'): return os.environ['PGPASSWORD']
-    t = open(os.path.join(API, 'appsettings.json'), encoding='utf-8').read()
-    return re.search(r'Password=([^;"]*)', t).group(1)
+    out = subprocess.run(['dotnet', 'user-secrets', 'list', '--project', os.path.join(ROOT, 'smss-api', 'smss-api')], capture_output=True, text=True).stdout
+    m = re.search(r'ConnectionStrings:DefaultConnection\s*=.*?Password=([^;\r\n]*)', out)
+    if not m: raise SystemExit('Database password not found: set PGPASSWORD or run dotnet user-secrets set "ConnectionStrings:DefaultConnection" ... (see Docs/configuration.md)')
+    return m.group(1)
 
 
 def sha(path):

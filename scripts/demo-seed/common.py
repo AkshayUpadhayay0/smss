@@ -4,8 +4,12 @@ DBNAME = os.environ.get('SMSS_DB', 'smss-db')
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 PSQL = r'C:\OSGeo4W\bin\psql.exe'
 def _pw():
-    t = open(r'E:\05_Smss\smss\smss-api\smss-api\appsettings.json', encoding='utf-8').read()
-    return re.search(r'Password=([^;"]*)', t).group(1)
+    """The local database password: PGPASSWORD if set, else the user-secrets connection string (dotnet user-secrets list). It is never kept in a committed file."""
+    if os.environ.get('PGPASSWORD'): return os.environ['PGPASSWORD']
+    out = subprocess.run(['dotnet', 'user-secrets', 'list', '--project', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'smss-api', 'smss-api')], capture_output=True, text=True).stdout
+    m = re.search(r'ConnectionStrings:DefaultConnection\s*=.*?Password=([^;\r\n]*)', out)
+    if not m: raise SystemExit('Database password not found: set PGPASSWORD or run dotnet user-secrets set "ConnectionStrings:DefaultConnection" ... (see Docs/configuration.md)')
+    return m.group(1)
 def sql(q):
     r = subprocess.run([PSQL, '-h', 'localhost', '-U', 'postgres', '-d', DBNAME, '-At', '-F', '|'], input=q, capture_output=True, text=True, env=dict(os.environ, PGPASSWORD=_pw()))
     return (r.stdout + r.stderr).strip()

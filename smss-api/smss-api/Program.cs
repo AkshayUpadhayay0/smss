@@ -15,6 +15,9 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Fail fast, naming the missing SETTING (never a value): secrets are not in the committed files (user-secrets in development, environment variables in production).
+smss_api.Helpers.StartupConfigGuard.Validate(builder.Configuration, builder.Environment);
+
 // Add DbContext with PostgreSQL
 builder.Services.AddDbContext<dbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
