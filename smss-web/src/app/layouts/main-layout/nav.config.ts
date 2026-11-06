@@ -31,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
   { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
   { label: 'My Fees', icon: 'file-text', route: '/my-fees' },
+  { label: 'My Report Cards', icon: 'file-text', route: '/my-report-cards' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   {
     label: 'Students',
@@ -58,6 +59,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Exam Schedule', route: '/examinations/schedule' },
       { label: 'Marks Entry', route: '/examinations/marks' },
       { label: 'My Class Report', route: '/examinations/class-report' },
+      { label: 'Results and Publish', route: '/examinations/results' },
     ],
   },
   {
