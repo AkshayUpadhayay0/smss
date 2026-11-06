@@ -50,6 +50,11 @@ namespace smss_api.Controllers
         private IActionResult? RefuseStudentLogin() =>
             User.IsStudentOrGuardianLogin() ? this.Forbidden("Student and Guardian accounts can't view student records.") : null;
 
+        // A Teacher-only login reads students through GET api/Student/my-class (the sections they are class teacher of or teach in), never through the school-wide reads below.
+        // A user who is ALSO a School Admin or Principal keeps the wider access those roles have.
+        private IActionResult? RefuseTeacherOnly() =>
+            User.IsTeacher() && !User.IsSchoolAdmin() && !User.IsPrincipal() ? this.Forbidden("Teachers see their own students under My Students.") : null;
+
         // Writes (photo upload / remove, create login): School Admin only.
         private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
             User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
@@ -142,6 +147,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> GetStudents(string schoolId, [FromQuery] long? academicYearId, [FromQuery] long? classSectionId, [FromQuery] string? feeStatus, CancellationToken ct)
         {
             if (RefuseStudentLogin() is { } blocked) return blocked;
+            if (RefuseTeacherOnly() is { } teacherOnly) return teacherOnly;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             if (academicYearId is null or <= 0) return Respond(400, "academicYearId is required.");
             if (classSectionId is null or <= 0) return Respond(400, "classSectionId is required.");
@@ -190,6 +196,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> GetStudentProfile(string schoolId, string studentId, CancellationToken ct)
         {
             if (RefuseStudentLogin() is { } blocked) return blocked;
+            if (RefuseTeacherOnly() is { } teacherOnly) return teacherOnly;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.GetStudentProfileAsync(own, studentId, limited: User.IsAccountantOnly(), ct);
             return StatusCode(response.StatusCode, response);
