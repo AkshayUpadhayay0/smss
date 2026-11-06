@@ -4,3 +4,16 @@ uploads-private/
 
 # Generated demo-school credentials (plaintext passwords; never commit)
 # Docs/demo-credentials.txt
+
+# Uploaded files: school logos and student photos (real people; never commit)
+smss-api/smss-api/uploads/
+smss-api/smss-api/uploads-private/
+**/uploads-private/
+
+# Demo seeding: state files hold generated passwords; credential text files; local database dumps
+scripts/demo-seed/state_*.json
+scripts/demo-seed/__pycache__/
+Docs/demo-credentials.txt
+**/*credentials*.txt
+Docs/smss-db_*.sql
+*.dump
