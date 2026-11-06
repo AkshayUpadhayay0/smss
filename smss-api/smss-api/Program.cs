@@ -55,6 +55,9 @@ builder.Services.AddScoped<IReportMarksRepository, ReportMarksRepository>();
 builder.Services.AddScoped<IReportMarksService, ReportMarksService>();
 builder.Services.AddScoped<IReportClassService, ReportClassService>();
 builder.Services.AddScoped<ReportAccess>();
+builder.Services.AddScoped<IReportResultRepository, ReportResultRepository>();      // Stage 3: results and publishing
+builder.Services.AddScoped<smss_api_service_layer.helper.reportcard.ReportResultBuilder>();
+builder.Services.AddScoped<IReportResultService, ReportResultService>();
 builder.Services.AddScoped<IGradeScaleService, GradeScaleService>();
 builder.Services.AddScoped<IReportSchemeService, ReportSchemeService>();
 builder.Services.AddScoped<IReportActivityAreaService, ReportActivityAreaService>();

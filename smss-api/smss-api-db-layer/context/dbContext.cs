@@ -97,6 +97,8 @@ namespace smss_api_db_layer.context
         public DbSet<TbReportTermStudent> ReportTermStudents { get; set; } = null!;
         public DbSet<TbReportYearStudent> ReportYearStudents { get; set; } = null!;
         public DbSet<TbReportAudit> ReportAudit { get; set; } = null!;
+        public DbSet<TbReportPublication> ReportPublications { get; set; } = null!;
+        public DbSet<TbReportPublicationStudent> ReportPublicationStudents { get; set; } = null!;
         public DbSet<TbClassAssessment> ClassAssessments { get; set; } = null!;
         public DbSet<TbStudentAssessmentMark> StudentAssessmentMarks { get; set; } = null!;
         public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;

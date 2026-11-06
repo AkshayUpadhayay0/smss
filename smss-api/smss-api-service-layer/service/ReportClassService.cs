@@ -409,39 +409,20 @@ namespace smss_api_service_layer.service
                 }
 
                 // AUTO: the Attendance module's own rules (AttendanceDayRules), over the term's dates
-                var year = c.Year;
                 var from = term.StartDate; var to = term.EndDate;
-                var ay = await _attendance.GetReportRosterAsync(schoolId, c.Scheme.AcademicYearId, sectionId, ct);
+                var attRoster = await _attendance.GetReportRosterAsync(schoolId, c.Scheme.AcademicYearId, sectionId, ct);
                 var marks = await _attendance.GetMonthMarksAsync(schoolId, sectionId, from, to, ct);
                 var holidays = await _attendance.GetHolidaysAsync(schoolId, from, to, c.Active, ct);
-                var byStudent = marks.GroupBy(m => m.StudentId).ToDictionary(g => g.Key, g => g.GroupBy(m => m.Date).ToDictionary(x => x.Key, x => x.First().StatusCode));
-                var markedPerDay = marks.GroupBy(m => m.Date).ToDictionary(g => g.Key, g => g.Select(m => m.StudentId).Distinct().Count());
-
-                var days = new List<DayClass>();
-                for (var d = from; d <= to; d = d.AddDays(1)) days.Add(AttendanceDayRules.Classify(d, year.StartDate, year.EndDate, holidays));
-                var elapsed = days.Where(d => d.IsWorkingDay && d.Date <= today).ToList();
-                dto.WorkingDays = elapsed.Count;
-                dto.UnmarkedDates = elapsed.Where(d => markedPerDay.GetValueOrDefault(d.Date) == 0).Select(d => d.Date).ToList();
-                dto.UnmarkedDays = dto.UnmarkedDates.Count;
-
-                foreach (var r in ay)
+                var calc = TermAttendanceRules.Compute(from, to, today, c.Year.StartDate, c.Year.EndDate, holidays, attRoster, marks, c.Active);   // the Attendance module's own rules, shared with the report card
+                dto.WorkingDays = calc.WorkingDays; dto.UnmarkedDates = calc.UnmarkedDates; dto.UnmarkedDays = calc.UnmarkedDates.Count;
+                foreach (var r in attRoster.Where(r => calc.ByStudent.ContainsKey(r.StudentId)))
                 {
-                    var activeStudent = r.EnrollmentStatusId == c.Active && r.StudentStatusId == c.Active;
-                    var own = byStudent.GetValueOrDefault(r.StudentId);
-                    if (!(activeStudent && r.EnrollmentDate <= to) && own == null) continue;
-                    var s = new TermAttendanceStudentDto { StudentId = r.StudentId, RollNumber = r.RollNumber ?? "", FullName = LeaveRules.FullName(r.FirstName, r.MiddleName, r.LastName) };
-                    var present = 0; var absent = 0; var notMarked = 0;
-                    foreach (var day in days)
+                    var a = calc.ByStudent[r.StudentId];
+                    dto.Students.Add(new TermAttendanceStudentDto
                     {
-                        if (!AttendanceDayRules.CountsForStudent(day, r.EnrollmentDate)) continue;
-                        var code = own != null && own.TryGetValue(day.Date, out var cc) ? cc : null;
-                        if (code == AttendanceReportBuilder.PresentCode) present++;
-                        else if (code == AttendanceReportBuilder.AbsentCode) absent++;
-                        else if (day.Date <= today) notMarked++;
-                    }
-                    s.PresentDays = present; s.AbsentDays = absent; s.WorkingDays = present + absent; s.NotMarkedDays = notMarked;
-                    s.Percentage = present + absent == 0 ? null : Math.Round(present * 100m / (present + absent), 1, MidpointRounding.AwayFromZero);
-                    dto.Students.Add(s);
+                        StudentId = r.StudentId, RollNumber = r.RollNumber ?? "", FullName = LeaveRules.FullName(r.FirstName, r.MiddleName, r.LastName), PresentDays = a.Present, AbsentDays = a.Absent, WorkingDays = a.Present + a.Absent, NotMarkedDays = a.NotMarked,
+                        Percentage = a.Present + a.Absent == 0 ? null : Math.Round(a.Present * 100m / (a.Present + a.Absent), 1, MidpointRounding.AwayFromZero)
+                    });
                 }
                 dto.Students = dto.Students.OrderBy(s => s.RollNumber, RollComparer.Instance).ThenBy(s => s.FullName, StringComparer.OrdinalIgnoreCase).ToList();
                 var parts = new List<string>();
