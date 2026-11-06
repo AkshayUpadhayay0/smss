@@ -15,7 +15,7 @@ keywords = ["password="]
 [[rules.allowlists]]
 description = "documentation placeholders"
 regexTarget = "match"
-regexes = ['''YOUR_DB_PASSWORD''', '''Password=\.\.\.''']
+regexes = ['''YOUR_DB_PASSWORD''', '''Password=\.\.\.''', '''Password=REDACTED''']
 
 [[rules]]
 id = "smss-config-secret-value"
@@ -23,6 +23,10 @@ description = "A non-empty secret in a JSON config file (Jwt Key, setup key, SMT
 regex = '''(?i)"(Key|SuperAdminSetupKey|SenderAppPassword|SecretKey|SigningKey|ClientSecret|ApiKey)"\s*:\s*"[^"\s<]{8,}"'''
 path = '''(?i)\.(json|config)$'''
 keywords = ["superadminsetupkey", "senderapppassword", "secretkey", "signingkey", "clientsecret", "apikey", "\"key\""]
+[[rules.allowlists]]
+description = "markers the history rewrite left in place of the old secrets"
+regexTarget = "match"
+regexes = ['''REDACTED-(JWT-KEY|SETUP-KEY|SMTP-PASSWORD)''']
 
 [[rules]]
 id = "smss-database-dump"
