@@ -323,6 +323,8 @@ namespace smss_api_service_layer.dto
         public string SchemeName { get; set; } = null!;
         public string AcademicYearName { get; set; } = null!;
         public List<string> ClassNames { get; set; } = new();
+        /// <summary>The scheme's classes (id and name), for the per-class dates.</summary>
+        public List<SchemeClassDto> Classes { get; set; } = new();
         public List<ScheduleExamDto> Exams { get; set; } = new();
     }
 

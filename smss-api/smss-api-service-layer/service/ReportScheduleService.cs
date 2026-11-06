@@ -82,6 +82,7 @@ namespace smss_api_service_layer.service
             {
                 SchemeId = schemeId, SchemeName = g.Scheme.SchemeName, AcademicYearName = yearName,
                 ClassNames = g.Classes.Select(c => Cls(c.ClassId)).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+                Classes = g.Classes.Select(c => new SchemeClassDto { ClassId = c.ClassId, ClassName = Cls(c.ClassId) }).OrderBy(c => c.ClassName, StringComparer.OrdinalIgnoreCase).ToList(),
                 Exams = g.Terms.SelectMany(t => g.Exams.Where(e => e.TermId == t.TermId).OrderBy(e => e.Sequence).Select(e => new ScheduleExamDto
                 {
                     ExamId = e.ExamId, TermName = t.TermName, ExamName = e.ExamName, ExamDate = e.ExamDate,
