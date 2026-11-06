@@ -31,12 +31,10 @@ namespace smss_api_service_layer.helper
             for (var i = 0; i < daysInMonth; i++)
             {
                 var d = first.AddDays(i);
-                var dow = d.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)d.DayOfWeek;
-                var hol = holidays.Where(h => h.StartDate <= d && d <= h.EndDate).Select(h => h.Title).Distinct().ToList();
-                string? reason = dow == 7 ? "Sunday" : hol.Count > 0 ? "Holiday" : d < yearStart || d > yearEnd ? "Outside academic year" : null;
+                var c = AttendanceDayRules.Classify(d, yearStart, yearEnd, holidays);   // Sunday / Holiday / outside the year: shared with the report card's term attendance
                 days.Add(new AttendanceReportDayDto
                 {
-                    Date = d, DayOfWeek = dow, IsWorkingDay = reason == null, NonWorkingReason = reason, HolidayName = hol.Count > 0 ? string.Join(", ", hol) : null,
+                    Date = d, DayOfWeek = c.DayOfWeek, IsWorkingDay = c.IsWorkingDay, NonWorkingReason = c.NonWorkingReason, HolidayName = c.HolidayName,
                     IsFuture = d > today, MarkedCount = perDay.GetValueOrDefault(d)
                 });
             }
@@ -64,7 +62,7 @@ namespace smss_api_service_layer.helper
                     else cell = day.IsWorkingDay ? NotMarked : NonWorking;
                     dto.Marks.Add(cell);
 
-                    if (!day.IsWorkingDay || day.Date < r.EnrollmentDate) continue;   // counts for nothing
+                    if (!AttendanceDayRules.CountsForStudent(new DayClass(day.Date, day.DayOfWeek, day.IsWorkingDay, day.NonWorkingReason, day.HolidayName), r.EnrollmentDate)) continue;   // counts for nothing
                     if (cell == Present) dto.PresentDays++;
                     else if (cell == Absent) dto.AbsentDays++;
                     else if (!day.IsFuture) dto.NotMarkedDays++;
