@@ -44,6 +44,8 @@ builder.Services.AddScoped<IDocumentTypeService, DocumentTypeService>();
 builder.Services.AddScoped<IAdmissionRepository, AdmissionRepository>();
 builder.Services.AddScoped<IAdmissionService, AdmissionService>();
 builder.Services.AddScoped<IStudentOnboardingService, StudentOnboardingService>();
+builder.Services.AddScoped<IStudentImportRepository, StudentImportRepository>();
+builder.Services.AddScoped<IStudentImportService, StudentImportService>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentMyFeesService, StudentMyFeesService>();
