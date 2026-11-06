@@ -78,6 +78,18 @@ namespace smss_api_db_layer.context
         public DbSet<TbNotice> Notices { get; set; } = null!;
         public DbSet<TbNoticeRead> NoticeReads { get; set; } = null!;
         public DbSet<LutAssessmentType> AssessmentTypes { get; set; } = null!;
+        // Examination / Report Card, stage 1 (setup)
+        public DbSet<TbGradeScale> GradeScales { get; set; } = null!;
+        public DbSet<TbGradeScaleBand> GradeScaleBands { get; set; } = null!;
+        public DbSet<TbReportScheme> ReportSchemes { get; set; } = null!;
+        public DbSet<TbReportSchemeClass> ReportSchemeClasses { get; set; } = null!;
+        public DbSet<TbReportTerm> ReportTerms { get; set; } = null!;
+        public DbSet<TbReportExam> ReportExams { get; set; } = null!;
+        public DbSet<TbReportExamClassDate> ReportExamClassDates { get; set; } = null!;
+        public DbSet<TbReportSchemeSubject> ReportSchemeSubjects { get; set; } = null!;
+        public DbSet<TbReportExamSubject> ReportExamSubjects { get; set; } = null!;
+        public DbSet<TbReportSubjectSkill> ReportSubjectSkills { get; set; } = null!;
+        public DbSet<TbReportActivityArea> ReportActivityAreas { get; set; } = null!;
         public DbSet<TbClassAssessment> ClassAssessments { get; set; } = null!;
         public DbSet<TbStudentAssessmentMark> StudentAssessmentMarks { get; set; } = null!;
         public DbSet<LutLeaveType> LeaveTypes { get; set; } = null!;
@@ -96,7 +108,10 @@ namespace smss_api_db_layer.context
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 
         { 
-            base.OnModelCreating(modelBuilder); 
+            base.OnModelCreating(modelBuilder);
+            // Report card setup: composite keys
+            modelBuilder.Entity<TbReportSchemeClass>().HasKey(x => new { x.SchemeId, x.ClassId });
+            modelBuilder.Entity<TbReportExamClassDate>().HasKey(x => new { x.ExamId, x.ClassId }); 
         
             // ===================================================== // LUT COUNTRY // =====================================================
             modelBuilder.Entity<LutCountry>() .HasKey(x => x.Cid); 

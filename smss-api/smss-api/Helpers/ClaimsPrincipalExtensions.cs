@@ -98,6 +98,15 @@ namespace smss_api.Helpers
         /// <summary>The report's "any section" tier: School Admin and Principal (read-only). A Teacher is limited to the section they are class teacher of.</summary>
         public static bool CanViewAllAttendanceReports(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
 
+        /// <summary>Examination / Report Card setup (grade scales, schemes, activity areas, the exam schedule): School Admin only.</summary>
+        public static bool CanConfigureReportCards(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
+
+        /// <summary>Reads the report-card setup: School Admin, and the Principal read-only.</summary>
+        public static bool CanViewReportSetup(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
+        /// <summary>Reads the exam dates: the above plus every Teacher.</summary>
+        public static bool CanViewExamSchedule(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.Teacher);
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

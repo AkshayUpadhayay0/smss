@@ -47,6 +47,12 @@ builder.Services.AddScoped<IStudentOnboardingService, StudentOnboardingService>(
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentMyFeesService, StudentMyFeesService>();
+builder.Services.AddScoped<IReportSetupRepository, ReportSetupRepository>();
+builder.Services.AddSingleton<IReportEntryGuard, NoEntriesGuard>();   // Stage 2 replaces this with the real "has anything been entered" check
+builder.Services.AddScoped<IGradeScaleService, GradeScaleService>();
+builder.Services.AddScoped<IReportSchemeService, ReportSchemeService>();
+builder.Services.AddScoped<IReportActivityAreaService, ReportActivityAreaService>();
+builder.Services.AddScoped<IReportScheduleService, ReportScheduleService>();
 builder.Services.AddScoped<IFeeSectionStatusService, FeeSectionStatusService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();
 builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();
