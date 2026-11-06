@@ -77,6 +77,8 @@ namespace smss_api_db_layer.@interface
         Task<List<TbReportEntryStatus>> GetStatusesForUpdateAsync(string schoolId, long sectionId, IReadOnlyCollection<long> examSubjectIds, CancellationToken ct);
         Task<List<EntryCountRow>> GetEntryCountsAsync(string schoolId, long sectionId, IReadOnlyCollection<string> studentIds, IReadOnlyCollection<long> examSubjectIds, CancellationToken ct);
         Task<List<(long ExamSubjectId, long SchemeSubjectId)>> TermExamSubjectsAsync(long termId, long classId, CancellationToken ct);
+        /// <summary>How many entry rows each (exam subject, student) has: one set-based query, used to find who is missing from an accepted grid.</summary>
+        Task<List<(long ExamSubjectId, string StudentId, int Count)>> GetStudentEntryCountsAsync(string schoolId, IReadOnlyCollection<string> studentIds, IReadOnlyCollection<long> examSubjectIds, CancellationToken ct);
 
         // the "what may I enter" list (whole year, a handful of queries)
         Task<List<ContextRow>> GetContextRowsAsync(string schoolId, long academicYearId, int activeStatusId, CancellationToken ct);

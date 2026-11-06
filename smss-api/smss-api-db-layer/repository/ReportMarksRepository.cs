@@ -144,6 +144,15 @@ namespace smss_api_db_layer.repository
                 .Select(g => new EntryCountRow(g.ExamSubjectId, g.EntryState, g.N)).ToList();
         }
 
+        public async Task<List<(long ExamSubjectId, string StudentId, int Count)>> GetStudentEntryCountsAsync(string schoolId, IReadOnlyCollection<string> studentIds, IReadOnlyCollection<long> examSubjectIds, CancellationToken ct)
+        {
+            if (examSubjectIds.Count == 0 || studentIds.Count == 0) return new();
+            var es = examSubjectIds.ToList(); var st = studentIds.ToList();
+            return (await _db.ReportMarks.AsNoTracking().Where(m => m.SchoolId == schoolId && es.Contains(m.ExamSubjectId) && st.Contains(m.StudentId))
+                    .GroupBy(m => new { m.ExamSubjectId, m.StudentId }).Select(g => new { g.Key.ExamSubjectId, g.Key.StudentId, N = g.Count() }).ToListAsync(ct))
+                .Select(g => (g.ExamSubjectId, g.StudentId, g.N)).ToList();
+        }
+
         public async Task<List<(long ExamSubjectId, long SchemeSubjectId)>> TermExamSubjectsAsync(long termId, long classId, CancellationToken ct) =>
             (await (from es in _db.ReportExamSubjects.AsNoTracking()
                     join ex in _db.ReportExams.AsNoTracking() on es.ExamId equals ex.ExamId

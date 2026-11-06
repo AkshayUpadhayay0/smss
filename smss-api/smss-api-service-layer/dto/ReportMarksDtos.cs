@@ -219,7 +219,11 @@ namespace smss_api_service_layer.dto
         [Required, Range(1, long.MaxValue)] public long? TermId { get; set; }
         [Required, Range(1, long.MaxValue)] public long? SectionId { get; set; }
         [MaxLength(300)] public string? Reason { get; set; }
+        /// <summary>The caller has seen the students who will be left out (added after the marks were accepted) and wants to lock anyway.</summary>
+        public bool ConfirmExcluded { get; set; }
     }
+
+    public class ExcludedStudentDto { public string StudentId { get; set; } = ""; public string Name { get; set; } = ""; public string RollNumber { get; set; } = ""; }
 
     public class LockResultDto
     {
@@ -227,6 +231,10 @@ namespace smss_api_service_layer.dto
         public long SectionId { get; set; }
         public bool Locked { get; set; }
         public DateTime? LockedAt { get; set; }
+        /// <summary>True on the 409 that asks for confirmation: nothing was locked yet.</summary>
+        public bool NeedsConfirmation { get; set; }
+        /// <summary>The late students the lock leaves out (also the ones that WERE left out, after a confirmed lock).</summary>
+        public List<ExcludedStudentDto> Excluded { get; set; } = new();
     }
 
     // activity grades

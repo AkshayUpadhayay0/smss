@@ -47,7 +47,8 @@ export class MarksService {
     return this.api.put<YearStudents>('/api/ReportClass/year-students', { schemeId, sectionId, students: students.map((s) => ({ studentId: s.studentId, promotionDecision: s.promotionDecision ?? null, promotedTo: s.promotedTo ?? null, newSessionDate: s.newSessionDate || null })) });
   }
   attendance(termId: number, sectionId: number): Observable<TermAttendance> { return this.api.get<TermAttendance>('/api/ReportClass/attendance', { termId, sectionId }); }
-  lock(termId: number, sectionId: number): Observable<LockResult> { return this.api.post<LockResult>('/api/ReportClass/lock', { termId, sectionId }); }
+  /** The 409 that asks for confirmation (students added after the marks were accepted) is handled by the screen, so its error toast is skipped. */
+  lock(termId: number, sectionId: number, confirmExcluded = false): Observable<LockResult> { return this.api.post<LockResult>('/api/ReportClass/lock', { termId, sectionId, confirmExcluded }, { skipErrorToast: true }); }
   unlock(termId: number, sectionId: number, reason: string): Observable<LockResult> { return this.api.post<LockResult>('/api/ReportClass/unlock', { termId, sectionId, reason }); }
 }
 

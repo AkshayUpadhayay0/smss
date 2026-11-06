@@ -77,12 +77,40 @@ describe('ClassReportComponent', () => {
     button('Lock term')!.click();
     await fixture.whenStable();
     const req = http.expectOne(`${API}/api/ReportClass/lock`);
-    expect(req.request.body).toEqual({ termId: 5, sectionId: 43 });
+    expect(req.request.body).toEqual({ termId: 5, sectionId: 43, confirmExcluded: false });
     req.flush(env({ termId: 5, sectionId: 43, locked: true }));
     http.expectOne((x) => x.url === `${API}/api/ReportClass/completeness`).flush(env(COMP({}, true, true)));
     fixture.detectChanges();
     expect(text()).toContain('Locked');
     expect(text()).toContain('Unlocking does not make accepted marks editable');
+  });
+
+  it('late students: the 409 lists them by name, and Lock anyway sends the lock again with the confirmation', async () => {
+    open('School Admin', [row()], COMP());
+    const confirm = vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(true);
+    button('Lock term')!.click();
+    await fixture.whenStable();
+    const first = http.expectOne(`${API}/api/ReportClass/lock`);
+    expect(first.request.body).toEqual({ termId: 5, sectionId: 43, confirmExcluded: false });
+    first.flush({ status: false, statusCode: 409, message: '2 students were added', data: { termId: 5, sectionId: 43, locked: false, needsConfirmation: true, excluded: [{ studentId: 'S9', name: 'Neha Late', rollNumber: '' }, { studentId: 'S10', name: 'Omar Late', rollNumber: '' }] } }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm.mock.calls[1][0].message).toContain('Neha Late, Omar Late');
+    const second = http.expectOne(`${API}/api/ReportClass/lock`);
+    expect(second.request.body).toEqual({ termId: 5, sectionId: 43, confirmExcluded: true });
+    second.flush(env({ termId: 5, sectionId: 43, locked: true, excluded: [{ studentId: 'S9', name: 'Neha Late', rollNumber: '' }] }));
+    http.expectOne((x) => x.url === `${API}/api/ReportClass/completeness`).flush(env(COMP({}, true, true)));
+  });
+
+  it('late students: declining the second confirmation locks nothing', async () => {
+    open('School Admin', [row()], COMP());
+    const confirm = vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    button('Lock term')!.click();
+    await fixture.whenStable();
+    http.expectOne(`${API}/api/ReportClass/lock`).flush({ status: false, statusCode: 409, message: 'x', data: { needsConfirmation: true, excluded: [{ studentId: 'S9', name: 'Neha Late', rollNumber: '' }] } }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    http.expectNone(`${API}/api/ReportClass/lock`);
   });
 
   it('declining the Lock confirmation sends nothing', async () => {

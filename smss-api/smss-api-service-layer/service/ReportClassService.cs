@@ -480,21 +480,33 @@ namespace smss_api_service_layer.service
                 if (notAccepted.Count > 0)
                     return Result<LockResultDto>(409, $"Every exam subject of the term must be accepted before it can be locked. Not yet: {string.Join("; ", notAccepted.Take(6))}{(notAccepted.Count > 6 ? $"; and {notAccepted.Count - 6} more" : "")}.", null);
 
+                // A grid can only be ACCEPTED when every roster student had an explicit state, so a gap now means the student joined the section after that. Such a student must not block
+                // the lock: they are listed, the admin confirms, and they are left out of this term's results (Stage 3 treats them as INCOMPLETE).
                 var roster = await _repo.GetRosterAsync(schoolId, c.Scheme.AcademicYearId, sectionId, c.Active, ct);
-                var counts = (await _repo.GetEntryCountsAsync(schoolId, sectionId, roster.Select(r => r.StudentId).ToList(), esIds, ct)).GroupBy(x => x.ExamSubjectId).ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
+                var perStudent = (await _repo.GetStudentEntryCountsAsync(schoolId, roster.Select(r => r.StudentId).ToList(), esIds, ct)).ToDictionary(x => (x.ExamSubjectId, x.StudentId), x => x.Count);
                 var skillCounts = await _repo.GetSkillCountsAsync(schoolId, c.Scheme.AcademicYearId, ct);
-                var short_ = structure.Where(s => counts.GetValueOrDefault(s.ExamSubjectId) < roster.Count * (s.EntryMode == "GRADE" ? Math.Max(1, skillCounts.GetValueOrDefault(s.SchemeSubjectId)) : 1))
-                    .Select(s => $"{s.LabelOverride ?? s.SubjectName} ({s.ExamName})").ToList();
-                if (short_.Count > 0)
-                    return Result<LockResultDto>(409, $"Students were added to the section after these were accepted and have nothing recorded: {string.Join("; ", short_.Take(6))}. Reopen them, fill the new students in, submit and accept again.", null);
+                var late = roster.Where(r => structure.Any(s => perStudent.GetValueOrDefault((s.ExamSubjectId, r.StudentId)) < (s.EntryMode == "GRADE" ? Math.Max(1, skillCounts.GetValueOrDefault(s.SchemeSubjectId)) : 1)))
+                    .OrderBy(r => r.RollNumber, RollComparer.Instance).ThenBy(r => r.FirstName, StringComparer.OrdinalIgnoreCase).ToList();
+                var excluded = late.Select(r => new ExcludedStudentDto { StudentId = r.StudentId, Name = LeaveRules.FullName(r.FirstName, r.MiddleName, r.LastName), RollNumber = r.RollNumber ?? "" }).ToList();
+                if (excluded.Count > 0 && !req.ConfirmExcluded)
+                {
+                    var names = string.Join(", ", excluded.Take(10).Select(e => e.Name)) + (excluded.Count > 10 ? $" and {excluded.Count - 10} more" : "");
+                    return new ApiResponse<LockResultDto>
+                    {
+                        Status = false, StatusCode = 409,
+                        Message = $"{excluded.Count} student{(excluded.Count == 1 ? " was" : "s were")} added to the section after the marks were accepted and {(excluded.Count == 1 ? "has" : "have")} no marks for this term: {names}. They will be left out of this term's results and included in a later version once marks are entered and the term is locked again. Lock anyway?",
+                        Data = new LockResultDto { TermId = term.TermId, SectionId = sectionId, Locked = false, NeedsConfirmation = true, Excluded = excluded }
+                    };
+                }
 
                 var now = DateTime.UtcNow;
                 if (ts == null) { ts = new TbReportTermSection { TermId = term.TermId, SectionId = sectionId, SchemeId = c.Scheme.SchemeId, ClassId = c.Section.ClassId, SchoolId = schoolId }; _repo.Add(ts); }
                 ts.Status = "LOCKED"; ts.LockedBy = caller.UserId; ts.LockedAt = now; ts.UpdatedAt = now;
-                _repo.Add(new TbReportAudit { SchoolId = schoolId, Event = "LOCK", SchemeId = c.Scheme.SchemeId, TermId = term.TermId, SectionId = sectionId, FromStatus = "OPEN", ToStatus = "LOCKED", ActorUserId = caller.UserId, CreatedAt = now });
+                _repo.Add(new TbReportAudit { SchoolId = schoolId, Event = "LOCK", SchemeId = c.Scheme.SchemeId, TermId = term.TermId, SectionId = sectionId, FromStatus = "OPEN", ToStatus = "LOCKED", ActorUserId = caller.UserId, CreatedAt = now,
+                    ExcludedStudents = excluded.Count == 0 ? null : string.Join(",", excluded.Select(e => e.StudentId)) });
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
-                return Result(200, "Locked.", new LockResultDto { TermId = term.TermId, SectionId = sectionId, Locked = true, LockedAt = now });
+                return Result(200, excluded.Count == 0 ? "Locked." : $"Locked. {excluded.Count} late student{(excluded.Count == 1 ? " was" : "s were")} left out of this term's results.", new LockResultDto { TermId = term.TermId, SectionId = sectionId, Locked = true, LockedAt = now, Excluded = excluded });
             }
             catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation)
             { return Result<LockResultDto>(409, "This term was just locked by someone else.", null); }

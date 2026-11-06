@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -181,8 +182,26 @@ export class ClassReportComponent implements OnInit {
     const c = this.comp(); if (!c) return;
     const ok = await this.confirm.confirm({ title: 'Lock the term', message: `Lock ${t.termName} for ${c.className} ${c.sectionName}? Marks, remarks, attendance and grades for this term can't change until a School Admin unlocks it.`, confirmText: 'Lock' });
     if (!ok) return;
+    this.sendLock(t, c.sectionId, false);
+  }
+
+  /** A lock that would leave out students added after the marks were accepted first answers 409 with their names; the admin confirms and it is sent again. */
+  private sendLock(t: CompletenessTerm, sectionId: number, confirmExcluded: boolean): void {
     this.busy.set(true);
-    this.service.lock(t.termId, c.sectionId).pipe(finalize(() => this.busy.set(false))).subscribe({ next: () => { this.toast.success(`${t.termName} locked.`); this.refresh(); }, error: () => this.refresh() });
+    this.service.lock(t.termId, sectionId, confirmExcluded).pipe(finalize(() => this.busy.set(false))).subscribe({
+      next: (r) => { this.toast.success(r.excluded?.length ? `${t.termName} locked. ${r.excluded.length} late student(s) left out.` : `${t.termName} locked.`); this.refresh(); },
+      error: async (e: HttpErrorResponse) => {
+        const body = e.error as { message?: string; data?: { needsConfirmation?: boolean; excluded?: { name: string }[] } } | null;
+        if (e.status === 409 && body?.data?.needsConfirmation) {
+          const names = (body.data.excluded ?? []).map((x) => x.name);
+          const ok = await this.confirm.confirm({ title: 'Lock without these students?', message: `${names.length} student${names.length === 1 ? '' : 's'} joined after the marks were accepted and ${names.length === 1 ? 'has' : 'have'} no marks for ${t.termName}: ${names.join(', ')}. They will be left out of this term's results and included in a later version once their marks are entered and the term is locked again.`, confirmText: 'Lock anyway' });
+          if (ok) this.sendLock(t, sectionId, true);
+          return;
+        }
+        this.toast.error(body?.message ?? 'The term could not be locked.');
+        this.refresh();
+      },
+    });
   }
   protected unlock(t: CompletenessTerm): void {
     const c = this.comp(); if (!c) return;

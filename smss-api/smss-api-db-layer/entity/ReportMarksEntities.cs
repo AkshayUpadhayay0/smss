@@ -116,6 +116,8 @@ namespace smss_api_db_layer.entity
         [Column("from_status")][StringLength(10)] public string? FromStatus { get; set; }
         [Column("to_status")][StringLength(10)] public string? ToStatus { get; set; }
         [Column("reason")][StringLength(300)] public string? Reason { get; set; }
+        /// <summary>Comma-separated student ids a LOCK left out because they were added after the marks were accepted.</summary>
+        [Column("excluded_students")] public string? ExcludedStudents { get; set; }
         [Column("actor_user_id")] public long ActorUserId { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
     }

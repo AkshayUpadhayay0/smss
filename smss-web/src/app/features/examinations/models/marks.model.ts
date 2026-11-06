@@ -59,7 +59,8 @@ export interface TermAttendance {
   termId: number; termName: string; sectionId: number; from: string; to: string; today: string; source: string; workingDays: number; unmarkedDays: number; unmarkedDates: string[];
   warning?: string | null; students: TermAttendanceStudent[];
 }
-export interface LockResult { termId: number; sectionId: number; locked: boolean; lockedAt?: string | null }
+export interface ExcludedStudent { studentId: string; name: string; rollNumber: string }
+export interface LockResult { termId: number; sectionId: number; locked: boolean; lockedAt?: string | null; needsConfirmation?: boolean; excluded?: ExcludedStudent[] }
 
 // ---------------------------------------------------------------- display helpers (pure, so they are easy to test)
 export const STATUS_LABEL: Record<CellStatus, string> = { NOT_STARTED: 'Not started', DRAFT: 'Draft', SUBMITTED: 'Submitted', ACCEPTED: 'Accepted' };
