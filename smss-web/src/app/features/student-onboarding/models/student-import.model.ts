@@ -12,6 +12,8 @@ export interface ImportRow {
   fullName: string;
   gender: string;
   dateOfBirth: string;
+  /** dd/mm/yyyy as given in the file; empty when left blank (the start of the academic year is used). */
+  admissionDate?: string;
   className: string;
   sectionName: string;
   rollNumber: string;

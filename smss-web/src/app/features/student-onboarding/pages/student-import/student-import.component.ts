@@ -88,7 +88,7 @@ type Step = 'upload' | 'preview' | 'result';
               } @else {
                 <div class="table-wrap">
                   <table class="list" aria-label="Rows of the uploaded file">
-                    <thead><tr><th>Row</th><th>Status</th><th>Student</th><th>Class</th><th>Roll</th><th>Born</th><th>Guardian</th><th>Messages</th></tr></thead>
+                    <thead><tr><th>Row</th><th>Status</th><th>Student</th><th>Class</th><th>Roll</th><th>Born</th><th>Admitted</th><th>Guardian</th><th>Messages</th></tr></thead>
                     <tbody>
                       @for (r of rows(); track r.rowNumber) {
                         <tr [class]="'r-' + r.status.toLowerCase()">
@@ -98,6 +98,7 @@ type Step = 'upload' | 'preview' | 'result';
                           <td data-label="Class">{{ r.className }} {{ r.sectionName }}</td>
                           <td data-label="Roll">{{ r.rollNumber || '—' }}</td>
                           <td data-label="Born">{{ r.dateOfBirth || '—' }}</td>
+                          <td data-label="Admitted">{{ r.admissionDate || 'Year start' }}</td>
                           <td data-label="Guardian">{{ r.guardian || '—' }}@if (r.guardianMobile) { <small>{{ r.guardianMobile }}</small> }</td>
                           <td data-label="Messages" class="msgs">
                             @for (m of r.messages; track m) { <span>{{ m }}</span> }

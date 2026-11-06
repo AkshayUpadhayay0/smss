@@ -11,7 +11,7 @@ import { StudentImportComponent } from './student-import.component';
 const API = environment.apiUrl;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 const row = (n: number, status: ImportRow['status'], messages: string[] = []): ImportRow =>
-  ({ rowNumber: n, status, messages, admissionNumber: '', fullName: `Student ${n}`, gender: 'Male', dateOfBirth: '01/02/2016', className: 'Class 3', sectionName: 'A', rollNumber: String(n), guardian: 'Dad', guardianMobile: '9876543210' });
+  ({ rowNumber: n, status, messages, admissionNumber: '', fullName: `Student ${n}`, gender: 'Male', dateOfBirth: '01/02/2016', admissionDate: n === 2 ? '15/06/2024' : '', className: 'Class 3', sectionName: 'A', rollNumber: String(n), guardian: 'Dad', guardianMobile: '9876543210' });
 const PREVIEW = (rows: ImportRow[], fileErrors: string[] = []): ImportPreview => {
   const errors = rows.filter((r) => r.status === 'ERROR').length;
   const warnings = rows.filter((r) => r.status === 'WARNING').length;
@@ -68,6 +68,12 @@ describe('StudentImportComponent', () => {
     req.flush(env(p));
     fixture.detectChanges();
   }
+
+  it('the preview shows the admission date from the file, and says the academic year start is used when it was left blank', () => {
+    check(PREVIEW([row(2, 'OK'), row(3, 'OK')]));
+    const cells = [...el().querySelectorAll('td[data-label="Admitted"]')].map((c) => c.textContent?.trim());
+    expect(cells).toEqual(['15/06/2024', 'Year start']);
+  });
 
   it('starts on the upload step: instructions, a template button, and Check file disabled until a file is chosen', () => {
     expect(text()).toContain('Download the template');

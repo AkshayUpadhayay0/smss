@@ -11,6 +11,8 @@ namespace smss_api_service_layer.dto
         public string FullName { get; set; } = "";
         public string Gender { get; set; } = "";
         public string DateOfBirth { get; set; } = "";
+        /// <summary>The admission date given in the file (dd/mm/yyyy), or empty when the file left it blank (the start of the academic year is used).</summary>
+        public string AdmissionDate { get; set; } = "";
         public string ClassName { get; set; } = "";
         public string SectionName { get; set; } = "";
         public string RollNumber { get; set; } = "";

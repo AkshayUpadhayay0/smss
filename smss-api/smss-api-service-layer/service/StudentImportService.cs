@@ -32,6 +32,7 @@ namespace smss_api_service_layer.service
             ("cls", "Class", 14), ("sec", "Section", 10), ("roll", "Roll number", 12),
             ("fname", "Father name", 24), ("fphone", "Father phone", 15), ("mname", "Mother name", 24), ("mphone", "Mother phone", 15),
             ("gname", "Guardian name", 24), ("gphone", "Guardian phone", 15), ("addr", "Address", 36),
+            ("admdate", "Admission date", 15),   // optional; appended so a file made from the older template (without it) still imports
         };
         private static readonly string[] RequiredKeys = { "name", "gender", "dob", "cls", "sec" };
         private static readonly Dictionary<string, string> HeaderAliases = new()
@@ -46,6 +47,7 @@ namespace smss_api_service_layer.service
             ["mothername"] = "mname", ["motherphone"] = "mphone", ["mothermobile"] = "mphone",
             ["guardianname"] = "gname", ["guardianphone"] = "gphone", ["guardianmobile"] = "gphone",
             ["address"] = "addr",
+            ["admissiondate"] = "admdate", ["dateofadmission"] = "admdate", ["dateofjoining"] = "admdate", ["joiningdate"] = "admdate",
         };
         private static readonly string[] DateFormats = { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd" };
         private static readonly Regex Mobile = new(Rx.Mobile, RegexOptions.Compiled);
@@ -64,6 +66,7 @@ namespace smss_api_service_layer.service
             public int Row;
             public Dictionary<string, string> V = new();
             public DateTime? Date;               // when the DOB cell held a real Excel date
+            public DateTime? AdmDate;            // when the admission date cell held a real Excel date
             public bool Formula;
         }
 
@@ -78,6 +81,7 @@ namespace smss_api_service_layer.service
             public string ClassName = "", SectionName = "";
             public int? GenderId;
             public DateTime? Dob;
+            public DateTime? AdmDate;            // the optional admission date; null = the start of the current academic year (as before)
             public string First = "", Last = "";
             public string? Middle, Adm, Roll, Address;
             public List<Guardian> Guardians = new();
@@ -162,7 +166,7 @@ namespace smss_api_service_layer.service
                         for (var n = 0; n < v.Rows.Count; n++)
                         {
                             var r = v.Rows[n];
-                            var admDate = AdmissionDateFor(ctx.Year, r.Dob!.Value, today);
+                            var admDate = r.AdmDate ?? AdmissionDateFor(ctx.Year, r.Dob!.Value, today);   // the column when given, else the start of the academic year as before
                             var number = r.Adm;
                             if (number == null)
                             {
@@ -417,6 +421,21 @@ namespace smss_api_service_layer.service
             var addr = G("addr");
             if (addr.Length > 200) Err("Address is longer than 200 characters."); else if (addr.Length > 0) r.Address = addr;
 
+            // ---- admission date (optional)
+            var admText = G("admdate");
+            if (raw.AdmDate != null) r.AdmDate = raw.AdmDate.Value.Date;
+            else if (admText.Length > 0)
+            {
+                if (DateTime.TryParseExact(admText, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var ad)) r.AdmDate = ad.Date;
+                else Err($"Admission date '{Clip(admText)}' is not a date. Use dd/mm/yyyy, for example 15/06/2024, or leave it blank.");
+            }
+            if (r.AdmDate != null)
+            {
+                if (r.AdmDate.Value > today) { Err("Admission date cannot be in the future."); r.AdmDate = null; }
+                else if (r.Dob != null && r.AdmDate.Value < r.Dob.Value) { Err("Admission date cannot be before the date of birth."); r.AdmDate = null; }
+                else if (r.AdmDate.Value.Year < 1990) { Err("Admission date looks wrong (before 1990)."); r.AdmDate = null; }
+            }
+
             // ---- guardians: father, mother, guardian. A block needs a name AND a valid phone. The first complete block is the primary guardian.
             foreach (var (nameKey, phoneKey, label, relationship) in new[] { ("fname", "fphone", "Father", "FATHER"), ("mname", "mphone", "Mother", "MOTHER"), ("gname", "gphone", "Guardian", "GUARDIAN") })
             {
@@ -436,7 +455,7 @@ namespace smss_api_service_layer.service
             r.Dto = new ImportRowDto
             {
                 AdmissionNumber = r.Adm ?? "", FullName = fullName, Gender = gender,
-                DateOfBirth = dobShown, ClassName = r.ClassName.Length > 0 ? r.ClassName : cls, SectionName = r.SectionName.Length > 0 ? r.SectionName : sec,
+                DateOfBirth = dobShown, AdmissionDate = r.AdmDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", ClassName = r.ClassName.Length > 0 ? r.ClassName : cls, SectionName = r.SectionName.Length > 0 ? r.SectionName : sec,
                 RollNumber = r.Roll ?? "", Guardian = primary?.Name ?? "", GuardianMobile = primary?.Mobile ?? ""
             };
             return r;
@@ -478,6 +497,7 @@ namespace smss_api_service_layer.service
                         var read = Cell(cell);
                         if (read.Formula) { raw.Formula = true; any = true; continue; }
                         if (key == "dob" && read.Date != null) { raw.Date = read.Date; any = true; continue; }
+                        if (key == "admdate" && read.Date != null) { raw.AdmDate = read.Date; any = true; continue; }
                         if (read.Text.Length > 0) { raw.V[key] = ExcelFileGuard.Unneutralize(read.Text); any = true; }
                     }
                     if (!any) continue;
@@ -546,9 +566,11 @@ namespace smss_api_service_layer.service
                 h.Style.Font.Bold = true; h.Style.Font.FontColor = XLColor.White; h.Style.Fill.BackgroundColor = XLColor.FromHtml("#7C5CFC");
                 h.Style.Alignment.WrapText = true; h.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                 ws.Column(i + 1).Width = Columns[i].Width;
-                if (Columns[i].Key != "dob") ws.Column(i + 1).Style.NumberFormat.Format = "@";    // text: phones and numbers keep their zeros
+                if (Columns[i].Key != "dob" && Columns[i].Key != "admdate") ws.Column(i + 1).Style.NumberFormat.Format = "@";    // text: phones and numbers keep their zeros
             }
             ws.Column(4).Style.DateFormat.Format = "dd/mm/yyyy";
+            var admCol = Array.FindIndex(Columns, c => c.Key == "admdate") + 1;
+            ws.Column(admCol).Style.DateFormat.Format = "dd/mm/yyyy";
             ws.Row(1).Height = 30;
             ws.SheetView.FreezeRows(1);
             var last = MaxRows + 1;
@@ -560,6 +582,9 @@ namespace smss_api_service_layer.service
             var dv = ws.Range(2, 4, last, 4).CreateDataValidation();
             dv.Date.Between(new DateTime(1990, 1, 1), new DateTime(2100, 1, 1));
             dv.ShowErrorMessage = true; dv.ErrorTitle = "Date of birth"; dv.ErrorMessage = "Enter a date as dd/mm/yyyy.";
+            var dva = ws.Range(2, admCol, last, admCol).CreateDataValidation();
+            dva.Date.Between(new DateTime(1990, 1, 1), new DateTime(2100, 1, 1));
+            dva.IgnoreBlanks = true; dva.ShowErrorMessage = true; dva.ErrorTitle = "Admission date"; dva.ErrorMessage = "Enter a date as dd/mm/yyyy, or leave it blank.";
 
             if (rows != null)
             {
@@ -578,6 +603,7 @@ namespace smss_api_service_layer.service
                         var key = Columns[i].Key;
                         var cell = ws.Cell(r, i + 1);
                         if (key == "dob" && row.Raw.Date != null) { cell.Value = row.Raw.Date.Value.Date; continue; }
+                        if (key == "admdate" && row.Raw.AdmDate != null) { cell.Value = row.Raw.AdmDate.Value.Date; continue; }
                         var text = row.Raw.V.GetValueOrDefault(key, "");
                         if (text.Length > 0) PutText(cell, text);
                     }
@@ -604,6 +630,7 @@ namespace smss_api_service_layer.service
                 ("Gender: pick Male, Female or Other from the drop-down.", false),
                 ("Class and Section: pick from the drop-downs. The section must belong to the class (see the Lists sheet).", false),
                 ("Phone: a 10-digit Indian mobile number starting 6-9. +91 or a leading 0 is removed for you.", false),
+                ("Admission date: optional, dd/mm/yyyy (a real Excel date also works). It cannot be in the future or before the date of birth. Leave it blank and the start of the current academic year is used.", false),
                 ("Admission number: optional. Leave it blank and the system gives the next number (ADMNO + year + 4 digits).", false),
                 ("Roll number: optional, but it cannot repeat inside a section.", false),
                 ($"At most {MaxRows} students per file and 1 MB. Only .xlsx; no macros, no formulas (paste values).", false),
