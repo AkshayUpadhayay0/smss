@@ -219,7 +219,7 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave | Students | Exam Schedule', 'Your classroom at a glance'],
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave | Students | Examinations', 'Your classroom at a glance'],
       ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results | My Leave | My Profile | My Fees', 'Your school day at a glance'],
     ])('%s login', (role, who, menu, dashboardText) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));

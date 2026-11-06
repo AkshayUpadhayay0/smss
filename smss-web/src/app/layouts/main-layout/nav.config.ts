@@ -56,6 +56,8 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Report Schemes', route: '/examinations/schemes' },
       { label: 'Activity Areas', route: '/examinations/activity-areas' },
       { label: 'Exam Schedule', route: '/examinations/schedule' },
+      { label: 'Marks Entry', route: '/examinations/marks' },
+      { label: 'My Class Report', route: '/examinations/class-report' },
     ],
   },
   {

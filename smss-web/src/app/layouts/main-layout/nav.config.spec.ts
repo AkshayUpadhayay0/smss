@@ -88,14 +88,11 @@ describe('visibleNav: Attendance Report', () => {
 
 describe('visibleNav: Examinations group', () => {
   const exam = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Examinations');
-  it('School Admin and Principal get the group with the four setup pages', () => {
-    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect((exam([role])?.children ?? []).map((c) => c.label)).toEqual(['Grade Scales', 'Report Schemes', 'Activity Areas', 'Exam Schedule']);
+  it('School Admin and Principal get the group with the setup pages, marks entry and the class report', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect((exam([role])?.children ?? []).map((c) => c.label)).toEqual(['Grade Scales', 'Report Schemes', 'Activity Areas', 'Exam Schedule', 'Marks Entry', 'My Class Report']);
   });
-  it('a Teacher sees only Exam Schedule, as a plain item', () => {
-    expect(exam([ROLES.TEACHER])).toBeUndefined();
-    const item = visibleNav([ROLES.TEACHER]).find((i) => i.label === 'Exam Schedule');
-    expect(item?.route).toBe('/examinations/schedule');
-    expect(item?.children).toBeUndefined();
+  it('a Teacher sees Marks Entry, My Class Report and the Exam Schedule (no setup pages)', () => {
+    expect((exam([ROLES.TEACHER])?.children ?? []).map((c) => c.label)).toEqual(['Exam Schedule', 'Marks Entry', 'My Class Report']);
   });
   it('other roles see nothing of it', () => {
     for (const role of [ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) {

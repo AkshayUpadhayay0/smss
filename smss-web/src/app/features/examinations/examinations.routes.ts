@@ -9,5 +9,7 @@ export const EXAMINATIONS_ROUTES: Routes = [
   { path: 'examinations/schemes/blank', loadComponent: () => import('./pages/scheme-editor/scheme-editor.component').then((m) => m.SchemeEditorComponent) },
   { path: 'examinations/schemes/:schemeId', loadComponent: () => import('./pages/scheme-editor/scheme-editor.component').then((m) => m.SchemeEditorComponent) },
   { path: 'examinations/activity-areas', loadComponent: () => import('./pages/activity-areas/activity-areas.component').then((m) => m.ActivityAreasComponent) },
+  { path: 'examinations/marks', loadComponent: () => import('./pages/marks-entry/marks-entry.component').then((m) => m.MarksEntryComponent) },
+  { path: 'examinations/class-report', loadComponent: () => import('./pages/class-report/class-report.component').then((m) => m.ClassReportComponent) },
   { path: 'examinations/schedule', loadComponent: () => import('./pages/exam-schedule/exam-schedule.component').then((m) => m.ExamScheduleComponent) },
 ];
