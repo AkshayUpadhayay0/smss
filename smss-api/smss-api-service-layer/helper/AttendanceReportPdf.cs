@@ -14,8 +14,7 @@ namespace smss_api_service_layer.helper
 
         public static byte[] Render(MonthlyAttendanceReportDto r, string schoolName)
         {
-            // QuestPDF's licence and the bundled fonts (Hind) are set up once by the ID-card renderer's static constructor; touching it first makes sure they are ready.
-            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(IdCardPdf).TypeHandle);
+            PdfBootstrap.Ensure();   // QuestPDF licence and the bundled fonts (Hind), set up once for the process
             return Document.Create(doc => doc.Page(page =>
             {
                 page.Size(PageSizes.A4.Landscape());

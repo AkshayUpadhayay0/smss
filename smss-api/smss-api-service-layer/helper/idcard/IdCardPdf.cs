@@ -22,17 +22,7 @@ namespace smss_api_service_layer.helper.idcard
         private const float GapX = 5f, GapY = 3f;                 // gutters between cards, mm (cut room)
         private const float A4W = 210f, A4H = 297f;
 
-        static IdCardPdf()
-        {
-            // Community licence: free for organisations under USD 1M annual gross revenue. Set once for the process.
-            QuestPDF.Settings.License = LicenseType.Community;
-            // A character no bundled font has (an emoji, a rare script) must not fail the whole PDF: it prints as a blank box instead.
-            QuestPDF.Settings.ThrowOnMissingTextGlyphs = false;
-            // Hind (Latin + Devanagari) and PT Serif ship inside the assembly, so the output does not depend on the fonts of the server.
-            var asm = typeof(IdCardPdf).Assembly;
-            foreach (var name in asm.GetManifestResourceNames().Where(n => n.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)))
-                FontManager.RegisterFontFromEmbeddedResource(asm, name);
-        }
+        static IdCardPdf() => PdfBootstrap.Ensure();   // licence, glyph rule and the embedded fonts: shared with every other PDF in the application
 
         public static IdCardPalette PaletteOf(IdCardBrand brand) => IdCardPalette.From(brand.Primary, brand.Secondary);
 
