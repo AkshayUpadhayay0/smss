@@ -17,3 +17,9 @@ Docs/demo-credentials.txt
 **/*credentials*.txt
 Docs/smss-db_*.sql
 *.dump
+
+# Database dumps and backups: they hold real personal data and password hashes (never commit). Migration scripts Docs/smss-<feature>.sql stay tracked.
+Docs/smss-db*.sql
+*.dump
+*.bak
+*backup*
