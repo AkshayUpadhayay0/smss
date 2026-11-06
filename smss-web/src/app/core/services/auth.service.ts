@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, finalize, map, of, shareReplay, tap, throwError, catchError } from 'rxjs';
 import { AuthSession, AuthUser, ChangePasswordRequest, LoginRequest, LoginResponse } from '../models/auth.model';
 import { ApiService } from './api.service';
+import { SecureImageService } from './secure-image.service';
 
 const STORAGE_KEY = 'smss.session';
 const BASE = '/api/Auth';
@@ -18,6 +19,7 @@ const BASE = '/api/Auth';
 export class AuthService {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly secureImages = inject(SecureImageService);
 
   private readonly session = signal<AuthSession | null>(this.load());
   private refreshing$: Observable<string> | null = null;
@@ -121,6 +123,7 @@ export class AuthService {
   private clear(): void {
     this.session.set(null);
     this.clearStorage();
+    this.secureImages.clear();   // private images (student photos) held in memory die with the session
   }
 
   private load(): AuthSession | null {

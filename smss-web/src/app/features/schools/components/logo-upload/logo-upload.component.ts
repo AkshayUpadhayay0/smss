@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
-import { ButtonComponent, IconComponent } from '../../../../shared/components';
+import { ButtonComponent, IconComponent, SecureImageComponent } from '../../../../shared/components';
 import { LOGO_ACCEPT, validateLogoFile } from '../../utils/logo.util';
 
 export interface LogoChange {
@@ -15,14 +15,14 @@ export interface LogoChange {
  */
 @Component({
   selector: 'app-logo-upload',
-  imports: [ButtonComponent, IconComponent],
+  imports: [ButtonComponent, IconComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './logo-upload.component.scss',
   template: `
     <div class="logo-upload">
       <div class="preview" [class.empty]="!shownUrl()">
         @if (shownUrl(); as url) {
-          <img [src]="url" [alt]="alt()" />
+          <app-secure-img [src]="url" [alt]="alt()" />
         } @else {
           <app-icon [name]="icon()" [size]="32" />
         }

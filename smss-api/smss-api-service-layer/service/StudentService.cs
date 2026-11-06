@@ -53,7 +53,7 @@ namespace smss_api_service_layer.service
                         GenderName = r.GenderId.HasValue ? genders.GetValueOrDefault(r.GenderId.Value) : null,
                         StatusName = statuses.GetValueOrDefault(r.StatusId, "Unknown"),
                         EnrollmentId = r.EnrollmentId,
-                        ProfilePhotoUrl = r.ProfilePhotoUrl,
+                        ProfilePhotoUrl = StudentPhotos.ApiPath(r.StudentId, r.ProfilePhotoUrl),
                         FeeStatus = FeeSchedule.Overall(fees.ContainsKey(r.StudentId), fees.GetValueOrDefault(r.StudentId)?.TotalDue ?? 0, fees.GetValueOrDefault(r.StudentId)?.TotalPaid ?? 0, fees.GetValueOrDefault(r.StudentId)?.OverdueCount ?? 0),
                         FeeTotalDue = fees.GetValueOrDefault(r.StudentId)?.TotalDue,
                         FeeTotalPaid = fees.GetValueOrDefault(r.StudentId)?.TotalPaid,
@@ -96,7 +96,7 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully fetched", new StudentMyProfileDto
                 {
                     StudentId = s.StudentId, FullName = FullName(s.FirstName, s.MiddleName, s.LastName), AdmissionNumber = s.AdmissionNumber,
-                    StatusName = statuses.GetValueOrDefault(s.StatusId, "Unknown"), ProfilePhotoUrl = s.ProfilePhotoUrl,
+                    StatusName = statuses.GetValueOrDefault(s.StatusId, "Unknown"), ProfilePhotoUrl = StudentPhotos.ApiPath(s.StudentId, s.ProfilePhotoUrl),
                     AcademicYearName = current?.AcademicYearName, ClassName = current?.ClassName, SectionName = current?.SectionName, RollNumber = current?.RollNumber,
                     GenderName = s.GenderId.HasValue ? genders.GetValueOrDefault(s.GenderId.Value) : null, DateOfBirth = s.DateOfBirth,
                     BloodGroupName = s.BloodGroupId.HasValue ? await _repo.GetBloodGroupNameAsync(s.BloodGroupId.Value, ct) : null,
@@ -138,7 +138,7 @@ namespace smss_api_service_layer.service
                     MobileNumber = s.MobileNumber,
                     StatusName = statuses.GetValueOrDefault(s.StatusId, "Unknown"),
                     AadharNumberMasked = Mask(s.AadharNumber),
-                    ProfilePhotoUrl = s.ProfilePhotoUrl,
+                    ProfilePhotoUrl = StudentPhotos.ApiPath(s.StudentId, s.ProfilePhotoUrl),
                     Guardians = guardians
                         .OrderByDescending(g => g.IsPrimary).ThenBy(g => g.FirstName)
                         .Select(g => new GuardianSummaryDto
@@ -217,13 +217,13 @@ namespace smss_api_service_layer.service
                 await _repo.SaveChangesAsync(ct);
                 committed = true;
 
-                if (!string.IsNullOrEmpty(oldUrl)) _storage.Delete(oldUrl);   // replaced: remove the previous file
+                if (!string.IsNullOrEmpty(oldUrl)) _storage.DeleteStudentPhoto(oldUrl);   // replaced: remove the previous file
 
-                return Result(200, "Photo uploaded successfully.", new StudentPhotoDto { StudentId = studentId, ProfilePhotoUrl = savedUrl });
+                return Result(200, "Photo uploaded successfully.", new StudentPhotoDto { StudentId = studentId, ProfilePhotoUrl = StudentPhotos.ApiPath(studentId, savedUrl) });
             }
             catch (Exception ex)
             {
-                if (savedUrl != null && !committed) _storage.Delete(savedUrl);   // no orphan file if the DB save failed
+                if (savedUrl != null && !committed) _storage.DeleteStudentPhoto(savedUrl);   // no orphan file if the DB save failed
                 return Error<StudentPhotoDto>(ex, "uploading student photo");
             }
         }
@@ -243,7 +243,7 @@ namespace smss_api_service_layer.service
                 student.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync(ct);
 
-                _storage.Delete(oldUrl);
+                _storage.DeleteStudentPhoto(oldUrl);
                 return Result(200, "Photo removed successfully.", new StudentPhotoDto { StudentId = studentId, ProfilePhotoUrl = null });
             }
             catch (Exception ex) { return Error<StudentPhotoDto>(ex, "removing student photo"); }

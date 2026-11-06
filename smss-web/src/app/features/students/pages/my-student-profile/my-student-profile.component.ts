@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { DashboardAttendance } from '../../../dashboard/models/student-dashboard.model';
 import { StudentDashboardService } from '../../../dashboard/services/student-dashboard.service';
@@ -25,7 +24,7 @@ function initialsOf(name?: string | null): string {
  */
 @Component({
   selector: 'app-my-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentMyLeaveComponent, StudentMyFeesComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent, StudentMyLeaveComponent, StudentMyFeesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './my-student-profile.component.scss',
   templateUrl: './my-student-profile.component.html',
@@ -49,7 +48,7 @@ export class MyStudentProfileComponent implements OnInit {
   protected readonly fmt = formatDate;
   protected readonly initialsOf = initialsOf;
   protected readonly breadcrumbs = [{ label: 'My Profile' }];
-  protected readonly photoUrl = computed(() => toUploadUrl(this.profile()?.profilePhotoUrl));
+  protected readonly photoUrl = computed(() => this.profile()?.profilePhotoUrl ?? null);
   protected readonly initials = computed(() => initialsOf(this.profile()?.fullName));
   /** The Leave tab loads its requests the first time it is opened. */
   protected readonly leaveOpened = signal(false);

@@ -9,7 +9,7 @@ namespace smss_api_service_layer.@interface
         // Saves a school logo and returns its relative public URL
         Task<string> SaveSchoolLogoAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
 
-        // Saves a student's profile photo under {schoolCode}/students/{studentId}/ and returns its relative public URL
+        // Saves a student's profile photo to the PRIVATE store under {schoolCode}/students/{studentId}/ and returns its storage KEY (never a public URL)
         Task<string> SaveStudentPhotoAsync(string schoolCode, string studentId, Stream content, string extension, CancellationToken ct);
 
         // Saves an employee's photo under {schoolCode}/employees/{employeeId}/ and returns its relative public URL
@@ -25,6 +25,9 @@ namespace smss_api_service_layer.@interface
         // A school's principal signature for ID cards goes to the same PRIVATE store: {schoolCode}/id-card/signature_<timestamp><ext>. The returned key is what the database keeps.
         Task<string> SavePrincipalSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
         Stream? OpenPrivate(string storageKey);
+        // A stored student photo: a private key, or (until the one-off migration has run) a legacy public /uploads path. Null when missing. Never throws.
+        Stream? OpenStudentPhoto(string stored);
+        void DeleteStudentPhoto(string stored);
         void DeletePrivate(string storageKey);
 
         // Server-side read of a file saved under the uploads root, by the relative URL the database keeps (logo, student photo). Used to embed

@@ -42,7 +42,7 @@
         <div class="hero">
           <span class="photo">
             @if (photoUrl(); as src) {
-              <img [src]="src" [alt]="s.fullName + ' photo'" />
+              <app-secure-img [src]="src" [alt]="s.fullName + ' photo'">{{ initials() }}</app-secure-img>
             } @else {
               {{ initials() }}
             }

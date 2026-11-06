@@ -66,7 +66,7 @@ namespace smss_api_service_layer.service
                         .Select(r => new MyClassStudentDto
                         {
                             StudentId = r.StudentId, AdmissionNumber = r.AdmissionNumber, FullName = LeaveRules.FullName(r.FirstName, r.MiddleName, r.LastName), RollNumber = r.RollNumber,
-                            GenderName = r.GenderId.HasValue ? genders.GetValueOrDefault(r.GenderId.Value) : null, StatusName = statuses.GetValueOrDefault(r.StatusId, "Unknown"), ProfilePhotoUrl = r.ProfilePhotoUrl
+                            GenderName = r.GenderId.HasValue ? genders.GetValueOrDefault(r.GenderId.Value) : null, StatusName = statuses.GetValueOrDefault(r.StatusId, "Unknown"), ProfilePhotoUrl = StudentPhotos.ApiPath(r.StudentId, r.ProfilePhotoUrl)
                         }).ToList();
                 }
 

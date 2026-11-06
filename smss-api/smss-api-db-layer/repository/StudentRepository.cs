@@ -84,6 +84,12 @@ namespace smss_api_db_layer.repository
         public Task<string?> GetSchoolCodeAsync(string schoolId, CancellationToken ct) =>
             _db.Schools.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.SchoolCode).FirstOrDefaultAsync(ct);
 
+        public async Task<(bool Exists, string? Stored)> GetPhotoKeyAsync(string schoolId, string studentId, CancellationToken ct)
+        {
+            var row = await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == studentId).Select(s => new { s.ProfilePhotoUrl }).FirstOrDefaultAsync(ct);
+            return (row != null, row?.ProfilePhotoUrl);
+        }
+
         public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
             _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
 

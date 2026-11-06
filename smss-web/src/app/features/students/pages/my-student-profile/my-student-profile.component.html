@@ -11,7 +11,7 @@
         <div class="identity">
           <span class="photo">
             @if (photoUrl(); as src) {
-              <img [src]="src" [alt]="p.fullName + ' photo'" />
+              <app-secure-img [src]="src" [alt]="p.fullName + ' photo'"><span class="initials" aria-hidden="true">{{ initials() }}</span></app-secure-img>
             } @else {
               <span class="initials" aria-hidden="true">{{ initials() }}</span>
             }

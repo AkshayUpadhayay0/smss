@@ -76,6 +76,10 @@ namespace smss_api.Helpers
         /// A Student or Guardian login. These accounts must never read another student's record or change anything about students, so the student endpoints
         /// refuse them outright (the staff roles, including a custom role, keep the read access they had).
         /// </summary>
+        public static bool IsPrincipal(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Principal);
+
+        public static bool IsGuardianLogin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Guardian);
+
         public static bool IsStudentOrGuardianLogin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student, RoleNames.Guardian);
 
         /// <summary>The platform owner login. Only the Super Admin bootstrap creates it. Subscription and billing is exclusive to this role.</summary>

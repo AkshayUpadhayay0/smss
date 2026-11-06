@@ -243,7 +243,7 @@ namespace smss_api_service_layer.service
             var had = new List<bool>(rows.Count);
             foreach (var r in rows)
             {
-                var photo = IdCardPicture.TryCreate(ReadUpload(r.ProfilePhotoUrl));
+                var photo = IdCardPicture.TryCreate(ReadPhoto(r.ProfilePhotoUrl));
                 guardians.TryGetValue(r.StudentId, out var gs);
                 gs ??= new();
                 string? Parent(string relationship) => gs.FirstOrDefault(g => string.Equals(g.Relationship, relationship, StringComparison.OrdinalIgnoreCase))?.Name;
@@ -265,6 +265,25 @@ namespace smss_api_service_layer.service
                 had.Add(photo != null);
             }
             return (cards, had);
+        }
+
+        /// <summary>A student's photo, read from PRIVATE storage (a not-yet-migrated public /uploads path is still understood).</summary>
+        private byte[]? ReadPhoto(string? stored)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return null;
+            try
+            {
+                using var stream = _storage.OpenStudentPhoto(stored);
+                if (stream == null) return null;
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                return ms.Length is > 0 and <= MaxImageBytes ? ms.ToArray() : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read a student photo for an ID card");
+                return null;
+            }
         }
 
         private byte[]? ReadUpload(string? relativeUrl)

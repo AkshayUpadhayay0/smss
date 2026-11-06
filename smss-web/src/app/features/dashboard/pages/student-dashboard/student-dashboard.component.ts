@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { toUploadUrl, initialsOf } from '../../../../core/utils/upload-url';
-import { CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { initialsOf } from '../../../../core/utils/upload-url';
+import { CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent, SecureImageComponent } from '../../../../shared/components';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { day } from '../../../homework/utils/homework-format';
 import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
@@ -46,7 +46,7 @@ const RESULT_COLUMNS: TableColumn<ResultRow>[] = [
  */
 @Component({
   selector: 'app-student-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, StudentMyIdCardComponent, TableComponent],
+  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, SecureImageComponent, StudentMyIdCardComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-dashboard.component.scss',
   templateUrl: './student-dashboard.component.html',
@@ -68,7 +68,6 @@ export class StudentDashboardComponent implements OnInit {
   protected readonly preview = snippet;
   protected readonly when = describeWhen;
   protected readonly initials = initialsOf;
-  protected readonly photoUrl = toUploadUrl;
   protected readonly day = day;
 
   protected readonly data = signal<StudentDashboard | null>(null);

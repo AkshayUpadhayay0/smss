@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { initialsOf } from '../../../../core/utils/upload-url';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent, SecureImageComponent } from '../../../../shared/components';
 import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -30,7 +30,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -89,7 +89,7 @@ export class StudentProfileComponent implements OnInit {
 
   protected readonly hasEnrollment = computed(() => !!this.student()?.enrollmentId);
 
-  protected readonly photoUrl = computed(() => toUploadUrl(this.student()?.profilePhotoUrl));
+  protected readonly photoUrl = computed(() => this.student()?.profilePhotoUrl ?? null);
   protected readonly initials = computed(() => initialsOf(this.student()?.fullName));
   protected readonly photoDialogOpen = signal(false);
 

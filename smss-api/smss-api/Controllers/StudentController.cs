@@ -18,9 +18,11 @@ namespace smss_api.Controllers
         private readonly IMyStudentsService _myStudents;
         private readonly IStudentMyFeesService _myFees;
         private readonly IStudentIdCardService _idCards;
+        private readonly IStudentPhotoService _photos;
 
-        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents, IStudentMyFeesService myFees, IStudentIdCardService idCards)
+        public StudentController(IStudentService service, IStudentLoginService loginService, IMyStudentsService myStudents, IStudentMyFeesService myFees, IStudentIdCardService idCards, IStudentPhotoService photos)
         {
+            _photos = photos;
             _myFees = myFees;
             _idCards = idCards;
             _service = service;
@@ -51,6 +53,22 @@ namespace smss_api.Controllers
         // Writes (photo upload / remove, create login): School Admin only.
         private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
             User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
+
+        // GET api/Student/{studentId}/photo   (the photo, from PRIVATE storage; there is no public URL for a student photo)
+        // Who: a Student login only for their own photo; a Teacher only for students in their own sections (same scope as My Students); every other staff role as for the student
+        // profile; a Guardian login never. Another school's student is a 404. The answer carries a content type, Cache-Control: private and an ETag (If-None-Match gives a 304).
+        // A literal "photo" segment beats the {schoolId}/{studentId} route parameters below it.
+        [HttpGet("{studentId:length(1,20)}/photo")]
+        public async Task<IActionResult> GetPhoto(string studentId, CancellationToken ct)
+        {
+            if (User.IsGuardianLogin()) return this.Forbidden("Guardian accounts cannot view student photos.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var viewer = User.IsStudent() ? PhotoViewer.Student : User.IsTeacher() && !User.IsSchoolAdmin() && !User.IsPrincipal() ? PhotoViewer.Teacher : PhotoViewer.Staff;
+            var r = await _photos.GetAsync(User.GetSchoolId(), userId, viewer, studentId, ct);
+            if (r.Content == null) return Respond(r.StatusCode, r.Message);
+            Response.Headers.CacheControl = "private, no-cache";   // the browser may keep it but must revalidate (a cheap 304 through the ETag); no shared cache may store it
+            return File(r.Content, r.ContentType, lastModified: null, entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue(r.ETag));
+        }
 
         // GET api/Student/me   (a Student login's OWN profile only; there is no id to change: school and student come from the token)
         // Declared apart from the staff reads on purpose: those stay closed to Student logins (section 36's lockdown). Same pattern as GET api/Employee/me.

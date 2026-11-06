@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
 import { MyClass, MyClassSection, MyClassStudentRow } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
@@ -55,7 +54,7 @@ export class MyStudentsComponent implements OnInit {
       title: `${section.className} – ${section.sectionName}`,
       rows: section.students.map((s) => ({
         studentId: s.studentId,
-        photoUrl: toUploadUrl(s.profilePhotoUrl) ?? '',
+        photoUrl: s.profilePhotoUrl ?? '',
         rollNumber: s.rollNumber ?? '—',
         admissionNumber: s.admissionNumber,
         fullName: s.fullName,

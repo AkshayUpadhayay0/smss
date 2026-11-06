@@ -23,7 +23,6 @@ import { AcademicYear } from '../../../school-setup/models/academic-year.model';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
 import { ToastService } from '../../../../core/services/toast.service';
 import { dueStatusTone } from '../../models/student-billing.model';
 import { IdCardBulkResult, StudentListItem, StudentRow } from '../../models/student.model';
@@ -115,7 +114,7 @@ export class StudentListComponent implements OnInit {
   private readonly rows = computed<StudentRow[]>(() =>
     this.items().map((s) => ({
       studentId: s.studentId,
-      photoUrl: toUploadUrl(s.profilePhotoUrl) ?? '',
+      photoUrl: s.profilePhotoUrl ?? '',
       rollNumber: s.rollNumber ?? '',
       admissionNumber: s.admissionNumber,
       fullName: s.fullName,

@@ -12,3 +12,4 @@ export * from './toast-container/toast-container.component';
 export * from './logo/logo.component';
 export * from './modal/modal.component';
 export * from './textarea/textarea.component';
+export * from './secure-image/secure-image.component';

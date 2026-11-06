@@ -41,6 +41,8 @@ namespace smss_api_db_layer.@interface
         Task<string?> GetStudentLoginIdAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>The login id (org_user_id) of a user of this school; for a student's login it IS their student id.</summary>
         Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
+        /// <summary>Whether the student exists in THIS school, and the stored photo key (null = no photo).</summary>
+        Task<(bool Exists, string? Stored)> GetPhotoKeyAsync(string schoolId, string studentId, CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);
         Task<List<StudentEnrollmentRow>> GetEnrollmentsAsync(string schoolId, string studentId, CancellationToken ct);
         Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, string studentId, CancellationToken ct);

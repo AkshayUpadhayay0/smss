@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, TemplateRef, contentChild, input, output } from '@angular/core';
+import { SecureImageComponent } from '../secure-image/secure-image.component';
 import { IconComponent } from '../icon/icon.component';
 
 export type SortDirection = 'asc' | 'desc';
@@ -32,7 +33,7 @@ export interface SortChange {
  */
 @Component({
   selector: 'app-table',
-  imports: [NgTemplateOutlet, IconComponent],
+  imports: [NgTemplateOutlet, IconComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './table.component.scss',
   template: `
@@ -81,7 +82,7 @@ export interface SortChange {
                     } @else if (col.type === 'avatar') {
                       <span class="avatar">
                         @if (cell(row, col.key); as src) {
-                          <img [src]="src" alt="" />
+                          <app-secure-img [src]="$any(src)">{{ initials(col.avatarLabel ? col.avatarLabel(row) : '') }}</app-secure-img>
                         } @else {
                           {{ initials(col.avatarLabel ? col.avatarLabel(row) : '') }}
                         }

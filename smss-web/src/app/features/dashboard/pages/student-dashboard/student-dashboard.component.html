@@ -10,8 +10,8 @@
     <!-- profile + the three small stat cards -->
     <section class="card profile s6" aria-label="Profile">
       <div class="avatar">
-        @if (photoUrl(d.profile.profilePhotoUrl); as src) {
-          <img [src]="src" [alt]="d.profile.fullName" />
+        @if (d.profile.profilePhotoUrl; as src) {
+          <app-secure-img [src]="src" [alt]="d.profile.fullName"><span aria-hidden="true">{{ initials(d.profile.fullName) }}</span></app-secure-img>
         } @else {
           <span aria-hidden="true">{{ initials(d.profile.fullName) }}</span>
         }

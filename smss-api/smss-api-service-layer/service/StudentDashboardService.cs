@@ -114,7 +114,7 @@ namespace smss_api_service_layer.service
                 : enrollments.OrderByDescending(e => e.AcademicYearIsCurrent).ThenByDescending(e => e.AcademicYearStart).ThenByDescending(e => e.EnrollmentId).FirstOrDefault();
             return new DashboardProfileDto
             {
-                StudentId = studentId, FullName = LeaveRules.FullName(first, middle, last), AdmissionNumber = admissionNumber, ProfilePhotoUrl = photo,
+                StudentId = studentId, FullName = LeaveRules.FullName(first, middle, last), AdmissionNumber = admissionNumber, ProfilePhotoUrl = StudentPhotos.ApiPath(studentId, photo),
                 ClassName = enrollment?.ClassName, SectionName = enrollment?.SectionName, RollNumber = enrollment?.RollNumber, AcademicYearName = enrollment?.AcademicYearName
             };
         }

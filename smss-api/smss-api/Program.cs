@@ -68,6 +68,7 @@ builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();
 builder.Services.AddScoped<IIdCardSettingsRepository, IdCardSettingsRepository>();
 builder.Services.AddScoped<IIdCardSettingsService, IdCardSettingsService>();
 builder.Services.AddScoped<IMyStudentsService, MyStudentsService>();
+builder.Services.AddScoped<IStudentPhotoService, StudentPhotoService>();
 builder.Services.AddScoped<IStudentLoginRepository, StudentLoginRepository>();
 builder.Services.AddScoped<IStudentLoginService, StudentLoginService>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
@@ -238,6 +239,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AngularDev");
+
+// Student photos are PRIVATE (served only by GET /api/Student/{id}/photo). Whatever an old deployment still has under /uploads/<school>/students/ is not served either.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith(uploadsRequestPath + "/", StringComparison.OrdinalIgnoreCase) && path.Contains("/students/", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 
 app.UseStaticFiles(new StaticFileOptions
 {

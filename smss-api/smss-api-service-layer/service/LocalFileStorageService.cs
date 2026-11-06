@@ -45,7 +45,7 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrEmpty(studentId) || studentId.Length > 20 || !studentId.All(char.IsAsciiLetterOrDigit))
                 throw new InvalidOperationException("Student id is not a valid folder name.");
             var studentFolder = studentId;
-            var folder = Path.Combine(_rootPath, schoolCode, "students", studentFolder);
+            var folder = Path.Combine(_privateRootPath, schoolCode, "students", studentFolder);
             Directory.CreateDirectory(folder);
 
             var fileName = $"photo_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
@@ -54,7 +54,7 @@ namespace smss_api_service_layer.service
             await using var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             await content.CopyToAsync(fs, ct);
 
-            return $"{_requestPath}/{schoolCode}/students/{studentFolder}/{fileName}";
+            return $"{schoolCode}/students/{studentFolder}/{fileName}";
         }
 
         private static void EnsureSafeIds(string schoolCode, string employeeId)
@@ -133,6 +133,15 @@ namespace smss_api_service_layer.service
             await content.CopyToAsync(fs, ct);
 
             return $"{schoolCode}/id-card/{fileName}";
+        }
+
+        public Stream? OpenStudentPhoto(string stored) =>
+            string.IsNullOrEmpty(stored) ? null : stored.StartsWith(_requestPath + "/", StringComparison.Ordinal) ? OpenUpload(stored) : OpenPrivate(stored);
+
+        public void DeleteStudentPhoto(string stored)
+        {
+            if (string.IsNullOrEmpty(stored)) return;
+            if (stored.StartsWith(_requestPath + "/", StringComparison.Ordinal)) Delete(stored); else DeletePrivate(stored);
         }
 
         public Stream? OpenPrivate(string storageKey)
