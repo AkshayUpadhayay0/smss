@@ -339,13 +339,17 @@ namespace smss_api_service_layer.service
                 var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
                 if (activeId == null) return ConfigError<MissingAttendanceDto>();
 
-                var year = academicYearId != null ? await _repo.GetYearAsync(schoolId, academicYearId.Value, ct) : await _repo.GetYearContainingAsync(schoolId, day, ct);
+                var year = academicYearId != null ? await _repo.GetYearSpanAsync(schoolId, academicYearId.Value, ct) : await _repo.GetYearSpanContainingAsync(schoolId, day, ct);
                 if (year == null) return Result<MissingAttendanceDto>(400, academicYearId != null ? "The selected academic year was not found for your school." : "No academic year covers that date.", null);
 
-                var rows = await _repo.GetUnmarkedSectionsAsync(schoolId, year.AcademicYearId, day, activeId.Value, ct);
+                // The same day classification as the monthly report and the report card's attendance: a Sunday, an active Holiday event or a day outside the year is nobody's "unmarked" day.
+                var holidays = await _repo.GetHolidaysAsync(schoolId, day, day, activeId.Value, ct);
+                var dayClass = AttendanceDayRules.Classify(day, year.StartDate, year.EndDate, holidays);
+                var rows = dayClass.IsWorkingDay ? await _repo.GetUnmarkedSectionsAsync(schoolId, year.AcademicYearId, day, activeId.Value, ct) : new List<UnmarkedSectionRow>();
                 return Result(200, "Successfully fetched", new MissingAttendanceDto
                 {
                     Date = day, AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName,
+                    IsWorkingDay = dayClass.IsWorkingDay, NonWorkingReason = dayClass.NonWorkingReason, HolidayName = dayClass.HolidayName,
                     Sections = rows.Select(r => new UnmarkedSectionDto
                     {
                         ClassId = r.ClassId, ClassName = r.ClassName, SectionId = r.SectionId, SectionName = r.SectionName, RosterCount = r.RosterCount,

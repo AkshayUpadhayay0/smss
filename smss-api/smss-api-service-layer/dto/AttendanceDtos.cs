@@ -138,6 +138,10 @@ namespace smss_api_service_layer.dto
         public DateOnly Date { get; set; }
         public long AcademicYearId { get; set; }
         public string AcademicYearName { get; set; } = null!;
+        /// <summary>False on a Sunday, inside an active Holiday event, or outside the academic year: nothing can be "unmarked" that day, so Sections is empty.</summary>
+        public bool IsWorkingDay { get; set; } = true;
+        public string? NonWorkingReason { get; set; }
+        public string? HolidayName { get; set; }
         public List<UnmarkedSectionDto> Sections { get; set; } = new();
     }
 
