@@ -67,3 +67,27 @@ Do **not** set `Bootstrap__Enabled=true` except for the moment you create the ve
 - **JWT key**: update `Jwt:Key` and restart. Access tokens signed with the old key stop working immediately; the app then silently trades the user's refresh token (stored in the database, not signed with this key) for a new access token, so users normally notice nothing. Nothing in the database changes. Only a user whose refresh token has also expired has to log in again.
 
 A secret that was ever committed to git must be treated as exposed even after it is removed from the file: rotate it (see `git log` for the history findings).
+
+## Secret scan (so a secret cannot be committed again)
+
+The scanner is [gitleaks](https://github.com/gitleaks/gitleaks) (MIT licence). `.gitleaks.toml` extends its built-in rules with SMSS rules (a connection string with a password, a non-empty `Key` / `SuperAdminSetupKey` / `SenderAppPassword` in a JSON file, and any PostgreSQL dump).
+
+**Install** (once): download `gitleaks_<version>_windows_x64.zip` from the releases page, check it against `gitleaks_<version>_checksums.txt` (`sha256sum`), unzip it somewhere outside the repository and put that folder on `PATH` (or set `GITLEAKS_BIN` to the exe).
+
+**Switch the pre-commit hook on** (once per clone):
+
+```
+git config core.hooksPath .githooks
+```
+
+The hook (`.githooks/pre-commit`) refuses a commit that stages a database dump, an uploaded file or a credentials file (by name), or any change gitleaks flags. It refuses to run without gitleaks installed, so the check cannot be skipped by accident.
+
+**Scan the working tree** (one line, from the repository root; prints nothing secret):
+
+```
+gitleaks dir . --config .gitleaks.toml --redact
+```
+
+Other scans: `gitleaks git --staged --config .gitleaks.toml --redact` (what is about to be committed) and `gitleaks git . --config .gitleaks.toml --redact` (all history; it will keep reporting the old, already-leaked values until the history is rewritten).
+
+A false positive can be silenced for one finding with its fingerprint in a `.gitleaksignore` file; never silence a real secret, rotate it instead.
