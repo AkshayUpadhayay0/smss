@@ -154,7 +154,7 @@ describe('app routes', () => {
 
       it('sees Dashboard, Calendar, Timetable, Mark Attendance, Attendance Report, Homework, Assessments, Leave Requests, School Profile, the Students group, School Setup, Employees, Fee Setup and Fees in the menu — no My Leave (the school login is not an employee), no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests | School Profile | Students | School Setup | Employees | Fee Setup | Fees');
+        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests | School Profile | Students | Examinations | School Setup | Employees | Fee Setup | Fees');
       });
 
       it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
@@ -219,7 +219,7 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave | Students', 'Your classroom at a glance'],
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave | Students | Exam Schedule', 'Your classroom at a glance'],
       ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | Calendar | My Notices | My Homework | My Results | My Leave | My Profile | My Fees', 'Your school day at a glance'],
     ])('%s login', (role, who, menu, dashboardText) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));

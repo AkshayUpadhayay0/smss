@@ -98,6 +98,15 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/my-student-profile': [ROLES.STUDENT],
   // A Student's own fees, read-only (GET /api/Student/me/fees); the staff fee screens stay closed to Student logins
   '/my-fees': [ROLES.STUDENT],
+  // Examination / Report Card setup (stage 1): the School Admin configures; the Principal reads (read-only); a Teacher reads only the exam schedule. The API enforces the same.
+  // The literal routes ("new", "blank") must stay listed BEFORE ":schemeId" so they match first.
+  '/examinations/grade-scales': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/examinations/schemes': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/examinations/schemes/new': [ROLES.SCHOOL_ADMIN],
+  '/examinations/schemes/blank': [ROLES.SCHOOL_ADMIN],
+  '/examinations/schemes/:schemeId': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/examinations/activity-areas': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/examinations/schedule': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER],
   // Employees (staff records, documents, creating logins): School Admin only
   '/employees': [ROLES.SCHOOL_ADMIN],
   '/employees/new': [ROLES.SCHOOL_ADMIN],

@@ -46,6 +46,18 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    // Examination / Report Card. A role that sees one child (a Teacher: the exam schedule) gets it as a plain item.
+    label: 'Examinations',
+    icon: 'file-text',
+    flatWhenSingle: true,
+    children: [
+      { label: 'Grade Scales', route: '/examinations/grade-scales' },
+      { label: 'Report Schemes', route: '/examinations/schemes' },
+      { label: 'Activity Areas', route: '/examinations/activity-areas' },
+      { label: 'Exam Schedule', route: '/examinations/schedule' },
+    ],
+  },
+  {
     label: 'School Setup',
     icon: 'graduation-cap',
     children: [

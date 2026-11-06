@@ -41,6 +41,7 @@ export const routes: Routes = [
       { path: '', loadChildren: () => import('./features/notices/notices.routes').then((m) => m.NOTICES_ROUTES) },
       { path: '', loadChildren: () => import('./features/leave/leave.routes').then((m) => m.LEAVE_ROUTES) },
       { path: '', loadChildren: () => import('./features/timetable/timetable.routes').then((m) => m.TIMETABLE_ROUTES) },
+      { path: '', loadChildren: () => import('./features/examinations/examinations.routes').then((m) => m.EXAMINATIONS_ROUTES) },
       { path: '', loadChildren: () => import('./features/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
       {
         path: 'change-password',

@@ -85,3 +85,22 @@ describe('visibleNav: Attendance Report', () => {
     expect(labels([ROLES.PRINCIPAL])).not.toContain('Mark Attendance');
   });
 });
+
+describe('visibleNav: Examinations group', () => {
+  const exam = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Examinations');
+  it('School Admin and Principal get the group with the four setup pages', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect((exam([role])?.children ?? []).map((c) => c.label)).toEqual(['Grade Scales', 'Report Schemes', 'Activity Areas', 'Exam Schedule']);
+  });
+  it('a Teacher sees only Exam Schedule, as a plain item', () => {
+    expect(exam([ROLES.TEACHER])).toBeUndefined();
+    const item = visibleNav([ROLES.TEACHER]).find((i) => i.label === 'Exam Schedule');
+    expect(item?.route).toBe('/examinations/schedule');
+    expect(item?.children).toBeUndefined();
+  });
+  it('other roles see nothing of it', () => {
+    for (const role of [ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN]) {
+      expect(exam([role])).toBeUndefined();
+      expect(labels([role])).not.toContain('Exam Schedule');
+    }
+  });
+});
