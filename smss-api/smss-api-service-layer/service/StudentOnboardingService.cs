@@ -96,62 +96,34 @@ namespace smss_api_service_layer.service
                         var number = suppliedNumber ?? await NextAdmissionNumberAsync(schoolId, req.AdmissionDate.Year, ct);
                         var studentId = StudentIdHelper.Build(school.ShortCode!, await _repo.CountStudentsAsync(schoolId, ct) + 1);
 
-                        var student = new TbStudent
+                        var graph = StudentOnboardingEntities.Build(new OnboardingInput
                         {
-                            StudentId = studentId,
                             SchoolId = schoolId,
+                            StudentId = studentId,
                             AdmissionNumber = number,
                             FirstName = req.FirstName.Trim(),
                             MiddleName = Clean(req.MiddleName),
                             LastName = req.LastName.Trim(),
-                            DateOfBirth = req.DateOfBirth.Date,
+                            DateOfBirth = req.DateOfBirth,
                             GenderId = req.GenderId,
                             BloodGroupId = req.BloodGroupId,
                             StudentCategoryId = req.StudentCategoryId,
                             AadharNumber = Clean(req.AadharNumber),
                             AdmissionTypeId = type.AdmissionTypeId,
-                            AdmissionDate = req.AdmissionDate.Date,   // historical, not "now"
+                            AdmissionDate = req.AdmissionDate,
                             Email = Clean(req.Email),
                             MobileNumber = Clean(req.MobileNumber),
-                            StatusId = activeId.Value,
-                            CreatedAt = now,
-                            UpdatedAt = now
-                        };
-                        var enrollment = new TbStudentEnrollment
-                        {
-                            SchoolId = schoolId,
-                            StudentId = studentId,
+                            ActiveStatusId = activeId.Value,
                             AcademicYearId = req.AcademicYearId,
                             ClassSectionId = req.ClassSectionId,
                             RollNumber = Clean(req.RollNumber),
-                            EnrollmentDate = req.AdmissionDate.Date,
-                            AdmissionTypeId = type.AdmissionTypeId,
-                            StatusId = activeId.Value,
-                            CreatedAt = now,
-                            UpdatedAt = now
-                        };
-                        var guardian = new TbGuardian
-                        {
-                            SchoolId = schoolId,
-                            FirstName = req.GuardianName.Trim(),
-                            Relationship = req.GuardianRelationship,
-                            MobileNumber = req.GuardianMobileNumber,
-                            Email = Clean(req.GuardianEmail),
-                            StatusId = activeId.Value,
-                            CreatedAt = now,
-                            UpdatedAt = now
-                        };
-                        var link = new TbStudentGuardian
-                        {
-                            StudentId = studentId,
-                            Guardian = guardian,          // GuardianId is filled in from the identity value on save
-                            Relationship = req.GuardianRelationship,
-                            IsPrimary = true,
-                            IsEmergencyContact = true,
-                            CanPickupStudent = true,
-                            CreatedAt = now,
-                            UpdatedAt = now
-                        };
+                            Guardians = new[] { new OnboardingGuardianInput { Name = req.GuardianName, Relationship = req.GuardianRelationship, Mobile = req.GuardianMobileNumber, Email = Clean(req.GuardianEmail) } },
+                            Now = now
+                        });
+                        var student = graph.Student;
+                        var enrollment = graph.Enrollment;
+                        var guardian = graph.Guardians[0];
+                        var link = graph.Links[0];
 
                         await _repo.AddStudentAsync(student, ct);
                         await _repo.AddEnrollmentAsync(enrollment, ct);
