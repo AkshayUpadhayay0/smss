@@ -1,12 +1,13 @@
 import json, os, re, ssl, subprocess, urllib.request, urllib.error
-B = 'https://localhost:7037/api'
+B = os.environ.get('SMSS_API_BASE', 'https://localhost:7037/api')      # a different API (for example a scratch copy) can be named here; the default is the real dev API
+DBNAME = os.environ.get('SMSS_DB', 'smss-db')
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 PSQL = r'C:\OSGeo4W\bin\psql.exe'
 def _pw():
     t = open(r'E:\05_Smss\smss\smss-api\smss-api\appsettings.json', encoding='utf-8').read()
     return re.search(r'Password=([^;"]*)', t).group(1)
 def sql(q):
-    r = subprocess.run([PSQL, '-h', 'localhost', '-U', 'postgres', '-d', 'smss-db', '-At', '-F', '|'], input=q, capture_output=True, text=True, env=dict(os.environ, PGPASSWORD=_pw()))
+    r = subprocess.run([PSQL, '-h', 'localhost', '-U', 'postgres', '-d', DBNAME, '-At', '-F', '|'], input=q, capture_output=True, text=True, env=dict(os.environ, PGPASSWORD=_pw()))
     return (r.stdout + r.stderr).strip()
 def call(m, p, t=None, b=None):
     d = json.dumps(b).encode() if b is not None else (b'{}' if m in ('POST', 'PUT') else None)
