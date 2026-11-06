@@ -7,7 +7,7 @@ const childLabels = (roles: string[]) => (group(roles)?.children ?? []).map((c) 
 
 describe('visibleNav: Students group', () => {
   it('School Admin gets the collapsible group with every student child, and no flat copies', () => {
-    expect(childLabels([ROLES.SCHOOL_ADMIN])).toEqual(['Students', 'Admissions', 'Add Existing Student', 'Student Leave']);
+    expect(childLabels([ROLES.SCHOOL_ADMIN])).toEqual(['Students', 'Admissions', 'Add Existing Student', 'Import Students', 'Student Leave']);
     const flat = visibleNav([ROLES.SCHOOL_ADMIN]).filter((i) => !i.children).map((i) => i.label);
     for (const l of ['Admissions', 'Add Existing Student', 'Student Leave', 'My Students']) expect(flat).not.toContain(l);
   });
@@ -33,7 +33,7 @@ describe('visibleNav: Students group', () => {
   });
 
   it('every child route is still guarded by the same ROUTE_ROLES (presentation only)', () => {
-    expect(group([ROLES.SCHOOL_ADMIN])?.children?.map((c) => c.route)).toEqual(['/students', '/admissions', '/students/onboard-existing', '/leave/students']);
+    expect(group([ROLES.SCHOOL_ADMIN])?.children?.map((c) => c.route)).toEqual(['/students', '/admissions', '/students/onboard-existing', '/students/import', '/leave/students']);
   });
 });
 

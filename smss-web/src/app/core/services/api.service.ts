@@ -48,6 +48,13 @@ export class ApiService {
     return this.unwrap(this.http.post<ApiResponse<T>>(this.url(path), form, { context: this.context(options) }));
   }
 
+  /** Multipart upload whose answer is a file (e.g. an error report .xlsx), not the ApiResponse envelope. */
+  uploadForBlob(path: string, file: File, field = 'file', options?: ApiRequestOptions): Observable<Blob> {
+    const form = new FormData();
+    form.append(field, file);
+    return this.http.post(this.url(path), form, { responseType: 'blob', context: this.context(options) });
+  }
+
   private context(options?: ApiRequestOptions): HttpContext {
     return new HttpContext().set(SKIP_ERROR_TOAST, !!options?.skipErrorToast);
   }

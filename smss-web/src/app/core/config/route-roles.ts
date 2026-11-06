@@ -37,6 +37,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-profile': [ROLES.SCHOOL_ADMIN],
   '/students': [ROLES.SCHOOL_ADMIN],
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
+  '/students/import': [ROLES.SCHOOL_ADMIN],
   // A Teacher's own students (read-only; the API scopes them to the sections they are class teacher of or teach in)
   '/my-students': [ROLES.TEACHER],
   '/my-students/:studentId': [ROLES.TEACHER],

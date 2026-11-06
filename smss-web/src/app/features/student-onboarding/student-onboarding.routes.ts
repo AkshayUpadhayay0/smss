@@ -7,4 +7,9 @@ export const STUDENT_ONBOARDING_ROUTES: Routes = [
     path: 'students/onboard-existing',
     loadComponent: () => import('./pages/existing-student-form/existing-student-form.component').then((m) => m.ExistingStudentFormComponent),
   },
+  // Many students from an Excel file. Mounted before /students/:studentId, like onboard-existing.
+  {
+    path: 'students/import',
+    loadComponent: () => import('./pages/student-import/student-import.component').then((m) => m.StudentImportComponent),
+  },
 ];
