@@ -9,8 +9,8 @@
   <div class="grid">
     <section class="card profile s4" aria-label="Profile">
       <div class="avatar">
-        @if (photoUrl(d.profile.photoUrl); as src) {
-          <img [src]="src" [alt]="d.profile.fullName" />
+        @if (d.profile.photoUrl; as src) {
+          <app-secure-img [src]="src" [alt]="d.profile.fullName"><span aria-hidden="true">{{ initials(d.profile.fullName) }}</span></app-secure-img>
         } @else {
           <span aria-hidden="true">{{ initials(d.profile.fullName) }}</span>
         }

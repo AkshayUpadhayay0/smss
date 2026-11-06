@@ -181,6 +181,12 @@ namespace smss_api_db_layer.repository
             await _db.SaveChangesAsync(ct);
         }
 
+        public async Task<(bool Exists, string? Stored)> GetPhotoKeyAsync(string schoolId, string employeeId, CancellationToken ct)
+        {
+            var row = await _db.Employees.AsNoTracking().Where(e => e.SchoolId == schoolId && e.EmployeeId == employeeId).Select(e => new { e.PhotoPath }).FirstOrDefaultAsync(ct);
+            return (row != null, row?.PhotoPath);
+        }
+
         public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
             _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
     }

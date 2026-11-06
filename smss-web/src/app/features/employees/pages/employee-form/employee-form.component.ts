@@ -4,7 +4,6 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validatio
 import { Router } from '@angular/router';
 import { catchError, finalize, of, switchMap, map } from 'rxjs';
 import { ToastService } from '../../../../core/services/toast.service';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
 import { ButtonComponent, CardComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption, TextareaComponent } from '../../../../shared/components';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { firstErrorMessage, mobileValidator, requiredTrimmed } from '../../../schools/utils/school-validators';
@@ -72,7 +71,7 @@ export class EmployeeFormComponent implements OnInit {
   protected readonly existing = signal<Employee | null>(null);
   /** The photo picked for a NEW employee: uploaded right after the record is created. */
   private photo: File | null = null;
-  protected readonly currentPhoto = computed(() => toUploadUrl(this.existing()?.photoUrl));
+  protected readonly currentPhoto = computed(() => this.existing()?.photoUrl ?? null);
 
   ngOnInit(): void {
     this.service.lookups().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

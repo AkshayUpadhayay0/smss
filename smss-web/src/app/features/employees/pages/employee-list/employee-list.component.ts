@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { debounceTime, finalize } from 'rxjs';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
 import {
   ButtonComponent,
   CardComponent,
@@ -75,7 +74,7 @@ export class EmployeeListComponent implements OnInit {
   protected readonly rows = computed<EmployeeRow[]>(() =>
     this.items().map((e) => ({
       employeeId: e.employeeId,
-      photoUrl: toUploadUrl(e.photoUrl) ?? '',
+      photoUrl: e.photoUrl ?? '',
       fullName: e.fullName,
       designationName: e.designationName,
       departmentName: e.departmentName,

@@ -87,7 +87,7 @@ namespace smss_api_service_layer.service
                         DesignationId = r.Employee.DesignationId, DesignationName = r.DesignationName,
                         DepartmentId = r.Employee.DepartmentId, DepartmentName = r.DepartmentName,
                         EmploymentStatusName = r.EmploymentStatusName, MobileNumber = r.Employee.MobileNumber, Email = r.Employee.Email,
-                        DateOfJoining = r.Employee.DateOfJoining, StatusName = r.StatusName, PhotoUrl = r.Employee.PhotoPath, HasLogin = r.HasLogin
+                        DateOfJoining = r.Employee.DateOfJoining, StatusName = r.StatusName, PhotoUrl = EmployeePhotos.ApiPath(r.Employee.EmployeeId, r.Employee.PhotoPath), HasLogin = r.HasLogin
                     }).ToList()
                 });
             }
@@ -241,12 +241,12 @@ namespace smss_api_service_layer.service
                 await _repo.SaveChangesAsync(ct);
                 committed = true;
 
-                if (!string.IsNullOrEmpty(oldUrl)) _storage.Delete(oldUrl);   // replaced: remove the previous file
-                return Result(200, "Photo uploaded successfully.", new EmployeePhotoDto { EmployeeId = employeeId, PhotoUrl = savedUrl });
+                if (!string.IsNullOrEmpty(oldUrl)) _storage.DeletePhoto(oldUrl);   // replaced: remove the previous file
+                return Result(200, "Photo uploaded successfully.", new EmployeePhotoDto { EmployeeId = employeeId, PhotoUrl = EmployeePhotos.ApiPath(employeeId, savedUrl) });
             }
             catch (Exception ex)
             {
-                if (savedUrl != null && !committed) _storage.Delete(savedUrl);   // no orphan file if the DB save failed
+                if (savedUrl != null && !committed) _storage.DeletePhoto(savedUrl);   // no orphan file if the DB save failed
                 return Error<EmployeePhotoDto>(ex, "uploading an employee photo");
             }
         }
@@ -265,7 +265,7 @@ namespace smss_api_service_layer.service
                     employee.PhotoPath = null;
                     employee.UpdatedAt = DateTime.UtcNow;
                     await _repo.SaveChangesAsync(ct);
-                    _storage.Delete(oldUrl);
+                    _storage.DeletePhoto(oldUrl);
                 }
                 return Result(200, "Photo removed.", new EmployeePhotoDto { EmployeeId = employeeId, PhotoUrl = null });
             }
@@ -533,7 +533,7 @@ namespace smss_api_service_layer.service
                 EmploymentStatusId = e.EmploymentStatusId, EmploymentStatusName = r.EmploymentStatusName,
                 GenderId = e.GenderId, GenderName = r.GenderName, BloodGroupId = e.BloodGroupId, BloodGroupName = r.BloodGroupName,
                 DateOfBirth = e.DateOfBirth, Email = e.Email, MobileNumber = e.MobileNumber, AlternateMobile = e.AlternateMobile, Address = e.Address,
-                DateOfJoining = e.DateOfJoining, DateOfLeaving = e.DateOfLeaving, Qualification = e.Qualification, PhotoUrl = e.PhotoPath,
+                DateOfJoining = e.DateOfJoining, DateOfLeaving = e.DateOfLeaving, Qualification = e.Qualification, PhotoUrl = EmployeePhotos.ApiPath(e.EmployeeId, e.PhotoPath),
                 StatusName = r.StatusName, LoginId = r.LoginId, LoginRoles = r.LoginRoles, CreatedAt = e.CreatedAt, UpdatedAt = e.UpdatedAt
             };
         }

@@ -217,13 +217,13 @@ namespace smss_api_service_layer.service
                 await _repo.SaveChangesAsync(ct);
                 committed = true;
 
-                if (!string.IsNullOrEmpty(oldUrl)) _storage.DeleteStudentPhoto(oldUrl);   // replaced: remove the previous file
+                if (!string.IsNullOrEmpty(oldUrl)) _storage.DeletePhoto(oldUrl);   // replaced: remove the previous file
 
                 return Result(200, "Photo uploaded successfully.", new StudentPhotoDto { StudentId = studentId, ProfilePhotoUrl = StudentPhotos.ApiPath(studentId, savedUrl) });
             }
             catch (Exception ex)
             {
-                if (savedUrl != null && !committed) _storage.DeleteStudentPhoto(savedUrl);   // no orphan file if the DB save failed
+                if (savedUrl != null && !committed) _storage.DeletePhoto(savedUrl);   // no orphan file if the DB save failed
                 return Error<StudentPhotoDto>(ex, "uploading student photo");
             }
         }
@@ -243,7 +243,7 @@ namespace smss_api_service_layer.service
                 student.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync(ct);
 
-                _storage.DeleteStudentPhoto(oldUrl);
+                _storage.DeletePhoto(oldUrl);
                 return Result(200, "Photo removed successfully.", new StudentPhotoDto { StudentId = studentId, ProfilePhotoUrl = null });
             }
             catch (Exception ex) { return Error<StudentPhotoDto>(ex, "removing student photo"); }

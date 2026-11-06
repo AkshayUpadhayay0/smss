@@ -41,7 +41,7 @@ namespace smss_api_service_layer.service
                 }
 
                 if (string.IsNullOrEmpty(stored)) return Fail(404, "This student has no photo.");
-                var stream = _storage.OpenStudentPhoto(stored);
+                var stream = _storage.OpenPhoto(stored);
                 if (stream == null) return Fail(404, "The photo file could not be found.");
                 return new StudentPhotoResult { Content = stream, ContentType = StudentPhotos.ContentType(stored), ETag = StudentPhotos.ETag(stored) };
             }

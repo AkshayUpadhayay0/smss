@@ -16,7 +16,8 @@ namespace smss_api.Controllers
     public class EmployeeController : ControllerBase
     {
         private readonly IEmployeeService _service;
-        public EmployeeController(IEmployeeService service) => _service = service;
+        private readonly IEmployeePhotoService _photos;
+        public EmployeeController(IEmployeeService service, IEmployeePhotoService photos) { _service = service; _photos = photos; }
 
         private IActionResult? Refuse() =>
             User.IsSchoolAdmin() ? null : this.Forbidden("Only a School Admin can manage employees.");
@@ -46,6 +47,20 @@ namespace smss_api.Controllers
         }
 
         // GET api/Employee/{employeeId}
+        // GET api/Employee/{employeeId}/photo   (the photo, from PRIVATE storage; there is no public URL for an employee photo)
+        // Who: an employee for their OWN photo; School Admin and Principal for any employee of their school; Student and Guardian logins never. Another school's employee is a 404.
+        // Image content type, Cache-Control: private, an ETag (If-None-Match gives a 304).
+        [HttpGet("{employeeId:length(1,20)}/photo")]
+        public async Task<IActionResult> GetPhoto(string employeeId, CancellationToken ct)
+        {
+            if (User.IsStudentOrGuardianLogin()) return this.Forbidden("Student and Guardian accounts cannot view employee photos.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var r = await _photos.GetAsync(User.GetSchoolId(), userId, User.IsSchoolAdmin() || User.IsPrincipal(), employeeId, ct);
+            if (r.Content == null) return StatusCode(r.StatusCode, new ApiResponse<object> { Status = false, StatusCode = r.StatusCode, Message = r.Message, Data = null });
+            Response.Headers.CacheControl = "private, no-cache";
+            return File(r.Content, r.ContentType, lastModified: null, entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue(r.ETag));
+        }
+
         [HttpGet("{employeeId:length(1,20)}")]
         public async Task<IActionResult> Get(string employeeId, CancellationToken ct) =>
             Refuse() ?? Reply(await _service.GetAsync(User.GetSchoolId(), employeeId, ct));

@@ -63,5 +63,7 @@ namespace smss_api_db_layer.@interface
         Task AddUserAsync(TbUsers user, CancellationToken ct);
         /// <summary>The login id (org_user_id) of a user of this school; for an employee login it is their employee id.</summary>
         Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
+        /// <summary>Whether the employee exists in THIS school, and the stored photo key (null = no photo).</summary>
+        Task<(bool Exists, string? Stored)> GetPhotoKeyAsync(string schoolId, string employeeId, CancellationToken ct);
     }
 }

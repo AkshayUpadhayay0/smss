@@ -4,8 +4,7 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { EmployeeDocumentsComponent } from '../../components/employee-documents/employee-documents.component';
 import { EmployeeLoginDialogComponent } from '../../components/employee-login-dialog/employee-login-dialog.component';
@@ -16,7 +15,7 @@ import { EmployeeService } from '../../services/employee.service';
 /** One employee: details, photo, documents and the login. */
 @Component({
   selector: 'app-employee-detail',
-  imports: [ButtonComponent, CardComponent, EmployeeDocumentsComponent, EmployeeLoginDialogComponent, EmployeePhotoDialogComponent, IconComponent, PageHeaderComponent],
+  imports: [ButtonComponent, CardComponent, EmployeeDocumentsComponent, EmployeeLoginDialogComponent, EmployeePhotoDialogComponent, IconComponent, PageHeaderComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './employee-detail.component.scss',
   templateUrl: './employee-detail.component.html',
@@ -42,7 +41,7 @@ export class EmployeeDetailComponent implements OnInit {
   protected readonly fmt = formatDate;
   protected readonly tone = employmentStatusTone;
   protected readonly breadcrumbs = computed(() => [{ label: 'Employees', link: '/employees' }, { label: this.employee()?.fullName ?? 'Employee' }]);
-  protected readonly photoUrl = computed(() => toUploadUrl(this.employee()?.photoUrl));
+  protected readonly photoUrl = computed(() => this.employee()?.photoUrl ?? null);
   protected readonly isActive = computed(() => this.employee()?.statusName === 'Active');
   protected readonly initials = computed(() =>
     (this.employee()?.fullName ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?',

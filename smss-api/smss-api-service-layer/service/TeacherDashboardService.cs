@@ -53,7 +53,7 @@ namespace smss_api_service_layer.service
                     Profile = new TeacherProfileDto
                     {
                         EmployeeId = detail.Employee.EmployeeId, FullName = LeaveRules.FullName(detail.Employee.FirstName, detail.Employee.MiddleName, detail.Employee.LastName),
-                        DesignationName = detail.DesignationName, DepartmentName = detail.DepartmentName, PhotoUrl = detail.Employee.PhotoPath
+                        DesignationName = detail.DesignationName, DepartmentName = detail.DepartmentName, PhotoUrl = EmployeePhotos.ApiPath(detail.Employee.EmployeeId, detail.Employee.PhotoPath)
                     }
                 };
 

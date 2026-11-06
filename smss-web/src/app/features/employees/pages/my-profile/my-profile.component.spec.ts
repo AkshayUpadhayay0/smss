@@ -7,6 +7,7 @@ import { clearSessions, makeUser, seedSession } from '../../../../core/testing/a
 import { MyProfileComponent } from './my-profile.component';
 
 const URL = `${environment.apiUrl}/api/Employee/me`;
+const URL_CTOR = globalThis.URL;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 const ME = {
   employeeId: 'LAS001EM001', fullName: 'Sunita Rawat', firstName: 'Sunita', middleName: null, lastName: 'Rawat', employeeType: 'Teaching',
@@ -65,4 +66,17 @@ describe('MyProfileComponent', () => {
     open((r) => r.flush(env(null), { status: 404, statusText: 'Not Found' }));
     expect(text()).toContain('Your profile could not be loaded.');
   });
+
+  it('the employee photo is fetched with the login from the authenticated endpoint, never used as a plain img src', async () => {
+    vi.spyOn(URL_CTOR, 'createObjectURL').mockReturnValue('blob:emp/1');
+    open((r) => r.flush(env({ ...ME, photoUrl: '/api/Employee/LAS001EM001/photo?v=abc' })));
+    await fixture.whenStable(); fixture.detectChanges();
+    const photo = http.expectOne(`${environment.apiUrl}/api/Employee/LAS001EM001/photo?v=abc`);
+    expect(photo.request.responseType).toBe('blob');
+    photo.flush(new Blob(['x'], { type: 'image/jpeg' }));
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(el().querySelector('img')?.getAttribute('src')).toBe('blob:emp/1');
+    expect(el().innerHTML).not.toContain('/api/Employee/LAS001EM001/photo');
+  });
+
 });

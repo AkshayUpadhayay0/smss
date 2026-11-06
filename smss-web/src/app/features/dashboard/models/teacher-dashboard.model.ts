@@ -8,7 +8,7 @@ export interface TeacherProfile {
   fullName: string;
   designationName: string;
   departmentName: string;
-  /** Relative /uploads/... path; render with toUploadUrl(). */
+  /** The authenticated photo path (/api/Employee/{id}/photo?v=...); show it with <app-secure-img>. */
   photoUrl: string | null;
 }
 

@@ -273,7 +273,7 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(stored)) return null;
             try
             {
-                using var stream = _storage.OpenStudentPhoto(stored);
+                using var stream = _storage.OpenPhoto(stored);
                 if (stream == null) return null;
                 using var ms = new MemoryStream();
                 stream.CopyTo(ms);

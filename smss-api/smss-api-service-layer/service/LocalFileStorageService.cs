@@ -69,14 +69,14 @@ namespace smss_api_service_layer.service
         public async Task<string> SaveEmployeePhotoAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct)
         {
             EnsureSafeIds(schoolCode, employeeId);
-            var folder = Path.Combine(_rootPath, schoolCode, "employees", employeeId);
+            var folder = Path.Combine(_privateRootPath, schoolCode, "employees", employeeId);
             Directory.CreateDirectory(folder);
 
             var fileName = $"photo_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
             await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             await content.CopyToAsync(fs, ct);
 
-            return $"{_requestPath}/{schoolCode}/employees/{employeeId}/{fileName}";
+            return $"{schoolCode}/employees/{employeeId}/{fileName}";
         }
 
         public async Task<string> SaveEmployeeDocumentAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct)
@@ -135,10 +135,10 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/id-card/{fileName}";
         }
 
-        public Stream? OpenStudentPhoto(string stored) =>
+        public Stream? OpenPhoto(string stored) =>
             string.IsNullOrEmpty(stored) ? null : stored.StartsWith(_requestPath + "/", StringComparison.Ordinal) ? OpenUpload(stored) : OpenPrivate(stored);
 
-        public void DeleteStudentPhoto(string stored)
+        public void DeletePhoto(string stored)
         {
             if (string.IsNullOrEmpty(stored)) return;
             if (stored.StartsWith(_requestPath + "/", StringComparison.Ordinal)) Delete(stored); else DeletePrivate(stored);

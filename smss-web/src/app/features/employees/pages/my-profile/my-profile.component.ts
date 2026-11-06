@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { toUploadUrl } from '../../../../core/utils/upload-url';
-import { CardComponent, PageHeaderComponent } from '../../../../shared/components';
+import { CardComponent, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { Employee, employmentStatusTone } from '../../models/employee.model';
 import { EmployeeService } from '../../services/employee.service';
@@ -14,7 +13,7 @@ import { EmployeeService } from '../../services/employee.service';
  */
 @Component({
   selector: 'app-my-profile',
-  imports: [CardComponent, PageHeaderComponent, RouterLink],
+  imports: [CardComponent, PageHeaderComponent, RouterLink, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './my-profile.component.scss',
   templateUrl: './my-profile.component.html',
@@ -30,7 +29,7 @@ export class MyProfileComponent implements OnInit {
   protected readonly fmt = formatDate;
   protected readonly tone = employmentStatusTone;
   protected readonly breadcrumbs = [{ label: 'My Profile' }];
-  protected readonly photoUrl = computed(() => toUploadUrl(this.employee()?.photoUrl));
+  protected readonly photoUrl = computed(() => this.employee()?.photoUrl ?? null);
   protected readonly initials = computed(() =>
     (this.employee()?.fullName ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?',
   );

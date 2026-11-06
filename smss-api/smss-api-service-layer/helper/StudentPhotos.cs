@@ -24,4 +24,15 @@ namespace smss_api_service_layer.helper
             ".png" => "image/png", ".webp" => "image/webp", ".jpg" or ".jpeg" => "image/jpeg", _ => "application/octet-stream"
         };
     }
+
+    /// <summary>Employee photos follow the same rule as student photos: private storage, the database keeps the key, DTOs carry the authenticated path.</summary>
+    public static class EmployeePhotos
+    {
+        public static string? ApiPath(string employeeId, string? stored)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return null;
+            var v = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(stored)))[..10].ToLowerInvariant();
+            return $"/api/Employee/{employeeId}/photo?v={v}";
+        }
+    }
 }

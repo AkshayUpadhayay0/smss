@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { initialsOf, toUploadUrl } from '../../../../core/utils/upload-url';
-import { CardComponent, IconComponent, IconName, PageHeaderComponent } from '../../../../shared/components';
+import { initialsOf } from '../../../../core/utils/upload-url';
+import { CardComponent, IconComponent, IconName, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
 import { TeacherDashboard } from '../../models/teacher-dashboard.model';
@@ -23,7 +23,7 @@ const STAT_ICONS: Record<TeacherStat['key'], IconName> = {
  */
 @Component({
   selector: 'app-teacher-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink],
+  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './teacher-dashboard.component.scss',
   templateUrl: './teacher-dashboard.component.html',
@@ -34,7 +34,6 @@ export class TeacherDashboardComponent implements OnInit {
 
   protected readonly breadcrumbs = [{ label: 'Dashboard' }];
   protected readonly initials = initialsOf;
-  protected readonly photoUrl = toUploadUrl;
   protected readonly sectionLabel = sectionLabel;
   protected readonly icons = STAT_ICONS;
   protected readonly published = publishedLabel;
