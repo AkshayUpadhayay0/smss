@@ -128,8 +128,8 @@ namespace smss_api_service_layer.helper.reportcard
                             default: cd.RelativeColumn(m.Subjects.Count > 12 || terms.Count == 3 ? 2.6f : 3f); break;
                         }
                 });
-                IContainer Head(IContainer cc) => cc.Border(0.4f).BorderColor(rule).Background(headFill).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignMiddle();
-                IContainer Body(IContainer cc, int row) => cc.Border(0.3f).BorderColor(rule).Background(row % 2 == 0 ? zebra : "#FFFFFF").PaddingVertical(1.2f).PaddingHorizontal(1.5f).AlignMiddle();
+                IContainer Head(IContainer cc) => cc.Border(0.4f).BorderColor(rule).Fill(headFill).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignMiddle();
+                IContainer Body(IContainer cc, int row) => cc.Border(0.3f).BorderColor(rule).Fill(row % 2 == 0 ? zebra : "#FFFFFF").PaddingVertical(1.2f).PaddingHorizontal(1.5f).AlignMiddle();
 
                 // header rows 1 and 2
                 uint col = 1;
@@ -195,7 +195,7 @@ namespace smss_api_service_layer.helper.reportcard
         {
             var o = m.Overall; var p = m.Promotion; var marks = m.Mode == "MARKS";
             var fill = style.Mono ? "#FFFFFF" : Tint(m.Primary, 0.94);
-            c.Border(style.Mono ? 0.8f : 0.6f).BorderColor(style.Mono ? "#000000" : accent).Background(fill).Padding(4).Column(col =>
+            c.Border(style.Mono ? 0.8f : 0.6f).BorderColor(style.Mono ? "#000000" : accent).Fill(fill).Padding(4).Column(col =>
             {
                 col.Item().Text(m.Scope == "TERM" ? "Result" : "Final result").FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(accent);
                 col.Item().PaddingTop(2).Row(r =>

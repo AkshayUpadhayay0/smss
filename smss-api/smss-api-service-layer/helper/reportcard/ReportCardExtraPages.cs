@@ -43,12 +43,13 @@ namespace smss_api_service_layer.helper.reportcard
                         t.Item().AlignCenter().Text($"Session {m.SessionName}").FontFamily(new[] { Serif, Sans }).FontSize(14).FontColor(accent2).AlignCenter();
                         t.Item().AlignCenter().PaddingTop(6).LineHorizontal(mono ? 1f : 1.5f).LineColor(accent2);
                     });
-                    col.Item().Background(tint).Border(0.6f).BorderColor(rule).Padding(12).Column(p =>
+                    // the student panel is at most 560 pt wide and centred: on a landscape page it no longer stretches into two far-apart halves, and the labels always sit next to their values
+                    col.Item().AlignCenter().MaxWidth(560).Fill(tint).Border(0.6f).BorderColor(rule).Padding(12).Column(p =>
                     {
                         p.Item().Text("Student").FontFamily(new[] { Serif, Sans }).FontSize(11).Bold().FontColor(accent);
                         p.Item().PaddingTop(4).Table(tb =>
                         {
-                            tb.ColumnsDefinition(cd => { cd.ConstantColumn(88); cd.RelativeColumn(); cd.ConstantColumn(88); cd.RelativeColumn(); });
+                            tb.ColumnsDefinition(cd => { cd.ConstantColumn(78); cd.RelativeColumn(1f); cd.ConstantColumn(84); cd.RelativeColumn(1f); });
                             void Row(string k1, string? v1, string k2, string? v2)
                             {
                                 tb.Cell().PaddingVertical(2.5f).Text(k1).FontSize(8.5f).FontColor(muted);
@@ -61,7 +62,7 @@ namespace smss_api_service_layer.helper.reportcard
                             Row("Father", s.Father, "Mother", s.Mother);
                             Row("Contact", s.Contact, "Admission No.", s.AdmissionNo);
                         });
-                        p.Item().PaddingTop(2).Row(r => { r.ConstantItem(88).PaddingVertical(2.5f).Text("Address").FontSize(8.5f).FontColor(muted); r.RelativeItem().PaddingVertical(2.5f).Text(string.IsNullOrWhiteSpace(s.Address) ? "-" : s.Address).FontSize(FitSize(s.Address, 10f, 90, 7.5f)); });
+                        p.Item().PaddingTop(2).Row(r => { r.ConstantItem(78).PaddingVertical(2.5f).Text("Address").FontSize(8.5f).FontColor(muted); r.RelativeItem().PaddingVertical(2.5f).Text(string.IsNullOrWhiteSpace(s.Address) ? "-" : s.Address).FontSize(FitSize(s.Address, 10f, 90, 7.5f)); });
                     });
                     col.Item().ExtendVertical().AlignBottom().AlignCenter().Column(f =>
                     {

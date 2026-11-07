@@ -111,8 +111,8 @@ namespace smss_api_service_layer.helper.reportcard
             col.Item().Row(r => { r.ConstantItem(68).Text(key).FontFamily(Sans).FontSize(7).FontColor(Muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 8f, 34, 6f)).FontColor(Ink); if (bold) tx = tx.Bold(); });
 
         /// <summary>One bordered, shaded header cell and one body cell, the building blocks of every ruled table.</summary>
-        public static IContainer HeadCell(IContainer c, string fill) => c.Border(0.4f).BorderColor(Rule).Background(fill).PaddingVertical(2).PaddingHorizontal(2).AlignMiddle();
-        public static IContainer BodyCell(IContainer c, bool zebra, string tint) => c.Border(0.3f).BorderColor(Rule).Background(zebra ? tint : Colors.White).PaddingVertical(1.5f).PaddingHorizontal(2).AlignMiddle();
+        public static IContainer HeadCell(IContainer c, string fill) => c.Border(0.4f).BorderColor(Rule).Fill(fill).PaddingVertical(2).PaddingHorizontal(2).AlignMiddle();
+        public static IContainer BodyCell(IContainer c, bool zebra, string tint) => c.Border(0.3f).BorderColor(Rule).Fill(zebra ? tint : "#FFFFFF").PaddingVertical(1.5f).PaddingHorizontal(2).AlignMiddle();
 
         public static void GradeLegend(IContainer c, ReportCardModel m)
         {
@@ -163,11 +163,24 @@ namespace smss_api_service_layer.helper.reportcard
             else frame.Padding(width * 0.12f).Svg("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='36' r='18' fill='#C7CBD1'/><path d='M14 94c0-22 16-34 36-34s36 12 36 34z' fill='#C7CBD1'/></svg>");
         }
 
-        /// <summary>A light grey DRAFT mark across the page, so a preview can never be mistaken for a published card.</summary>
+        /// <summary>
+        /// A fill that disappears when it is plain white: a white cell is drawn as no fill at all, so the DRAFT mark (which sits BEHIND the content) shows through it and a white fill never
+        /// hides it. Tinted fills are drawn as before.
+        /// </summary>
+        public static IContainer Fill(this IContainer c, string color) =>
+            string.Equals(color, "#FFFFFF", StringComparison.OrdinalIgnoreCase) || string.Equals(color, "#FFF", StringComparison.OrdinalIgnoreCase) ? c : c.Background(color);
+
+        /// <summary>The DRAFT mark's colour: grey at about 12% opacity (#AARRGGBB), clearly there on a preview but never strong enough to hide anything.</summary>
+        public const string DraftColor = "#1F707070";
+
+        /// <summary>
+        /// The DRAFT mark across the page, drawn BEHIND the content (the page background layer) and translucent, so a preview can never be mistaken for a published card and yet no mark, name
+        /// or cover field is ever covered. The same call is made by every design and every page type (cover, card, rules), so a bulk PDF carries it on every page.
+        /// </summary>
         public static void DraftMark(PageDescriptor page, bool draft)
         {
             if (!draft) return;
-            page.Foreground().AlignCenter().AlignMiddle().Rotate(-28).Text("DRAFT").FontFamily(Sans).FontSize(120).Bold().FontColor("#D6D6D6");
+            page.Background().AlignCenter().AlignMiddle().Rotate(-28).Text("DRAFT").FontFamily(Sans).FontSize(120).Bold().FontColor(DraftColor);
         }
     }
 }

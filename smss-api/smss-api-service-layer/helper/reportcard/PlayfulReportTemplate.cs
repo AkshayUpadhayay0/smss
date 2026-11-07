@@ -91,7 +91,7 @@ namespace smss_api_service_layer.helper.reportcard
                     Fact("Roll no.", s.Roll);
                 });
                 });
-                if (m.ShowPhoto) outer.ConstantItem(76).PaddingLeft(8).Element(e => PhotoSlot(e, x, 68, 84, round: true));
+                if (m.ShowPhoto) outer.ConstantItem(60).PaddingLeft(8).Element(e => PhotoSlot(e, x, 52, 64, round: true));
             });
         }
 
@@ -121,7 +121,7 @@ namespace smss_api_service_layer.helper.reportcard
                 {
                     var s = subjects[i]; var st = ti < s.Terms.Count ? s.Terms[ti] : null;
                     var fill = i % 2 == 0 ? Tint(m.Primary, 0.95) : "#FFFFFF";
-                    IContainer Body() => t.Cell().BorderBottom(0.5f).BorderColor(Tint(m.Primary, 0.7)).Background(fill).PaddingVertical(dense ? 3 : 5).PaddingHorizontal(6).AlignMiddle();
+                    IContainer Body() => t.Cell().BorderBottom(0.5f).BorderColor(Tint(m.Primary, 0.7)).Fill(fill).PaddingVertical(dense ? 3 : 5).PaddingHorizontal(6).AlignMiddle();
                     Body().Text(s.Name).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(s.Name, size + 0.5f, 22, 7f)).Bold().FontColor(pal.PrimaryText);
                     Body().AlignCenter().Element(e => e.Background(pal.Primary).CornerRadius(9).PaddingVertical(2).PaddingHorizontal(9).Text(TermGrade(s, ti)).FontSize(size + 1).Bold().FontColor(pal.OnPrimary));
                     Body().Text(string.IsNullOrWhiteSpace(st?.Improvement) ? "" : st!.Improvement).FontSize(size - 0.5f);
