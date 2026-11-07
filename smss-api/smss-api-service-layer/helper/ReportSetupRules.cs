@@ -22,12 +22,12 @@ namespace smss_api_service_layer.helper
 
         public static readonly IReadOnlyList<Info> All = new Info[]
         {
-            new("classic-card", "Classic Card", "Compact portrait card: papers as columns, result block and conduct lines.", new[] { "MARKS" }, "Portrait", false),
+            new("classic-card", "Classic Card", "Compact portrait card: papers as columns, result block and conduct lines.", new[] { "MARKS" }, "Portrait", true),
             new("term-spread", "Term Spread", "Landscape two-panel Term I / Term II marks table with a grand total, co-scholastic and discipline grades.", new[] { "MARKS" }, "Landscape", true),
             new("skill-grid", "Skill Grid", "Landscape exam-by-skill grade matrix for the early years, with remarks, rank and promotion.", new[] { "GRADES" }, "Landscape", false),
             new("board-style", "Board Style", "Portrait scholastic plus co-scholastic layout for the upper classes.", new[] { "MARKS", "GRADES" }, "Portrait", false),
             new("playful-report", "Playful Report", "Descriptive learning areas with a grade, things to improve and comments.", new[] { "GRADES" }, "Portrait", false),
-            new("minimal-bw", "Minimal (ink-saving)", "Single colour, photocopy-friendly.", new[] { "MARKS", "GRADES" }, "Portrait", false),
+            new("minimal-bw", "Minimal (ink-saving)", "Single colour, photocopy-friendly.", new[] { "MARKS" }, "Portrait", true),
         };
 
         public static Info? Find(string? key) => All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal));
