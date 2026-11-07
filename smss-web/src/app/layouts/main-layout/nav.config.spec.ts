@@ -89,7 +89,7 @@ describe('visibleNav: Attendance Report', () => {
 describe('visibleNav: Examinations group', () => {
   const exam = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Examinations');
   it('School Admin and Principal get the group with the setup pages, marks entry and the class report', () => {
-    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect((exam([role])?.children ?? []).map((c) => c.label)).toEqual(['Grade Scales', 'Report Schemes', 'Activity Areas', 'Exam Schedule', 'Marks Entry', 'My Class Report', 'Results and Publish']);
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect((exam([role])?.children ?? []).map((c) => c.label)).toEqual(['Grade Scales', 'Report Schemes', 'Report Card Settings', 'Activity Areas', 'Exam Schedule', 'Marks Entry', 'My Class Report', 'Results and Publish']);
   });
   it('a Teacher sees Marks Entry, My Class Report, Results and Publish and the Exam Schedule (no setup pages)', () => {
     expect((exam([ROLES.TEACHER])?.children ?? []).map((c) => c.label)).toEqual(['Exam Schedule', 'Marks Entry', 'My Class Report', 'Results and Publish']);

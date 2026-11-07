@@ -55,6 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Grade Scales', route: '/examinations/grade-scales' },
       { label: 'Report Schemes', route: '/examinations/schemes' },
+      { label: 'Report Card Settings', route: '/examinations/report-card-settings' },
       { label: 'Activity Areas', route: '/examinations/activity-areas' },
       { label: 'Exam Schedule', route: '/examinations/schedule' },
       { label: 'Marks Entry', route: '/examinations/marks' },

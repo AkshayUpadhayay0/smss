@@ -106,6 +106,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/examinations/schemes/new': [ROLES.SCHOOL_ADMIN],
   '/examinations/schemes/blank': [ROLES.SCHOOL_ADMIN],
   '/examinations/schemes/:schemeId': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  // Stage 5a: report card look and design. The School Admin edits; the Principal reads (the API enforces the same).
+  '/examinations/report-card-settings': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/examinations/activity-areas': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/examinations/schedule': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER],
   // Stage 2: marks entry and the class report. The Principal reads; what a Teacher may enter or review is decided per section and subject by the API.

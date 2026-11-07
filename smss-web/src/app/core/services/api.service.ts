@@ -28,6 +28,11 @@ export class ApiService {
     return this.http.get(this.url(path), { responseType: 'blob', context: this.context(options) });
   }
 
+  /** A POST whose answer is a file (e.g. a bulk PDF), not the ApiResponse envelope. A failure arrives as an HttpErrorResponse whose `error` is a Blob holding the JSON envelope. */
+  postForBlob(path: string, body?: unknown, options?: ApiRequestOptions): Observable<Blob> {
+    return this.http.post(this.url(path), body ?? {}, { responseType: 'blob', context: this.context(options) });
+  }
+
   post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Observable<T> {
     return this.unwrap(this.http.post<ApiResponse<T>>(this.url(path), body ?? {}, { context: this.context(options) }));
   }

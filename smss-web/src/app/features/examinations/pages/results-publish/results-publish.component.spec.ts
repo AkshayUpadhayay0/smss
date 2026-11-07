@@ -143,6 +143,49 @@ describe('ResultsPublishComponent', () => {
     expect(el().querySelector('[aria-label="Download card of Asha Rawat"]')).toBeTruthy();
   });
 
+  it('"Download all (PDF)" posts to the bulk endpoint and saves the one file', () => {
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x'); vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    open('School Admin', PV(), [pub({ version: 2 })]);
+    button('Download all')!.click(); fixture.detectChanges();
+    const r = http.expectOne(`${API}/api/ReportCard/7/bulk`);
+    expect(r.request.method).toBe('POST');
+    expect(r.request.body).toEqual({});
+    r.flush(new Blob(['%PDF'], { type: 'application/pdf' }));
+    fixture.detectChanges();
+    expect(created).toHaveBeenCalled();
+    expect(click).toHaveBeenCalled();
+    expect(button('Download all')!.disabled).toBe(false);
+  });
+
+  it('a version over the cap explains it and offers the roll ranges; choosing one downloads just that part', () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x'); vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    open('School Admin', PV(), [pub({ version: 2, studentCount: 150 })]);
+    button('Download all')!.click(); fixture.detectChanges();
+    const refused = { status: false, statusCode: 409, message: 'This version has 150 cards and one file can hold at most 100. Download it in parts.', data: { total: 150, maxPerRequest: 100, parts: [{ fromRoll: '1', toRoll: '100', count: 100 }, { fromRoll: '101', toRoll: '150', count: 50 }] } };
+    http.expectOne(`${API}/api/ReportCard/7/bulk`).flush(new Blob([JSON.stringify(refused)], { type: 'application/json' }), { status: 409, statusText: 'Conflict' });
+    return Promise.resolve().then(() => new Promise((r) => setTimeout(r))).then(() => {
+      fixture.detectChanges();
+      expect(text()).toContain('too big for one file');
+      expect(text()).toContain('at most 100');
+      button('Roll 101 to 150')!.click(); fixture.detectChanges();
+      const part = http.expectOne(`${API}/api/ReportCard/7/bulk`);
+      expect(part.request.body).toEqual({ fromRoll: '101', toRoll: '150' });
+      part.flush(new Blob(['%PDF'], { type: 'application/pdf' }));
+    });
+  });
+
+  it('any other bulk failure is one calm toast and the button works again', () => {
+    open('School Admin', PV(), [pub({ version: 2 })]);
+    button('Download all')!.click(); fixture.detectChanges();
+    http.expectOne(`${API}/api/ReportCard/7/bulk`).flush(new Blob([JSON.stringify({ status: false, statusCode: 503, message: 'Other report card files are being prepared right now.', data: null })], { type: 'application/json' }), { status: 503, statusText: 'Unavailable' });
+    return Promise.resolve().then(() => new Promise((r) => setTimeout(r))).then(() => {
+      fixture.detectChanges();
+      expect(button('Download all')!.disabled).toBe(false);
+    });
+  });
+
   it('the class teacher gets Draft PDF buttons but no Publish', () => {
     open('Teacher', PV({ canPublish: false, canDownloadDraft: true }));
     expect(button('Publish')).toBeUndefined();

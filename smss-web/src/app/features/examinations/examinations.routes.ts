@@ -8,6 +8,7 @@ export const EXAMINATIONS_ROUTES: Routes = [
   { path: 'examinations/schemes/new', loadComponent: () => import('./pages/scheme-from-preset/scheme-from-preset.component').then((m) => m.SchemeFromPresetComponent) },
   { path: 'examinations/schemes/blank', loadComponent: () => import('./pages/scheme-editor/scheme-editor.component').then((m) => m.SchemeEditorComponent) },
   { path: 'examinations/schemes/:schemeId', loadComponent: () => import('./pages/scheme-editor/scheme-editor.component').then((m) => m.SchemeEditorComponent) },
+  { path: 'examinations/report-card-settings', loadComponent: () => import('./pages/report-card-settings/report-card-settings.component').then((m) => m.ReportCardSettingsComponent) },
   { path: 'examinations/activity-areas', loadComponent: () => import('./pages/activity-areas/activity-areas.component').then((m) => m.ActivityAreasComponent) },
   { path: 'examinations/marks', loadComponent: () => import('./pages/marks-entry/marks-entry.component').then((m) => m.MarksEntryComponent) },
   { path: 'examinations/class-report', loadComponent: () => import('./pages/class-report/class-report.component').then((m) => m.ClassReportComponent) },

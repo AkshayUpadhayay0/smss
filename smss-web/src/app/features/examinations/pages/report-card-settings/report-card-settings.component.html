@@ -1,0 +1,175 @@
+<app-page-header
+  title="Report Card Settings"
+  subtitle="Your school's colours, header, signature and design. Cards you publish later use them; cards already published never change."
+  icon="file-text"
+  [breadcrumbs]="breadcrumbs"
+>
+  @if (dirty()) {
+    <span class="unsaved">Unsaved changes</span>
+  }
+  @if (canEdit()) {
+    <app-button [disabled]="!canSave() || loading()" (click)="save()">
+      <app-icon [name]="saving() ? 'loader-circle' : 'circle-check'" [size]="16" />{{ saving() ? 'Saving…' : 'Save settings' }}
+    </app-button>
+  }
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="note" role="status">Loading your report card settings…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="note" role="alert">
+      <p>Your report card settings could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  @if (!canEdit()) {
+    <p class="readonly" role="status">You can look at these settings. Only the School Admin can change them.</p>
+  }
+  <div class="layout">
+    <div class="main">
+      <section class="gallery" aria-labelledby="gallery-title">
+        <div class="section-head">
+          <h2 id="gallery-title">Designs</h2>
+          <p>Each preview is the real card, drawn by the same code that prints it, in your colours. Click a design to see it larger.</p>
+        </div>
+        <div class="grid">
+          @for (d of designs(); track d.code) {
+            <button type="button" class="tpl" [class.selected]="d.code === chosen()" [class.soon]="!d.available" [disabled]="!d.available" [attr.aria-pressed]="d.code === chosen()" (click)="choose(d.code)">
+              <span class="face" [class.land]="landscape(d)" [class.loading]="d.available && !thumb(d.code) && !failed(d.code)">
+                @if (thumb(d.code); as image) {
+                  <img [src]="image" [alt]="d.name + ' preview'" />
+                } @else if (!d.available) {
+                  <span class="soon-text">Coming soon</span>
+                } @else if (failed(d.code)) {
+                  <span class="soon-text">Preview unavailable</span>
+                }
+              </span>
+              <span class="meta">
+                <span class="name">{{ d.name }}</span>
+                @if (!d.available) {
+                  <span class="chip muted">Coming soon</span>
+                } @else if (d.code === chosen()) {
+                  <span class="chip"><app-icon name="circle-check" [size]="13" />Shown</span>
+                }
+                <span class="desc">{{ d.description }} · {{ d.orientation }}</span>
+              </span>
+            </button>
+          }
+        </div>
+      </section>
+
+      <app-card title="Design for each report scheme">
+        @if (schemes().length === 0) {
+          <p class="help">No report scheme yet. Create one under Report Schemes, then choose its design here.</p>
+        }
+        <ul class="schemes">
+          @for (s of schemes(); track s.schemeId) {
+            <li>
+              <div class="scheme-name">
+                <strong>{{ s.schemeName }}</strong>
+                <span class="help">{{ s.classNames.join(', ') || 'No classes yet' }} · {{ s.evaluationMode }}</span>
+              </div>
+              <select [attr.aria-label]="'Design for ' + s.schemeName" [disabled]="!canEdit() || schemeBusy() === s.schemeId" (change)="onSchemeDesign(s, $event)">
+                @for (d of designs(); track d.code) {
+                  <option [value]="d.code" [selected]="d.code === s.templateKey" [disabled]="!fits(d, s)">{{ optionLabel(d, s) }}</option>
+                }
+              </select>
+            </li>
+          }
+        </ul>
+        <p class="help">A design change is saved straight away and applies to the next version you publish.</p>
+      </app-card>
+
+      <form class="settings" [formGroup]="form" (ngSubmit)="save()">
+        <app-card title="Brand colours">
+          <div class="colors">
+            <app-color-field label="Primary colour" [value]="form.controls.primaryColor.value" [defaultValue]="saved()?.defaultPrimaryColor ?? '#1F3A5F'" (valueChange)="setColor('primaryColor', $event)" />
+            <app-color-field label="Secondary colour" [value]="form.controls.secondaryColor.value" [defaultValue]="saved()?.defaultSecondaryColor ?? '#C8963E'" (valueChange)="setColor('secondaryColor', $event)" />
+          </div>
+          <p class="help">Text switches between light and dark automatically, so any colour stays readable. The black and white design ignores colours.</p>
+        </app-card>
+
+        <app-card title="Header and footer">
+          <div class="fields">
+            <app-input label="Header line" placeholder="e.g. Affiliated to the Board of School Education" formControlName="headerLine" [errorText]="err('headerLine')" />
+            <app-input label="Recognition" placeholder="e.g. Recognised by the Education Department, No. 123/2020" formControlName="recognitionText" [errorText]="err('recognitionText')" />
+            <app-input label="UDISE code" placeholder="11 digits" formControlName="udiseCode" [errorText]="err('udiseCode')" />
+            <app-input label="Footer" placeholder="e.g. Valid without a seal" formControlName="footerText" [errorText]="err('footerText')" />
+          </div>
+          <p class="help">The school name and logo come from your School Profile{{ hasLogo() ? '' : ' (no logo uploaded yet: cards print without one)' }}.</p>
+        </app-card>
+
+        <app-card title="Pages and details">
+          <div class="toggles">
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showCover" /><span class="track"></span><span class="text">Cover page</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showRules" /><span class="track"></span><span class="text">Rules page</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showAttendance" /><span class="track"></span><span class="text">Attendance</span></label>
+            <label class="switch"><input type="checkbox" role="switch" formControlName="showGradeLegend" /><span class="track"></span><span class="text">Grade legend</span></label>
+          </div>
+          <div class="rules">
+            <app-textarea
+              label="School rules (printed on the rules page)"
+              [rows]="6"
+              placeholder="One rule per line."
+              formControlName="rulesText"
+              [errorText]="err('rulesText')"
+              [helpText]="rulesLength() + ' / ' + limits.rulesText + ' characters'"
+            />
+          </div>
+        </app-card>
+
+        <app-card title="Principal signature">
+          <div class="signature">
+            <div class="sig-state">
+              @if (hasSignature()) {
+                <span class="chip ok"><app-icon name="circle-check" [size]="13" />Signature on file</span>
+              } @else {
+                <span class="chip muted">No signature yet (a plain signing line is printed)</span>
+              }
+              <p class="help">PNG, JPG or WEBP up to 2 MB, dark ink on white or transparent. Each published card keeps the signature it was published with.</p>
+            </div>
+            @if (canEdit()) {
+              <div class="sig-actions">
+                <label class="file-btn" [class.disabled]="signatureBusy()">
+                  <app-icon [name]="signatureBusy() ? 'loader-circle' : 'upload'" [size]="16" />{{ hasSignature() ? 'Replace' : 'Upload' }}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="signatureBusy()" (change)="onSignature($event)" />
+                </label>
+                @if (hasSignature()) {
+                  <app-button variant="secondary" [disabled]="signatureBusy()" (click)="removeSignature()"><app-icon name="trash-2" [size]="16" />Remove</app-button>
+                }
+              </div>
+            }
+          </div>
+        </app-card>
+      </form>
+    </div>
+
+    <aside class="preview" aria-label="Live preview of the selected design">
+      <app-card>
+        <div class="preview-head">
+          <h2>{{ chosenDesign()?.name }}</h2>
+          @if (previewing()) {
+            <span class="busy" role="status"><app-icon name="loader-circle" [size]="14" />Updating…</span>
+          }
+        </div>
+        <div class="terms-pick" role="group" aria-label="Number of terms in the sample">
+          @for (n of [1, 2, 3]; track n) {
+            <button type="button" [class.on]="terms() === n" [attr.aria-pressed]="terms() === n" (click)="setTerms(n)">{{ n }} term{{ n === 1 ? '' : 's' }}</button>
+          }
+        </div>
+        <div class="big-pages">
+          @for (image of pages(chosen()); track $index) {
+            <figure class="big-page" [class.land]="landscape(chosenDesign())">
+              <img [src]="image" [alt]="'Page ' + ($index + 1) + ' of the sample report card'" />
+            </figure>
+          } @empty {
+            <figure class="big-page loading" [class.land]="landscape(chosenDesign())"></figure>
+          }
+        </div>
+        <p class="help">Sample data for {{ schoolName() }}. Real cards use each student's own marks.</p>
+      </app-card>
+    </aside>
+  </div>
+}

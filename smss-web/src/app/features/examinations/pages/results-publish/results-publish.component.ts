@@ -12,7 +12,8 @@ import { saveBlob } from '../../../homework/utils/homework-format';
 import { MarksContextRow, distinct } from '../../models/marks.model';
 import { Publication, PublicationDetail, PublishRequest, PublishResult, RESULT_LABEL, ResultPreview, ResultStatus } from '../../models/results.model';
 import { MarksService } from '../../services/marks.service';
-import { ResultsService } from '../../services/results.service';
+import { BulkDownloadError, ResultsService } from '../../services/results.service';
+import { BulkPart } from '../../models/report-card-settings.model';
 
 /**
  * Results and Publish. Pick a scheme, a section and a term (or the whole year): the table is the live result; Publish stores it as an immutable numbered version.
@@ -120,8 +121,23 @@ import { ResultsService } from '../../services/results.service';
                   <span class="pill" [class.green]="v.status === 'PUBLISHED'">{{ v.status === 'PUBLISHED' ? 'Current' : 'Superseded' }}</span>
                   <span class="note"> {{ v.publishedAt.slice(0, 10) }} · {{ v.studentCount }} cards@if (v.excludedCount) { · {{ v.excludedCount }} left out }@if (v.note) { · {{ v.note }} }</span>
                 </span>
-                <app-button variant="secondary" size="sm" (click)="toggle(v.publicationId)">{{ open() === v.publicationId ? 'Hide cards' : 'Cards' }}</app-button>
+                <span class="row-actions">
+                  <app-button variant="secondary" size="sm" [disabled]="busy()" (click)="downloadAll(v)" [attr.aria-label]="'Download all cards of version ' + v.version + ' as one PDF'"><app-icon name="download" [size]="14" />Download all (PDF)</app-button>
+                  <app-button variant="secondary" size="sm" (click)="toggle(v.publicationId)">{{ open() === v.publicationId ? 'Hide cards' : 'Cards' }}</app-button>
+                </span>
               </div>
+              @if (bulkParts(); as bp) {
+                @if (bp.publicationId === v.publicationId) {
+                  <div class="warnings" role="alert">
+                    <strong>This version is too big for one file.</strong> {{ bp.message }}
+                    <span class="row-actions">
+                      @for (part of bp.parts; track part.fromRoll) {
+                        <app-button variant="secondary" size="sm" [disabled]="busy()" (click)="downloadAll(v, part)">Roll {{ part.fromRoll }} to {{ part.toRoll }} ({{ part.count }})</app-button>
+                      }
+                    </span>
+                  </div>
+                }
+              }
               @if (open() === v.publicationId) {
                 @if (detail(); as d) {
                   @if (d.excluded.length) { <p class="note">Left out of this version: {{ names(d.excluded) }}.</p> }
@@ -180,6 +196,8 @@ export class ResultsPublishComponent implements OnInit {
   protected readonly pv = signal<ResultPreview | null>(null);
   protected readonly versions = signal<Publication[]>([]);
   protected readonly open = signal(0);
+  /** Set when "Download all" was refused because the version is over the server's cap: the parts to download instead. */
+  protected readonly bulkParts = signal<{ publicationId: number; message: string; parts: BulkPart[] } | null>(null);
   protected readonly detail = signal<PublicationDetail | null>(null);
 
   /** Every section for the School Admin and the Principal; a teacher only the sections they are the class teacher of. */
@@ -240,6 +258,19 @@ export class ResultsPublishComponent implements OnInit {
   protected download(v: Publication, studentId: string, admission: string): void {
     this.busy.set(true);
     this.results.cardPdf(v.publicationId, studentId).pipe(finalize(() => this.busy.set(false))).subscribe({ next: (b) => saveBlob(b, `ReportCard_${admission}_v${v.version}.pdf`), error: () => undefined });
+  }
+  /** One PDF with every card of the version in roll order (or one roll range of it). Slow or refused requests say so plainly; nothing is cut short silently. */
+  protected downloadAll(v: Publication, part?: BulkPart): void {
+    this.busy.set(true);
+    this.bulkParts.set(null);
+    this.results.bulkPdf(v.publicationId, part ? { fromRoll: part.fromRoll, toRoll: part.toRoll } : null).pipe(finalize(() => this.busy.set(false))).subscribe({
+      next: (b) => saveBlob(b, `ReportCards_${v.className}${v.sectionName}_${(v.termName ?? 'Year').replace(/\W+/g, '_')}_v${v.version}${part ? `_rolls_${part.fromRoll}-${part.toRoll}` : ''}.pdf`.replace(/\s+/g, '')),
+      error: (e: unknown) => {
+        const err = e instanceof BulkDownloadError ? e : null;
+        if (err && err.parts.length) this.bulkParts.set({ publicationId: v.publicationId, message: err.message, parts: err.parts });
+        else this.toast.error(err?.message ?? 'The report cards could not be prepared. Please try again.');
+      },
+    });
   }
   protected draft(studentId: string, name: string): void {
     const p = this.pv(); if (!p) return;
