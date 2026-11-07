@@ -295,6 +295,74 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { _logger.LogError(ex, "Error while drawing a draft report card"); return Fail(500, "Something went wrong. Please try again later."); }
         }
 
+        // ============================================================================ bulk PDF
+        private static readonly SemaphoreSlim BulkGate = new(2, 2);       // at most two bulk renders at a time per process: a small server stays responsive
+
+        public async Task<BulkPdfResult> BulkPdfAsync(string? schoolId, ReportCaller caller, long publicationId, BulkRequest? request, CancellationToken ct)
+        {
+            static BulkPdfResult Fail(int code, string message) => new() { StatusCode = code, Message = message };
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
+            try
+            {
+                var (row, code, message) = await AuthorisePublicationAsync(schoolId, caller, publicationId, ct);
+                if (row == null) return Fail(code, message);
+                var pub = await _repo.GetPublicationEntityAsync(schoolId, publicationId, ct);
+                if (pub == null) return Fail(404, "Published report cards not found.");
+                var rows = (await _repo.GetBulkCardsAsync(publicationId, ct))
+                    .OrderBy(r => r.RollNumber, RollComparer.Instance).ThenBy(r => r.StudentName, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.AdmissionNumber, StringComparer.Ordinal).ToList();
+                if (rows.Count == 0) return Fail(404, "This version has no cards.");
+                static string Key(BulkCardRow r) => string.IsNullOrWhiteSpace(r.RollNumber) ? r.AdmissionNumber : r.RollNumber!;
+
+                var selected = rows; var from = request?.FromRoll?.Trim(); var to = request?.ToRoll?.Trim();
+                if (!string.IsNullOrEmpty(from) || !string.IsNullOrEmpty(to))
+                {
+                    var i = string.IsNullOrEmpty(from) ? 0 : rows.FindIndex(r => string.Equals(Key(r), from, StringComparison.OrdinalIgnoreCase));
+                    var j = string.IsNullOrEmpty(to) ? rows.Count - 1 : rows.FindLastIndex(r => string.Equals(Key(r), to, StringComparison.OrdinalIgnoreCase));
+                    if (i < 0 || j < 0) return Fail(400, $"There is no card with roll number {(i < 0 ? from : to)} in this version.");
+                    if (j < i) return Fail(400, "The last roll number comes before the first one.");
+                    selected = rows.GetRange(i, j - i + 1);
+                }
+                if (selected.Count > ReportCardBulk.MaxStudentsPerRequest)
+                {
+                    var parts = new List<BulkPartDto>();
+                    for (var k = 0; k < selected.Count; k += ReportCardBulk.MaxStudentsPerRequest)
+                    {
+                        var chunk = selected.Skip(k).Take(ReportCardBulk.MaxStudentsPerRequest).ToList();
+                        parts.Add(new BulkPartDto { FromRoll = Key(chunk[0]), ToRoll = Key(chunk[^1]), Count = chunk.Count });
+                    }
+                    return new BulkPdfResult
+                    {
+                        StatusCode = 409, TooLarge = new BulkTooLargeDto { Total = selected.Count, MaxPerRequest = ReportCardBulk.MaxStudentsPerRequest, Parts = parts },
+                        Message = $"This version has {selected.Count} cards and one file can hold at most {ReportCardBulk.MaxStudentsPerRequest}. Download it in parts: {string.Join("; ", parts.Select(p => $"roll {p.FromRoll} to {p.ToRoll} ({p.Count} cards)"))}."
+                    };
+                }
+
+                if (!await BulkGate.WaitAsync(TimeSpan.FromSeconds(15), ct)) return Fail(503, "Other report card files are being prepared right now. Please try again in a minute.");
+                try
+                {
+                    var cfg = JsonSerializer.Deserialize<RcConfigSnapshot>(pub.ConfigSnapshot, ReportCardModel.Json);
+                    // the images are the same for every card of one publication (the keys are in the stored models): read each ONCE
+                    var logoMemo = new Dictionary<string, byte[]?>(); var sigMemo = new Dictionary<string, byte[]?>();
+                    byte[]? Logo(string? key) => string.IsNullOrWhiteSpace(key) ? null : logoMemo.TryGetValue(key, out var b) ? b : logoMemo[key] = _images.Logo(key);
+                    byte[]? Sig(string? key) => string.IsNullOrWhiteSpace(key) ? null : sigMemo.TryGetValue(key, out var b) ? b : sigMemo[key] = _images.Signature(key);
+                    var contexts = selected.Select(r =>
+                    {
+                        var model = ReportCardModel.FromJson(r.CardModel);
+                        return new RcContext { Model = model, Logo = Logo(model.Header.LogoKey), Signature = Sig(model.SignatureKey ?? cfg?.SignatureKey), Draft = false };
+                    });
+                    var first = ReportCardModel.FromJson(selected[0].CardModel);
+                    if (ReportCardDesigns.Find(first.TemplateKey) == null) return Fail(409, "This design is not available yet, choose Term Spread.");
+                    var pdf = await Task.Run(() => ReportCardPdf.RenderMany(contexts), ct);
+                    var label = (pub.Scope == "TERM" ? row.TermName ?? "Term" : "Year");
+                    var range = selected.Count == rows.Count ? "" : $"_rolls-{Key(selected[0])}-to-{Key(selected[^1])}";
+                    return new BulkPdfResult { Content = pdf, FileName = FileName($"{row.ClassName}{row.SectionName}_{label}", $"v{pub.Version}{range}").Replace("ReportCard_", "ReportCards_"), Cards = selected.Count };
+                }
+                finally { BulkGate.Release(); }
+            }
+            catch (OperationCanceledException) { return Fail(499, "Cancelled."); }
+            catch (Exception ex) { _logger.LogError(ex, "Error while drawing a bulk report card PDF"); return Fail(500, "Something went wrong. Please try again later."); }
+        }
+
         // ============================================================================ the student's own
         private async Task<string?> MyStudentIdAsync(string schoolId, long userId, CancellationToken ct) => await _students.GetUserLoginIdAsync(schoolId, userId, ct);
 

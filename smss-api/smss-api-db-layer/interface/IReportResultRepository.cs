@@ -13,6 +13,8 @@ namespace smss_api_db_layer.@interface
         int Version, string Status, long PublishedBy, DateTime PublishedAt, string? Note, int StudentCount, string? ExcludedStudents);
     public record PublicationCardRow(long PubStudentId, long PublicationId, string StudentId, string StudentName, string AdmissionNumber, string? RollNumber, string ResultStatus,
         decimal? TotalObtained, decimal? TotalMax, decimal? Percentage, string? GradeCode, int? RankPosition);
+    /// <summary>One stored card for a bulk file: who, how to order them, and the stored model as JSON.</summary>
+    public record BulkCardRow(string StudentId, string StudentName, string AdmissionNumber, string? RollNumber, string CardModel);
     public record MyCardRow(long PublicationId, long PubStudentId, long SchemeId, string SchemeName, string ClassName, string SectionName, string Scope, string? TermName, int Version, DateTime PublishedAt,
         string ResultStatus, decimal? Percentage, string? GradeCode, int? RankPosition);
 
@@ -38,6 +40,8 @@ namespace smss_api_db_layer.@interface
         Task<TbReportPublication?> GetCurrentAsync(string schoolId, long schemeId, long sectionId, string scope, long? termId, bool track, CancellationToken ct);
         Task<int> MaxVersionAsync(string schoolId, long schemeId, long sectionId, string scope, long? termId, CancellationToken ct);
         Task<List<PublicationCardRow>> GetCardRowsAsync(long publicationId, CancellationToken ct);
+        /// <summary>Every card of a publication in ONE query (a bulk PDF): never one query per student.</summary>
+        Task<List<BulkCardRow>> GetBulkCardsAsync(long publicationId, CancellationToken ct);
         Task<TbReportPublicationStudent?> GetCardAsync(string schoolId, long publicationId, string studentId, CancellationToken ct);
         Task<List<MyCardRow>> GetMyCardsAsync(string schoolId, string studentId, CancellationToken ct);
         Task<MyCardRow?> GetMyCardAsync(string schoolId, string studentId, long publicationId, CancellationToken ct);

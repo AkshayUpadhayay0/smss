@@ -108,6 +108,28 @@ namespace smss_api_service_layer.dto
         public List<ExcludedStudentDto> Excluded { get; set; } = new();
     }
 
+    /// <summary>Optional body of a bulk request: a roll range (both ends inclusive) when the version is larger than the cap. Empty = the whole version.</summary>
+    public class BulkRequest
+    {
+        public string? FromRoll { get; set; }
+        public string? ToRoll { get; set; }
+    }
+
+    /// <summary>One suggested part when a version has more cards than a single bulk file may hold.</summary>
+    public class BulkPartDto
+    {
+        public string FromRoll { get; set; } = "";
+        public string ToRoll { get; set; } = "";
+        public int Count { get; set; }
+    }
+
+    public class BulkTooLargeDto
+    {
+        public int Total { get; set; }
+        public int MaxPerRequest { get; set; }
+        public List<BulkPartDto> Parts { get; set; } = new();
+    }
+
     public class MyReportCardDto
     {
         public long PublicationId { get; set; }

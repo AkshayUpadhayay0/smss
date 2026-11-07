@@ -128,6 +128,10 @@ namespace smss_api_db_layer.repository
                 .Select(s => new { s.PubStudentId, s.PublicationId, s.StudentId, s.StudentName, s.AdmissionNumber, s.RollNumber, s.ResultStatus, s.TotalObtained, s.TotalMax, s.Percentage, s.GradeCode, s.RankPosition }).ToListAsync(ct))
             .Select(s => new PublicationCardRow(s.PubStudentId, s.PublicationId, s.StudentId, s.StudentName, s.AdmissionNumber, s.RollNumber, s.ResultStatus, s.TotalObtained, s.TotalMax, s.Percentage, s.GradeCode, s.RankPosition)).ToList();
 
+        public async Task<List<BulkCardRow>> GetBulkCardsAsync(long publicationId, CancellationToken ct) =>
+            (await _db.ReportPublicationStudents.AsNoTracking().Where(s => s.PublicationId == publicationId).Select(s => new { s.StudentId, s.StudentName, s.AdmissionNumber, s.RollNumber, s.CardModel }).ToListAsync(ct))
+            .Select(s => new BulkCardRow(s.StudentId, s.StudentName, s.AdmissionNumber, s.RollNumber, s.CardModel)).ToList();
+
         public Task<TbReportPublicationStudent?> GetCardAsync(string schoolId, long publicationId, string studentId, CancellationToken ct) =>
             _db.ReportPublicationStudents.AsNoTracking().Where(s => s.SchoolId == schoolId && s.PublicationId == publicationId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 
