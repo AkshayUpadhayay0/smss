@@ -180,7 +180,7 @@ namespace smss_api_service_layer.service
                 var signatureKey = saved?.PrincipalSignaturePath;       // the saved signature file; uploads are saved at once, so the preview never needs an unsaved one
                 var school = await _school.GetSchoolAsync(schoolId, ct);
 
-                ReportCardModel model; var isSample = true;
+                ReportCardModel model; var isSample = true; string? livePhotoKey = null;
                 if (!string.IsNullOrWhiteSpace(request.StudentId))
                 {
                     if (request.SchemeId == null || request.SectionId == null || string.IsNullOrWhiteSpace(request.Scope)) return Result<ReportCardPreviewDto>(400, "Choose a scheme, a section and a term to preview a real student.", null);
@@ -197,6 +197,8 @@ namespace smss_api_service_layer.service
                     if (set == null) return Result<ReportCardPreviewDto>(404, "Report scheme, section or term not found.", null);
                     if (!set.Models.TryGetValue(request.StudentId.Trim(), out model!)) return Result<ReportCardPreviewDto>(404, "Student not found in this section.", null);
                     if (!design.SupportedModes.Contains(scheme.EvaluationMode)) return Result<ReportCardPreviewDto>(409, ReportCardTemplates.Incompatible(ReportCardTemplates.Find(key), scheme.EvaluationMode), null);
+                    // the settings on screen may switch the photo on before they are saved: take the student's photo key from the loaded record, not from the saved setting
+                    livePhotoKey = set.Students.FirstOrDefault(x => string.Equals(x.StudentId, request.StudentId.Trim(), StringComparison.Ordinal))?.ProfilePhotoUrl;
                     model.TemplateKey = key; isSample = false;
                 }
                 else
@@ -210,6 +212,7 @@ namespace smss_api_service_layer.service
                     if (!string.IsNullOrWhiteSpace(school?.MobileNumber)) model.Header.Phone = school!.MobileNumber!;
                 }
                 ReportCardBranding.Apply(model, clean, signatureKey);
+                if (clean.ShowPhoto && !isSample) model.Student.PhotoKey = livePhotoKey;
 
                 var pngs = await Task.Run(() => ReportCardPdf.RenderPng(_images.Context(model, draft: !isSample)), ct);
                 return Result(200, "Successfully generated", new ReportCardPreviewDto { TemplateKey = key, IsSample = isSample, PageCount = pngs.Count, Pages = pngs.Take(4).Select(Convert.ToBase64String).ToList() });
