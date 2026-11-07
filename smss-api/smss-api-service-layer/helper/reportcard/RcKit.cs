@@ -12,6 +12,8 @@ namespace smss_api_service_layer.helper.reportcard
         public ReportCardModel Model { get; init; } = new();
         public byte[]? Logo { get; init; }
         public byte[]? Signature { get; init; }
+        /// <summary>The student's photo, when the school switched photos on and the student has one. Never stored; read when the card is drawn.</summary>
+        public byte[]? Photo { get; init; }
         public bool Draft { get; init; }
     }
 
@@ -147,6 +149,18 @@ namespace smss_api_service_layer.helper.reportcard
         public static void FooterText(ColumnDescriptor col, ReportCardModel m)
         {
             if (!string.IsNullOrWhiteSpace(m.Footer)) col.Item().PaddingTop(2).AlignCenter().Text(m.Footer).FontFamily(new[] { Sans }).FontSize(FitSize(m.Footer, 6.5f, 150, 5f)).FontColor(Muted);
+        }
+
+        /// <summary>
+        /// The photo slot of the designs that have one (skill-grid, playful-report, board-style). Draws nothing at all when the school has photos switched off; with photos on it draws the student's
+        /// picture, or a neutral grey placeholder (a head and shoulders drawn with two simple shapes) when the student has none. <paramref name="round"/> gives the playful design its rounded frame.
+        /// </summary>
+        public static void PhotoSlot(IContainer c, RcContext x, float width, float height, bool round = false)
+        {
+            if (!x.Model.ShowPhoto) return;
+            var frame = round ? c.Width(width).Height(height).Background("#F3F4F6").CornerRadius(12) : c.Width(width).Height(height).Border(0.6f).BorderColor(Rule).Background("#F3F4F6");
+            if (x.Photo != null) frame.Padding(1).Image(x.Photo).FitArea().WithRasterDpi(400).WithCompressionQuality(ImageCompressionQuality.Medium);
+            else frame.Padding(width * 0.12f).Svg("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='36' r='18' fill='#C7CBD1'/><path d='M14 94c0-22 16-34 36-34s36 12 36 34z' fill='#C7CBD1'/></svg>");
         }
 
         /// <summary>A light grey DRAFT mark across the page, so a preview can never be mistaken for a published card.</summary>

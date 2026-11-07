@@ -34,7 +34,7 @@ namespace smss_api_service_layer.helper.reportcard
                     page.Header().Column(col =>
                     {
                         col.Item().Element(c => Banner(c, x, pal, terms[index]));
-                        col.Item().PaddingTop(6).Element(c => ChildCard(c, m, pal));
+                        col.Item().PaddingTop(6).Element(c => ChildCard(c, x, pal));
                         col.Item().PaddingBottom(6);
                     });
                     page.Content().Column(col =>
@@ -73,11 +73,13 @@ namespace smss_api_service_layer.helper.reportcard
             });
         }
 
-        private static void ChildCard(IContainer c, ReportCardModel m, IdCardPalette pal)
+        private static void ChildCard(IContainer c, RcContext x, IdCardPalette pal)
         {
-            var s = m.Student;
-            c.Background(Tint(m.Primary, 0.9)).CornerRadius(12).Padding(8).Column(col =>
+            var m = x.Model; var s = m.Student;
+            c.Background(Tint(m.Primary, 0.9)).CornerRadius(12).Padding(8).Row(outer =>
             {
+                outer.RelativeItem().Column(col =>
+                {
                 col.Item().Text(string.IsNullOrWhiteSpace(s.Name) ? "-" : s.Name).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(s.Name, 18f, 26, 10f)).Bold().FontColor(pal.PrimaryText);
                 col.Item().PaddingTop(3).Row(r =>
                 {
@@ -88,6 +90,8 @@ namespace smss_api_service_layer.helper.reportcard
                     Fact("Class teacher", s.ClassTeacher);
                     Fact("Roll no.", s.Roll);
                 });
+                });
+                if (m.ShowPhoto) outer.ConstantItem(76).PaddingLeft(8).Element(e => PhotoSlot(e, x, 68, 84, round: true));
             });
         }
 

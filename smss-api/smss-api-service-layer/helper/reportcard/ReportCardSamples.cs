@@ -23,6 +23,7 @@ namespace smss_api_service_layer.helper.reportcard
         public bool ShowRules { get; set; }
         public bool ShowAttendance { get; set; } = true;
         public bool ShowGradeLegend { get; set; } = true;
+        public bool ShowPhoto { get; set; }
         public bool ShowRank { get; set; } = true;
         public string? SignatureKey { get; set; }
         public string? LogoKey { get; set; }
@@ -140,7 +141,7 @@ namespace smss_api_service_layer.helper.reportcard
                     : new RcOverall { Obtained = allObt, OutOf = allOut, Percent = allPct, Grade = GradeFor(allPct), Result = yearFail ? "FAIL" : "PASS", FailedSubjects = allFailed, Rank = yearFail ? null : 5, RankedCount = 38 },
                 Promotion = new RcPromotion { Decision = yearFail ? "NOT_PROMOTED" : "PROMOTED", PromotedTo = yearFail ? null : "Class 7", NewSessionDate = "01 Apr 2027" },
                 Legend = legend, Version = 1, PublishedAt = "07 Nov 2026",
-                Footer = o.Footer, RulesText = o.RulesText, SignatureKey = o.SignatureKey, ShowCover = o.ShowCover, ShowRules = o.ShowRules, ShowAttendance = o.ShowAttendance, ShowGradeLegend = o.ShowGradeLegend,
+                Footer = o.Footer, RulesText = o.RulesText, SignatureKey = o.SignatureKey, ShowCover = o.ShowCover, ShowRules = o.ShowRules, ShowAttendance = o.ShowAttendance, ShowGradeLegend = o.ShowGradeLegend, ShowPhoto = o.ShowPhoto,
             };
         }
     }

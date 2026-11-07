@@ -31,8 +31,35 @@ namespace smss_api_service_layer.helper.reportcard
 
         public static byte[] Render(RcContext ctx) => Build(new[] { ctx }).GeneratePdf();
 
-        /// <summary>Many cards in one document (a bulk PDF). The contexts are drawn lazily one after the other, so only one student's images are held at a time.</summary>
-        public static byte[] RenderMany(IEnumerable<RcContext> cards) => Build(cards).GeneratePdf();
+        /// <summary>The number of students drawn per piece of a bulk PDF. A piece is laid out, written to disk and freed before the next one starts, so the memory of a bulk request does not grow
+        /// with the number of students (a card with a full-size photo is several MB while it is being laid out).</summary>
+        public const int BulkChunkSize = 20;
+
+        /// <summary>
+        /// Many cards in one PDF (a bulk file). The contexts are drawn lazily, <see cref="BulkChunkSize"/> students at a time: each piece is generated to a temporary file and released, then the
+        /// pieces are merged in order. A bulk of up to one piece is simply one document. The temporary folder is always removed.
+        /// </summary>
+        public static byte[] RenderMany(IEnumerable<RcContext> cards, int chunkSize = BulkChunkSize)
+        {
+            var chunk = new List<RcContext>(chunkSize); var parts = new List<string>(); string? dir = null;
+            void Spill()
+            {
+                dir ??= Directory.CreateTempSubdirectory("smss-rc-bulk-").FullName;
+                var path = Path.Combine(dir, $"part{parts.Count:D3}.pdf");
+                Build(chunk).GeneratePdf(path); parts.Add(path); chunk.Clear();
+            }
+            try
+            {
+                foreach (var c in cards) { chunk.Add(c); if (chunk.Count >= chunkSize) Spill(); }
+                if (parts.Count == 0) return Build(chunk).GeneratePdf();
+                if (chunk.Count > 0) Spill();
+                var op = DocumentOperation.LoadFile(parts[0]);
+                foreach (var p in parts.Skip(1)) op = op.MergeFile(p);
+                var merged = Path.Combine(dir!, "merged.pdf"); op.Save(merged);
+                return File.ReadAllBytes(merged);
+            }
+            finally { if (dir != null) { try { Directory.Delete(dir, true); } catch { /* a leftover temp folder is harmless */ } } }
+        }
 
         /// <summary>The pages as PNG images (the settings preview).</summary>
         public static List<byte[]> RenderPng(RcContext ctx, int dpi = 110) =>

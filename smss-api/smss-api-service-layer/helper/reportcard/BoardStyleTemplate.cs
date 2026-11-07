@@ -16,6 +16,7 @@ namespace smss_api_service_layer.helper.reportcard
         public static void Render(IDocumentContainer doc, RcContext x, PortraitStyle style)
         {
             var m = x.Model; var pal = Pal(m);
+            var photo = m.ShowPhoto && !style.Mono;       // Minimal never draws a photo: it is the ink-saving design
             var ink = style.Mono ? "#000000" : Ink; var muted = style.Mono ? "#333333" : Muted; var rule = style.Mono ? "#000000" : Rule;
             var accent = style.Mono ? "#000000" : pal.PrimaryText; var accent2 = style.Mono ? "#000000" : pal.SecondaryText;
             doc.Page(page =>
@@ -27,7 +28,11 @@ namespace smss_api_service_layer.helper.reportcard
                 page.Header().Column(col =>
                 {
                     col.Item().Element(c => PortraitCardLayout.PortraitHeader(c, x, style, accent, accent2, muted));
-                    col.Item().PaddingTop(3).Element(c => PortraitCardLayout.StudentBlockP(c, m, style, rule, muted, ink));
+                    col.Item().PaddingTop(3).Row(r =>
+                    {
+                        r.RelativeItem().Element(c => PortraitCardLayout.StudentBlockP(c, m, style, rule, muted, ink));
+                        if (photo) r.ConstantItem(62).PaddingLeft(5).Element(c => PhotoSlot(c, x, 57, 66));
+                    });
                     col.Item().PaddingBottom(3);
                 });
                 page.Content().Column(col =>

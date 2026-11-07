@@ -4,7 +4,7 @@ using smss_api_service_layer.helper.idcard;
 namespace smss_api_service_layer.helper.reportcard
 {
     public sealed record ReportCardSettingsClean(string PrimaryColor, string SecondaryColor, string? HeaderLine, string? RecognitionText, string? UdiseCode, string? FooterText, string? RulesText,
-        bool ShowCover, bool ShowRules, bool ShowAttendance, bool ShowGradeLegend);
+        bool ShowCover, bool ShowRules, bool ShowAttendance, bool ShowGradeLegend, bool ShowPhoto = false);
 
     /// <summary>The one place that decides whether report card settings are acceptable (used by Save and by Preview).</summary>
     public static class ReportCardSettingsRules
@@ -32,7 +32,7 @@ namespace smss_api_service_layer.helper.reportcard
                 if (lines.Count > MaxRulesLines) return (null, $"The rules text can have at most {MaxRulesLines} lines.");
                 if (rules.Length == 0) rules = null;
             }
-            return (new ReportCardSettingsClean(primary.ToUpperInvariant(), secondary.ToUpperInvariant(), header, rec, udise, footer, rules, r.ShowCover, r.ShowRules, r.ShowAttendance, r.ShowGradeLegend), null);
+            return (new ReportCardSettingsClean(primary.ToUpperInvariant(), secondary.ToUpperInvariant(), header, rec, udise, footer, rules, r.ShowCover, r.ShowRules, r.ShowAttendance, r.ShowGradeLegend, r.ShowPhoto), null);
         }
 
         private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

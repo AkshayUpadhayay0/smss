@@ -133,6 +133,79 @@ namespace smss_api_tests
             }
         }
 
+        // ---- the optional student photo (stage 5b step 4)
+        private static readonly (string Design, string Mode, int Skills)[] WithSlot = Shapes.Where(s => s.Design is "skill-grid" or "playful-report" or "board-style").ToArray();
+        private static readonly (string Design, string Mode, int Skills)[] WithoutSlot =
+            Shapes.Where(s => s.Design == "minimal-bw").Concat(new[] { ("term-spread", "MARKS", 0), ("classic-card", "MARKS", 0), ("minimal-bw", "MARKS", 0) }).ToArray();
+
+        private static RcContext Photo(string design, string mode, int skills, bool show, bool hasPhoto, int terms = 2, string text = "normal", int pal = 0, int subjects = 7)
+        {
+            var c = Context(design, mode, skills, terms, subjects, text, pal, tweak: o => o.ShowPhoto = show);
+            return new RcContext { Model = c.Model, Photo = hasPhoto ? Png : null };
+        }
+
+        [Fact]
+        public void A_photo_is_drawn_on_the_designs_with_a_slot_a_neutral_placeholder_when_the_student_has_none_and_nothing_when_photos_are_off()
+        {
+            foreach (var (design, mode, skills) in WithSlot)
+            {
+                var off = Photo(design, mode, skills, show: false, hasPhoto: true);
+                var on = Photo(design, mode, skills, show: true, hasPhoto: true);
+                var missing = Photo(design, mode, skills, show: true, hasPhoto: false);
+                Assert.True(Differs(off, on), $"{design} {mode}: photo on should change the card");
+                Assert.True(Differs(off, missing), $"{design} {mode}: the placeholder should show when the student has no photo");
+                Assert.True(Differs(on, missing), $"{design} {mode}: a present photo differs from the placeholder");
+                Assert.False(Differs(off, Photo(design, mode, skills, show: false, hasPhoto: false)), $"{design} {mode}: with photos off the photo bytes are never drawn");
+            }
+        }
+
+        [Fact]
+        public void The_designs_without_a_photo_slot_ignore_the_setting_completely()
+        {
+            foreach (var (design, mode, skills) in WithoutSlot)
+                Assert.False(Differs(Photo(design, mode, skills, show: false, hasPhoto: false), Photo(design, mode, skills, show: true, hasPhoto: true)), $"{design} {mode} must ignore the photo");
+        }
+
+        [Theory]
+        [InlineData("skill-grid", "GRADES", 5)] [InlineData("playful-report", "GRADES", 0)] [InlineData("board-style", "GRADES", 3)] [InlineData("board-style", "MARKS", 0)]
+        public void Photos_work_with_every_term_count_16_subjects_long_and_Hindi_text_dark_and_light_colours_and_cover_and_rules(string design, string mode, int skills)
+        {
+            foreach (var hasPhoto in new[] { true, false })
+                foreach (var terms in new[] { 1, 2, 3 })
+                    foreach (var (text, pal) in new[] { ("long", 1), ("hindi", 2), ("normal", 0) })
+                    {
+                        var c = Photo(design, mode, skills, true, hasPhoto, terms, text, pal, subjects: 16);
+                        c.Model.ShowCover = true; c.Model.ShowRules = true;
+                        Assert.True(ReportCardPdf.Render(new RcContext { Model = c.Model, Photo = c.Photo, Logo = Png, Signature = Png }).Length > 3000);
+                    }
+        }
+
+        [Fact]
+        public void A_card_model_never_carries_photo_bytes_only_a_key()
+        {
+            var m = Photo("playful-report", "GRADES", 0, show: true, hasPhoto: true).Model;
+            m.Student.PhotoKey = "LAS/photos/ST001/abc.jpg";
+            var json = m.ToJson();
+            Assert.Contains("\"photoKey\":\"LAS/photos/ST001/abc.jpg\"", json);
+            Assert.True(json.Length < 30000, "the stored card stays small: no image data in it");
+            Assert.Null(typeof(RcStudent).GetProperties().FirstOrDefault(p => p.PropertyType == typeof(byte[])));
+            Assert.Null(typeof(ReportCardModel).GetProperties().FirstOrDefault(p => p.PropertyType == typeof(byte[])));
+        }
+
+        private static int PdfPages(byte[] pdf) => System.Text.RegularExpressions.Regex.Matches(System.Text.Encoding.Latin1.GetString(pdf), @"/Type\s*/Page[^s]").Count;
+
+        [Fact]
+        public void A_bulk_PDF_made_in_pieces_has_the_same_pages_in_the_same_order_as_one_made_in_a_single_piece()
+        {
+            var cards = Enumerable.Range(1, 7).Select(i => Context("board-style", "MARKS", 0, 2, 8, "normal", 0, tweak: o => { o.StudentName = "Student " + i; o.ShowCover = true; o.ShowRules = true; })).ToList();
+            var one = ReportCardPdf.RenderMany(cards, chunkSize: 100);
+            var pieces = ReportCardPdf.RenderMany(cards, chunkSize: 3);        // 3 + 3 + 1: written to temporary files and merged
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pieces, 0, 4));
+            Assert.True(PdfPages(one) > 0);
+            Assert.Equal(PdfPages(one), PdfPages(pieces));
+            Assert.Empty(Directory.GetDirectories(Path.GetTempPath(), "smss-rc-bulk-*"));   // the temporary folders are always removed
+        }
+
         // ---- the sample card is a real GRADES card: nothing numeric, rank by hand, promotion filled
         [Fact]
         public void A_GRADES_sample_has_no_marks_percentage_or_automatic_rank_and_carries_the_hand_written_parts()

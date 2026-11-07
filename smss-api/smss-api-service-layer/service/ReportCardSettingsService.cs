@@ -45,7 +45,7 @@ namespace smss_api_service_layer.service
                 DefaultPrimaryColor = ReportCardSettingsRules.DefaultPrimary, DefaultSecondaryColor = ReportCardSettingsRules.DefaultSecondary,
                 HeaderLine = row?.HeaderLine, RecognitionText = row?.RecognitionText, UdiseCode = row?.UdiseCode, FooterText = row?.FooterText, RulesText = row?.RulesText,
                 HasSignature = !string.IsNullOrEmpty(row?.PrincipalSignaturePath), ShowCover = row?.ShowCover ?? false, ShowRules = row?.ShowRules ?? false,
-                ShowAttendance = row?.ShowAttendance ?? true, ShowGradeLegend = row?.ShowGradeLegend ?? true, IsDefault = row == null, UpdatedAt = row?.UpdatedAt,
+                ShowAttendance = row?.ShowAttendance ?? true, ShowGradeLegend = row?.ShowGradeLegend ?? true, ShowPhoto = row?.ShowPhoto ?? false, IsDefault = row == null, UpdatedAt = row?.UpdatedAt,
                 SchoolName = school?.SchoolName ?? "", HasLogo = !string.IsNullOrWhiteSpace(school?.LogoUrl),
                 Designs = ReportCardTemplates.All.Select(t => new ReportCardDesignDto { Code = t.Key, Name = t.Name, Description = t.Description, Modes = t.Modes.ToList(), Orientation = t.Orientation, Available = ReportCardDesigns.Find(t.Key) != null }).ToList(),
                 Schemes = schemes.Select(s => new ReportCardSchemeChoiceDto { SchemeId = s.SchemeId, SchemeName = s.SchemeName, EvaluationMode = s.EvaluationMode, TemplateKey = s.TemplateKey, ClassNames = s.ClassNames }).ToList(),
@@ -68,7 +68,7 @@ namespace smss_api_service_layer.service
                 if (row == null) { row = NewRow(schoolId, now); _repo.Add(row); }
                 row.PrimaryColor = clean.PrimaryColor; row.SecondaryColor = clean.SecondaryColor; row.HeaderLine = clean.HeaderLine; row.RecognitionText = clean.RecognitionText;
                 row.UdiseCode = clean.UdiseCode; row.FooterText = clean.FooterText; row.RulesText = clean.RulesText;
-                row.ShowCover = clean.ShowCover; row.ShowRules = clean.ShowRules; row.ShowAttendance = clean.ShowAttendance; row.ShowGradeLegend = clean.ShowGradeLegend;
+                row.ShowCover = clean.ShowCover; row.ShowRules = clean.ShowRules; row.ShowAttendance = clean.ShowAttendance; row.ShowGradeLegend = clean.ShowGradeLegend; row.ShowPhoto = clean.ShowPhoto;
                 row.UpdatedBy = userId; row.UpdatedAt = now;
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -174,7 +174,7 @@ namespace smss_api_service_layer.service
                 var (clean, error) = ReportCardSettingsRules.Validate(request.Settings ?? new ReportCardSettingsRequest
                 {
                     PrimaryColor = saved?.PrimaryColor, SecondaryColor = saved?.SecondaryColor, HeaderLine = saved?.HeaderLine, RecognitionText = saved?.RecognitionText, UdiseCode = saved?.UdiseCode, FooterText = saved?.FooterText, RulesText = saved?.RulesText,
-                    ShowCover = saved?.ShowCover ?? false, ShowRules = saved?.ShowRules ?? false, ShowAttendance = saved?.ShowAttendance ?? true, ShowGradeLegend = saved?.ShowGradeLegend ?? true
+                    ShowCover = saved?.ShowCover ?? false, ShowRules = saved?.ShowRules ?? false, ShowAttendance = saved?.ShowAttendance ?? true, ShowGradeLegend = saved?.ShowGradeLegend ?? true, ShowPhoto = saved?.ShowPhoto ?? false
                 });
                 if (clean == null) return Result<ReportCardPreviewDto>(400, error!, null);
                 var signatureKey = saved?.PrincipalSignaturePath;       // the saved signature file; uploads are saved at once, so the preview never needs an unsaved one

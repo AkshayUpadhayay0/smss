@@ -29,11 +29,15 @@ namespace smss_api_service_layer.helper.reportcard
                 page.Margin(8, Unit.Millimetre);
                 page.DefaultTextStyle(s => s.FontFamily(Sans).FontSize(7).FontColor(Ink));
                 DraftMark(page, x.Draft);
-                page.Header().Column(col =>
+                page.Header().Row(row =>
                 {
-                    col.Item().Element(c => RcKit.Header(c, x, m.Scope == "TERM" && m.Terms.Count == 1 ? $"Progress Report · {m.Terms[0].Name} · {m.SessionName}" : $"Progress Report · {m.SessionName}"));
-                    col.Item().PaddingTop(3).Element(c => StudentBlock(c, m));
-                    col.Item().PaddingBottom(3);
+                    row.RelativeItem().Column(col =>
+                    {
+                        col.Item().Element(c => RcKit.Header(c, x, m.Scope == "TERM" && m.Terms.Count == 1 ? $"Progress Report · {m.Terms[0].Name} · {m.SessionName}" : $"Progress Report · {m.SessionName}"));
+                        col.Item().PaddingTop(3).Element(c => StudentBlock(c, m));
+                        col.Item().PaddingBottom(3);
+                    });
+                    if (m.ShowPhoto) row.ConstantItem(72).PaddingLeft(6).Element(c => PhotoSlot(c, x, 66, 82));
                 });
                 page.Content().Column(col =>
                 {

@@ -21,6 +21,8 @@ namespace smss_api_db_layer.entity
         [Column("show_rules")] public bool ShowRules { get; set; }
         [Column("show_attendance")] public bool ShowAttendance { get; set; } = true;
         [Column("show_grade_legend")] public bool ShowGradeLegend { get; set; } = true;
+        /// <summary>Print the student's photo on the designs that have a photo slot. Added in the stage 5b photo migration; off by default.</summary>
+        [Column("show_photo")] public bool ShowPhoto { get; set; }
         [Column("updated_by")] public long? UpdatedBy { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }

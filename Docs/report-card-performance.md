@@ -49,3 +49,18 @@ Measured on the development machine through the real endpoint, Term Spread, cove
 - The cap stays at **100 per request**: 100 cards took under a second, so the headroom in time is large and the cap is set by memory and by several people downloading at once, not by speed. At most two bulk renders run at the same time per server process; a third waits up to 15 seconds and then gets a 503 "try again in a minute".
 - Database cost is fixed: a bulk request runs 4 commands (the access checks plus one query that reads every card of the version) for 12 cards and for 72 cards alike. This is asserted by the scratch smoke test. Logo and signature files are read once per request, not per student.
 - Cards are drawn from the stored card models (never recomputed), so a bulk file shows exactly what was published, including each publication's own settings and signature.
+
+## 4. Stage 5b: student photos on, and why a bulk file is built in pieces
+
+Photos are the first thing in a card that is large (a phone photo is several hundred KB; the upload limit is 2 MB). Measured the same way as section 3, Board Style (2 pages per student), photos switched on, every student with their OWN photo file, through `POST /api/ReportCard/{publicationId}/bulk`:
+
+| Photos | First version (one document in memory) | Now (pieces of 20, merged) |
+|---|---|---|
+| ~340 KB each (1280x1706), 100 cards, 200 pages | 3.3 s, 1.7 MB file, API process peak 465 MB | 3.3 s, 1.9 MB file, peak 337 MB |
+| ~2.6 MB each (the worst case), 100 cards | 8.0 s, 1.9 MB file, API process peak **870 MB** | 8.2 s, 2.1 MB file, peak **390 MB** |
+
+- The picture is scaled down by the PDF writer to about 300 px when it is placed (the slot sets its resolution), so a 2.6 MB photo adds only about 15 KB to the file.
+- The expensive part is laying a card out while its full-size photo is in memory. Built as ONE document, memory grew with the number of students (about 7 MB per student with the largest photos). Built in pieces of 20 students (`ReportCardPdf.BulkChunkSize`: each piece is written to a temporary file and freed, then the pieces are merged; the temporary folder is always removed), the peak no longer depends on how many students are in the file, and the time is the same.
+- Only the photo of the student being drawn is held in memory (a single-entry cache: it is reused for that student's cover, card and rules pages and then dropped).
+- Database cost is unchanged: 4 commands whatever the size, because photos come from the file store, not the database.
+- **The cap stays at 100 per request.** It is a configuration value (`ReportCards:BulkMaxStudents` in appsettings, default 100). If a small server needs less with photos on, lower that value; it needs no code change. The 8 s worst case is a school whose every student has a 2 MB photo.

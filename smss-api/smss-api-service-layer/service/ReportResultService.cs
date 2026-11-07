@@ -344,11 +344,13 @@ namespace smss_api_service_layer.service
                     // the images are the same for every card of one publication (the keys are in the stored models): read each ONCE
                     var logoMemo = new Dictionary<string, byte[]?>(); var sigMemo = new Dictionary<string, byte[]?>();
                     byte[]? Logo(string? key) => string.IsNullOrWhiteSpace(key) ? null : logoMemo.TryGetValue(key, out var b) ? b : logoMemo[key] = _images.Logo(key);
+                    (string? Key, byte[]? Bytes) lastPhoto = (null, null);       // only the last photo is kept: every student has their own, and holding 100 of them is what costs memory
+                    byte[]? Photo(ReportCardModel mm) { if (!mm.ShowPhoto || string.IsNullOrWhiteSpace(mm.Student.PhotoKey)) return null; if (lastPhoto.Key != mm.Student.PhotoKey) lastPhoto = (mm.Student.PhotoKey, _images.Photo(mm.Student.PhotoKey)); return lastPhoto.Bytes; }
                     byte[]? Sig(string? key) => string.IsNullOrWhiteSpace(key) ? null : sigMemo.TryGetValue(key, out var b) ? b : sigMemo[key] = _images.Signature(key);
                     var contexts = selected.Select(r =>
                     {
                         var model = ReportCardModel.FromJson(r.CardModel);
-                        return new RcContext { Model = model, Logo = Logo(model.Header.LogoKey), Signature = Sig(model.SignatureKey ?? cfg?.SignatureKey), Draft = false };
+                        return new RcContext { Model = model, Logo = Logo(model.Header.LogoKey), Signature = Sig(model.SignatureKey ?? cfg?.SignatureKey), Photo = Photo(model), Draft = false };
                     });
                     var first = ReportCardModel.FromJson(selected[0].CardModel);
                     if (ReportCardDesigns.Find(first.TemplateKey) == null) return Fail(409, "This report card uses a design that no longer exists. Choose a design for the scheme on Report Card Settings.");

@@ -36,6 +36,7 @@ namespace smss_api_service_layer.dto
         public bool ShowRules { get; set; }
         public bool ShowAttendance { get; set; }
         public bool ShowGradeLegend { get; set; }
+        public bool ShowPhoto { get; set; }
         /// <summary>True when the school has never saved settings (the defaults are in use).</summary>
         public bool IsDefault { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -61,6 +62,8 @@ namespace smss_api_service_layer.dto
         public bool ShowRules { get; set; }
         public bool ShowAttendance { get; set; } = true;
         public bool ShowGradeLegend { get; set; } = true;
+        /// <summary>Print the student's photo (only the designs with a photo slot draw it).</summary>
+        public bool ShowPhoto { get; set; }
     }
 
     public class ReportCardSignatureDto { public bool HasSignature { get; set; } }

@@ -37,6 +37,8 @@ namespace smss_api_service_layer.helper.reportcard
         public string Contact { get; set; } = "";
         /// <summary>The section's class teacher (the active class-teacher assignment), printed by the descriptive design. Empty when none is assigned.</summary>
         public string ClassTeacher { get; set; } = "";
+        /// <summary>The student's photo KEY (never the bytes), set only when the school switched the photo on. The file is read when the card is drawn.</summary>
+        public string? PhotoKey { get; set; }
     }
 
     public sealed class RcExam { public long ExamId { get; set; } public string Name { get; set; } = ""; public decimal? Max { get; set; } public decimal? Weight { get; set; } }
@@ -158,6 +160,8 @@ namespace smss_api_service_layer.helper.reportcard
         public bool ShowRules { get; set; }
         public bool ShowAttendance { get; set; } = true;
         public bool ShowGradeLegend { get; set; } = true;
+        /// <summary>Print the student photo (designs with a photo slot only).</summary>
+        public bool ShowPhoto { get; set; }
 
         public static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.Never, WriteIndented = false };
         public string ToJson() => JsonSerializer.Serialize(this, Json);
