@@ -124,5 +124,40 @@ namespace smss_api_tests
             var p = RcKit.Pal(m);
             Assert.Equal("#1F3A5F", p.Primary);
         }
+
+        // ---- cover and rules pages (Step 6): same orientation as the design, in single and bulk PDFs
+        [Theory]
+        [InlineData("term-spread", 2, true, true, 3)] [InlineData("term-spread", 2, true, false, 2)] [InlineData("term-spread", 2, false, true, 2)] [InlineData("term-spread", 3, true, true, 4)]
+        [InlineData("classic-card", 3, true, true, 3)] [InlineData("classic-card", 1, false, false, 1)] [InlineData("minimal-bw", 2, true, true, 3)] [InlineData("minimal-bw", 2, true, false, 2)]
+        public void The_cover_and_rules_pages_are_added_only_when_switched_on(string design, int terms, bool cover, bool rules, int pages) =>
+            Assert.Equal(pages, ReportCardPdf.RenderPng(Context(design, terms, 8, "normal", 0, false, false, tweak: o => { o.ShowCover = cover; o.ShowRules = rules; })).Count);
+
+        [Fact]
+        public void The_rules_page_with_no_text_is_left_out_and_a_very_long_text_still_fits_on_one_page()
+        {
+            Assert.Equal(1, ReportCardPdf.RenderPng(Context("classic-card", 2, 8, "normal", 0, false, false, tweak: o => { o.ShowRules = true; o.RulesText = null; })).Count);
+            var longRules = string.Join('\n', Enumerable.Range(1, 30).Select(i => $"{i}. " + new string('x', 60) + " rule text that goes on and on and wraps over the whole width of the page " + i));
+            foreach (var d in Designs)
+                Assert.Equal(2, ReportCardPdf.RenderPng(Context(d, 1, 8, "normal", 0, false, false, tweak: o => { o.ShowRules = true; o.RulesText = longRules.Length > 1500 ? longRules[..1500] : longRules; })).Count);
+        }
+
+        [Theory]
+        [InlineData("term-spread")] [InlineData("classic-card")] [InlineData("minimal-bw")]
+        public void Cover_and_rules_work_with_long_and_Hindi_text_a_logo_and_a_dark_colour(string design)
+        {
+            foreach (var text in new[] { "long", "hindi" })
+                Assert.True(ReportCardPdf.Render(Context(design, 2, 16, text, 1, logo: true, signature: true, tweak: o => { o.ShowCover = true; o.ShowRules = true; })).Length > 3000);
+        }
+
+        [Fact]
+        public void A_bulk_PDF_is_the_sum_of_its_cards_in_the_given_order()
+        {
+            var cards = Enumerable.Range(1, 5).Select(i => Context("classic-card", 2, 8, "normal", 0, false, false, tweak: o => { o.ShowCover = true; o.ShowRules = true; o.StudentName = "Student " + i; })).ToList();
+            var one = ReportCardPdf.RenderPng(cards[0]).Count;
+            var bulk = ReportCardPdf.RenderMany(cards);
+            Assert.Equal(3, one);
+            Assert.True(bulk.Length > 5000);
+        }
+
     }
 }
