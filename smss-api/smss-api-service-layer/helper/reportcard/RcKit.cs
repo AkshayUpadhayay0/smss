@@ -2,6 +2,7 @@ using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using smss_api_service_layer.helper.idcard;
 
 namespace smss_api_service_layer.helper.reportcard
 {
@@ -35,6 +36,13 @@ namespace smss_api_service_layer.helper.reportcard
     {
         public const string Sans = "Hind", Serif = "PT Serif";
         public const string Ink = "#111827", Muted = "#4B5563", Rule = "#9CA3AF";
+
+        /// <summary>
+        /// The colours a design may use, derived from the school's two brand colours with the SAME luminance-based contrast logic as the ID cards (IdCardPalette): text colours are chosen so
+        /// any brand colour, a near-black or a pastel, stays readable. Use PrimaryText / SecondaryText for text and borders on white, Tint(...) for fills, OnPrimary on a solid primary fill.
+        /// </summary>
+        public static IdCardPalette Pal(ReportCardModel m) =>
+            IdCardPalette.From(IdCardColors.IsHex(m.Primary) ? m.Primary : "#1F3A5F", IdCardColors.IsHex(m.Secondary) ? m.Secondary : "#C8963E");
 
         /// <summary>A colour mixed with white (0 = the colour, 1 = white): table header fills and zebra rows from the brand colour.</summary>
         public static string Tint(string hex, double amount)
@@ -75,9 +83,13 @@ namespace smss_api_service_layer.helper.reportcard
                 if (x.Logo != null) r.ConstantItem(46).Height(46).Padding(2).Image(x.Logo).FitArea();
                 r.RelativeItem().PaddingLeft(x.Logo != null ? 6 : 0).Column(col =>
                 {
-                    col.Item().Text(m.Header.SchoolName).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.SchoolName, 16f, 34)).Bold().FontColor(m.Primary);
+                    var pal = Pal(m);
+                    col.Item().Text(m.Header.SchoolName).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.SchoolName, 16f, 34)).Bold().FontColor(pal.PrimaryText);
+                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.Line, 8f, 90, 6f)).FontColor(Ink);
+                    var rec = string.Join("  ·  ", new[] { m.Header.Recognition, m.Header.Udise }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    if (rec.Length > 0) col.Item().Text(rec).FontFamily(Sans).FontSize(FitSize(rec, 7f, 110, 5.5f)).FontColor(Muted);
                     if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontFamily(Sans).FontSize(7.5f).FontColor(Muted);
-                    col.Item().PaddingTop(1).Text(subtitle).FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(m.Secondary);
+                    col.Item().PaddingTop(1).Text(subtitle).FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(pal.SecondaryText);
                 });
             });
         }
@@ -89,12 +101,12 @@ namespace smss_api_service_layer.helper.reportcard
             {
                 r.RelativeItem(1.4f).Column(col => { KeyValue(col, "Name", s.Name, true); KeyValue(col, "Father", s.Father); KeyValue(col, "Mother", s.Mother); });
                 r.RelativeItem(1f).Column(col => { KeyValue(col, "Class / Section", $"{s.ClassName} {s.SectionName}".Trim()); KeyValue(col, "Roll No.", s.Roll); KeyValue(col, "Admission No.", s.AdmissionNo); });
-                r.RelativeItem(1f).Column(col => { KeyValue(col, "Date of birth", s.Dob); KeyValue(col, "Session", m.SessionName); });
+                r.RelativeItem(1f).Column(col => { KeyValue(col, "Date of birth", s.Dob); KeyValue(col, "Date of joining", s.Doj); KeyValue(col, "Session", m.SessionName); });
             });
         }
 
         public static void KeyValue(ColumnDescriptor col, string key, string? value, bool bold = false) =>
-            col.Item().Row(r => { r.ConstantItem(62).Text(key).FontFamily(Sans).FontSize(7).FontColor(Muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 8f, 34, 6f)).FontColor(Ink); if (bold) tx = tx.Bold(); });
+            col.Item().Row(r => { r.ConstantItem(68).Text(key).FontFamily(Sans).FontSize(7).FontColor(Muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 8f, 34, 6f)).FontColor(Ink); if (bold) tx = tx.Bold(); });
 
         /// <summary>One bordered, shaded header cell and one body cell, the building blocks of every ruled table.</summary>
         public static IContainer HeadCell(IContainer c, string fill) => c.Border(0.4f).BorderColor(Rule).Background(fill).PaddingVertical(2).PaddingHorizontal(2).AlignMiddle();
@@ -129,6 +141,12 @@ namespace smss_api_service_layer.helper.reportcard
                         col.Item().AlignCenter().Text(w).FontFamily(Sans).FontSize(7.5f).FontColor(Muted);
                     });
             });
+        }
+
+        /// <summary>The school's footer text (settings), centred and small, when there is one.</summary>
+        public static void FooterText(ColumnDescriptor col, ReportCardModel m)
+        {
+            if (!string.IsNullOrWhiteSpace(m.Footer)) col.Item().PaddingTop(2).AlignCenter().Text(m.Footer).FontFamily(new[] { Sans }).FontSize(FitSize(m.Footer, 6.5f, 150, 5f)).FontColor(Muted);
         }
 
         /// <summary>A light grey DRAFT mark across the page, so a preview can never be mistaken for a published card.</summary>
