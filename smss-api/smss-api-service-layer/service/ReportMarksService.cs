@@ -120,7 +120,7 @@ namespace smss_api_service_layer.service
             var marks = await _repo.GetMarksAsync(schoolId, es.ExamSubjectId, c.Section.SectionId, roster.Select(r => r.StudentId).ToList(), false, ct);
             var status = await _repo.GetStatusAsync(es.ExamSubjectId, c.Section.SectionId, false, ct);
             var termSection = await _repo.GetTermSectionAsync(es.TermId, c.Section.SectionId, false, ct);
-            var remarks = (await _repo.GetSubjectRemarksAsync(es.TermId, es.SchemeSubjectId, roster.Select(r => r.StudentId).ToList(), false, ct)).ToDictionary(r => r.StudentId, r => r.Remark);
+            var remarks = (await _repo.GetSubjectRemarksAsync(es.TermId, es.SchemeSubjectId, roster.Select(r => r.StudentId).ToList(), false, ct)).ToDictionary(r => r.StudentId);
             var bands = es.EntryMode == "GRADE" && es.GradeScaleId != null ? await _repo.GetBandsAsync(schoolId, new[] { es.GradeScaleId.Value }, ct) : new List<BandInfo>();
 
             var rosterIds = roster.Select(r => r.StudentId).ToHashSet();
@@ -135,7 +135,8 @@ namespace smss_api_service_layer.service
                 return new GridStudentDto
                 {
                     StudentId = s.StudentId, AdmissionNumber = s.AdmissionNumber, RollNumber = s.RollNumber ?? "", FullName = LeaveRules.FullName(s.FirstName, s.MiddleName, s.LastName), OnRoster = onRoster,
-                    Remark = remarks.GetValueOrDefault(s.StudentId),
+                    Remark = remarks.GetValueOrDefault(s.StudentId)?.Remark,
+                    Improvement = remarks.GetValueOrDefault(s.StudentId)?.ImprovementText,
                     Cells = cellSkills.Select(sk =>
                     {
                         var m = own.FirstOrDefault(x => x.SkillId == sk);
@@ -167,6 +168,7 @@ namespace smss_api_service_layer.service
                 Skills = skills.Select(k => new GridSkillDto { SkillId = k.SkillId, Name = k.Name }).ToList(),
                 GradeOptions = bands.Select(b => new GradeOptionDto { Code = b.Code, Label = b.Label }).ToList(),
                 CanEditRemarks = (c.Rights.CanEnter || c.Rights.IsClassTeacher) && !locked && schemeLive,
+                ShowImprovement = IsGrades(c),
                 Status = st, Version = status?.Version ?? 0, Locked = locked, CanEdit = canEdit, CanSubmit = canEdit && status != null, CanAccept = canAccept, CanReopen = canReopen,
                 ReadOnlyReason = canEdit ? null : why, SubmittedAt = status?.SubmittedAt, AcceptedAt = status?.AcceptedAt,
                 Counts = new GridCountsDto
@@ -202,6 +204,7 @@ namespace smss_api_service_layer.service
 
         // ============================================================================ per-subject remarks
         private const int MaxRemarkLength = 200;
+        private static bool IsGrades(Ctx c) => string.Equals(c.Es.EvaluationMode, "GRADES", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Null when the remarks may be saved now, else the failure to return. Same rule as marks entry (union rule), or the class teacher; never once the term-section is locked.</summary>
         private async Task<ApiResponse<MarksGridDto>?> CheckRemarksAsync(string schoolId, Ctx c, List<RemarkEntry> remarks, CancellationToken ct)
@@ -217,6 +220,8 @@ namespace smss_api_service_layer.service
                 var id = (r.StudentId ?? "").Trim();
                 if (!roster.TryGetValue(id, out var name)) { problems.Add($"{id}: this student is not on the active roster of the section."); continue; }
                 if ((r.Remark ?? "").Trim().Length > MaxRemarkLength) problems.Add($"{name}: the remark is longer than {MaxRemarkLength} characters.");
+                if ((r.Improvement ?? "").Trim().Length > MaxRemarkLength) problems.Add($"{name}: the text for things to improve is longer than {MaxRemarkLength} characters.");
+                if (!IsGrades(c) && !string.IsNullOrWhiteSpace(r.Improvement)) problems.Add($"{name}: things to improve is only used by grade-based report schemes.");
             }
             if (remarks.Select(r => (r.StudentId ?? "").Trim()).Distinct().Count() != remarks.Count) problems.Add("A student is listed twice.");
             return problems.Count == 0 ? null : Result<MarksGridDto>(400, string.Join(" ", problems.Take(MaxIssues)) + (problems.Count > MaxIssues ? $" And {problems.Count - MaxIssues} more." : ""), null);
@@ -243,9 +248,12 @@ namespace smss_api_service_layer.service
                 {
                     var id = r.StudentId.Trim(); var text = (r.Remark ?? "").Trim();
                     existing.TryGetValue(id, out var row);
-                    if (text.Length == 0) { if (row != null) _repo.Remove(row); continue; }
-                    if (row == null) _repo.Add(new TbReportSubjectRemark { TermId = c.Es.TermId, SchemeSubjectId = c.Es.SchemeSubjectId, StudentId = id, SchemeId = c.Es.SchemeId, SchoolId = schoolId, Remark = text, UpdatedBy = caller.UserId, CreatedAt = now, UpdatedAt = now });
-                    else if (row.Remark != text) { row.Remark = text; row.UpdatedBy = caller.UserId; row.UpdatedAt = now; }
+                    // the improvement text: null leaves it as it is, blank clears it
+                    var improve = r.Improvement == null ? row?.ImprovementText : (r.Improvement.Trim().Length == 0 ? null : r.Improvement.Trim());
+                    var remark = text.Length == 0 ? null : text;
+                    if (remark == null && improve == null) { if (row != null) _repo.Remove(row); continue; }
+                    if (row == null) _repo.Add(new TbReportSubjectRemark { TermId = c.Es.TermId, SchemeSubjectId = c.Es.SchemeSubjectId, StudentId = id, SchemeId = c.Es.SchemeId, SchoolId = schoolId, Remark = remark, ImprovementText = improve, UpdatedBy = caller.UserId, CreatedAt = now, UpdatedAt = now });
+                    else if (row.Remark != remark || row.ImprovementText != improve) { row.Remark = remark; row.ImprovementText = improve; row.UpdatedBy = caller.UserId; row.UpdatedAt = now; }
                 }
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);

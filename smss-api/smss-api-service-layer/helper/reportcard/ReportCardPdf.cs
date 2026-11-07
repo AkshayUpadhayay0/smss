@@ -6,7 +6,9 @@ namespace smss_api_service_layer.helper.reportcard
     /// <summary>The bulk limit. Measured, not guessed: see Docs/report-card-performance.md (2.5x headroom over a usual 40-student section).</summary>
     public static class ReportCardBulk
     {
-        public const int MaxStudentsPerRequest = 100;
+        public const int DefaultMaxStudentsPerRequest = 100;
+        /// <summary>The configured cap (appsettings ReportCards:BulkMaxStudents, default 100). Set once at start-up from configuration; never below 1.</summary>
+        public static int MaxStudentsPerRequest { get; set; } = DefaultMaxStudentsPerRequest;
     }
 
     /// <summary>Draws report cards (model + design) to PDF or PNG. The QuestPDF licence, glyph rule and fonts come from the shared PdfBootstrap.</summary>

@@ -69,6 +69,8 @@ namespace smss_api_service_layer.helper.reportcard
         public decimal? Percent { get; set; }
         public string? Grade { get; set; }
         public string? Remark { get; set; }
+        /// <summary>"Things to improve" typed by the teacher (descriptive GRADES designs). Stored in the card at publish time like everything else.</summary>
+        public string? Improvement { get; set; }
         public bool Failed { get; set; }
     }
 

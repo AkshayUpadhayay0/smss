@@ -17,15 +17,15 @@ export interface MarksContext { academicYearId: number; academicYearName: string
 export interface GradeOption { code: string; label: string }
 export interface GridSkill { skillId: number; name: string }
 export interface GridCell { skillId?: number | null; state?: EntryState | null; marks?: number | null; gradeCode?: string | null }
-export interface GridStudent { studentId: string; admissionNumber: string; rollNumber: string; fullName: string; onRoster: boolean; remark?: string | null; cells: GridCell[] }
+export interface GridStudent { studentId: string; admissionNumber: string; rollNumber: string; fullName: string; onRoster: boolean; remark?: string | null; improvement?: string | null; cells: GridCell[] }
 /** A per-subject remark the screen sends. A blank text clears it. A remark is not a mark: no submit or accept step. */
-export interface RemarkEntry { studentId: string; remark: string }
+export interface RemarkEntry { studentId: string; remark: string; /** Only sent for a student whose "To improve" text was edited (GRADES schemes). Absent = leave as it is. */ improvement?: string }
 export interface GridCounts { students: number; cells: number; entered: number; absent: number; exempt: number; missing: number }
 
 export interface MarksGrid {
   examSubjectId: number; sectionId: number; schemeId: number; schemeName: string; termName: string; examName: string; subjectName: string; className: string; sectionName: string;
   entryMode: 'MARKS' | 'GRADE'; maxMarks?: number | null; skills: GridSkill[]; gradeOptions: GradeOption[];
-  status: GridStatus; version: number; locked: boolean; canEdit: boolean; canEditRemarks?: boolean; canSubmit: boolean; canAccept: boolean; canReopen: boolean;
+  status: GridStatus; version: number; locked: boolean; canEdit: boolean; canEditRemarks?: boolean; showImprovement?: boolean; canSubmit: boolean; canAccept: boolean; canReopen: boolean;
   readOnlyReason?: string | null; submittedAt?: string | null; acceptedAt?: string | null; counts: GridCounts; students: GridStudent[];
 }
 

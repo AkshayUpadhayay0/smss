@@ -64,6 +64,8 @@ namespace smss_api_service_layer.dto
         public bool OnRoster { get; set; } = true;
         /// <summary>The per-subject remark for this student and this term (shared by every exam of the subject in the term). Not a mark.</summary>
         public string? Remark { get; set; }
+        /// <summary>"Things to improve" for this student, subject and term. Only GRADES-mode schemes use it.</summary>
+        public string? Improvement { get; set; }
         public List<GridCellDto> Cells { get; set; } = new();
     }
 
@@ -100,6 +102,8 @@ namespace smss_api_service_layer.dto
         public bool CanEdit { get; set; }
         /// <summary>Whether the per-subject remarks can be edited now: who may enter marks here, or the class teacher, while the term-section is OPEN (whatever the grid state).</summary>
         public bool CanEditRemarks { get; set; }
+        /// <summary>True for GRADES-mode schemes: the grid shows the "To improve" column.</summary>
+        public bool ShowImprovement { get; set; }
         public bool CanSubmit { get; set; }
         public bool CanAccept { get; set; }
         public bool CanReopen { get; set; }
@@ -136,6 +140,8 @@ namespace smss_api_service_layer.dto
     {
         [Required, MaxLength(20)] public string StudentId { get; set; } = null!;
         [MaxLength(400)] public string? Remark { get; set; }
+        /// <summary>Null = leave the improvement text as it is; blank = clear it. Refused (400) for a MARKS-mode scheme.</summary>
+        [MaxLength(400)] public string? Improvement { get; set; }
     }
 
     /// <summary>Remarks on their own: allowed while the term-section is OPEN even when the marks grid is submitted or accepted (a remark is not a mark).</summary>

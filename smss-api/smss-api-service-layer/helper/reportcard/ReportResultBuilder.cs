@@ -148,7 +148,7 @@ namespace smss_api_service_layer.helper.reportcard
             var areas = (await _marks.GetActivityAreasAsync(schoolId, activeId, ct)).ToDictionary(a => a.AreaId);
             var areaBands = new Dictionary<long, List<ResultBand>>();
             foreach (var scaleId in areas.Values.Select(a => a.RatingScaleId).Distinct()) areaBands[scaleId] = await _results.GetBandsAsync(schoolId, scaleId, ct);
-            var subjectRemarks = (await _results.GetSubjectRemarksAsync(sch.SchemeId, students.Select(s => s.StudentId).ToList(), ct)).ToDictionary(r => (r.StudentId, r.TermId, r.SchemeSubjectId), r => r.Remark);
+            var subjectRemarks = (await _results.GetSubjectRemarksAsync(sch.SchemeId, students.Select(s => s.StudentId).ToList(), ct)).ToDictionary(r => (r.StudentId, r.TermId, r.SchemeSubjectId));
             var parents = (await _results.GetParentsAsync(schoolId, students.Select(s => s.StudentId).ToList(), ct)).GroupBy(p => p.StudentId).ToDictionary(g => g.Key, g => g.ToList());
 
             var attendance = new Dictionary<long, (TermAttendanceResult? Auto, Dictionary<string, (int? Working, int? Present)> Manual)>();
@@ -231,7 +231,8 @@ namespace smss_api_service_layer.helper.reportcard
                         {
                             TermId = tr.TermId, Obtained = sr.Obtained, OutOf = sr.OutOf, Percent = sr.Percent, Grade = sr.Grade, Failed = sr.Failed,
                             // the teacher's own remark for this subject and term; with none, the grade's label ("Very Good") as before
-                            Remark = subjectRemarks.TryGetValue((s.StudentId, tr.TermId, subj.SchemeSubjectId), out var typed) ? typed : Remark(sr.Grade),
+                            Remark = subjectRemarks.TryGetValue((s.StudentId, tr.TermId, subj.SchemeSubjectId), out var typed) && typed.Remark != null ? typed.Remark : Remark(sr.Grade),
+                            Improvement = subjectRemarks.TryGetValue((s.StudentId, tr.TermId, subj.SchemeSubjectId), out var typed2) ? typed2.ImprovementText : null,
                             Cells = sr.Cells.Select(c => new RcCell
                             {
                                 ExamId = c.ExamId, State = c.State, Marks = c.Marks, Grade = c.Grade,

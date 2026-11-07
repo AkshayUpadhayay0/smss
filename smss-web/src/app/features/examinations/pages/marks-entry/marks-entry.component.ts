@@ -94,6 +94,7 @@ import { MarksService } from '../../services/marks.service';
                   @if (g.skills.length > 0) { @for (k of g.skills; track k.skillId) { <th>{{ k.name }}</th> } }
                   @else { <th>{{ g.entryMode === 'MARKS' ? 'Marks' : 'Grade' }}</th> }
                   <th>Remark</th>
+                  @if (g.showImprovement) { <th>To improve</th> }
                 </tr>
               </thead>
               <tbody>
@@ -118,6 +119,9 @@ import { MarksService } from '../../services/marks.service';
                       </td>
                     }
                     <td class="remark"><input type="text" maxlength="200" [attr.data-remark]="r" [value]="remarkText(s)" [disabled]="!g.canEditRemarks || !s.onRoster" (input)="typeRemark(s, $any($event.target).value)" [attr.aria-label]="s.fullName + ' remark for ' + g.subjectName" placeholder="Optional" /></td>
+                    @if (g.showImprovement) {
+                      <td class="remark"><input type="text" maxlength="200" [attr.data-improve]="r" [value]="improveText(s)" [disabled]="!g.canEditRemarks || !s.onRoster" (input)="typeImprove(s, $any($event.target).value)" [attr.aria-label]="s.fullName + ' things to improve in ' + g.subjectName" placeholder="Optional" /></td>
+                    }
                   </tr>
                 }
               </tbody>
@@ -195,7 +199,9 @@ export class MarksEntryComponent implements OnInit {
   protected readonly progress = computed(() => { const g = this.grid(); return g ? enteredCount(g, this.edits()) : { done: 0, total: 0 }; });
   /** Remarks typed but not saved, by student id. */
   protected readonly remarkEdits = signal<Record<string, string>>({});
-  protected readonly remarkCount = computed(() => Object.keys(this.remarkEdits()).length);
+  /** "To improve" text typed but not saved (GRADES schemes), by student id. */
+  protected readonly improveEdits = signal<Record<string, string>>({});
+  protected readonly remarkCount = computed(() => new Set([...Object.keys(this.remarkEdits()), ...Object.keys(this.improveEdits())]).size);
   protected readonly dirtyCount = computed(() => Object.keys(this.edits()).length + this.remarkCount());
   /** Client-side checks, the same rules the server applies: shown while typing so a mistake is caught before Save. */
   protected readonly problems = computed(() => {
@@ -210,7 +216,20 @@ export class MarksEntryComponent implements OnInit {
     const same = value.trim() === (s.remark ?? '');
     this.remarkEdits.update((m) => { const n = { ...m }; if (same) delete n[s.studentId]; else n[s.studentId] = value; return n; });
   }
-  private remarkEntries(): RemarkEntry[] { return Object.entries(this.remarkEdits()).map(([studentId, remark]) => ({ studentId, remark })); }
+  protected improveText(s: GridStudent): string { return this.improveEdits()[s.studentId] ?? s.improvement ?? ''; }
+  protected typeImprove(s: GridStudent, value: string): void {
+    const same = value.trim() === (s.improvement ?? '');
+    this.improveEdits.update((m) => { const n = { ...m }; if (same) delete n[s.studentId]; else n[s.studentId] = value; return n; });
+  }
+  /** One entry per student with an unsaved remark or "to improve" text. The remark is always sent with it (a blank remark clears it), the improvement only when it was edited. */
+  private remarkEntries(): RemarkEntry[] {
+    const g = this.grid(); const imp = this.improveEdits();
+    const ids = [...new Set([...Object.keys(this.remarkEdits()), ...Object.keys(imp)])];
+    return ids.map((studentId) => {
+      const s = g?.students.find((x) => x.studentId === studentId);
+      return { studentId, remark: s ? this.remarkText(s) : (this.remarkEdits()[studentId] ?? ''), ...(studentId in imp ? { improvement: imp[studentId] } : {}) };
+    });
+  }
 
   protected statusText(status: string, locked: boolean): string { return locked ? 'Locked' : STATUS_LABEL[status as keyof typeof STATUS_LABEL] ?? status; }
 
@@ -245,7 +264,7 @@ export class MarksEntryComponent implements OnInit {
     if (level === 'scheme' || level === 'exam') this.sectionId.set(this.sections()[0]?.sectionId ?? 0);
     if (level === 'section') this.sectionId.set(v);
     if (level !== 'subject') this.examSubjectId.set(this.subjects()[0]?.examSubjectId ?? 0); else this.examSubjectId.set(v);
-    this.edits.set({}); this.remarkEdits.set({}); this.upload.set(null); this.stale.set(false); this.reopening.set(false);
+    this.edits.set({}); this.remarkEdits.set({}); this.improveEdits.set({}); this.upload.set(null); this.stale.set(false); this.reopening.set(false);
     this.reload(false);
   }
 
@@ -254,7 +273,7 @@ export class MarksEntryComponent implements OnInit {
     const es = this.examSubjectId(); const sec = this.sectionId();
     if (!es || !sec) { this.grid.set(null); return; }
     this.gridLoading.set(true); this.stale.set(false);
-    if (!keepEdits) { this.edits.set({}); this.remarkEdits.set({}); }
+    if (!keepEdits) { this.edits.set({}); this.remarkEdits.set({}); this.improveEdits.set({}); }
     this.service.grid(es, sec).pipe(finalize(() => this.gridLoading.set(false)), takeUntilDestroyed(this.destroyRef)).subscribe({ next: (g) => this.grid.set(g), error: () => this.grid.set(null) });
   }
 
@@ -299,7 +318,7 @@ export class MarksEntryComponent implements OnInit {
     if (entries.length === 0) { this.saveRemarksOnly(then); return; }
     this.busy.set(true);
     this.service.save(g.examSubjectId, g.sectionId, g.version, entries, remarks).pipe(finalize(() => this.busy.set(false))).subscribe({
-      next: (fresh) => { this.grid.set(fresh); this.edits.set({}); this.remarkEdits.set({}); this.toast.success('Draft saved.'); this.markContext(fresh); then?.(); },
+      next: (fresh) => { this.grid.set(fresh); this.edits.set({}); this.remarkEdits.set({}); this.improveEdits.set({}); this.toast.success('Draft saved.'); this.markContext(fresh); then?.(); },
       error: (e: unknown) => { if ((e as HttpErrorResponse)?.status === 409) this.stale.set(true); },
     });
   }
@@ -310,7 +329,7 @@ export class MarksEntryComponent implements OnInit {
     const remarks = this.remarkEntries(); if (remarks.length === 0) { then?.(); return; }
     this.busy.set(true);
     this.service.saveRemarks(g.examSubjectId, g.sectionId, remarks).pipe(finalize(() => this.busy.set(false))).subscribe({
-      next: (fresh) => { this.grid.update((cur) => (cur ? { ...cur, students: fresh.students.map((s) => ({ ...s, cells: cur.students.find((x) => x.studentId === s.studentId)?.cells ?? s.cells })), canEditRemarks: fresh.canEditRemarks } : fresh)); this.remarkEdits.set({}); this.toast.success('Remarks saved.'); then?.(); },
+      next: (fresh) => { this.grid.update((cur) => (cur ? { ...cur, students: fresh.students.map((s) => ({ ...s, cells: cur.students.find((x) => x.studentId === s.studentId)?.cells ?? s.cells })), canEditRemarks: fresh.canEditRemarks, showImprovement: fresh.showImprovement } : fresh)); this.remarkEdits.set({}); this.improveEdits.set({}); this.toast.success('Remarks saved.'); then?.(); },
       error: () => undefined,
     });
   }

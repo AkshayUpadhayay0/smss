@@ -245,6 +245,25 @@ describe('MarksEntryComponent', () => {
     req.flush(env(GRID({ canEditRemarks: true })));
   });
 
+  it('the To improve column is shown only for GRADES schemes, and an improvement alone saves together with the (unchanged) remark', () => {
+    open('Teacher', [row()], GRID({ canEditRemarks: true }));
+    expect([...el().querySelectorAll('thead th')].map((h) => h.textContent?.trim())).not.toContain('To improve');
+    expect(el().querySelector('input[data-improve]')).toBeNull();
+  });
+
+  it('GRADES scheme: To improve sits next to Remark; editing it sends the improvement and the current remark through the remarks endpoint', () => {
+    const g = GRID({ canEditRemarks: true, showImprovement: true });
+    g.students[1].remark = 'Reads well';
+    open('Teacher', [row()], g);
+    const heads = [...el().querySelectorAll('thead th')].map((h) => h.textContent?.trim());
+    expect(heads.indexOf('To improve')).toBe(heads.indexOf('Remark') + 1);
+    const box = el().querySelector<HTMLInputElement>('input[data-improve="1"]')!; box.value = 'Practise joining letters'; box.dispatchEvent(new Event('input')); fixture.detectChanges();
+    button('Save draft')!.click();
+    const req = http.expectOne(`${API}/api/ReportMarks/remarks`);
+    expect(req.request.body.remarks).toEqual([{ studentId: 'S2', remark: 'Reads well', improvement: 'Practise joining letters' }]);
+    req.flush(env(g));
+  });
+
   it('remarks alone save through their own endpoint (no marks to send)', () => {
     open('Teacher', [row()], GRID({ canEditRemarks: true }));
     const box = el().querySelector<HTMLInputElement>('input[data-remark="1"]')!; box.value = 'Practise tables'; box.dispatchEvent(new Event('input')); fixture.detectChanges();
