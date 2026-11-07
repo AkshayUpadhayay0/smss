@@ -53,7 +53,7 @@
                 } @else if (d.code === chosen()) {
                   <span class="chip"><app-icon name="circle-check" [size]="13" />Shown</span>
                 }
-                <span class="desc">{{ d.description }} · {{ d.orientation }}</span>
+                <span class="desc">{{ d.description }} · {{ d.orientation }} · {{ modeLabel(d) }}</span>
               </span>
             </button>
           }
@@ -69,7 +69,7 @@
             <li>
               <div class="scheme-name">
                 <strong>{{ s.schemeName }}</strong>
-                <span class="help">{{ s.classNames.join(', ') || 'No classes yet' }} · {{ s.evaluationMode }}</span>
+                <span class="help">{{ s.classNames.join(', ') || 'No classes yet' }} · {{ s.evaluationMode === 'GRADES' ? 'Grades' : 'Marks' }}</span>
               </div>
               <select [attr.aria-label]="'Design for ' + s.schemeName" [disabled]="!canEdit() || schemeBusy() === s.schemeId" (change)="onSchemeDesign(s, $event)">
                 @for (d of designs(); track d.code) {
@@ -107,7 +107,13 @@
             <label class="switch"><input type="checkbox" role="switch" formControlName="showRules" /><span class="track"></span><span class="text">Rules page</span></label>
             <label class="switch"><input type="checkbox" role="switch" formControlName="showAttendance" /><span class="track"></span><span class="text">Attendance</span></label>
             <label class="switch"><input type="checkbox" role="switch" formControlName="showGradeLegend" /><span class="track"></span><span class="text">Grade legend</span></label>
+            @if (photoSupported()) {
+              <label class="switch"><input type="checkbox" role="switch" formControlName="showPhoto" /><span class="track"></span><span class="text">Student photo</span></label>
+            }
           </div>
+          @if (photoSupported()) {
+            <p class="help">The student's photo from their profile is printed on {{ chosenDesign()?.name }}; a student without a photo gets a neutral placeholder. Designs without a photo slot ignore this.</p>
+          }
           <div class="rules">
             <app-textarea
               label="School rules (printed on the rules page)"
@@ -154,6 +160,12 @@
             <span class="busy" role="status"><app-icon name="loader-circle" [size]="14" />Updating…</span>
           }
         </div>
+        @if (bothModes()) {
+          <div class="terms-pick" role="group" aria-label="Kind of sample">
+            <button type="button" [class.on]="sampleMode() === 'MARKS'" [attr.aria-pressed]="sampleMode() === 'MARKS'" (click)="setSampleMode('MARKS')">Marks sample</button>
+            <button type="button" [class.on]="sampleMode() === 'GRADES'" [attr.aria-pressed]="sampleMode() === 'GRADES'" (click)="setSampleMode('GRADES')">Grades sample</button>
+          </div>
+        }
         <div class="terms-pick" role="group" aria-label="Number of terms in the sample">
           @for (n of [1, 2, 3]; track n) {
             <button type="button" [class.on]="terms() === n" [attr.aria-pressed]="terms() === n" (click)="setTerms(n)">{{ n }} term{{ n === 1 ? '' : 's' }}</button>

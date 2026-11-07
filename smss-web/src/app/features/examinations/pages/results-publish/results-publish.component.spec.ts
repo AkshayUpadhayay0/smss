@@ -73,9 +73,9 @@ describe('ResultsPublishComponent', () => {
   });
 
   it('warnings: an unlocked term, an unavailable design, incomplete students and unmarked attendance days are all shown, and Publish is disabled when it cannot work', () => {
-    open('School Admin', PV({ templateAvailable: false, templateMessage: 'This design is not available yet, choose Term Spread.', unlockedTerms: ['Term II'], canPublish: false, unmarkedDates: ['2026-05-04', '2026-05-05'],
+    open('School Admin', PV({ templateAvailable: false, templateMessage: 'Skill Grid is for grades schemes and can't draw a marks scheme. Choose another design on Report Card Settings.', unlockedTerms: ['Term II'], canPublish: false, unmarkedDates: ['2026-05-04', '2026-05-05'],
       students: [student('S1', 'Asha Rawat'), student('S3', 'Late Joiner', { result: 'INCOMPLETE', obtained: null, outOf: null, percent: null, grade: null, rank: null })] }));
-    expect(text()).toContain('This design is not available yet, choose Term Spread.');
+    expect(text()).toContain('Skill Grid is for grades schemes and can't draw a marks scheme. Choose another design on Report Card Settings.');
     expect(text()).toContain('Lock the term first.');
     expect(text()).toContain('Term II');
     expect(text()).toContain('1 student left out');

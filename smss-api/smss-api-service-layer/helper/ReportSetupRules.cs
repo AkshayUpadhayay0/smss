@@ -39,6 +39,9 @@ namespace smss_api_service_layer.helper
             return $"{design.Name} is for {string.Join(" or ", design.Modes).ToLowerInvariant()} schemes and can't draw a {want.ToLowerInvariant()} scheme. Designs for {want.ToLowerInvariant()} schemes: {fits}.";
         }
 
+        /// <summary>The designs with a photo slot. The others ignore the "show photo" setting.</summary>
+        public static readonly IReadOnlySet<string> PhotoDesigns = new HashSet<string> { "skill-grid", "playful-report", "board-style" };
+
         public static Info? Find(string? key) => All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal));
         public static ReportTemplateDto ToDto(Info t) => new() { Key = t.Key, Name = t.Name, Description = t.Description, Modes = t.Modes.ToList(), Orientation = t.Orientation, Implemented = t.Implemented };
     }

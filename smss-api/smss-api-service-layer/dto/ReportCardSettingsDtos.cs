@@ -9,8 +9,10 @@ namespace smss_api_service_layer.dto
         public string Description { get; set; } = "";
         public List<string> Modes { get; set; } = new();
         public string Orientation { get; set; } = "";
-        /// <summary>False for a design that is not built yet ("coming soon"): it cannot be chosen or printed.</summary>
+        /// <summary>Every design is built; kept so older clients keep working.</summary>
         public bool Available { get; set; }
+        /// <summary>True when the design has a photo slot (skill-grid, playful-report, board-style): the photo setting only matters for these.</summary>
+        public bool SupportsPhoto { get; set; }
     }
 
     public class ReportCardSchemeChoiceDto

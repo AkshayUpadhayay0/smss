@@ -214,7 +214,7 @@ export class ResultsPublishComponent implements OnInit {
   protected readonly readOnlyReason = computed(() => {
     const p = this.pv();
     if (!p || p.canPublish) return '';
-    if (!p.templateAvailable) return 'This design is not available yet.';
+    if (!p.templateAvailable) return p.templateMessage ?? "This design can't print this scheme. Choose another design on Report Card Settings.";
     if (p.unlockedTerms.length) return 'Lock the term first.';
     return this.auth.currentUserRoles().includes(ROLES.SCHOOL_ADMIN) ? '' : 'Only a School Admin can publish.';
   });

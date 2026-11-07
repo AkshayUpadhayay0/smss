@@ -70,6 +70,7 @@ export class ReportCardSettingsComponent implements OnInit {
     showRules: new FormControl(false, { nonNullable: true }),
     showAttendance: new FormControl(true, { nonNullable: true }),
     showGradeLegend: new FormControl(true, { nonNullable: true }),
+    showPhoto: new FormControl(false, { nonNullable: true }),
   });
   // a computed() cannot see `form.valid` or a silent reset, so the value and validity are mirrored into signals
   private readonly value = signal(this.form.getRawValue());
@@ -95,7 +96,8 @@ export class ReportCardSettingsComponent implements OnInit {
       v.showCover !== s.showCover ||
       v.showRules !== s.showRules ||
       v.showAttendance !== s.showAttendance ||
-      v.showGradeLegend !== s.showGradeLegend
+      v.showGradeLegend !== s.showGradeLegend ||
+      v.showPhoto !== (s.showPhoto ?? false)
     );
   });
   /** The very first save of a school that has never saved settings is allowed even when nothing differs from the defaults. */
@@ -110,6 +112,11 @@ export class ReportCardSettingsComponent implements OnInit {
   private readonly refresh$ = new Subject<void>();
   protected readonly available = computed(() => this.designs().filter((d) => d.available));
   protected readonly chosenDesign = computed(() => this.designs().find((d) => d.code === this.chosen()) ?? null);
+  /** The photo switch is only shown when the design being looked at has a photo slot (the others ignore it). */
+  protected readonly photoSupported = computed(() => this.chosenDesign()?.supportsPhoto === true);
+  /** Which kind of sample a design for both modes is drawn with. A design for one mode always shows its own. */
+  protected readonly sampleMode = signal<'MARKS' | 'GRADES'>('MARKS');
+  protected readonly bothModes = computed(() => (this.chosenDesign()?.modes.length ?? 0) > 1);
 
   ngOnInit(): void {
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncForm());
@@ -144,7 +151,7 @@ export class ReportCardSettingsComponent implements OnInit {
     this.form.reset(
       {
         primaryColor: s.primaryColor, secondaryColor: s.secondaryColor, headerLine: s.headerLine ?? '', recognitionText: s.recognitionText ?? '', udiseCode: s.udiseCode ?? '',
-        footerText: s.footerText ?? '', rulesText: s.rulesText ?? '', showCover: s.showCover, showRules: s.showRules, showAttendance: s.showAttendance, showGradeLegend: s.showGradeLegend,
+        footerText: s.footerText ?? '', rulesText: s.rulesText ?? '', showCover: s.showCover, showRules: s.showRules, showAttendance: s.showAttendance, showGradeLegend: s.showGradeLegend, showPhoto: s.showPhoto ?? false,
       },
       { emitEvent: false },
     );
@@ -156,7 +163,7 @@ export class ReportCardSettingsComponent implements OnInit {
     const text = (x: string) => (x.trim() ? x.trim() : null);
     return {
       primaryColor: v.primaryColor, secondaryColor: v.secondaryColor, headerLine: text(v.headerLine), recognitionText: text(v.recognitionText), udiseCode: text(v.udiseCode),
-      footerText: text(v.footerText), rulesText: text(v.rulesText), showCover: v.showCover, showRules: v.showRules, showAttendance: v.showAttendance, showGradeLegend: v.showGradeLegend,
+      footerText: text(v.footerText), rulesText: text(v.rulesText), showCover: v.showCover, showRules: v.showRules, showAttendance: v.showAttendance, showGradeLegend: v.showGradeLegend, showPhoto: v.showPhoto,
     };
   }
 
@@ -165,7 +172,7 @@ export class ReportCardSettingsComponent implements OnInit {
     if (list.length === 0 || this.form.invalid) return EMPTY;
     this.previewing.set(true);
     const settings = this.request();
-    return forkJoin(list.map((d) => this.service.preview({ templateKey: d.code, settings, terms: this.terms() }).pipe(catchError(() => of(null))))).pipe(
+    return forkJoin(list.map((d) => this.service.preview({ templateKey: d.code, settings, terms: this.terms(), ...(d.modes.length > 1 ? { mode: this.sampleMode() } : {}) }).pipe(catchError(() => of(null))))).pipe(
       map((results) => Object.fromEntries(list.map((d, i) => [d.code, results[i]]))),
       tap((byCode) => this.previews.set(byCode)),
       finalize(() => this.previewing.set(false)),
@@ -183,6 +190,9 @@ export class ReportCardSettingsComponent implements OnInit {
   protected failed(code: string): boolean {
     return code in this.previews() && this.previews()[code] === null && !this.previewing();
   }
+  protected modeLabel(d: ReportCardDesign): string {
+    return d.modes.map((m) => (m === 'MARKS' ? 'Marks' : 'Grades')).join(' + ');
+  }
   protected landscape(d: ReportCardDesign | null): boolean {
     return !!d && d.orientation.toLowerCase() === 'landscape';
   }
@@ -190,6 +200,11 @@ export class ReportCardSettingsComponent implements OnInit {
   protected choose(code: string): void {
     const d = this.designs().find((x) => x.code === code);
     if (d?.available) this.chosen.set(code);
+  }
+  protected setSampleMode(mode: 'MARKS' | 'GRADES'): void {
+    if (mode === this.sampleMode()) return;
+    this.sampleMode.set(mode);
+    this.refresh$.next();
   }
   protected setTerms(n: number): void {
     if (n === this.terms()) return;

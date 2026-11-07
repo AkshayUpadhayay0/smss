@@ -12,9 +12,12 @@ const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', dat
 const PNG = 'iVBORw0KGgo=';
 
 const DESIGNS = [
-  { code: 'term-spread', name: 'Term Spread', description: 'Terms side by side', modes: ['MARKS'], orientation: 'Landscape', available: true },
-  { code: 'classic-card', name: 'Classic Card', description: 'One page per term set', modes: ['MARKS'], orientation: 'Portrait', available: true },
-  { code: 'skill-grid', name: 'Skill Grid', description: 'Skills and grades', modes: ['GRADES'], orientation: 'Portrait', available: false },
+  { code: 'term-spread', name: 'Term Spread', description: 'Terms side by side', modes: ['MARKS'], orientation: 'Landscape', available: true, supportsPhoto: false },
+  { code: 'classic-card', name: 'Classic Card', description: 'One page per term set', modes: ['MARKS'], orientation: 'Portrait', available: true, supportsPhoto: false },
+  { code: 'skill-grid', name: 'Skill Grid', description: 'Skills and grades', modes: ['GRADES'], orientation: 'Landscape', available: true, supportsPhoto: true },
+  { code: 'playful-report', name: 'Playful Report', description: 'Descriptive', modes: ['GRADES'], orientation: 'Portrait', available: true, supportsPhoto: true },
+  { code: 'board-style', name: 'Board Style', description: 'Scholastic and co-scholastic', modes: ['MARKS', 'GRADES'], orientation: 'Portrait', available: true, supportsPhoto: true },
+  { code: 'minimal-bw', name: 'Minimal', description: 'Ink-saving', modes: ['MARKS', 'GRADES'], orientation: 'Portrait', available: true, supportsPhoto: false },
 ];
 const SCHEMES = [
   { schemeId: 7, schemeName: 'Term-wise Class 3', evaluationMode: 'MARKS', templateKey: 'term-spread', classNames: ['Class 3'] },
@@ -22,7 +25,7 @@ const SCHEMES = [
 ];
 const DEFAULTS: ReportCardSettings = {
   primaryColor: '#1F3A5F', secondaryColor: '#C8963E', headerLine: null, recognitionText: null, udiseCode: null, footerText: null, rulesText: null, hasSignature: false,
-  showCover: false, showRules: false, showAttendance: true, showGradeLegend: true, isDefault: true, updatedAt: null, schoolName: 'Little Angels School', hasLogo: true,
+  showCover: false, showRules: false, showAttendance: true, showGradeLegend: true, showPhoto: false, isDefault: true, updatedAt: null, schoolName: 'Little Angels School', hasLogo: true,
   designs: DESIGNS, schemes: SCHEMES, defaultPrimaryColor: '#1F3A5F', defaultSecondaryColor: '#C8963E',
 };
 
@@ -62,14 +65,48 @@ describe('ReportCardSettingsComponent', () => {
     clearSessions();
   });
 
-  it('renders every BUILT design once as a live preview and shows an unbuilt design as disabled "coming soon" without asking the server for it', () => {
+  it('shows all six designs as live previews (one render each, nothing "coming soon") with the kind of scheme each one is for', () => {
     const first = open();
-    expect(first.map((r) => r.request.body.templateKey).sort()).toEqual(['classic-card', 'term-spread']);
-    expect(el().querySelectorAll('.tpl')).toHaveLength(3);
-    expect(el().querySelectorAll('.tpl .face img')).toHaveLength(2);
-    const soon = [...el().querySelectorAll<HTMLButtonElement>('.tpl')].find((b) => b.textContent?.includes('Skill Grid'))!;
-    expect(soon.disabled).toBe(true);
-    expect(soon.textContent).toContain('Coming soon');
+    expect(first.map((r) => r.request.body.templateKey).sort()).toEqual(['board-style', 'classic-card', 'minimal-bw', 'playful-report', 'skill-grid', 'term-spread']);
+    expect(el().querySelectorAll('.tpl')).toHaveLength(6);
+    expect(el().querySelectorAll('.tpl .face img')).toHaveLength(6);
+    expect(el().textContent).not.toContain('Coming soon');
+    expect([...el().querySelectorAll<HTMLButtonElement>('.tpl')].every((b) => !b.disabled)).toBe(true);
+    const text = (name: string) => [...el().querySelectorAll<HTMLButtonElement>('.tpl')].find((b) => b.textContent?.includes(name))!.textContent ?? '';
+    expect(text('Skill Grid')).toContain('Grades'); expect(text('Term Spread')).toContain('Marks'); expect(text('Board Style')).toContain('Marks + Grades');
+  });
+
+  it('asks for a GRADES-only design without a mode (the server draws its own sample) and a both-mode design in the chosen sample kind', () => {
+    const first = open();
+    const body = (code: string) => first.find((r) => r.request.body.templateKey === code)!.request.body;
+    expect(body('skill-grid').mode).toBeUndefined();
+    expect(body('classic-card').mode).toBeUndefined();
+    expect(body('board-style').mode).toBe('MARKS');
+    cmp()['choose']('board-style'); fixture.detectChanges();
+    const grades = [...el().querySelectorAll<HTMLButtonElement>('.terms-pick button')].find((b) => b.textContent?.includes('Grades sample'))!;
+    grades.click(); settle();
+    const again = previewRequests();
+    expect(again.find((r) => r.request.body.templateKey === 'board-style')!.request.body.mode).toBe('GRADES');
+    answerPreviews(again); fixture.detectChanges();
+  });
+
+  it('the photo switch is shown only when the design being looked at has a photo slot, and saving sends it', () => {
+    open();
+    const switches = () => [...el().querySelectorAll('.switch .text')].map((s) => s.textContent?.trim());
+    cmp()['choose']('classic-card'); fixture.detectChanges();
+    expect(switches()).not.toContain('Student photo');
+    cmp()['choose']('skill-grid'); fixture.detectChanges();
+    expect(switches()).toContain('Student photo');
+    cmp()['choose']('minimal-bw'); fixture.detectChanges();
+    expect(switches()).not.toContain('Student photo');
+    cmp()['choose']('playful-report'); fixture.detectChanges();
+    cmp()['form'].patchValue({ showPhoto: true }); settle();
+    answerPreviews(previewRequests().filter((r) => r.request.body.settings.showPhoto === true));
+    const saveBtn = [...el().querySelectorAll<HTMLButtonElement>('app-page-header button')].find((b) => b.textContent?.includes('Save settings'))!;
+    saveBtn.click();
+    const put = http.expectOne(`${API}/api/ReportCardSettings`);
+    expect(put.request.body.showPhoto).toBe(true);
+    put.flush(env({ ...DEFAULTS, showPhoto: true, isDefault: false }));
   });
 
   it('re-renders with the NEW colour (unsaved) after an edit, once the school stops dragging, and sends the settings as they are on screen', () => {
@@ -78,7 +115,7 @@ describe('ReportCardSettingsComponent', () => {
     cmp()['setColor']('primaryColor', '#0B6E50');
     settle();
     const again = previewRequests();
-    expect(again).toHaveLength(2); // one render per design, not one per keystroke
+    expect(again).toHaveLength(6); // one render per design (six), not one per keystroke
     expect(again[0].request.body.settings.primaryColor).toBe('#0B6E50');
     answerPreviews(again);
     fixture.detectChanges();
@@ -120,14 +157,19 @@ describe('ReportCardSettingsComponent', () => {
     expect([...el().querySelectorAll<HTMLSelectElement>('.schemes select')].every((s) => s.disabled)).toBe(true);
   });
 
-  it('offers for each scheme only built designs that fit its mode: an unbuilt or wrong-mode design is listed but disabled', () => {
+  it('offers for each scheme only the designs that fit its mode: a wrong-mode design is listed but disabled with the reason', () => {
     open();
     const [marks, grades] = [...el().querySelectorAll<HTMLSelectElement>('.schemes select')];
     const opt = (s: HTMLSelectElement, code: string) => [...s.options].find((o) => o.value === code)!;
     expect(opt(marks, 'term-spread').disabled).toBe(false);
     expect(opt(marks, 'classic-card').disabled).toBe(false);
     expect(opt(marks, 'skill-grid').disabled).toBe(true);
-    expect(opt(marks, 'skill-grid').textContent).toContain('coming soon');
+    expect(opt(marks, 'skill-grid').textContent).toContain('not for this scheme');
+    expect(opt(marks, 'playful-report').disabled).toBe(true);
+    expect(opt(marks, 'board-style').disabled).toBe(false);
+    expect(opt(marks, 'minimal-bw').disabled).toBe(false);
+    expect(opt(grades, 'board-style').disabled).toBe(false);
+    expect(opt(grades, 'minimal-bw').disabled).toBe(false);
     expect(opt(grades, 'classic-card').disabled).toBe(true);
     expect(opt(grades, 'classic-card').textContent).toContain('not for this scheme');
   });

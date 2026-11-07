@@ -47,7 +47,7 @@ namespace smss_api_service_layer.service
                 HasSignature = !string.IsNullOrEmpty(row?.PrincipalSignaturePath), ShowCover = row?.ShowCover ?? false, ShowRules = row?.ShowRules ?? false,
                 ShowAttendance = row?.ShowAttendance ?? true, ShowGradeLegend = row?.ShowGradeLegend ?? true, ShowPhoto = row?.ShowPhoto ?? false, IsDefault = row == null, UpdatedAt = row?.UpdatedAt,
                 SchoolName = school?.SchoolName ?? "", HasLogo = !string.IsNullOrWhiteSpace(school?.LogoUrl),
-                Designs = ReportCardTemplates.All.Select(t => new ReportCardDesignDto { Code = t.Key, Name = t.Name, Description = t.Description, Modes = t.Modes.ToList(), Orientation = t.Orientation, Available = ReportCardDesigns.Find(t.Key) != null }).ToList(),
+                Designs = ReportCardTemplates.All.Select(t => new ReportCardDesignDto { Code = t.Key, Name = t.Name, Description = t.Description, Modes = t.Modes.ToList(), Orientation = t.Orientation, Available = ReportCardDesigns.Find(t.Key) != null, SupportsPhoto = ReportCardTemplates.PhotoDesigns.Contains(t.Key) }).ToList(),
                 Schemes = schemes.Select(s => new ReportCardSchemeChoiceDto { SchemeId = s.SchemeId, SchemeName = s.SchemeName, EvaluationMode = s.EvaluationMode, TemplateKey = s.TemplateKey, ClassNames = s.ClassNames }).ToList(),
             };
         }
