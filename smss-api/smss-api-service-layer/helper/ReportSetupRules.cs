@@ -24,11 +24,20 @@ namespace smss_api_service_layer.helper
         {
             new("classic-card", "Classic Card", "Compact portrait card: papers as columns, result block and conduct lines.", new[] { "MARKS" }, "Portrait", true),
             new("term-spread", "Term Spread", "Landscape two-panel Term I / Term II marks table with a grand total, co-scholastic and discipline grades.", new[] { "MARKS" }, "Landscape", true),
-            new("skill-grid", "Skill Grid", "Landscape exam-by-skill grade matrix for the early years, with remarks, rank and promotion.", new[] { "GRADES" }, "Landscape", false),
-            new("board-style", "Board Style", "Portrait scholastic plus co-scholastic layout for the upper classes.", new[] { "MARKS", "GRADES" }, "Portrait", false),
-            new("playful-report", "Playful Report", "Descriptive learning areas with a grade, things to improve and comments.", new[] { "GRADES" }, "Portrait", false),
-            new("minimal-bw", "Minimal (ink-saving)", "Single colour, photocopy-friendly.", new[] { "MARKS" }, "Portrait", true),
+            new("skill-grid", "Skill Grid", "Landscape exam-by-skill grade matrix for the early years, with remarks, rank and promotion.", new[] { "GRADES" }, "Landscape", true),
+            new("board-style", "Board Style", "Portrait scholastic plus co-scholastic layout for the upper classes.", new[] { "MARKS", "GRADES" }, "Portrait", true),
+            new("playful-report", "Playful Report", "Descriptive learning areas with a grade, things to improve and comments.", new[] { "GRADES" }, "Portrait", true),
+            new("minimal-bw", "Minimal (ink-saving)", "Single colour, photocopy-friendly: marks or grades.", new[] { "MARKS", "GRADES" }, "Portrait", true),
         };
+
+        /// <summary>The refusal when a design cannot draw a scheme of the given mode (MARKS or GRADES): says what the design is for and which designs fit.</summary>
+        public static string Incompatible(Info? design, string mode)
+        {
+            var want = string.Equals(mode, "GRADES", StringComparison.OrdinalIgnoreCase) ? "GRADES" : "MARKS";
+            var fits = string.Join(", ", All.Where(t => t.Modes.Contains(want)).Select(t => t.Name));
+            if (design == null) return $"That report card design does not exist. Designs for {want.ToLowerInvariant()} schemes: {fits}.";
+            return $"{design.Name} is for {string.Join(" or ", design.Modes).ToLowerInvariant()} schemes and can't draw a {want.ToLowerInvariant()} scheme. Designs for {want.ToLowerInvariant()} schemes: {fits}.";
+        }
 
         public static Info? Find(string? key) => All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal));
         public static ReportTemplateDto ToDto(Info t) => new() { Key = t.Key, Name = t.Name, Description = t.Description, Modes = t.Modes.ToList(), Orientation = t.Orientation, Implemented = t.Implemented };

@@ -22,6 +22,8 @@ namespace smss_api_db_layer.@interface
     public interface IReportResultRepository
     {
         Task<List<ResultBand>> GetBandsAsync(string schoolId, long scaleId, CancellationToken ct);
+        /// <summary>The class teacher's name per section (the active assignment of the academic year): one query. A section with no class teacher is simply absent.</summary>
+        Task<Dictionary<long, string>> GetClassTeacherNamesAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> sectionIds, int activeStatusId, CancellationToken ct);
         Task<List<ResultStudent>> GetStudentsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> sectionIds, int activeStatusId, CancellationToken ct);
         Task<List<ResultMark>> GetMarksAsync(string schoolId, IReadOnlyCollection<long> examSubjectIds, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<List<ResultGuardian>> GetParentsAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct);

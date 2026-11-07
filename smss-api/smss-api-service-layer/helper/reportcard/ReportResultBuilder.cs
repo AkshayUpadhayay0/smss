@@ -149,6 +149,7 @@ namespace smss_api_service_layer.helper.reportcard
             var areaBands = new Dictionary<long, List<ResultBand>>();
             foreach (var scaleId in areas.Values.Select(a => a.RatingScaleId).Distinct()) areaBands[scaleId] = await _results.GetBandsAsync(schoolId, scaleId, ct);
             var subjectRemarks = (await _results.GetSubjectRemarksAsync(sch.SchemeId, students.Select(s => s.StudentId).ToList(), ct)).ToDictionary(r => (r.StudentId, r.TermId, r.SchemeSubjectId));
+            var classTeacher = (await _results.GetClassTeacherNamesAsync(schoolId, sch.AcademicYearId, new[] { section.SectionId }, activeId, ct)).GetValueOrDefault(section.SectionId) ?? "";
             var parents = (await _results.GetParentsAsync(schoolId, students.Select(s => s.StudentId).ToList(), ct)).GroupBy(p => p.StudentId).ToDictionary(g => g.Key, g => g.ToList());
 
             var attendance = new Dictionary<long, (TermAttendanceResult? Auto, Dictionary<string, (int? Working, int? Present)> Manual)>();
@@ -213,7 +214,7 @@ namespace smss_api_service_layer.helper.reportcard
                         StudentId = s.StudentId, Name = LeaveRules.FullName(s.FirstName, s.MiddleName, s.LastName), ClassName = s.ClassName, SectionName = s.SectionName, Roll = s.RollNumber ?? "", AdmissionNo = s.AdmissionNumber,
                         Dob = s.DateOfBirth.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture),
                         Father = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "FATHER")?.Name ?? "", Mother = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "MOTHER")?.Name ?? "",
-                        Doj = s.AdmissionDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture), Address = s.Address ?? "",
+                        Doj = s.AdmissionDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture), Address = s.Address ?? "", ClassTeacher = classTeacher,
                         Contact = parents.GetValueOrDefault(s.StudentId)?.Select(p => p.Mobile).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? s.Mobile ?? ""
                     },
                     Terms = rcTerms
@@ -276,7 +277,7 @@ namespace smss_api_service_layer.helper.reportcard
             {
                 Graph = graph, SchemeId = sch.SchemeId, SchemeName = sch.SchemeName, SectionId = section.SectionId, ClassId = section.ClassId, ClassName = section.ClassName, SectionName = section.SectionName, Scope = scope, TermId = term?.TermId,
                 TermName = term?.TermName, Mode = sch.EvaluationMode, TemplateKey = sch.TemplateKey, TemplateAvailable = templateOk,
-                TemplateMessage = templateOk ? null : "This design is not available yet, choose Term Spread.", Students = students, Results = results, Models = models, Config = config, UnlockedTerms = unlocked,
+                TemplateMessage = templateOk ? null : $"The {template?.Name ?? sch.TemplateKey} design can't print a {sch.EvaluationMode.ToLowerInvariant()} scheme. Choose another design for this scheme on Report Card Settings.", Students = students, Results = results, Models = models, Config = config, UnlockedTerms = unlocked,
                 AttendanceSource = sch.AttendanceSource, UnmarkedDates = unmarked.Distinct().OrderBy(d => d).ToList()
             };
         }

@@ -98,7 +98,7 @@ def main():
             sch = s('GET', f'/ReportScheme/{sid}')[1]['data']
         keep = [x for x in sch['subjects'] if x['subjectName'] in subject_names]
         s('PUT', f'/ReportScheme/{sid}/subjects', {'subjects': [{'schemeSubjectId': x['schemeSubjectId'], 'classId': x['classId'], 'subjectId': x['subjectId'], 'displayOrder': subject_names.index(x['subjectName']) + 1,
-                                                                'includeInTotal': False} for x in keep]})
+                                                                'includeInTotal': True} for x in keep]})
         sch = s('GET', f'/ReportScheme/{sid}')[1]['data']
         s('PUT', f'/ReportScheme/{sid}/matrix', {'cells': [{'examId': e['examId'], 'schemeSubjectId': x['schemeSubjectId'], 'entryMode': 'GRADE'} for t in sch['terms'] for e in t['exams'] for x in sch['subjects']]})
         s('PUT', f'/ReportScheme/{sid}/skills', {'subjects': [{'schemeSubjectId': x['schemeSubjectId'], 'skills': skills_by_subject} for x in sch['subjects']]})

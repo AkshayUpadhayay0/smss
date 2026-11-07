@@ -111,7 +111,7 @@ namespace smss_api_service_layer.service
                 await _repo.LockPublicationKeyAsync(req.SchemeId, req.SectionId, scope, req.TermId, ct);       // two admins publishing the same card set queue up; the second sees the first one's version
                 var set = await _builder.BuildAsync(schoolId, req.SchemeId, req.SectionId, scope, req.TermId, active.Value, Today(), ct);       // recomputed INSIDE the lock: what is stored is what is true now
                 if (set == null) return Result<PublishResultDto>(404, "Report scheme, section or term not found.", null);
-                if (!set.TemplateAvailable) return Result<PublishResultDto>(409, set.TemplateMessage ?? "This design is not available yet, choose Term Spread.", null);
+                if (!set.TemplateAvailable) return Result<PublishResultDto>(409, set.TemplateMessage ?? "This report card uses a design that no longer exists. Choose a design for the scheme on Report Card Settings.", null);
                 if (set.UnlockedTerms.Count > 0)
                     return Result<PublishResultDto>(409, $"Lock {(set.UnlockedTerms.Count == 1 ? "the term" : "every term")} first. Not locked for this section: {string.Join(", ", set.UnlockedTerms)}.", null);
 
@@ -254,7 +254,7 @@ namespace smss_api_service_layer.service
         {
             var model = ReportCardModel.FromJson(card.CardModel);
             var cfg = JsonSerializer.Deserialize<RcConfigSnapshot>(pub.ConfigSnapshot, ReportCardModel.Json);
-            if (ReportCardDesigns.Find(model.TemplateKey) == null) return Fail(409, "This design is not available yet, choose Term Spread.");
+            if (ReportCardDesigns.Find(model.TemplateKey) == null) return Fail(409, "This report card uses a design that no longer exists. Choose a design for the scheme on Report Card Settings.");
             var pdf = await RenderAsync(model, false, cfg?.SignatureKey, ct);
             return new ReportFileResult { Content = pdf, FileName = FileName(card.AdmissionNumber, $"v{pub.Version}") };
         }
@@ -287,7 +287,7 @@ namespace smss_api_service_layer.service
                 if (!(rights.IsAdmin || rights.IsClassTeacher)) return Fail(403, rights.IsPrincipal ? "The Principal can download published report cards, not drafts." : "You can only preview the cards of the section you are the class teacher of.");
                 var set = await _builder.BuildAsync(schoolId, schemeId, sectionId, scope, termId, active.Value, Today(), ct);
                 if (set == null) return Fail(404, "Report scheme, section or term not found.");
-                if (!set.TemplateAvailable) return Fail(409, set.TemplateMessage ?? "This design is not available yet, choose Term Spread.");
+                if (!set.TemplateAvailable) return Fail(409, set.TemplateMessage ?? "This report card uses a design that no longer exists. Choose a design for the scheme on Report Card Settings.");
                 if (!set.Models.TryGetValue(studentId, out var model)) return Fail(404, "Student not found in this section.");
                 var pdf = await RenderAsync(model, true, set.Config.SignatureKey, ct);
                 return new ReportFileResult { Content = pdf, FileName = FileName(set.Students.First(s => s.StudentId == studentId).AdmissionNumber, "DRAFT") };
@@ -351,7 +351,7 @@ namespace smss_api_service_layer.service
                         return new RcContext { Model = model, Logo = Logo(model.Header.LogoKey), Signature = Sig(model.SignatureKey ?? cfg?.SignatureKey), Draft = false };
                     });
                     var first = ReportCardModel.FromJson(selected[0].CardModel);
-                    if (ReportCardDesigns.Find(first.TemplateKey) == null) return Fail(409, "This design is not available yet, choose Term Spread.");
+                    if (ReportCardDesigns.Find(first.TemplateKey) == null) return Fail(409, "This report card uses a design that no longer exists. Choose a design for the scheme on Report Card Settings.");
                     var pdf = await Task.Run(() => ReportCardPdf.RenderMany(contexts), ct);
                     var label = (pub.Scope == "TERM" ? row.TermName ?? "Term" : "Year");
                     var range = selected.Count == rows.Count ? "" : $"_rolls-{Key(selected[0])}-to-{Key(selected[^1])}";

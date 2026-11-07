@@ -147,12 +147,12 @@ namespace smss_api_service_layer.service
                 var info = ReportCardTemplates.Find(key);
                 if (info == null) return Result<ReportCardSettingsDto>(400, "Unknown design.", null);
                 var design = ReportCardDesigns.Find(key);
-                if (design == null) return Result<ReportCardSettingsDto>(409, "This design is not available yet. Choose one of the available designs.", null);
+                if (design == null) return Result<ReportCardSettingsDto>(400, "Unknown design.", null);
                 var active = await _marks.ActiveStatusIdAsync(ct);
                 if (active == null) return Result<ReportCardSettingsDto>(500, "The system is not configured correctly. Please contact support.", null);
                 var scheme = (await _repo.GetSchemesAsync(schoolId, active.Value, ct)).FirstOrDefault(s => s.SchemeId == request.SchemeId);
                 if (scheme == null) return Result<ReportCardSettingsDto>(404, "Report scheme not found.", null);
-                if (!design.SupportedModes.Contains(scheme.EvaluationMode)) return Result<ReportCardSettingsDto>(409, $"The {design.Name} design is for {string.Join(" or ", design.SupportedModes).ToLowerInvariant()} schemes; this scheme uses {scheme.EvaluationMode.ToLowerInvariant()}.", null);
+                if (!design.SupportedModes.Contains(scheme.EvaluationMode)) return Result<ReportCardSettingsDto>(409, ReportCardTemplates.Incompatible(info, scheme.EvaluationMode), null);
                 if (!await _repo.SetSchemeTemplateAsync(schoolId, request.SchemeId, key, userId, active.Value, ct)) return Result<ReportCardSettingsDto>(404, "Report scheme not found.", null);
                 return Result(200, "Design changed. Cards already published keep their design.", await BuildDtoAsync(schoolId, await _repo.GetAsync(schoolId, ct), ct));
             }
@@ -168,7 +168,7 @@ namespace smss_api_service_layer.service
                 var key = string.IsNullOrWhiteSpace(request.TemplateKey) ? "term-spread" : request.TemplateKey.Trim();
                 if (ReportCardTemplates.Find(key) == null) return Result<ReportCardPreviewDto>(400, "Unknown design.", null);
                 var design = ReportCardDesigns.Find(key);
-                if (design == null) return Result<ReportCardPreviewDto>(409, "This design is not available yet, choose one of the available designs.", null);
+                if (design == null) return Result<ReportCardPreviewDto>(400, "Unknown design.", null);
 
                 var saved = await _repo.GetAsync(schoolId, ct);
                 var (clean, error) = ReportCardSettingsRules.Validate(request.Settings ?? new ReportCardSettingsRequest
@@ -196,11 +196,16 @@ namespace smss_api_service_layer.service
                     var set = await _builder.BuildAsync(schoolId, request.SchemeId.Value, request.SectionId.Value, scope, request.TermId, active.Value, DateOnly.FromDateTime(DateTime.UtcNow.AddHours(5.5)), ct);
                     if (set == null) return Result<ReportCardPreviewDto>(404, "Report scheme, section or term not found.", null);
                     if (!set.Models.TryGetValue(request.StudentId.Trim(), out model!)) return Result<ReportCardPreviewDto>(404, "Student not found in this section.", null);
+                    if (!design.SupportedModes.Contains(scheme.EvaluationMode)) return Result<ReportCardPreviewDto>(409, ReportCardTemplates.Incompatible(ReportCardTemplates.Find(key), scheme.EvaluationMode), null);
                     model.TemplateKey = key; isSample = false;
                 }
                 else
                 {
-                    model = ReportCardSamples.Build(new RcSampleOptions { TemplateKey = key, Terms = Math.Clamp(request.Terms, 1, 3), SchoolName = school?.SchoolName ?? "Sample Public School", LogoKey = school?.LogoUrl });
+                    // the sample is drawn in the mode the design is for: a GRADES-only design gets grade data (skill grid: five skills; playful report: descriptive), a MARKS-only one marks data,
+                    // and a design for both uses the requested mode (default MARKS)
+                    var wantMode = design.SupportedModes.Count == 1 ? design.SupportedModes[0] : (string.Equals(request.Mode, "GRADES", StringComparison.OrdinalIgnoreCase) ? "GRADES" : "MARKS");
+                    var wantSkills = wantMode != "GRADES" ? 0 : key == "skill-grid" ? 5 : key == "playful-report" ? 0 : Math.Clamp(request.Skills ?? 3, 0, 5);
+                    model = ReportCardSamples.Build(new RcSampleOptions { TemplateKey = key, Mode = wantMode, Skills = wantSkills, Subjects = wantMode == "GRADES" && key == "skill-grid" ? 4 : wantMode == "GRADES" && key == "playful-report" ? 7 : 8, Terms = Math.Clamp(request.Terms, 1, 3), SchoolName = school?.SchoolName ?? "Sample Public School", LogoKey = school?.LogoUrl });
                     model.Header.AddressLine = string.IsNullOrWhiteSpace(school?.AddressLine1) ? model.Header.AddressLine : string.Join(", ", new[] { school?.AddressLine1, school?.CityName, school?.StateName }.Where(x => !string.IsNullOrWhiteSpace(x)));
                     if (!string.IsNullOrWhiteSpace(school?.MobileNumber)) model.Header.Phone = school!.MobileNumber!;
                 }

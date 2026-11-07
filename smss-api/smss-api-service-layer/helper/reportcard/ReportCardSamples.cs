@@ -28,6 +28,10 @@ namespace smss_api_service_layer.helper.reportcard
         public string? LogoKey { get; set; }
         public string StudentName { get; set; } = "Aarav Kumar Sharma";
         public int Seed { get; set; } = 7;
+        /// <summary>MARKS or GRADES. A GRADES sample has no marks or percentage.</summary>
+        public string Mode { get; set; } = "MARKS";
+        /// <summary>GRADES only: 0 = descriptive (one grade per learning area, with a remark and things to improve); 1 to 5 = that many skills per subject and three exams per term.</summary>
+        public int Skills { get; set; }
     }
 
     /// <summary>Invented, internally consistent card data (totals add up, grades follow the bands). Never real people.</summary>
@@ -51,6 +55,11 @@ namespace smss_api_service_layer.helper.reportcard
 
         public static ReportCardModel Build(RcSampleOptions o)
         {
+            if (string.Equals(o.Mode, "GRADES", StringComparison.OrdinalIgnoreCase))
+            {
+                o.Mode = "MARKS";
+                try { return ReportCardGradeSamples.Build(o, Build(o)); } finally { o.Mode = "GRADES"; }
+            }
             var rnd = new Random(o.Seed);
             var terms = new List<RcTerm>();
             var termNames = new[] { "Term I", "Term II", "Term III" };

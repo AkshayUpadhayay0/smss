@@ -60,7 +60,7 @@ namespace smss_api_service_layer.helper.reportcard
         }
 
         // ------------------------------------------------------------------ header and student
-        private static void PortraitHeader(IContainer c, RcContext x, PortraitStyle style, string accent, string accent2, string muted)
+        internal static void PortraitHeader(IContainer c, RcContext x, PortraitStyle style, string accent, string accent2, string muted)
         {
             var m = x.Model;
             c.BorderBottom(style.Mono ? 1f : 1.2f).BorderColor(accent).PaddingBottom(3).Row(r =>
@@ -80,7 +80,7 @@ namespace smss_api_service_layer.helper.reportcard
 
         private static string Title(ReportCardModel m) => m.Scope == "TERM" && m.Terms.Count == 1 ? $"Progress Report · {m.Terms[0].Name} · {m.SessionName}" : $"Progress Report · {m.SessionName}";
 
-        private static void StudentBlockP(IContainer c, ReportCardModel m, PortraitStyle style, string rule, string muted, string ink)
+        internal static void StudentBlockP(IContainer c, ReportCardModel m, PortraitStyle style, string rule, string muted, string ink)
         {
             var s = m.Student;
             void KV(ColumnDescriptor col, string key, string? value, bool bold = false) =>
@@ -274,7 +274,7 @@ namespace smss_api_service_layer.helper.reportcard
         }
 
         // ------------------------------------------------------------------ signatures and legend
-        private static void SignatureRow(IContainer c, RcContext x, PortraitStyle style, string muted, params string[] who)
+        internal static void SignatureRow(IContainer c, RcContext x, PortraitStyle style, string muted, params string[] who)
         {
             c.Row(r =>
             {
@@ -288,7 +288,7 @@ namespace smss_api_service_layer.helper.reportcard
             });
         }
 
-        private static void LegendP(IContainer c, ReportCardModel m, string muted)
+        internal static void LegendP(IContainer c, ReportCardModel m, string muted)
         {
             if (m.Legend.Count == 0) return;
             c.Text(t =>
@@ -321,8 +321,13 @@ namespace smss_api_service_layer.helper.reportcard
     {
         public string Code => "minimal-bw";
         public string Name => "Minimal (ink-saving)";
-        public IReadOnlyList<string> SupportedModes { get; } = new[] { "MARKS" };
+        public IReadOnlyList<string> SupportedModes { get; } = new[] { "MARKS", "GRADES" };
         public string Orientation => "portrait";
-        public void Render(IDocumentContainer doc, RcContext ctx) => PortraitCardLayout.Render(doc, ctx, PortraitStyle.Minimal);
+        /// <summary>MARKS: the compact one-page card. GRADES: the board-style grades layout in black ink (no marks, totals or percentages).</summary>
+        public void Render(IDocumentContainer doc, RcContext ctx)
+        {
+            if (ctx.Model.Mode == "GRADES") BoardLayout.Render(doc, ctx, PortraitStyle.Minimal);
+            else PortraitCardLayout.Render(doc, ctx, PortraitStyle.Minimal);
+        }
     }
 }

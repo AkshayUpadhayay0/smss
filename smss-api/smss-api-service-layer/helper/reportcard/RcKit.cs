@@ -27,7 +27,7 @@ namespace smss_api_service_layer.helper.reportcard
 
     public static class ReportCardDesigns
     {
-        public static readonly IReadOnlyList<IReportCardTemplate> All = new IReportCardTemplate[] { new TermSpreadTemplate(), new ClassicCardTemplate(), new MinimalBwTemplate() };
+        public static readonly IReadOnlyList<IReportCardTemplate> All = new IReportCardTemplate[] { new TermSpreadTemplate(), new ClassicCardTemplate(), new MinimalBwTemplate(), new SkillGridTemplate(), new PlayfulReportTemplate(), new BoardStyleTemplate() };
         public static IReportCardTemplate? Find(string? code) => All.FirstOrDefault(t => string.Equals(t.Code, code, StringComparison.Ordinal));
     }
 

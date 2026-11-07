@@ -38,6 +38,16 @@ namespace smss_api_db_layer.repository
                 .Select(m => new ResultMark(m.ExamSubjectId, m.SkillId, m.StudentId, m.EntryState, m.Marks, m.GradeCode)).ToList();
         }
 
+        public async Task<Dictionary<long, string>> GetClassTeacherNamesAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> sectionIds, int activeStatusId, CancellationToken ct)
+        {
+            var ids = sectionIds.ToList();
+            var rows = await (from a in _db.ClassTeacherAssignments.AsNoTracking()
+                              join e in _db.Employees.AsNoTracking() on a.EmployeeId equals e.EmployeeId
+                              where a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.StatusId == activeStatusId && ids.Contains(a.SectionId) && e.SchoolId == schoolId
+                              select new { a.SectionId, e.FirstName, e.MiddleName, e.LastName }).ToListAsync(ct);
+            return rows.GroupBy(r => r.SectionId).ToDictionary(g => g.Key, g => string.Join(' ', new[] { g.First().FirstName, g.First().MiddleName, g.First().LastName }.Where(x => !string.IsNullOrWhiteSpace(x))));
+        }
+
         public async Task<List<ResultGuardian>> GetParentsAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
         {
             if (studentIds.Count == 0) return new();

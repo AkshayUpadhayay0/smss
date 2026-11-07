@@ -79,6 +79,10 @@ namespace smss_api_service_layer.dto
         public ReportCardSettingsRequest? Settings { get; set; }
         /// <summary>1 to 3 terms for the sample card.</summary>
         public int Terms { get; set; } = 2;
+        /// <summary>MARKS or GRADES: the sample data for a design that supports both (Board Style, Minimal). A design for one mode always uses that mode.</summary>
+        public string? Mode { get; set; }
+        /// <summary>GRADES sample for a design that supports both modes: skills per subject (0 = descriptive).</summary>
+        public int? Skills { get; set; }
         // a real student (School Admin and the class teacher only; the Principal sees samples)
         public long? SchemeId { get; set; }
         public long? SectionId { get; set; }

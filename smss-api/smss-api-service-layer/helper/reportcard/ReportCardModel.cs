@@ -35,6 +35,8 @@ namespace smss_api_service_layer.helper.reportcard
         public string Doj { get; set; } = "";
         public string Address { get; set; } = "";
         public string Contact { get; set; } = "";
+        /// <summary>The section's class teacher (the active class-teacher assignment), printed by the descriptive design. Empty when none is assigned.</summary>
+        public string ClassTeacher { get; set; } = "";
     }
 
     public sealed class RcExam { public long ExamId { get; set; } public string Name { get; set; } = ""; public decimal? Max { get; set; } public decimal? Weight { get; set; } }

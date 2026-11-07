@@ -427,7 +427,7 @@ namespace smss_api_service_layer.service
                 var name = string.IsNullOrWhiteSpace(req.SchemeName) ? Fit($"{preset.Name} {year.YearName}", 80) : req.SchemeName.Trim();
                 var template = string.IsNullOrWhiteSpace(req.TemplateKey) ? preset.TemplateKey : req.TemplateKey.Trim();
                 var tpl = ReportCardTemplates.Find(template);
-                if (tpl == null || !tpl.Modes.Contains(preset.Mode)) return Result<SchemeDto>(400, "That card layout does not suit this kind of scheme.", null);
+                if (tpl == null || !tpl.Modes.Contains(preset.Mode)) return Result<SchemeDto>(400, CompatMessage(tpl, preset.Mode), null);
                 var rounding = req.PercentageRounding ?? "ROUND_HALF_UP";
                 if (!ReportSetup.Roundings.Contains(rounding)) return Result<SchemeDto>(400, "Unknown rounding mode.", null);
                 if (req.SubjectPassPercent is < 0 or > 100 || req.OverallPassPercent is < 0 or > 100) return Result<SchemeDto>(400, "Pass marks must be between 0 and 100.", null);
@@ -612,7 +612,7 @@ namespace smss_api_service_layer.service
             if (req.PercentageRounding != null && !ReportSetup.Roundings.Contains(req.PercentageRounding)) return new(Bad(400, "Percentage rounding must be ROUND_HALF_UP or TRUNCATE."));
             var tpl = ReportCardTemplates.Find(req.TemplateKey);
             if (tpl == null) return new(Bad(400, "Unknown card layout."));
-            if (!tpl.Modes.Contains(req.EvaluationMode!)) return new(Bad(400, $"The {tpl.Name} layout can't draw a {req.EvaluationMode!.ToLowerInvariant()} scheme."));
+            if (!tpl.Modes.Contains(req.EvaluationMode!)) return new(Bad(400, CompatMessage(tpl, req.EvaluationMode!)));
             if (await _repo.SchemeNameTakenAsync(schoolId, req.AcademicYearId.Value, name, exceptId, activeId, ct)) return new(Bad(409, $"A scheme named \"{name}\" already exists for this academic year."));
             return new(null);
         }
@@ -688,8 +688,6 @@ namespace smss_api_service_layer.service
             }
             foreach (var e in g.Exams.Where(e => g.Subjects.Count > 0 && g.Cells.All(c => c.ExamId != e.ExamId)))
                 w.Add($"{e.ExamName} has no subjects: tick the subjects it covers in the subject matrix.");
-            var tpl = ReportCardTemplates.Find(g.Scheme.TemplateKey);
-            if (tpl is { Implemented: false }) w.Add($"The \"{tpl.Name}\" card layout is not available to print yet. You can keep it selected: marks entry and results do not depend on it.");
             if (g.Scheme.EvaluationMode == ReportSetup.Marks)
                 foreach (var t in g.Terms.Where(t => g.Exams.Any(e => e.TermId == t.TermId) && g.Exams.Where(e => e.TermId == t.TermId).Sum(e => e.WeightPoints) != 100))
                     w.Add($"{t.TermName} adds up to {g.Exams.Where(e => e.TermId == t.TermId).Sum(e => e.WeightPoints):0.##} marks per subject, not 100. That is fine if it is intended.");
@@ -703,6 +701,7 @@ namespace smss_api_service_layer.service
         };
 
         private static bool IsName(DbUpdateException ex) => (ex.InnerException as PostgresException)?.ConstraintName == "uq_tb_report_schemes_year_name";
+        private static string CompatMessage(ReportCardTemplates.Info? tpl, string mode) => ReportCardTemplates.Incompatible(tpl, mode);
         private static string Fit(string s, int max) => s.Length <= max ? s : s[..max].TrimEnd();
         private Task<int?> ActiveAsync(CancellationToken ct) => _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
         private ApiResponse<T> ConfigError<T>() { _logger.LogError("Configuration problem: Active / Inactive statuses are missing in lut_status"); return Result<T>(500, "The system is not configured correctly. Please contact support.", default); }
