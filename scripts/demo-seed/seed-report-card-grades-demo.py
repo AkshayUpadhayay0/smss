@@ -28,6 +28,9 @@ from seed_setup import SCHOOLS
 
 ALLOWED_SCHOOLS = ('Little Angels School', 'Green Hills School')
 UKG_SUBJECTS = ['English', 'Hindi', 'Mathematics', 'EVS']
+# The pre-primary demo schemes get their OWN three-level rating scale. The school's existing scales are never touched or reused: one of them (made from the same preset) had a "D Fail" band added.
+DEMO_SCALE_NAME = 'Pre-primary rating A-B-C (demo)'
+DEMO_SCALE_BANDS = [('A', 'Outstanding'), ('B', 'Very Good'), ('C', 'Fair')]
 UKG_SKILLS = ['Reading', 'Writing', 'Oral', 'Cycle-wise grade', 'Internal assessment']
 AREAS = ['Writing', 'Reading', 'Speaking', 'Language', 'Numbering', 'Art & Craft', 'Playing and Sharing']
 SUBJECT_CODES = {'Writing': 'WRT', 'Reading': 'RDG', 'Speaking': 'SPK', 'Language': 'LNG', 'Numbering': 'NUM', 'Playing and Sharing': 'PLS'}
@@ -83,14 +86,39 @@ def main():
     print('  subjects created:', created['subjects'] or 'none (all existed)')
     print('  class-subject mappings created:', created['mappings'] or 'none (all existed)')
 
+    # ---- the demo rating scale: created once, with exactly A Outstanding, B Very Good, C Fair and no fail band
+    scales = s('GET', '/GradeScale')[1]['data']
+    demo_scale = next((x for x in scales if x['scaleName'] == DEMO_SCALE_NAME), None)
+    if demo_scale is None:
+        demo_scale = s('POST', '/GradeScale', {'name': DEMO_SCALE_NAME, 'kind': 'RATING', 'bands': [{'gradeCode': c, 'label': l, 'isFail': False} for c, l in DEMO_SCALE_BANDS]})[1]['data']
+        created['scales'] = [DEMO_SCALE_NAME]; print(f'  grade scale created: {DEMO_SCALE_NAME} (A Outstanding, B Very Good, C Fair)')
+    else: print(f'  grade scale already there: {DEMO_SCALE_NAME}')
+    demo_scale_id = demo_scale['gradeScaleId']
     existing = {x['schemeName']: x for x in s('GET', '/ReportScheme')[1]['data']}
+    # A pre-primary demo scheme made earlier on another scale is moved to the demo scale. The application itself refuses a scale change once marks exist (correctly), so this is a one-row data fix on
+    # the demo rows this script made: only the two schemes named below, only in the demo school being seeded, only when nothing of them is published. The grades entered are the codes A, B and C,
+    # which the demo scale has too; nothing else about the scheme changes.
+    switched = []
+    for sname in ('Demo Skill Grid UKG', 'Demo Descriptive Nursery and LKG'):
+        if sname not in existing: continue
+        cur = s('GET', f'/ReportScheme/{existing[sname]["schemeId"]}')[1]['data']
+        if cur['gradeScaleId'] == demo_scale_id: continue
+        published = sql(f"select count(*) from tb_report_publications where scheme_id={int(cur['schemeId'])}")
+        if published != '0': print(f'  scheme "{sname}" has published cards: left on its scale'); continue
+        codes = sql(f"select string_agg(distinct grade_code, ',' order by grade_code) from tb_report_marks where school_id='{school_id}' and exam_subject_id in (select exam_subject_id from tb_report_exam_subjects where scheme_id={int(cur['schemeId'])}) and grade_code is not null")
+        if not set(filter(None, codes.split(','))) <= {c for c, _ in DEMO_SCALE_BANDS}: print(f'  scheme "{sname}" uses grades the demo scale does not have ({codes}): left as it is'); continue
+        n = sql(f"update tb_report_schemes set grade_scale_id={int(demo_scale_id)}, updated_at=now() where scheme_id={int(cur['schemeId'])} and school_id='{school_id}' and scheme_name='{sname}' returning scheme_id")
+        switched.append(f'{sname} (scheme {cur["schemeId"]}): scale "{cur.get("gradeScaleName")}" -> "{DEMO_SCALE_NAME}" (grades in use: {codes})')
+        print(f'  scheme "{sname}" moved from scale "{cur.get("gradeScaleName")}" to "{DEMO_SCALE_NAME}" (grades in use: {codes})')
+    created['schemesSwitchedScale'] = switched
 
     def make_scheme(name, class_names, template, skills_by_subject, subject_names, one_exam_per_term):
         """The pre-primary preset (GRADES, two terms, the A-B-C scale), trimmed to the wanted subjects, skills and exams."""
         c, j = s('POST', '/ReportScheme/from-preset', {'presetCode': 'pre-primary-skill-grid', 'academicYearId': ay, 'schemeName': name, 'classIds': [class_ids[c] for c in class_names], 'templateKey': template})
         sch = j['data']; sid = sch['schemeId']
-        s('PUT', f'/ReportScheme/{sid}', {'name': name, 'academicYearId': ay, 'evaluationMode': 'GRADES', 'gradeScaleId': sch['gradeScaleId'], 'yearCombine': sch['yearCombine'], 'subjectPassPercent': sch['subjectPassPercent'],
+        s('PUT', f'/ReportScheme/{sid}', {'name': name, 'academicYearId': ay, 'evaluationMode': 'GRADES', 'gradeScaleId': demo_scale_id, 'yearCombine': sch['yearCombine'], 'subjectPassPercent': sch['subjectPassPercent'],
                                            'overallPassPercent': sch['overallPassPercent'], 'showRank': False, 'rankScope': sch['rankScope'], 'attendanceSource': 'MANUAL', 'percentageRounding': sch['percentageRounding'], 'templateKey': template})
+        # (the scale was set to the demo scale just above, before any grade is entered)
         sch = s('GET', f'/ReportScheme/{sid}')[1]['data']
         if one_exam_per_term:
             s('PUT', f'/ReportScheme/{sid}/terms', {'terms': [{'termId': t['termId'], 'name': t['name'], 'startDate': t['startDate'], 'endDate': t['endDate'], 'yearWeight': t.get('yearWeight'),
