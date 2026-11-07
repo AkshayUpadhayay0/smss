@@ -36,6 +36,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('school', choices=sorted(SCHOOLS.keys()), help='LAS (Little Angels School) or GHS (Green Hills School)')
     ap.add_argument('--classes', default='Class 3,Class 5,Class 8', help='comma-separated class names, default "Class 3,Class 5,Class 8"')
+    ap.add_argument('--template', default='term-spread', help='report card design for the new schemes (default term-spread)')
     ap.add_argument('--i-have-a-backup', action='store_true', help='required: confirms a database backup was taken before this run')
     args = ap.parse_args()
     if not args.i_have_a_backup: die('take a database backup first (pg_dump -Fc), then run again with --i-have-a-backup.')
@@ -66,7 +67,7 @@ def main():
         sch = j['data']
         s('PUT', f'/ReportScheme/{sch["schemeId"]}', {'name': sname, 'academicYearId': ay, 'evaluationMode': sch['evaluationMode'], 'gradeScaleId': sch['gradeScaleId'], 'yearCombine': sch['yearCombine'],
                                                        'subjectPassPercent': sch['subjectPassPercent'], 'overallPassPercent': sch['overallPassPercent'], 'showRank': sch['showRank'], 'rankScope': sch['rankScope'],
-                                                       'attendanceSource': 'MANUAL', 'percentageRounding': sch['percentageRounding'], 'templateKey': 'term-spread'})
+                                                       'attendanceSource': 'MANUAL', 'percentageRounding': sch['percentageRounding'], 'templateKey': args.template})
         sch = s('GET', f'/ReportScheme/{sch["schemeId"]}')[1]['data']
         terms = sch['terms']; cells = [x for x in sch['cells'] if x['classId'] == class_ids[cname]]
         next_class = order[order.index(cname) + 1] if order.index(cname) + 1 < len(order) else 'Class 11'
