@@ -23,12 +23,12 @@ namespace smss_api_service_layer.service
         private readonly IReportMarksRepository _marks;
         private readonly IStudentRepository _students;
         private readonly ReportAccess _access;
-        private readonly IFileStorageService _storage;
+        private readonly IReportCardSettingsRepository _settings;
+        private readonly ReportCardImageReader _images;
         private readonly ILogger<ReportResultService> _logger;
-        private const long MaxImageBytes = 2_000_000;
 
-        public ReportResultService(ReportResultBuilder builder, IReportResultRepository repo, IReportMarksRepository marks, IStudentRepository students, ReportAccess access, IFileStorageService storage, ILogger<ReportResultService> logger)
-        { _builder = builder; _repo = repo; _marks = marks; _students = students; _access = access; _storage = storage; _logger = logger; }
+        public ReportResultService(ReportResultBuilder builder, IReportResultRepository repo, IReportMarksRepository marks, IStudentRepository students, ReportAccess access, IReportCardSettingsRepository settings, ReportCardImageReader images, ILogger<ReportResultService> logger)
+        { _builder = builder; _repo = repo; _marks = marks; _students = students; _access = access; _settings = settings; _images = images; _logger = logger; }
 
         private static ApiResponse<T> Result<T>(int code, string message, T? data) => new() { Status = code < 400, StatusCode = code, Message = message, Data = data };
         private ApiResponse<T> Error<T>(Exception ex, string action) { _logger.LogError(ex, "Error while {Action}", action); return Result<T>(500, "Something went wrong. Please try again later.", default); }
@@ -107,6 +107,7 @@ namespace smss_api_service_layer.service
                 if (active == null) return Result<PublishResultDto>(500, "The system is not configured correctly. Please contact support.", null);
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _settings.LockSettingsKeyAsync(schoolId, ct);       // the settings (and the signature file) cannot change while this card set is being frozen
                 await _repo.LockPublicationKeyAsync(req.SchemeId, req.SectionId, scope, req.TermId, ct);       // two admins publishing the same card set queue up; the second sees the first one's version
                 var set = await _builder.BuildAsync(schoolId, req.SchemeId, req.SectionId, scope, req.TermId, active.Value, Today(), ct);       // recomputed INSIDE the lock: what is stored is what is true now
                 if (set == null) return Result<PublishResultDto>(404, "Report scheme, section or term not found.", null);
@@ -237,22 +238,9 @@ namespace smss_api_service_layer.service
         }
 
         // ============================================================================ PDFs
-        private byte[]? ReadUpload(string? key)
+        private async Task<byte[]> RenderAsync(ReportCardModel model, bool draft, string? signatureKeyFallback, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(key)) return null;
-            try
-            {
-                using var stream = _storage.OpenUpload(key);
-                if (stream == null) return null;
-                using var ms = new MemoryStream(); stream.CopyTo(ms);
-                return ms.Length is > 0 and <= MaxImageBytes ? ms.ToArray() : null;
-            }
-            catch (Exception ex) { _logger.LogWarning(ex, "Could not read an image for a report card"); return null; }
-        }
-
-        private async Task<byte[]> RenderAsync(ReportCardModel model, bool draft, string? signatureKey, CancellationToken ct)
-        {
-            var ctx = new RcContext { Model = model, Logo = ReadUpload(model.Header.LogoKey), Signature = ReadUpload(signatureKey), Draft = draft };
+            var ctx = _images.Context(model, draft, signatureKeyFallback);
             return await Task.Run(() => ReportCardPdf.Render(ctx), ct);
         }
 

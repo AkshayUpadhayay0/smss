@@ -24,6 +24,9 @@ namespace smss_api_service_layer.@interface
         Task<string> SaveAdmissionDocumentAsync(string schoolCode, long admissionId, Stream content, string extension, CancellationToken ct);
         // A school's principal signature for ID cards goes to the same PRIVATE store: {schoolCode}/id-card/signature_<timestamp><ext>. The returned key is what the database keeps.
         Task<string> SavePrincipalSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
+        // The principal's signature for REPORT CARDS: {schoolCode}/report-card/signature_<random>.<ext> in the PRIVATE store. Every upload gets a new name; a published card remembers the key it was drawn
+        // with, so an old card keeps its old signature. Callers must not delete a key that a publication still names.
+        Task<string> SaveReportCardSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct);
         Stream? OpenPrivate(string storageKey);
         // A stored student or employee photo: a private key, or (until the one-off migration has run) a legacy public /uploads path. Null when missing. Never throws.
         Stream? OpenPhoto(string stored);

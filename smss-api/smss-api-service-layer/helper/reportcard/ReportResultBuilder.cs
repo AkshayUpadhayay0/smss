@@ -58,6 +58,15 @@ namespace smss_api_service_layer.helper.reportcard
         public string? SignatureKey { get; set; }
         public string Primary { get; set; } = "";
         public string Secondary { get; set; } = "";
+        public string? HeaderLine { get; set; }
+        public string? Recognition { get; set; }
+        public string? Udise { get; set; }
+        public string? Footer { get; set; }
+        public string? RulesText { get; set; }
+        public bool ShowCover { get; set; }
+        public bool ShowRules { get; set; }
+        public bool ShowAttendance { get; set; } = true;
+        public bool ShowGradeLegend { get; set; } = true;
         /// <summary>Students left out of this publication (no complete result), by id and name, so the version history can say who was missing.</summary>
         public List<RcExcluded> Excluded { get; set; } = new();
     }
@@ -76,10 +85,11 @@ namespace smss_api_service_layer.helper.reportcard
         private readonly IReportResultRepository _results;
         private readonly IAttendanceRepository _attendance;
         private readonly IStudentIdCardRepository _school;
+        private readonly IReportCardSettingsRepository _settings;
         private readonly ILogger<ReportResultBuilder> _logger;
 
-        public ReportResultBuilder(IReportSetupRepository setup, IReportMarksRepository marks, IReportResultRepository results, IAttendanceRepository attendance, IStudentIdCardRepository school, ILogger<ReportResultBuilder> logger)
-        { _setup = setup; _marks = marks; _results = results; _attendance = attendance; _school = school; _logger = logger; }
+        public ReportResultBuilder(IReportSetupRepository setup, IReportMarksRepository marks, IReportResultRepository results, IAttendanceRepository attendance, IStudentIdCardRepository school, IReportCardSettingsRepository settings, ILogger<ReportResultBuilder> logger)
+        { _setup = setup; _marks = marks; _results = results; _attendance = attendance; _school = school; _settings = settings; _logger = logger; }
 
         /// <summary>Null when the scheme, section, class-in-scheme or term does not exist for this school (the caller answers 404).</summary>
         public async Task<ResultSet?> BuildAsync(string schoolId, long schemeId, long sectionId, string scope, long? termId, int activeId, DateOnly today, CancellationToken ct)
@@ -164,8 +174,11 @@ namespace smss_api_service_layer.helper.reportcard
             var template = ReportCardDesigns.Find(sch.TemplateKey);
             var templateOk = template != null && template.SupportedModes.Contains(sch.EvaluationMode);
             var schoolRow = await _school.GetSchoolAsync(schoolId, ct);
+            var st = await _settings.GetAsync(schoolId, ct);       // no row = the defaults
+            var primary = st?.PrimaryColor ?? DefaultPrimary; var secondary = st?.SecondaryColor ?? DefaultSecondary;
             var header = new RcHeader
             {
+                Line = st?.HeaderLine, Recognition = st?.RecognitionText, Udise = st?.UdiseCode,
                 SchoolName = schoolRow?.SchoolName ?? "",
                 AddressLine = string.Join(", ", new[] { schoolRow?.AddressLine1, schoolRow?.AddressLine2, schoolRow?.CityName, schoolRow?.StateName }.Where(x => !string.IsNullOrWhiteSpace(x))) + (string.IsNullOrWhiteSpace(schoolRow?.Pincode) ? "" : " - " + schoolRow!.Pincode),
                 Phone = schoolRow?.MobileNumber ?? "", LogoKey = string.IsNullOrWhiteSpace(schoolRow?.LogoUrl) ? null : schoolRow!.LogoUrl
@@ -175,7 +188,9 @@ namespace smss_api_service_layer.helper.reportcard
             {
                 SchemeName = sch.SchemeName, SessionName = year.YearName, Scope = scope, TermName = term?.TermName, EvaluationMode = sch.EvaluationMode, YearCombine = sch.YearCombine, SubjectPassPercent = sch.SubjectPassPercent,
                 OverallPassPercent = sch.OverallPassPercent, Rounding = sch.PercentageRounding, RankScope = sch.RankScope, ShowRank = sch.ShowRank, AttendanceSource = sch.AttendanceSource, TemplateKey = sch.TemplateKey,
-                Bands = legend, Header = header, SignatureKey = null, Primary = DefaultPrimary, Secondary = DefaultSecondary
+                Bands = legend, Header = header, SignatureKey = st?.PrincipalSignaturePath, Primary = primary, Secondary = secondary,
+                HeaderLine = st?.HeaderLine, Recognition = st?.RecognitionText, Udise = st?.UdiseCode, Footer = st?.FooterText, RulesText = st?.RulesText,
+                ShowCover = st?.ShowCover ?? false, ShowRules = st?.ShowRules ?? false, ShowAttendance = st?.ShowAttendance ?? true, ShowGradeLegend = st?.ShowGradeLegend ?? true
             };
 
             var rcTerms = terms.Select(t => new RcTerm
@@ -190,12 +205,16 @@ namespace smss_api_service_layer.helper.reportcard
                 var r = results[s.StudentId];
                 var model = new ReportCardModel
                 {
-                    TemplateKey = sch.TemplateKey, Mode = sch.EvaluationMode, SessionName = year.YearName, Scope = scope, ShowRank = sch.ShowRank && marksMode, Primary = DefaultPrimary, Secondary = DefaultSecondary, Header = header, Legend = legend,
+                    TemplateKey = sch.TemplateKey, Mode = sch.EvaluationMode, SessionName = year.YearName, Scope = scope, ShowRank = sch.ShowRank && marksMode, Primary = primary, Secondary = secondary, Header = header, Legend = legend,
+                    Footer = st?.FooterText, RulesText = st?.RulesText, SignatureKey = st?.PrincipalSignaturePath, ShowCover = st?.ShowCover ?? false, ShowRules = st?.ShowRules ?? false,
+                    ShowAttendance = st?.ShowAttendance ?? true, ShowGradeLegend = st?.ShowGradeLegend ?? true,
                     Student = new RcStudent
                     {
                         StudentId = s.StudentId, Name = LeaveRules.FullName(s.FirstName, s.MiddleName, s.LastName), ClassName = s.ClassName, SectionName = s.SectionName, Roll = s.RollNumber ?? "", AdmissionNo = s.AdmissionNumber,
                         Dob = s.DateOfBirth.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture),
-                        Father = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "FATHER")?.Name ?? "", Mother = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "MOTHER")?.Name ?? ""
+                        Father = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "FATHER")?.Name ?? "", Mother = parents.GetValueOrDefault(s.StudentId)?.FirstOrDefault(p => p.Relationship == "MOTHER")?.Name ?? "",
+                        Doj = s.AdmissionDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture), Address = s.Address ?? "",
+                        Contact = parents.GetValueOrDefault(s.StudentId)?.Select(p => p.Mobile).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? s.Mobile ?? ""
                     },
                     Terms = rcTerms
                 };

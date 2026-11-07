@@ -6,9 +6,9 @@ namespace smss_api_db_layer.@interface
     public record ResultBand(string Code, string Label, decimal? MinPercent, bool IsFail, short Sequence);
     /// <summary>A student with an Active enrollment, with what a card prints about them.</summary>
     public record ResultStudent(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName, string? RollNumber, DateTime DateOfBirth,
-        long SectionId, string SectionName, long ClassId, string ClassName);
+        long SectionId, string SectionName, long ClassId, string ClassName, DateTime AdmissionDate, string? Address, string? Mobile);
     public record ResultMark(long ExamSubjectId, long? SkillId, string StudentId, string State, decimal? Marks, string? GradeCode);
-    public record ResultGuardian(string StudentId, string Relationship, string Name);
+    public record ResultGuardian(string StudentId, string Relationship, string Name, string? Mobile = null);
     public record PublicationRow(long PublicationId, long SchemeId, string SchemeName, long SectionId, long ClassId, string ClassName, string SectionName, string Scope, long? TermId, string? TermName,
         int Version, string Status, long PublishedBy, DateTime PublishedAt, string? Note, int StudentCount, string? ExcludedStudents);
     public record PublicationCardRow(long PubStudentId, long PublicationId, string StudentId, string StudentName, string AdmissionNumber, string? RollNumber, string ResultStatus,

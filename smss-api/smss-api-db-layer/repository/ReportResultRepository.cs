@@ -24,8 +24,9 @@ namespace smss_api_db_layer.repository
                            join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
                            join c in _db.Classes.AsNoTracking() on sec.ClassId equals c.ClassId
                            where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId && ids.Contains(e.ClassSectionId) && e.StatusId == activeStatusId && s.StatusId == activeStatusId
-                           select new { s.StudentId, s.AdmissionNumber, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, s.DateOfBirth, e.ClassSectionId, sec.SectionName, c.ClassId, c.ClassName }).ToListAsync(ct))
-                .Select(r => new ResultStudent(r.StudentId, r.AdmissionNumber, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, r.DateOfBirth, r.ClassSectionId, r.SectionName, r.ClassId, r.ClassName)).ToList();
+                           select new { s.StudentId, s.AdmissionNumber, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, s.DateOfBirth, e.ClassSectionId, sec.SectionName, c.ClassId, c.ClassName, s.AdmissionDate, s.AddressLine1, s.AddressLine2, s.Pincode, s.MobileNumber }).ToListAsync(ct))
+                .Select(r => new ResultStudent(r.StudentId, r.AdmissionNumber, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, r.DateOfBirth, r.ClassSectionId, r.SectionName, r.ClassId, r.ClassName, r.AdmissionDate,
+                    string.Join(", ", new[] { r.AddressLine1, r.AddressLine2 }.Where(x => !string.IsNullOrWhiteSpace(x))) + (string.IsNullOrWhiteSpace(r.Pincode) ? "" : " - " + r.Pincode), r.MobileNumber)).ToList();
         }
 
         public async Task<List<ResultMark>> GetMarksAsync(string schoolId, IReadOnlyCollection<long> examSubjectIds, IReadOnlyCollection<string> studentIds, CancellationToken ct)
@@ -44,8 +45,8 @@ namespace smss_api_db_layer.repository
             return (await (from l in _db.StudentGuardians.AsNoTracking()
                            join g in _db.Guardians.AsNoTracking() on l.GuardianId equals g.GuardianId
                            where g.SchoolId == schoolId && ids.Contains(l.StudentId) && (g.Relationship == "FATHER" || g.Relationship == "MOTHER")
-                           select new { l.StudentId, g.Relationship, g.FirstName, g.LastName }).ToListAsync(ct))
-                .Select(g => new ResultGuardian(g.StudentId, g.Relationship, string.Join(' ', new[] { g.FirstName, g.LastName }.Where(x => !string.IsNullOrWhiteSpace(x))))).ToList();
+                           select new { l.StudentId, g.Relationship, g.FirstName, g.LastName, g.MobileNumber }).ToListAsync(ct))
+                .Select(g => new ResultGuardian(g.StudentId, g.Relationship, string.Join(' ', new[] { g.FirstName, g.LastName }.Where(x => !string.IsNullOrWhiteSpace(x))), g.MobileNumber)).ToList();
         }
 
         public Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long schemeId, IReadOnlyCollection<string> studentIds, CancellationToken ct)

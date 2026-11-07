@@ -13,6 +13,11 @@ namespace smss_api_service_layer.helper.reportcard
         public string Phone { get; set; } = "";
         /// <summary>Storage key (the school record's logo path). Bytes are read when the card is drawn, never stored.</summary>
         public string? LogoKey { get; set; }
+        /// <summary>A line under the school name (settings).</summary>
+        public string? Line { get; set; }
+        /// <summary>Recognition / affiliation text (settings).</summary>
+        public string? Recognition { get; set; }
+        public string? Udise { get; set; }
     }
 
     public sealed class RcStudent
@@ -26,6 +31,10 @@ namespace smss_api_service_layer.helper.reportcard
         public string Dob { get; set; } = "";
         public string Father { get; set; } = "";
         public string Mother { get; set; } = "";
+        /// <summary>Date of joining (the admission date on the student record), dd MMM yyyy.</summary>
+        public string Doj { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string Contact { get; set; } = "";
     }
 
     public sealed class RcExam { public long ExamId { get; set; } public string Name { get; set; } = ""; public decimal? Max { get; set; } public decimal? Weight { get; set; } }
@@ -135,6 +144,16 @@ namespace smss_api_service_layer.helper.reportcard
         public List<RcBand> Legend { get; set; } = new();
         public int? Version { get; set; }
         public string? PublishedAt { get; set; }
+
+        // Everything below comes from the school's report card settings AT THE TIME OF PUBLISHING and is stored with the card, so changing the settings later never changes a published card.
+        public string? Footer { get; set; }
+        public string? RulesText { get; set; }
+        /// <summary>Key of the principal signature file in private storage (a new key per upload), or null for a plain signature line.</summary>
+        public string? SignatureKey { get; set; }
+        public bool ShowCover { get; set; }
+        public bool ShowRules { get; set; }
+        public bool ShowAttendance { get; set; } = true;
+        public bool ShowGradeLegend { get; set; } = true;
 
         public static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.Never, WriteIndented = false };
         public string ToJson() => JsonSerializer.Serialize(this, Json);
