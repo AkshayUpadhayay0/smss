@@ -9,6 +9,11 @@ namespace smss_api_service_layer.helper.reportcard
         public const int DefaultMaxStudentsPerRequest = 100;
         /// <summary>The configured cap (appsettings ReportCards:BulkMaxStudents, default 100). Set once at start-up from configuration; never below 1.</summary>
         public static int MaxStudentsPerRequest { get; set; } = DefaultMaxStudentsPerRequest;
+
+        public const int DefaultMaxConcurrent = 2;
+        /// <summary>How many bulk PDFs may be drawn at the same time on this server (appsettings ReportCards:BulkMaxConcurrent, default 2, never below 1). One more waits up to 15 seconds, then is told to try again.
+        /// Each render peaks at about 390 MB with the largest photos (see Docs/report-card-performance.md), so a small server should use 1.</summary>
+        public static int MaxConcurrent { get; set; } = DefaultMaxConcurrent;
     }
 
     /// <summary>Draws report cards (model + design) to PDF or PNG. The QuestPDF licence, glyph rule and fonts come from the shared PdfBootstrap.</summary>

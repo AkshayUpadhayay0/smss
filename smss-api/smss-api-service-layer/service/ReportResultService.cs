@@ -296,7 +296,9 @@ namespace smss_api_service_layer.service
         }
 
         // ============================================================================ bulk PDF
-        private static readonly SemaphoreSlim BulkGate = new(2, 2);       // at most two bulk renders at a time per process: a small server stays responsive
+        // at most ReportCards:BulkMaxConcurrent bulk renders at a time per process (default 2): a small server stays responsive. Created on first use, after configuration has been read.
+        private static readonly Lazy<SemaphoreSlim> BulkGateLazy = new(() => new SemaphoreSlim(ReportCardBulk.MaxConcurrent, ReportCardBulk.MaxConcurrent));
+        private static SemaphoreSlim BulkGate => BulkGateLazy.Value;
 
         public async Task<BulkPdfResult> BulkPdfAsync(string? schoolId, ReportCaller caller, long publicationId, BulkRequest? request, CancellationToken ct)
         {

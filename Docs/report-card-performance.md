@@ -64,3 +64,25 @@ Photos are the first thing in a card that is large (a phone photo is several hun
 - Only the photo of the student being drawn is held in memory (a single-entry cache: it is reused for that student's cover, card and rules pages and then dropped).
 - Database cost is unchanged: 4 commands whatever the size, because photos come from the file store, not the database.
 - **The cap stays at 100 per request.** It is a configuration value (`ReportCards:BulkMaxStudents` in appsettings, default 100). If a small server needs less with photos on, lower that value; it needs no code change. The 8 s worst case is a school whose every student has a 2 MB photo.
+
+## 5. Server memory: how much RAM, and how to lower the limits on a small server
+
+Two settings in `appsettings.json` (or as environment variables `ReportCards__BulkMaxStudents` and `ReportCards__BulkMaxConcurrent`) control the cost of "Download all":
+
+| Setting | Default | Minimum | What it bounds |
+|---|---|---|---|
+| `ReportCards:BulkMaxStudents` | 100 | 1 | The number of cards in ONE file. It bounds the time of a request (about 3 s for 100 cards with ordinary photos, about 8 s with 2 MB photos on every student) and the size of the file. It does NOT change memory much: a file is built 20 students at a time. |
+| `ReportCards:BulkMaxConcurrent` | 2 | 1 | How many bulk files the server draws at the same time. This is the memory lever: each render peaks at about **390 MB** (measured with the largest photos, section 4). A further request waits up to 15 seconds for a free slot, then is told to try again in a minute (HTTP 503). |
+
+**How the figures were reached:** the API process went from about 160 MB (idle) to a peak of about 390 MB while drawing 100 cards with 2.6 MB photos, so one render adds roughly 230 MB on top of the baseline. The table below budgets the full 390 MB for every render, to be on the safe side.
+
+**Recommended server memory** (for the API process plus the operating system and PostgreSQL on the same machine; measured peak working set of the API: about 160 MB idle after start, about 300 MB after normal use):
+
+| Setting | Peak of the API process | Minimum RAM for the whole server | Comfortable |
+|---|---|---|---|
+| `BulkMaxConcurrent = 1` | about 300 MB + 390 MB = **about 0.7 GB** | **2 GB** | 4 GB |
+| `BulkMaxConcurrent = 2` (default) | about 300 MB + 2 x 390 MB = **about 1.1 GB** | **3 GB** | 4 GB |
+
+A school that prints report cards for everyone at once (several teachers pressing "Download all" together) should be on the 4 GB column; the single-student PDF and the Marks Entry screens use little memory.
+
+**On a small server (2 GB or less):** set `ReportCards:BulkMaxConcurrent` to 1 and, if downloads still take too long, lower `ReportCards:BulkMaxStudents` to 40 (a class of 40 draws in about 1.5 s; larger classes are then offered in roll-range parts by the screen, as for any version over the cap). Restart the API after changing either value: both are read once at start-up. Lowering the concurrency never loses a download: the extra request waits its turn (up to 15 seconds), and the screen shows the plain "try again in a minute" message if the server stays busy longer.

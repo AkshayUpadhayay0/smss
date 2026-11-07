@@ -17,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Fail fast, naming the missing SETTING (never a value): secrets are not in the committed files (user-secrets in development, environment variables in production).
 smss_api.Helpers.StartupConfigGuard.Validate(builder.Configuration, builder.Environment);
+smss_api_service_layer.helper.reportcard.ReportCardBulk.MaxConcurrent = Math.Max(1, builder.Configuration.GetValue<int?>("ReportCards:BulkMaxConcurrent") ?? smss_api_service_layer.helper.reportcard.ReportCardBulk.DefaultMaxConcurrent);
 smss_api_service_layer.helper.reportcard.ReportCardBulk.MaxStudentsPerRequest = Math.Max(1, builder.Configuration.GetValue<int?>("ReportCards:BulkMaxStudents") ?? smss_api_service_layer.helper.reportcard.ReportCardBulk.DefaultMaxStudentsPerRequest);
 
 // Add DbContext with PostgreSQL
