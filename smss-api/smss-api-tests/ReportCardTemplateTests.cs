@@ -32,7 +32,7 @@ namespace smss_api_tests
 
         private static RcContext Context(string design, int terms, int subjects, string text, int palette, bool logo, bool signature, bool draft = false, Action<RcSampleOptions>? tweak = null)
         {
-            var o = new RcSampleOptions { TemplateKey = design, Terms = terms, Subjects = subjects, LongNames = text == "long", Hindi = text == "hindi", Primary = Palettes[palette].Primary, Secondary = Palettes[palette].Secondary };
+            var o = new RcSampleOptions { TemplateKey = design, Terms = terms, Subjects = subjects, LongNames = text == "long", Hindi = text == "hindi", Primary = Palettes[palette].Primary, Secondary = Palettes[palette].Secondary, Footer = "Sample footer line" };
             tweak?.Invoke(o);
             return new RcContext { Model = ReportCardSamples.Build(o), Logo = logo ? Png : null, Signature = signature ? Png : null, Draft = draft };
         }

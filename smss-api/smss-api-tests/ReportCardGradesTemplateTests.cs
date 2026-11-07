@@ -34,7 +34,7 @@ namespace smss_api_tests
             var o = new RcSampleOptions
             {
                 TemplateKey = design, Mode = mode, Skills = skills, Terms = terms, Subjects = subjects, LongNames = text == "long", Hindi = text == "hindi",
-                Primary = Palettes[pal].Primary, Secondary = Palettes[pal].Secondary
+                Primary = Palettes[pal].Primary, Secondary = Palettes[pal].Secondary, Footer = "Sample footer line"
             };
             tweak?.Invoke(o);
             return new RcContext { Model = ReportCardSamples.Build(o), Logo = logo ? Png : null, Signature = signature ? Png : null };
