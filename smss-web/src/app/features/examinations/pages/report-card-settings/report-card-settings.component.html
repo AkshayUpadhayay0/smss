@@ -96,7 +96,7 @@
             <app-input label="Header line" placeholder="e.g. Affiliated to the Board of School Education" formControlName="headerLine" [errorText]="err('headerLine')" />
             <app-input label="Recognition" placeholder="e.g. Recognised by the Education Department, No. 123/2020" formControlName="recognitionText" [errorText]="err('recognitionText')" />
             <app-input label="UDISE code" placeholder="11 digits" formControlName="udiseCode" [errorText]="err('udiseCode')" />
-            <app-input label="Footer" placeholder="e.g. Valid without a seal" formControlName="footerText" [errorText]="err('footerText')" />
+            <app-input label="Footer" placeholder="Optional: a line printed at the foot of every card" formControlName="footerText" [errorText]="err('footerText')" />
           </div>
           <p class="help">The school name and logo come from your School Profile{{ hasLogo() ? '' : ' (no logo uploaded yet: cards print without one)' }}.</p>
         </app-card>

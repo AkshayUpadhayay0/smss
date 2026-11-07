@@ -17,7 +17,8 @@ namespace smss_api_service_layer.helper.reportcard
         public string? HeaderLine { get; set; } = "Affiliated to the State Board of School Education";
         public string? Recognition { get; set; } = "Recognised by the Department of Education";
         public string? Udise { get; set; } = "UDISE 05010000000";
-        public string? Footer { get; set; } = "This is a computer generated report card.";
+        /// <summary>No footer unless the school sets one: the sample never invents a claim such as "valid without a seal".</summary>
+        public string? Footer { get; set; }
         public string? RulesText { get; set; } = "1. Students must reach school by 8:30 AM.\n2. The school uniform is compulsory on all days.\n3. Parents must sign the diary every week.\n4. Mobile phones are not allowed on the campus.";
         public bool ShowCover { get; set; }
         public bool ShowRules { get; set; }
