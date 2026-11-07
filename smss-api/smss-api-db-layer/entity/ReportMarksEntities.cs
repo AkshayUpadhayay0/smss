@@ -41,6 +41,21 @@ namespace smss_api_db_layer.entity
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }
 
+    /// <summary>One short remark per (term, scheme subject, student). Not a mark: no accept workflow; locked together with the term-section. Mirrors Docs/smss-report-card-stage4.sql.</summary>
+    [Table("tb_report_subject_remarks", Schema = "public")]
+    public class TbReportSubjectRemark
+    {
+        [Column("term_id")] public long TermId { get; set; }
+        [Column("scheme_subject_id")] public long SchemeSubjectId { get; set; }
+        [Column("student_id")][StringLength(20)] public string StudentId { get; set; } = null!;
+        [Column("scheme_id")] public long SchemeId { get; set; }
+        [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
+        [Column("remark")][StringLength(200)] public string Remark { get; set; } = null!;
+        [Column("updated_by")] public long UpdatedBy { get; set; }
+        [Column("created_at")] public DateTime CreatedAt { get; set; }
+        [Column("updated_at")] public DateTime UpdatedAt { get; set; }
+    }
+
     [Table("tb_report_term_section", Schema = "public")]
     public class TbReportTermSection
     {

@@ -7,7 +7,7 @@ import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.s
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { saveBlob } from '../../../homework/utils/homework-format';
-import { CellEdit, EntryState, GridCell, GridStudent, MarksContext, MarksContextRow, MarksGrid, STATUS_LABEL, UploadPreview, cellKey, distinct, editsToEntries, enteredCount } from '../../models/marks.model';
+import { CellEdit, EntryState, GridCell, GridStudent, MarksContext, MarksContextRow, MarksGrid, RemarkEntry, STATUS_LABEL, UploadPreview, cellKey, distinct, editsToEntries, enteredCount } from '../../models/marks.model';
 import { MarksService } from '../../services/marks.service';
 
 /**
@@ -93,6 +93,7 @@ import { MarksService } from '../../services/marks.service';
                   <th>Roll</th><th>Student</th>
                   @if (g.skills.length > 0) { @for (k of g.skills; track k.skillId) { <th>{{ k.name }}</th> } }
                   @else { <th>{{ g.entryMode === 'MARKS' ? 'Marks' : 'Grade' }}</th> }
+                  <th>Remark</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,6 +117,7 @@ import { MarksService } from '../../services/marks.service';
                         }
                       </td>
                     }
+                    <td class="remark"><input type="text" maxlength="200" [attr.data-remark]="r" [value]="remarkText(s)" [disabled]="!g.canEditRemarks || !s.onRoster" (input)="typeRemark(s, $any($event.target).value)" [attr.aria-label]="s.fullName + ' remark for ' + g.subjectName" placeholder="Optional" /></td>
                   </tr>
                 }
               </tbody>
@@ -126,6 +128,9 @@ import { MarksService } from '../../services/marks.service';
             @if (g.canEdit) {
               <app-button variant="secondary" [disabled]="busy() || dirtyCount() === 0 || problems().length > 0" (click)="saveDraft()">{{ busy() ? 'Saving…' : 'Save draft' }}</app-button>
               <app-button [disabled]="busy() || problems().length > 0 || progress().done < progress().total" (click)="submit()">Submit for review</app-button>
+            }
+            @if (!g.canEdit && g.canEditRemarks) {
+              <app-button variant="secondary" [disabled]="busy() || remarkCount() === 0" (click)="saveRemarksOnly()">{{ busy() ? 'Saving…' : 'Save remarks' }}</app-button>
             }
             @if (g.canAccept) { <app-button [disabled]="busy()" (click)="accept()">Accept</app-button> }
             @if (g.canReopen) { <app-button variant="secondary" [disabled]="busy()" (click)="reopening.set(true)">Reopen…</app-button> }
@@ -188,7 +193,10 @@ export class MarksEntryComponent implements OnInit {
   protected readonly sections = computed(() => distinct(this.inExam(), (r) => r.sectionId));
   protected readonly subjects = computed(() => this.inExam().filter((r) => r.sectionId === this.sectionId()));
   protected readonly progress = computed(() => { const g = this.grid(); return g ? enteredCount(g, this.edits()) : { done: 0, total: 0 }; });
-  protected readonly dirtyCount = computed(() => Object.keys(this.edits()).length);
+  /** Remarks typed but not saved, by student id. */
+  protected readonly remarkEdits = signal<Record<string, string>>({});
+  protected readonly remarkCount = computed(() => Object.keys(this.remarkEdits()).length);
+  protected readonly dirtyCount = computed(() => Object.keys(this.edits()).length + this.remarkCount());
   /** Client-side checks, the same rules the server applies: shown while typing so a mistake is caught before Save. */
   protected readonly problems = computed(() => {
     const g = this.grid(); if (!g) return [] as string[];
@@ -196,6 +204,13 @@ export class MarksEntryComponent implements OnInit {
     for (const s of g.students) for (const c of s.cells) if (this.isBad(s, c)) out.push(`${s.fullName}: marks must be between 0 and ${g.maxMarks}, with at most two decimals.`);
     return out;
   });
+
+  protected remarkText(s: GridStudent): string { return this.remarkEdits()[s.studentId] ?? s.remark ?? ''; }
+  protected typeRemark(s: GridStudent, value: string): void {
+    const same = value.trim() === (s.remark ?? '');
+    this.remarkEdits.update((m) => { const n = { ...m }; if (same) delete n[s.studentId]; else n[s.studentId] = value; return n; });
+  }
+  private remarkEntries(): RemarkEntry[] { return Object.entries(this.remarkEdits()).map(([studentId, remark]) => ({ studentId, remark })); }
 
   protected statusText(status: string, locked: boolean): string { return locked ? 'Locked' : STATUS_LABEL[status as keyof typeof STATUS_LABEL] ?? status; }
 
@@ -230,7 +245,7 @@ export class MarksEntryComponent implements OnInit {
     if (level === 'scheme' || level === 'exam') this.sectionId.set(this.sections()[0]?.sectionId ?? 0);
     if (level === 'section') this.sectionId.set(v);
     if (level !== 'subject') this.examSubjectId.set(this.subjects()[0]?.examSubjectId ?? 0); else this.examSubjectId.set(v);
-    this.edits.set({}); this.upload.set(null); this.stale.set(false); this.reopening.set(false);
+    this.edits.set({}); this.remarkEdits.set({}); this.upload.set(null); this.stale.set(false); this.reopening.set(false);
     this.reload(false);
   }
 
@@ -239,7 +254,7 @@ export class MarksEntryComponent implements OnInit {
     const es = this.examSubjectId(); const sec = this.sectionId();
     if (!es || !sec) { this.grid.set(null); return; }
     this.gridLoading.set(true); this.stale.set(false);
-    if (!keepEdits) this.edits.set({});
+    if (!keepEdits) { this.edits.set({}); this.remarkEdits.set({}); }
     this.service.grid(es, sec).pipe(finalize(() => this.gridLoading.set(false)), takeUntilDestroyed(this.destroyRef)).subscribe({ next: (g) => this.grid.set(g), error: () => this.grid.set(null) });
   }
 
@@ -279,11 +294,24 @@ export class MarksEntryComponent implements OnInit {
   protected saveDraft(then?: () => void): void {
     const g = this.grid(); if (!g || this.busy()) return;
     const entries = editsToEntries(g, this.edits());
-    if (entries.length === 0) { then?.(); return; }
+    const remarks = this.remarkEntries();
+    if (entries.length === 0 && remarks.length === 0) { then?.(); return; }
+    if (entries.length === 0) { this.saveRemarksOnly(then); return; }
     this.busy.set(true);
-    this.service.save(g.examSubjectId, g.sectionId, g.version, entries).pipe(finalize(() => this.busy.set(false))).subscribe({
-      next: (fresh) => { this.grid.set(fresh); this.edits.set({}); this.toast.success('Draft saved.'); this.markContext(fresh); then?.(); },
+    this.service.save(g.examSubjectId, g.sectionId, g.version, entries, remarks).pipe(finalize(() => this.busy.set(false))).subscribe({
+      next: (fresh) => { this.grid.set(fresh); this.edits.set({}); this.remarkEdits.set({}); this.toast.success('Draft saved.'); this.markContext(fresh); then?.(); },
       error: (e: unknown) => { if ((e as HttpErrorResponse)?.status === 409) this.stale.set(true); },
+    });
+  }
+
+  /** Remarks are not marks: they save on their own, also when the grid is submitted or accepted, until the term is locked. */
+  protected saveRemarksOnly(then?: () => void): void {
+    const g = this.grid(); if (!g || this.busy()) return;
+    const remarks = this.remarkEntries(); if (remarks.length === 0) { then?.(); return; }
+    this.busy.set(true);
+    this.service.saveRemarks(g.examSubjectId, g.sectionId, remarks).pipe(finalize(() => this.busy.set(false))).subscribe({
+      next: (fresh) => { this.grid.update((cur) => (cur ? { ...cur, students: fresh.students.map((s) => ({ ...s, cells: cur.students.find((x) => x.studentId === s.studentId)?.cells ?? s.cells })), canEditRemarks: fresh.canEditRemarks } : fresh)); this.remarkEdits.set({}); this.toast.success('Remarks saved.'); then?.(); },
+      error: () => undefined,
     });
   }
 

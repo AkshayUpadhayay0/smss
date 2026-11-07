@@ -62,6 +62,8 @@ namespace smss_api_service_layer.dto
         public string FullName { get; set; } = "";
         /// <summary>False for a student who has left the section but still has marks: shown, never editable.</summary>
         public bool OnRoster { get; set; } = true;
+        /// <summary>The per-subject remark for this student and this term (shared by every exam of the subject in the term). Not a mark.</summary>
+        public string? Remark { get; set; }
         public List<GridCellDto> Cells { get; set; } = new();
     }
 
@@ -96,6 +98,8 @@ namespace smss_api_service_layer.dto
         public int Version { get; set; }
         public bool Locked { get; set; }
         public bool CanEdit { get; set; }
+        /// <summary>Whether the per-subject remarks can be edited now: who may enter marks here, or the class teacher, while the term-section is OPEN (whatever the grid state).</summary>
+        public bool CanEditRemarks { get; set; }
         public bool CanSubmit { get; set; }
         public bool CanAccept { get; set; }
         public bool CanReopen { get; set; }
@@ -124,6 +128,22 @@ namespace smss_api_service_layer.dto
         /// <summary>The version the caller's grid was read at. A stale version is refused with 409.</summary>
         [Range(0, int.MaxValue)] public int Version { get; set; }
         [Required, MaxLength(5000)] public List<GridEntryRequest> Entries { get; set; } = new();
+        /// <summary>Optional: remarks saved together with the draft. Only the students listed are changed; an empty text clears that student's remark.</summary>
+        [MaxLength(5000)] public List<RemarkEntry>? Remarks { get; set; }
+    }
+
+    public class RemarkEntry
+    {
+        [Required, MaxLength(20)] public string StudentId { get; set; } = null!;
+        [MaxLength(400)] public string? Remark { get; set; }
+    }
+
+    /// <summary>Remarks on their own: allowed while the term-section is OPEN even when the marks grid is submitted or accepted (a remark is not a mark).</summary>
+    public class SaveRemarksRequest
+    {
+        [Required, Range(1, long.MaxValue)] public long? ExamSubjectId { get; set; }
+        [Required, Range(1, long.MaxValue)] public long? SectionId { get; set; }
+        [Required, MaxLength(5000)] public List<RemarkEntry> Remarks { get; set; } = new();
     }
 
     public class GridActionRequest

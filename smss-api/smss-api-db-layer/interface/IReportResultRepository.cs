@@ -25,6 +25,8 @@ namespace smss_api_db_layer.@interface
         Task<List<ResultGuardian>> GetParentsAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<List<TbReportStudentActivityGrade>> GetActivityGradesAsync(long schemeId, long sectionId, CancellationToken ct);
         Task<List<TbReportTermStudent>> GetTermInputsAsync(long schemeId, long sectionId, CancellationToken ct);
+        /// <summary>Every per-subject remark of a scheme for the given students: one query.</summary>
+        Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long schemeId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<Dictionary<long, string>> GetSubjectNamesAsync(string schoolId, IReadOnlyCollection<long> subjectIds, CancellationToken ct);
         Task<List<long>> GetClassSectionIdsAsync(string schoolId, long classId, int activeStatusId, CancellationToken ct);
         Task<Dictionary<long, string>> GetSectionNamesAsync(string schoolId, IReadOnlyCollection<long> sectionIds, CancellationToken ct);

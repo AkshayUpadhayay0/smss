@@ -56,6 +56,14 @@ namespace smss_api.Controllers
             return Reply(await _service.SaveDraftAsync(User.GetSchoolId(), caller, request, ct));
         }
 
+        // PUT api/ReportMarks/remarks   Body: { examSubjectId, sectionId, remarks: [{ studentId, remark }] }   a blank remark clears it; not marks, so no version token and no accept step
+        [HttpPut("remarks")]
+        public async Task<IActionResult> SaveRemarks([FromBody] SaveRemarksRequest request, CancellationToken ct)
+        {
+            var denied = Guard(out var caller); if (denied != null) return denied;
+            return Reply(await _service.SaveRemarksAsync(User.GetSchoolId(), caller, request, ct));
+        }
+
         [HttpPost("submit")]
         public async Task<IActionResult> Submit([FromBody] GridActionRequest request, CancellationToken ct)
         {

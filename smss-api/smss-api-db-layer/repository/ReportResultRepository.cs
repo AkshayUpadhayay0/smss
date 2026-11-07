@@ -48,6 +48,12 @@ namespace smss_api_db_layer.repository
                 .Select(g => new ResultGuardian(g.StudentId, g.Relationship, string.Join(' ', new[] { g.FirstName, g.LastName }.Where(x => !string.IsNullOrWhiteSpace(x))))).ToList();
         }
 
+        public Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long schemeId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        {
+            var ids = studentIds.ToList();
+            return _db.ReportSubjectRemarks.AsNoTracking().Where(r => r.SchemeId == schemeId && ids.Contains(r.StudentId)).ToListAsync(ct);
+        }
+
         public Task<List<TbReportStudentActivityGrade>> GetActivityGradesAsync(long schemeId, long sectionId, CancellationToken ct) =>
             _db.ReportActivityGrades.AsNoTracking().Where(g => g.SchemeId == schemeId && g.SectionId == sectionId).ToListAsync(ct);
 

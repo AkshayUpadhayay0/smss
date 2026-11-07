@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import {
-  ActivityGrades, Completeness, GridEntryRequest, LockResult, MarksContext, MarksGrid, TermAttendance, TermStudent, TermStudents, UploadPreview, YearStudent, YearStudents,
+  ActivityGrades, Completeness, GridEntryRequest, RemarkEntry, LockResult, MarksContext, MarksGrid, TermAttendance, TermStudent, TermStudents, UploadPreview, YearStudent, YearStudents,
   ActivityStudent,
 } from '../models/marks.model';
 
@@ -16,8 +16,12 @@ export class MarksService {
     return this.api.get<MarksContext>('/api/ReportMarks/context', academicYearId ? { academicYearId } : undefined);
   }
   grid(examSubjectId: number, sectionId: number): Observable<MarksGrid> { return this.api.get<MarksGrid>('/api/ReportMarks/grid', { examSubjectId, sectionId }); }
-  save(examSubjectId: number, sectionId: number, version: number, entries: GridEntryRequest[]): Observable<MarksGrid> {
-    return this.api.put<MarksGrid>('/api/ReportMarks/grid', { examSubjectId, sectionId, version, entries });
+  save(examSubjectId: number, sectionId: number, version: number, entries: GridEntryRequest[], remarks?: RemarkEntry[]): Observable<MarksGrid> {
+    return this.api.put<MarksGrid>('/api/ReportMarks/grid', { examSubjectId, sectionId, version, entries, ...(remarks && remarks.length ? { remarks } : {}) });
+  }
+  /** Remarks on their own (allowed while the term is open even when the grid is submitted or accepted). */
+  saveRemarks(examSubjectId: number, sectionId: number, remarks: RemarkEntry[]): Observable<MarksGrid> {
+    return this.api.put<MarksGrid>('/api/ReportMarks/remarks', { examSubjectId, sectionId, remarks });
   }
   submit(examSubjectId: number, sectionId: number, version: number): Observable<MarksGrid> { return this.api.post<MarksGrid>('/api/ReportMarks/submit', { examSubjectId, sectionId, version }); }
   accept(examSubjectId: number, sectionId: number, version: number): Observable<MarksGrid> { return this.api.post<MarksGrid>('/api/ReportMarks/accept', { examSubjectId, sectionId, version }); }

@@ -19,6 +19,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<MarksContextDto>> ContextAsync(string? schoolId, ReportCaller caller, long? academicYearId, CancellationToken ct);
         Task<ApiResponse<MarksGridDto>> GetGridAsync(string? schoolId, ReportCaller caller, long examSubjectId, long sectionId, CancellationToken ct);
         Task<ApiResponse<MarksGridDto>> SaveDraftAsync(string? schoolId, ReportCaller caller, SaveGridRequest req, CancellationToken ct);
+        /// <summary>Per-subject remarks on their own (not marks: no accept step). Allowed to whoever may enter marks here or the class teacher, while the term-section is OPEN.</summary>
+        Task<ApiResponse<MarksGridDto>> SaveRemarksAsync(string? schoolId, ReportCaller caller, SaveRemarksRequest req, CancellationToken ct);
         Task<ApiResponse<MarksGridDto>> SubmitAsync(string? schoolId, ReportCaller caller, GridActionRequest req, CancellationToken ct);
         Task<ApiResponse<MarksGridDto>> AcceptAsync(string? schoolId, ReportCaller caller, GridActionRequest req, CancellationToken ct);
         Task<ApiResponse<MarksGridDto>> ReopenAsync(string? schoolId, ReportCaller caller, GridActionRequest req, CancellationToken ct);

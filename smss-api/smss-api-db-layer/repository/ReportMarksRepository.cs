@@ -290,6 +290,13 @@ namespace smss_api_db_layer.repository
         // ------------------------------------------------------------------ writes
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+        public Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long termId, long schemeSubjectId, IReadOnlyCollection<string> studentIds, bool track, CancellationToken ct)
+        {
+            var ids = studentIds.ToList();
+            var q = _db.ReportSubjectRemarks.Where(r => r.TermId == termId && r.SchemeSubjectId == schemeSubjectId && ids.Contains(r.StudentId));
+            return (track ? q : q.AsNoTracking()).ToListAsync(ct);
+        }
+
         public void Add(object entity) => _db.Add(entity);
         public void AddRange(IEnumerable<object> entities) => _db.AddRange(entities);
         public void Remove(object entity) => _db.Remove(entity);

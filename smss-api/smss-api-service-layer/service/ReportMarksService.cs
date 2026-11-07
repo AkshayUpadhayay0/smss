@@ -120,6 +120,7 @@ namespace smss_api_service_layer.service
             var marks = await _repo.GetMarksAsync(schoolId, es.ExamSubjectId, c.Section.SectionId, roster.Select(r => r.StudentId).ToList(), false, ct);
             var status = await _repo.GetStatusAsync(es.ExamSubjectId, c.Section.SectionId, false, ct);
             var termSection = await _repo.GetTermSectionAsync(es.TermId, c.Section.SectionId, false, ct);
+            var remarks = (await _repo.GetSubjectRemarksAsync(es.TermId, es.SchemeSubjectId, roster.Select(r => r.StudentId).ToList(), false, ct)).ToDictionary(r => r.StudentId, r => r.Remark);
             var bands = es.EntryMode == "GRADE" && es.GradeScaleId != null ? await _repo.GetBandsAsync(schoolId, new[] { es.GradeScaleId.Value }, ct) : new List<BandInfo>();
 
             var rosterIds = roster.Select(r => r.StudentId).ToHashSet();
@@ -134,6 +135,7 @@ namespace smss_api_service_layer.service
                 return new GridStudentDto
                 {
                     StudentId = s.StudentId, AdmissionNumber = s.AdmissionNumber, RollNumber = s.RollNumber ?? "", FullName = LeaveRules.FullName(s.FirstName, s.MiddleName, s.LastName), OnRoster = onRoster,
+                    Remark = remarks.GetValueOrDefault(s.StudentId),
                     Cells = cellSkills.Select(sk =>
                     {
                         var m = own.FirstOrDefault(x => x.SkillId == sk);
@@ -164,6 +166,7 @@ namespace smss_api_service_layer.service
                 SubjectName = es.LabelOverride ?? es.SubjectName, ClassName = c.Section.ClassName, SectionName = c.Section.SectionName, EntryMode = es.EntryMode, MaxMarks = es.MaxMarks,
                 Skills = skills.Select(k => new GridSkillDto { SkillId = k.SkillId, Name = k.Name }).ToList(),
                 GradeOptions = bands.Select(b => new GradeOptionDto { Code = b.Code, Label = b.Label }).ToList(),
+                CanEditRemarks = (c.Rights.CanEnter || c.Rights.IsClassTeacher) && !locked && schemeLive,
                 Status = st, Version = status?.Version ?? 0, Locked = locked, CanEdit = canEdit, CanSubmit = canEdit && status != null, CanAccept = canAccept, CanReopen = canReopen,
                 ReadOnlyReason = canEdit ? null : why, SubmittedAt = status?.SubmittedAt, AcceptedAt = status?.AcceptedAt,
                 Counts = new GridCountsDto
@@ -179,8 +182,77 @@ namespace smss_api_service_layer.service
         public async Task<ApiResponse<MarksGridDto>> SaveDraftAsync(string? schoolId, ReportCaller caller, SaveGridRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<MarksGridDto>(400, TenantMessages.NoSchool, null);
-            try { return await SaveInternalAsync(schoolId, caller, req.ExamSubjectId!.Value, req.SectionId!.Value, req.Version, req.Entries, ct); }
+            try
+            {
+                // remarks are checked FIRST, so a bad remark never leaves the marks saved and the page showing an error
+                if (req.Remarks is { Count: > 0 })
+                {
+                    var (c0, fail0) = await LoadAsync<MarksGridDto>(schoolId, caller, req.ExamSubjectId!.Value, req.SectionId!.Value, ct);
+                    if (c0 == null) return fail0!;
+                    var problem = await CheckRemarksAsync(schoolId, c0, req.Remarks, ct);
+                    if (problem != null) return problem;
+                }
+                var saved = await SaveInternalAsync(schoolId, caller, req.ExamSubjectId!.Value, req.SectionId!.Value, req.Version, req.Entries, ct);
+                if (!saved.Status || req.Remarks is not { Count: > 0 }) return saved;
+                var again = await SaveRemarksAsync(schoolId, caller, new SaveRemarksRequest { ExamSubjectId = req.ExamSubjectId, SectionId = req.SectionId, Remarks = req.Remarks }, ct);
+                return again;
+            }
             catch (Exception ex) { return Error<MarksGridDto>(ex, "saving a marks grid"); }
+        }
+
+        // ============================================================================ per-subject remarks
+        private const int MaxRemarkLength = 200;
+
+        /// <summary>Null when the remarks may be saved now, else the failure to return. Same rule as marks entry (union rule), or the class teacher; never once the term-section is locked.</summary>
+        private async Task<ApiResponse<MarksGridDto>?> CheckRemarksAsync(string schoolId, Ctx c, List<RemarkEntry> remarks, CancellationToken ct)
+        {
+            if (!(c.Rights.CanEnter || c.Rights.IsClassTeacher)) return Result<MarksGridDto>(403, c.Rights.IsPrincipal ? "The Principal can read remarks but not write them." : "You can't write remarks for this section and subject.", null);
+            if (c.Es.SchemeStatusId != c.Active) return Result<MarksGridDto>(404, "Exam subject not found.", null);
+            var ts = await _repo.GetTermSectionAsync(c.Es.TermId, c.Section.SectionId, false, ct);
+            if (ts?.Status == "LOCKED") return Result<MarksGridDto>(409, LockedMessage, null);
+            var roster = (await _repo.GetRosterAsync(schoolId, c.Es.AcademicYearId, c.Section.SectionId, c.Active, ct)).ToDictionary(r => r.StudentId, r => LeaveRules.FullName(r.FirstName, r.MiddleName, r.LastName));
+            var problems = new List<string>();
+            foreach (var r in remarks)
+            {
+                var id = (r.StudentId ?? "").Trim();
+                if (!roster.TryGetValue(id, out var name)) { problems.Add($"{id}: this student is not on the active roster of the section."); continue; }
+                if ((r.Remark ?? "").Trim().Length > MaxRemarkLength) problems.Add($"{name}: the remark is longer than {MaxRemarkLength} characters.");
+            }
+            if (remarks.Select(r => (r.StudentId ?? "").Trim()).Distinct().Count() != remarks.Count) problems.Add("A student is listed twice.");
+            return problems.Count == 0 ? null : Result<MarksGridDto>(400, string.Join(" ", problems.Take(MaxIssues)) + (problems.Count > MaxIssues ? $" And {problems.Count - MaxIssues} more." : ""), null);
+        }
+
+        public async Task<ApiResponse<MarksGridDto>> SaveRemarksAsync(string? schoolId, ReportCaller caller, SaveRemarksRequest req, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<MarksGridDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var (c, fail) = await LoadAsync<MarksGridDto>(schoolId, caller, req.ExamSubjectId!.Value, req.SectionId!.Value, ct);
+                if (c == null) return fail!;
+                var problem = await CheckRemarksAsync(schoolId, c, req.Remarks, ct);
+                if (problem != null) return problem;
+
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockTermSectionKeyAsync(c.Es.TermId, c.Section.SectionId, ct);        // serialises with a lock: a remark never slips in after the term was locked
+                var ts = await _repo.GetTermSectionAsync(c.Es.TermId, c.Section.SectionId, false, ct);
+                if (ts?.Status == "LOCKED") return Result<MarksGridDto>(409, LockedMessage, null);
+                var ids = req.Remarks.Select(r => r.StudentId.Trim()).ToList();
+                var existing = (await _repo.GetSubjectRemarksAsync(c.Es.TermId, c.Es.SchemeSubjectId, ids, true, ct)).ToDictionary(r => r.StudentId);
+                var now = DateTime.UtcNow;
+                foreach (var r in req.Remarks)
+                {
+                    var id = r.StudentId.Trim(); var text = (r.Remark ?? "").Trim();
+                    existing.TryGetValue(id, out var row);
+                    if (text.Length == 0) { if (row != null) _repo.Remove(row); continue; }
+                    if (row == null) _repo.Add(new TbReportSubjectRemark { TermId = c.Es.TermId, SchemeSubjectId = c.Es.SchemeSubjectId, StudentId = id, SchemeId = c.Es.SchemeId, SchoolId = schoolId, Remark = text, UpdatedBy = caller.UserId, CreatedAt = now, UpdatedAt = now });
+                    else if (row.Remark != text) { row.Remark = text; row.UpdatedBy = caller.UserId; row.UpdatedAt = now; }
+                }
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                _repo.ClearTracking();
+                return Result(200, "Remarks saved.", await BuildGridAsync(schoolId, caller, c, ct));
+            }
+            catch (Exception ex) { return Error<MarksGridDto>(ex, "saving subject remarks"); }
         }
 
         private sealed class Validator

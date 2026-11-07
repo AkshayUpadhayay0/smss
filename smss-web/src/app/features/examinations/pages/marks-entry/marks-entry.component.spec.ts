@@ -232,4 +232,42 @@ describe('MarksEntryComponent', () => {
     input.dispatchEvent(new Event('change'));
     http.expectNone((r) => r.url.startsWith(`${API}/api/ReportMarks/upload`));
   });
+
+  it('the Remark column: typing a remark marks the page dirty and Save draft sends it together with the marks', () => {
+    open('Teacher', [row()], GRID({ canEditRemarks: true }));
+    expect([...el().querySelectorAll('thead th')].map((h) => h.textContent?.trim())).toContain('Remark');
+    type(1, '6');
+    const box = el().querySelector<HTMLInputElement>('input[data-remark="0"]')!; box.value = 'Writes neatly'; box.dispatchEvent(new Event('input')); fixture.detectChanges();
+    button('Save draft')!.click();
+    const req = http.expectOne(`${API}/api/ReportMarks/grid`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.remarks).toEqual([{ studentId: 'S1', remark: 'Writes neatly' }]);
+    req.flush(env(GRID({ canEditRemarks: true })));
+  });
+
+  it('remarks alone save through their own endpoint (no marks to send)', () => {
+    open('Teacher', [row()], GRID({ canEditRemarks: true }));
+    const box = el().querySelector<HTMLInputElement>('input[data-remark="1"]')!; box.value = 'Practise tables'; box.dispatchEvent(new Event('input')); fixture.detectChanges();
+    button('Save draft')!.click();
+    const req = http.expectOne(`${API}/api/ReportMarks/remarks`);
+    expect(req.request.body).toEqual({ examSubjectId: 11, sectionId: 43, remarks: [{ studentId: 'S2', remark: 'Practise tables' }] });
+    req.flush(env(GRID({ canEditRemarks: true })));
+  });
+
+  it('on an ACCEPTED grid the marks are read-only but remarks can still be saved while the term is open', () => {
+    open('Teacher', [row()], GRID({ status: 'ACCEPTED', canEdit: false, canEditRemarks: true, readOnlyReason: 'Accepted.' }));
+    expect(marksInputs().every((i) => i.disabled)).toBe(true);
+    const box = el().querySelector<HTMLInputElement>('input[data-remark="0"]')!; expect(box.disabled).toBe(false);
+    box.value = 'Good effort'; box.dispatchEvent(new Event('input')); fixture.detectChanges();
+    button('Save remarks')!.click();
+    http.expectOne(`${API}/api/ReportMarks/remarks`).flush(env(GRID({ status: 'ACCEPTED', canEdit: false, canEditRemarks: true })));
+  });
+
+  it('a locked term or a reader without the right sees the remarks but cannot type in them', () => {
+    open('Principal', [row({ canEnter: false })], GRID({ canEdit: false, canEditRemarks: false, students: [{ studentId: 'S1', admissionNumber: 'A1', rollNumber: '1', fullName: 'Asha Rawat', onRoster: true, remark: 'Excellent', cells: [{ state: 'ENTERED', marks: 8 }] }] }));
+    const box = el().querySelector<HTMLInputElement>('input[data-remark="0"]')!;
+    expect(box.value).toBe('Excellent'); expect(box.disabled).toBe(true);
+    expect(button('Save remarks')).toBeUndefined();
+  });
+
 });

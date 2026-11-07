@@ -95,6 +95,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbReportTermSection> ReportTermSections { get; set; } = null!;
         public DbSet<TbReportStudentActivityGrade> ReportActivityGrades { get; set; } = null!;
         public DbSet<TbReportTermStudent> ReportTermStudents { get; set; } = null!;
+        public DbSet<TbReportSubjectRemark> ReportSubjectRemarks { get; set; } = null!;
         public DbSet<TbReportYearStudent> ReportYearStudents { get; set; } = null!;
         public DbSet<TbReportAudit> ReportAudit { get; set; } = null!;
         public DbSet<TbReportPublication> ReportPublications { get; set; } = null!;
@@ -125,6 +126,7 @@ namespace smss_api_db_layer.context
             modelBuilder.Entity<TbReportTermSection>().HasKey(x => new { x.TermId, x.SectionId });
             modelBuilder.Entity<TbReportStudentActivityGrade>().HasKey(x => new { x.TermId, x.StudentId, x.AreaId });
             modelBuilder.Entity<TbReportTermStudent>().HasKey(x => new { x.TermId, x.StudentId });
+            modelBuilder.Entity<TbReportSubjectRemark>().HasKey(x => new { x.TermId, x.SchemeSubjectId, x.StudentId });
             modelBuilder.Entity<TbReportYearStudent>().HasKey(x => new { x.SchemeId, x.StudentId });
         
             // ===================================================== // LUT COUNTRY // =====================================================

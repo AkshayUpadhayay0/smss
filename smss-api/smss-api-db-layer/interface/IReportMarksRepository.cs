@@ -96,6 +96,8 @@ namespace smss_api_db_layer.@interface
         Task<List<TermSectionSummary>> GetTermSectionsAsync(long schemeId, long sectionId, CancellationToken ct);
         Task<List<AreaInfo>> GetActivityAreasAsync(string schoolId, int activeStatusId, CancellationToken ct);
         Task<List<TbReportStudentActivityGrade>> GetActivityGradesAsync(long termId, long sectionId, bool track, CancellationToken ct);
+        /// <summary>The remarks of one (term, scheme subject) for the given students.</summary>
+        Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long termId, long schemeSubjectId, IReadOnlyCollection<string> studentIds, bool track, CancellationToken ct);
         Task<List<TbReportTermStudent>> GetTermStudentsAsync(long termId, long sectionId, bool track, CancellationToken ct);
         Task<List<TbReportYearStudent>> GetYearStudentsAsync(long schemeId, long sectionId, bool track, CancellationToken ct);
         /// <summary>Everything under a scheme that already has entries or a lock: exam subjects, scheme subjects, exams, terms, classes.</summary>
