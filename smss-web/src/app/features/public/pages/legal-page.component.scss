@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  padding-block: clamp(2rem, 6vw, 4rem);
+}
+
+.doc {
+  max-width: 760px;
+}
+
+h1 {
+  margin-block: var(--space-4) var(--space-6);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+}
+
+section {
+  margin-top: var(--space-6);
+
+  h2 {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-2);
+  }
+
+  p {
+    color: var(--color-text-muted);
+  }
+}
+
+.review {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid #f5c26b;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-soft);
+  color: #92400e;
+}
+
+.back {
+  margin-top: var(--space-8);
+  color: var(--color-text-muted);
+}

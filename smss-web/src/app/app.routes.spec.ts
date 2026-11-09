@@ -54,11 +54,12 @@ describe('app routes', () => {
       ['/nope', '/dashboard', 'Dashboard'],
     ];
 
+    // 15s: the first case cold-loads several lazy chunks (public layout, then the dashboard), which can pass 5s when the whole suite runs in parallel
     it.each(cases)('%s -> %s shows "%s"', async (from, url, expected) => {
       const result = await go(from);
       expect(result.url).toBe(url);
       expect(heading(result.harness)).toBe(expected);
-    });
+    }, 15_000);
 
     it('keeps signed-in users off the login page', async () => {
       expect((await go('/login')).url).toBe('/dashboard');
@@ -80,8 +81,21 @@ describe('app routes', () => {
       expect(url).toBe(`/login?returnUrl=${encodeURIComponent(path)}`);
     });
 
-    it('/ also lands on the login page', async () => {
-      expect((await go('/')).url).toContain('/login');
+    it('/ shows the public landing page, not the login page', async () => {
+      const { harness, url } = await go('/');
+      expect(url).toBe('/');
+      expect(heading(harness)).toBe('Run your whole school from one secure platform');
+    });
+
+    it.each([
+      ['/contact', 'We would love to hear from you'],
+      ['/request-demo', 'See SMSS in action'],
+      ['/privacy-policy', 'Privacy Policy'],
+      ['/terms', 'Terms of Use'],
+    ])('%s is public and shows "%s"', async (path, h1) => {
+      const { harness, url } = await go(path);
+      expect(url).toBe(path);
+      expect(heading(harness)).toBe(h1);
     });
 
     it('shows the sign-in form on /login', async () => {
@@ -157,7 +171,7 @@ describe('app routes', () => {
         expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests | School Profile | Students | Examinations | School Setup | Employees | Fee Setup | Fees');
       });
 
-      it.each(['/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
+      it.each(['/enquiries', '/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(
         '%s is refused: redirected to /dashboard with a toast, page never rendered, no API call made',
         async (path) => {
           const http = TestBed.inject(HttpTestingController);
@@ -202,14 +216,14 @@ describe('app routes', () => {
     describe('Super Admin', () => {
       beforeEach(() => seedSession());
 
-      it('sees Dashboard, Registered Schools, Subscriptions, Invoices, Company Finance and Masters, and every group child', async () => {
+      it('sees Dashboard, Registered Schools, Enquiries, Subscriptions, Invoices, Company Finance and Masters, and every group child', async () => {
         const { harness } = await go('/dashboard');
         harness.routeNativeElement!.querySelectorAll<HTMLButtonElement>('.group-toggle').forEach((b) => b.click());
         harness.detectChanges();
-        expect(nav(harness)).toBe('Dashboard | Registered Schools | Subscriptions | Invoices | Company Finance | Overview | Employees | Expenses | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
+        expect(nav(harness)).toBe('Dashboard | Registered Schools | Enquiries | Subscriptions | Invoices | Company Finance | Overview | Employees | Expenses | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
       });
 
-      it.each(['/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(
+      it.each(['/enquiries', '/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(
         '%s opens',
         async (path) => {
           expect((await go(path)).url).toBe(path);

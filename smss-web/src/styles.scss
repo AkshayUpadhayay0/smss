@@ -1,2 +1,7 @@
 @use './styles/tokens';
 @use './styles/base';
+@use './styles/public';
+
+html {
+  scroll-behavior: smooth;
+}

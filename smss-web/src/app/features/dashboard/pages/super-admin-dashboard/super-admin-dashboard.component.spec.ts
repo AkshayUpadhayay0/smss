@@ -7,6 +7,7 @@ import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { DashboardStat, SuperAdminSummary } from '../../../subscriptions/models/super-admin-dashboard.model';
+import { EnquiryWidgetsComponent } from '../../../enquiries/components/enquiry-widgets/enquiry-widgets.component';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { SuperAdminDashboardComponent } from './super-admin-dashboard.component';
 
@@ -20,6 +21,10 @@ class StubChartComponent {
   readonly options = input.required<ApexOptions>();
   readonly label = input('Chart');
 }
+
+/** The enquiry tiles make their own request (/api/superadmin/enquiries/summary); this spec checks the dashboard's single summary request. */
+@Component({ selector: 'app-enquiry-widgets', changeDetection: ChangeDetectionStrategy.OnPush, template: '' })
+class StubEnquiryWidgetsComponent {}
 
 const stat = (value: number, previousValue: number | null = null, trendPercent: number | null = null): DashboardStat => ({ value, previousValue, trendPercent });
 
@@ -56,7 +61,7 @@ describe('SuperAdminDashboardComponent', () => {
     clearSessions();
     seedSession({ user: makeUser() });
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
-    TestBed.overrideComponent(SuperAdminDashboardComponent, { remove: { imports: [ChartHostComponent] }, add: { imports: [StubChartComponent] } });
+    TestBed.overrideComponent(SuperAdminDashboardComponent, { remove: { imports: [ChartHostComponent, EnquiryWidgetsComponent] }, add: { imports: [StubChartComponent, StubEnquiryWidgetsComponent] } });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SuperAdminDashboardComponent);
     fixture.detectChanges();

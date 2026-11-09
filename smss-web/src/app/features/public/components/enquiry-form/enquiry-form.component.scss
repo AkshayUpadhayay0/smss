@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  color: #991b1b;
+  font-size: var(--text-base);
+
+  app-icon {
+    margin-top: 2px;
+    flex: none;
+  }
+}
+
+// Off-screen rather than display:none: simple bots still see and fill it
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.consent {
+  display: grid;
+  gap: var(--space-1);
+
+  label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  input {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    accent-color: var(--color-primary-600);
+  }
+
+  input:focus-visible {
+    outline: 3px solid var(--color-primary-700);
+    outline-offset: 2px;
+  }
+
+  .req {
+    color: var(--color-danger);
+  }
+
+  .error {
+    font-size: var(--text-sm);
+    color: #b91c1c;
+  }
+}
+
+.submit {
+  justify-self: start;
+  min-width: 200px;
+
+  app-icon {
+    flex: none;
+  }
+}
+
+.success {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+
+  p {
+    max-width: 44ch;
+    color: var(--color-text-muted);
+  }
+
+  .tick {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--color-success-soft);
+    color: #15803d;
+  }
+
+  .pub-btn {
+    margin-top: var(--space-3);
+  }
+}

@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
+import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
+import { EnquiryService } from '../../../features/enquiries/services/enquiry.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { LogoComponent } from '../../../shared/components/logo/logo.component';
 import { NAV_ITEMS, NavItem, visibleNav } from '../nav.config';
@@ -18,6 +20,7 @@ import { NAV_ITEMS, NavItem, visibleNav } from '../nav.config';
 export class SidebarComponent {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly enquiries = inject(EnquiryService);
 
   /** Current URL path (no query / fragment), kept in a signal so the active highlight follows every navigation. */
   private readonly path = toSignal(
@@ -47,7 +50,17 @@ export class SidebarComponent {
     new Set(NAV_ITEMS.filter((i) => this.containsUrl(i, this.router.url)).map((i) => i.label)),
   );
 
+  /** Count shown next to a menu item that has a `badge` (0 hides it). */
+  protected badgeCount(item: NavItem): number {
+    return item.badge === 'newEnquiries' ? (this.enquiries.summary()?.new ?? 0) : 0;
+  }
+
   constructor() {
+    // The Super Admin's "new enquiries" badge: refreshed on every navigation (one cheap count query), and only for roles that may open Enquiries
+    effect(() => {
+      this.path();
+      if (canAccess('/enquiries', this.auth.currentUserRoles())) untracked(() => this.enquiries.refreshSummary());
+    });
     // A group opens by itself whenever the current route is inside it (deep link, or navigating from elsewhere).
     effect(() => {
       const path = this.path();

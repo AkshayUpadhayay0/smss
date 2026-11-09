@@ -141,6 +141,9 @@ builder.Services.AddScoped<ICompanyFinanceService, CompanyFinanceService>();
 builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 
+builder.Services.AddScoped<IEnquiryRepository, EnquiryRepository>();
+builder.Services.AddScoped<IEnquiryService, EnquiryService>();
+
 builder.Services.AddScoped<IMasterImportRepository, MasterImportRepository>();
 builder.Services.AddScoped<IMasterImportService, MasterImportService>();
 builder.Services.AddScoped<ISystemSetupRepository, SystemSetupRepository>();
@@ -217,6 +220,27 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Public enquiry form: a fixed window per client IP (appsettings RateLimiting:PublicEnquiries). Over the limit -> 429 in the project's response shape.
+var enquiryLimit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicEnquiries:PermitLimit") ?? 5);
+var enquiryWindow = TimeSpan.FromMinutes(Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicEnquiries:WindowMinutes") ?? 10));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(smss_api.Controllers.PublicEnquiriesController.RateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = enquiryLimit, Window = enquiryWindow, QueueLimit = 0, AutoReplenishment = true }));
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        if (context.Lease.TryGetMetadata(System.Threading.RateLimiting.MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new ApiResponse<object> { Status = false, StatusCode = 429, Message = "Too many requests. Please wait a few minutes and try again.", Data = null },
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }, cancellationToken: token);
+    };
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularDev", policy =>
@@ -270,6 +294,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseHttpsRedirection();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 // Authoritative forced first-login password change (the Angular route guard only mirrors it)

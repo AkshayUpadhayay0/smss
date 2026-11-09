@@ -11,6 +11,8 @@ export interface NavItem {
   flatWhenSingle?: boolean;
   /** Shown only to logins that have an employee record (a School Admin login is the school itself and has none). */
   needsEmployeeRecord?: boolean;
+  /** Shows a count next to the label. The sidebar knows where each named count comes from. */
+  badge?: 'newEnquiries';
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -107,6 +109,7 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Registered Schools', icon: 'building-2', route: '/schools' },
+  { label: 'Enquiries', icon: 'inbox', route: '/enquiries', badge: 'newEnquiries' },
   { label: 'Subscriptions', icon: 'star', route: '/subscriptions' },
   { label: 'Invoices', icon: 'file-text', route: '/invoices' },
   {

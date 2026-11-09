@@ -15,3 +15,9 @@ export const guestGuard: CanActivateFn = () => {
   const router = inject(Router);
   return auth.hasValidSession() ? router.createUrlTree(['/dashboard']) : true;
 };
+
+/**
+ * The public landing page ("/"): a signed-in user is sent to the dashboard, everyone else sees the page.
+ * Same rule as guestGuard, named for its purpose. During the build-time prerender there is no stored session, so the page renders.
+ */
+export const publicGuard: CanActivateFn = guestGuard;

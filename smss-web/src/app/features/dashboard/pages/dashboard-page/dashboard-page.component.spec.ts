@@ -36,9 +36,10 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it('gives the Super Admin their own dashboard (one summary request: the tables live on /subscriptions and /invoices)', () => {
+  it('gives the Super Admin their own dashboard (one dashboard summary request plus the enquiry tiles own request: the tables live on /subscriptions and /invoices)', () => {
     const { fixture, http } = open(['Super Admin']);
     http.expectOne(`${environment.apiUrl}/api/SuperAdminDashboard/summary`);
+    http.expectOne(`${environment.apiUrl}/api/superadmin/enquiries/summary`); // the enquiry tiles at the top
     expect(fixture.nativeElement.querySelector('app-super-admin-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
     http.verify();

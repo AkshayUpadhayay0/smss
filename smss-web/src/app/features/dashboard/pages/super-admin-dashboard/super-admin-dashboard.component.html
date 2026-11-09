@@ -1,5 +1,7 @@
 <app-page-header title="Dashboard" subtitle="Schools, subscriptions, payments and company finances across the platform" icon="layout-dashboard" [breadcrumbs]="[{ label: 'Dashboard' }]" />
 
+<app-enquiry-widgets />
+
 <!-- The period for the six cards, the collection bar and the transactions. The two monthly charts always show the last 12 months. -->
 <section class="range" aria-label="Period">
   <div class="field"><app-input label="From" type="date" [formControl]="fromControl" /></div>

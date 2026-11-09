@@ -4,8 +4,14 @@ import { roleGuard } from './core/guards/role.guard';
 
 // Feature route files are mounted at the ROOT path (e.g. /schools, /masters/board-type).
 export const routes: Routes = [
+  // Public marketing site (/, /contact, /request-demo, /privacy-policy, /terms) in its own header + footer layout.
   // Must come first: otherwise the empty-path auth layout below matches "/" and renders an empty card.
-  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+  // A URL none of its children match falls through to the branches below.
+  {
+    path: '',
+    loadComponent: () => import('./features/public/layout/public-layout.component').then((m) => m.PublicLayoutComponent),
+    loadChildren: () => import('./features/public/public.routes').then((m) => m.PUBLIC_ROUTES),
+  },
 
   // Auth layout branch: centered card, no sidebar
   {
@@ -23,6 +29,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES) },
       { path: '', loadChildren: () => import('./features/schools/schools.routes').then((m) => m.SCHOOLS_ROUTES) },
+      { path: '', loadChildren: () => import('./features/enquiries/enquiries.routes').then((m) => m.ENQUIRIES_ROUTES) },
       { path: '', loadChildren: () => import('./features/subscriptions/subscriptions.routes').then((m) => m.SUBSCRIPTIONS_ROUTES) },
       { path: '', loadChildren: () => import('./features/company-finance/company-finance.routes').then((m) => m.COMPANY_FINANCE_ROUTES) },
       { path: '', loadChildren: () => import('./features/school-profile/school-profile.routes').then((m) => m.SCHOOL_PROFILE_ROUTES) },

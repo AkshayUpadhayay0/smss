@@ -8,6 +8,7 @@ import { ButtonComponent, CardComponent, IconComponent, InputComponent, PageHead
 import { formatDate } from '../../../admissions/models/admission.model';
 import { DashboardStat, SuperAdminSummary } from '../../../subscriptions/models/super-admin-dashboard.model';
 import { SuperAdminDashboardService } from '../../../subscriptions/services/super-admin-dashboard.service';
+import { EnquiryWidgetsComponent } from '../../../enquiries/components/enquiry-widgets/enquiry-widgets.component';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import {
   STATUS_SLICES,
@@ -62,7 +63,7 @@ interface StatCard {
  */
 @Component({
   selector: 'app-super-admin-dashboard',
-  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, TableComponent, ChartHostComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, TableComponent, ChartHostComponent, EnquiryWidgetsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './super-admin-dashboard.component.scss',
   templateUrl: './super-admin-dashboard.component.html',

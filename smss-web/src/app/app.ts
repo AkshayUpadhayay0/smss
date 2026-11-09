@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { SeoService } from './core/services/seo.service';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 
@@ -10,4 +11,8 @@ import { ToastContainerComponent } from './shared/components/toast-container/toa
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {}
+export class App {
+  constructor() {
+    inject(SeoService).init();
+  }
+}

@@ -26,6 +26,9 @@
       <a class="link" [routerLink]="item.route" [class.active]="isActive(item.route)" [attr.aria-current]="isActive(item.route) ? 'page' : null" [title]="collapsed() ? item.label : ''" (click)="navigated.emit()">
         <app-icon [name]="item.icon" [size]="20" />
         <span class="label">{{ item.label }}</span>
+        @if (badgeCount(item); as n) {
+          <span class="badge" [attr.aria-label]="n + ' new'">{{ n > 99 ? '99+' : n }}</span>
+        }
       </a>
     }
   }

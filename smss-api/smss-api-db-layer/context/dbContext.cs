@@ -115,6 +115,7 @@ namespace smss_api_db_layer.context
         public DbSet<LutExpenseCategory> ExpenseCategories { get; set; } = null!;
         public DbSet<TbCompanyExpense> CompanyExpenses { get; set; } = null!;
         public DbSet<TbCompanySalaryPayment> CompanySalaryPayments { get; set; } = null!;
+        public DbSet<TbEnquiry> Enquiries { get; set; } = null!;
 
         // ========================================================= // MODEL CONFIGURATION // =========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder) 

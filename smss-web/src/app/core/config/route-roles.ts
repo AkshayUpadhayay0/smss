@@ -132,6 +132,9 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/schools/:schoolId/edit': [ROLES.SUPER_ADMIN],
   '/schools/:schoolId/view': [ROLES.SUPER_ADMIN],
 
+  // Enquiries from the public website (Contact Us / Request a Demo): Super Admin only; the API re-checks every call
+  '/enquiries': [ROLES.SUPER_ADMIN],
+
   // Subscription & billing (what SMSS charges schools): Super Admin only; the API re-checks every call
   '/subscriptions': [ROLES.SUPER_ADMIN],
   '/invoices': [ROLES.SUPER_ADMIN],
