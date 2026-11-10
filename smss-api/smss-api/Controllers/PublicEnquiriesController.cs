@@ -24,7 +24,7 @@ namespace smss_api.Controllers
         [RequestSizeLimit(32 * 1024)]
         public async Task<IActionResult> Submit([FromBody] CreateEnquiryRequest request, CancellationToken ct)
         {
-            // Forwarded headers are not configured in this project, so the connection address is the only address trusted
+            // UseForwardedHeaders (Program.cs) has already replaced the connection address with the real client's, but only for requests from a configured proxy
             var response = await _service.SubmitAsync(request, HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString(), ct);
             return StatusCode(response.StatusCode, response);
         }

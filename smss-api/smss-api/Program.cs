@@ -228,7 +228,7 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy(smss_api.Controllers.PublicEnquiriesController.RateLimitPolicy, httpContext =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = enquiryLimit, Window = enquiryWindow, QueueLimit = 0, AutoReplenishment = true }));
     options.OnRejected = async (context, token) =>
     {
@@ -239,6 +239,27 @@ builder.Services.AddRateLimiter(options =>
             new ApiResponse<object> { Status = false, StatusCode = 429, Message = "Too many requests. Please wait a few minutes and try again.", Data = null },
             new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }, cancellationToken: token);
     };
+});
+
+// Behind a reverse proxy / load balancer the connection address is the proxy's. X-Forwarded-For / -Proto are honoured ONLY when the request comes from a
+// configured proxy (ForwardedHeaders:KnownProxies = addresses, ForwardedHeaders:KnownNetworks = CIDR ranges). With nothing configured only loopback is trusted,
+// so an arbitrary client can never choose its own "IP". Needs both the rate limiter and the stored enquiry ip_address to see the real client.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = Math.Max(1, builder.Configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit") ?? 1);
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? Array.Empty<string>())
+    {
+        if (!System.Net.IPAddress.TryParse(proxy, out var address))
+            throw new InvalidOperationException("ForwardedHeaders:KnownProxies contains a value that is not an IP address.");
+        options.KnownProxies.Add(address);
+    }
+    foreach (var network in builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? Array.Empty<string>())
+    {
+        if (!System.Net.IPNetwork.TryParse(network, out var cidr))
+            throw new InvalidOperationException("ForwardedHeaders:KnownNetworks contains a value that is not a CIDR range such as 10.0.0.0/8.");
+        options.KnownIPNetworks.Add(cidr);
+    }
 });
 
 builder.Services.AddCors(options =>
@@ -262,6 +283,9 @@ TaskScheduler.UnobservedTaskException += (_, e) => app.Logger.LogError(e.Excepti
 // Configure the HTTP request pipeline.
 // First, so it sees everything below it (in Development too: a JSON ApiResponse instead of an HTML error page)
 app.UseMiddleware<smss_api.Helpers.GlobalExceptionMiddleware>();
+
+// Before anything that reads the client address or scheme (HTTPS redirection, the rate limiter, the enquiry controller)
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

@@ -56,7 +56,7 @@ Controller → Service → Repository → DbContext. Projects:
 `PATCH` requests get silently blocked somewhere in this dev environment
 (not CORS, not the API itself — root cause never fully isolated). All
 non-idempotent single-purpose actions (toggle-status, logo upload,
-logo remove) use `POST` instead, by convention, on this project.
+logo remove, enquiry status change) use `POST` instead, by convention, on this project.
 
 ### What's built and working
 - **School registration** (`SchoolRegistrationController`): tb_schools,
@@ -194,6 +194,51 @@ Class-Subject Mapping → Employee Department/Designation → Student
 Category → Admission Type. Global masters (Gender, Blood Group,
 Religion/Caste) can reuse the existing Super-Admin
 generic master-list pattern.
+
+---
+
+## Public website & enquiries (landing site, Contact Us, Request a Demo)
+
+A marketing site lives inside the SAME Angular app. Visitors submit Contact Us / Request Demo forms; the Super Admin handles them.
+
+**Frontend**
+- `features/public/` — `public.routes.ts` (PUBLIC_ROUTES: `/`, `/contact`, `/request-demo`, `/privacy-policy`, `/terms`) inside
+  `layout/public-layout.component` (header + footer). Mounted FIRST in `app.routes.ts`; anything it does not match falls through to
+  the login and signed-in branches. `/` has `publicGuard` (= `guestGuard`): a signed-in user is sent to `/dashboard`.
+  `components/enquiry-form` is the one reactive form behind both pages (route data `type`: CONTACT | DEMO); `PublicEnquiryService`
+  turns failures into a generic message (never technical detail). There is NO pricing anywhere, by decision.
+- ALL company details (name, email, phone, address, social) live in `core/config/site.config.ts` only. Landing copy: `features/public/config/landing.content.ts`.
+- Public pages use primary-600/700 for text and buttons (the brand #7C5CFC is below 4.5:1 on white) and the global `pub-*` classes in `styles/_public.scss`.
+- `features/enquiries/` — Super Admin only: list (`/enquiries`, tabs All/Demo/Contact, status/search/date filters, server paging), detail dialog
+  (status, admin notes, mailto/Call, confirmation before SPAM/CLOSED), dashboard tiles (`enquiry-widgets`), and the NEW-count badge on the
+  sidebar item (`NavItem.badge`, `EnquiryService.summary`). `/enquiries` is in ROUTE_ROLES (Super Admin).
+
+**Backend**
+- `tb_enquiries` (script: `Docs/smss-enquiries.sql`, safe to re-run) — platform-level, NO `school_id`. One table, `enquiry_type` CONTACT | DEMO.
+  `status` is a string code (NEW, CONTACTED, DEMO_SCHEDULED, CLOSED, SPAM) with a CHECK and C# constants (`EnquiryStatuses`), not `lut_status`
+  (which only holds Active/Inactive). `handled_by_user_id` is set from the token, never the request.
+- `POST /api/public/enquiries` (anonymous, `PublicEnquiriesController`): validation in `EnquiryRules` (mirrors the Angular form; the server is the authority),
+  honeypot field `website` (filled = normal success answer, nothing stored), per-IP fixed-window rate limit (`RateLimiting:PublicEnquiries`, 429 in the standard wrapper).
+- Super Admin (`SuperAdminEnquiriesController`, `[SuperAdminOnly]`): `GET /api/superadmin/enquiries`, `/summary`, `/{id}`, and
+  **`POST /{id}/status`** — a POST, NOT a PATCH, because PATCH is blocked in this dev environment (see Known quirk). Role is matched by role NAME
+  (the JWT carries names, not codes); `SuperAdminOnlyAttribute` is the one place that decides it.
+- Client IP: `UseForwardedHeaders` runs first. X-Forwarded-For/-Proto are trusted ONLY from `ForwardedHeaders:KnownProxies` / `KnownNetworks`
+  (loopback otherwise; `ForwardLimit` default 1). `ClientAddress.PartitionKey` is the rate-limit bucket (IPv6 grouped by /64). Behind a proxy or load
+  balancer you MUST list its address, or every visitor shares one bucket.
+
+**SEO / prerender (public pages only)**
+- `@angular/ssr` with `outputMode: "static"`: `/`, `/contact`, `/request-demo`, `/privacy-policy`, `/terms` are prerendered to HTML at build time
+  (`app.routes.server.ts`; no Node server in production). `/login` and the whole signed-in app stay client-rendered. A new public page needs entries in
+  PUBLIC_ROUTES, `app.routes.server.ts` AND `PUBLIC_PATHS` in `scripts/seo-files.mjs`.
+- **Hosting requirement:** unknown URLs (every signed-in route and `/login`) must fall back to **`index.csr.html`**, NOT `index.html` (which is the prerendered home page).
+  Serve with gzip/brotli (the framework chunk is ~320 KB raw; Lighthouse performance is ~77 without compression, ~97 with).
+- `SeoService` (`core/services/seo.service.ts`) sets title, description, canonical, Open Graph, Twitter and robots from route `data.seo`;
+  a route WITHOUT `seo.index: true` is `noindex, nofollow` (fail closed). Landing JSON-LD (Organization + SoftwareApplication) is route data too.
+- `npm run build` runs `scripts/seo-files.mjs` first: it regenerates `public/robots.txt` (Disallow for every top-level segment found in ROUTE_ROLES, plus `/login`)
+  and `public/sitemap.xml` from `siteUrl` in `src/environments/environment.ts`. Set the real `siteUrl` before deploying. Plain `ng build` skips it.
+- Any browser-only API in shared/core code must stay guarded (try/catch or `isPlatformBrowser`): the public pages are rendered in Node.
+
+**Placeholders still to replace:** privacy/terms text (marked "to be reviewed"), `public/og-image.png`, the logo, `siteUrl`.
 
 ---
 

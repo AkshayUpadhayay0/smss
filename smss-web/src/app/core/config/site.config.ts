@@ -14,10 +14,10 @@ export const SITE_CONFIG = {
   url: environment.siteUrl.replace(/\/+$/, ''),
   /** Path under the site root of the social-sharing picture (1200x630). */
   ogImagePath: '/og-image.png',
-  email: 'hello@example-smss.com',
-  phone: '+91 00000 00000',
-  phoneHref: '+910000000000',
-  address: 'Office address to be added, City, State, India',
+  email: 'smss.info@gmail.com',
+  phone: '+91 9149241421',
+  phoneHref: '+919149241421',
+  address: 'Dehradun, Uttarakhand, India',
   /** Add real profiles when they exist; the footer and the structured data pick them up automatically. */
   social: [] as { label: string; url: string }[],
   year: new Date().getFullYear(),
