@@ -66,7 +66,8 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
   mobile login** (14-day refresh token). Access token lives 15 minutes.
 - Refresh tokens **rotate** (each works once; reusing an old one revokes every session). `client.ts` therefore: single-flight lock (concurrent 401s
   trigger ONE refresh); the new pair is written to SecureStore BEFORE the lock is released; a refresh with no response is retried ONCE with the
-  same token (the server grace period covers a lost reply); a 401/403 from refresh clears the session and returns to sign-in; a 5xx/network failure
+  same token (recovers a request that never arrived; if the server rotated and only the reply was lost, the replay gets 401 and the user signs in
+  again: verified live, the 10 s grace period only prevents a replay from revoking ALL sessions, it does not re-issue tokens); a 401/403 from refresh clears the session and returns to sign-in; a 5xx/network failure
   keeps the session. Never fire two refreshes in parallel.
 - Sign-out: `POST /api/Auth/logout {refreshToken}` (best-effort, 5s cap), then clear secure storage and the query cache whatever happened.
 - First login: `user.isFirstLogin` is true → the root layout allows ONLY `(auth)/change-password`. The server enforces this too

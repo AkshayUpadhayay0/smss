@@ -62,7 +62,9 @@ function fromLogin(login: LoginResponse): StoredSession {
  * Refresh rules (the server rotates refresh tokens: each works once, and reusing an old one revokes every session):
  *  - Any number of concurrent 401s trigger exactly ONE refresh; the others wait for it and retry with the new token.
  *  - The new pair is written to secure storage BEFORE the refresh promise resolves (so nothing else can use or lose it).
- *  - A refresh that fails with no response at all is retried ONCE with the same token (the server's grace period covers a lost reply).
+ *  - A refresh that fails with no response at all is retried ONCE with the same token. That recovers a request that never reached the server. If the
+ *    server DID rotate the token and only the reply was lost, the retry gets 401 (verified live: a replayed token inside the 10 s grace period is refused,
+ *    not re-issued; the grace period only stops the replay from revoking every session), so the user is signed in again. There is no way around that client-side.
  *  - A 401/403 from refresh ends the session. A 5xx/network failure does not: the session is kept and the user can retry.
  * Nothing here logs a token, a password or a response body.
  */
