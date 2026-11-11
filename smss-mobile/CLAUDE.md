@@ -17,7 +17,8 @@ Students and teachers only in v1. Read this fully before changing anything; the 
 Expo SDK 58, Expo Router (file-based, `app/`), TanStack Query (server state), a small React Context for the session (`src/auth/session.tsx`),
 `expo-secure-store` for tokens (never AsyncStorage), `@expo/vector-icons` (Feather), `@expo-google-fonts/inter`.
 Expo APIs change every SDK: check `https://docs.expo.dev/versions/v58.0.0/` (or `llms.txt`) before using one from memory.
-Install packages with `npx expo install <pkg>` (this repo needs `-- --legacy-peer-deps` because of a react-dom peer conflict).
+Install packages with `npx expo install <pkg> -- --legacy-peer-deps` (a react-dom 19.3.1 vs react 19.3.0 peer conflict makes plain installs fail).
+TODO: retry WITHOUT `--legacy-peer-deps` after the next Expo SDK update, and drop the flag if it works.
 
 ## Layout
 ```
@@ -48,7 +49,9 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
 - Run: `npx expo start` (then `a` for Android emulator, or scan the QR with Expo Go)
 - Typecheck: `npm run typecheck` · Lint: `npm run lint` · Tests: `npm test` · Health: `npx expo-doctor`
 - Build (EAS): `eas build --profile preview --platform android` (profiles in `eas.json`; set `EXPO_PUBLIC_API_BASE_URL` in the EAS environment first).
-  `com.smss.mobile` in `app.config.ts` is a placeholder identifier: confirm before the first store build.
+  **`com.smss.mobile` (bundle id / Android package, in `app.config.ts`) is a development PLACEHOLDER and is PERMANENT after the first store build.
+  The owner must decide and confirm it BEFORE any store or production build. Do not build for stores until they do.**
+  (`eas.json` is strict JSON and cannot hold comments, so the warning lives here and in `app.config.ts`.)
 
 ## API contract (verified against smss-api, Phase 0)
 - Every endpoint returns `{ status, statusCode, message, data }`; `src/api/client.ts` unwraps `data`. Dates are `yyyy-MM-dd`, times `HH:mm:ss`.

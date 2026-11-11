@@ -5,10 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { messageOf } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
 import { Button } from '../../src/components/Button';
-import { Icon } from '../../src/components/Icon';
 import { Input } from '../../src/components/Input';
 import { Text } from '../../src/components/Text';
-import { colors } from '../../src/theme/tokens';
+import { colors, fonts } from '../../src/theme/tokens';
 
 export default function SignIn() {
   const { signIn } = useSession();
@@ -41,7 +40,7 @@ export default function SignIn() {
       <ScrollView style={styles.flex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
         <View style={[styles.hero, { paddingTop: insets.top + 40 }]}>
           <View style={styles.logoTile} accessibilityElementsHidden importantForAccessibility="no">
-            <Icon name="book-open" size={32} color={colors.primary} />
+            <Text style={styles.logoLetter}>S</Text>
           </View>
           <Text variant="display" color={colors.onPrimary} accessibilityRole="header">
             Welcome back
@@ -90,10 +89,12 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.primary },
+  flex: { flex: 1, backgroundColor: colors.primaryDeep },
   scroll: { flexGrow: 1 },
-  hero: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingBottom: 48, gap: 8, minHeight: 280 },
-  logoTile: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  hero: { backgroundColor: colors.primaryDeep, paddingHorizontal: 24, paddingBottom: 48, gap: 8, minHeight: 280 },
+  // the design's logo tile: 56px white, radius 16, bold violet S (26px)
+  logoTile: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  logoLetter: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 32, color: colors.primaryText },
   sheet: { flexGrow: 1, backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16, marginTop: -24 },
   center: { textAlign: 'center' },
 });

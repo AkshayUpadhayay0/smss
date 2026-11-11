@@ -2,6 +2,8 @@ import type { ExpoConfig } from 'expo/config';
 
 // The API base URL is configuration, never a literal in source. Local dev: .env (untracked). EAS builds: EAS environment variables.
 // The release-build HTTPS rule is enforced at runtime in src/config/env.ts.
+// !!! IDENTIFIERS ARE PERMANENT !!! `com.smss.mobile` (ios.bundleIdentifier / android.package) is a DEVELOPMENT PLACEHOLDER. After the first
+// store build it can never change. It must be decided and confirmed by the owner BEFORE any store or production build. Do not build for stores until then.
 const config: ExpoConfig = {
   name: 'SMSS',
   slug: 'smss-mobile',
