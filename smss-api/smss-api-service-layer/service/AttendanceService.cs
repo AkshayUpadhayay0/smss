@@ -13,6 +13,7 @@ namespace smss_api_service_layer.service
     {
         private const string OneMarkPerDay = "uq_tb_att_student_date";
         private const int MaxRangeDays = 366;
+        public const int MaxOwnRangeDays = 92;
         private const string PresentCode = "PRESENT";
 
         private readonly IAttendanceRepository _repo;
@@ -285,6 +286,28 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully fetched", await BuildHistoryAsync(schoolId, student, from, to, ct));
             }
             catch (Exception ex) { return Error<StudentAttendanceHistoryDto>(ex, "fetching a student's attendance"); }
+        }
+
+        public async Task<ApiResponse<StudentOwnAttendanceDto>> GetMyAsync(string? schoolId, long callerUserId, DateOnly from, DateOnly to, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentOwnAttendanceDto>(400, TenantMessages.NoSchool, null);
+            if (to < from) return Result<StudentOwnAttendanceDto>(400, "'to' cannot be before 'from'.", null);
+            if (to.DayNumber - from.DayNumber + 1 > MaxOwnRangeDays) return Result<StudentOwnAttendanceDto>(400, $"The range can be at most {MaxOwnRangeDays} days.", null);
+            try
+            {
+                // the caller's login id IS their student id; the student is only ever the caller, never taken from the client
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
+                var student = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                if (student == null) return Result<StudentOwnAttendanceDto>(403, "Your account is not linked to a student record.", null);
+
+                var history = await BuildHistoryAsync(schoolId, student, from, to, ct);
+                return Result(200, "Successfully fetched", new StudentOwnAttendanceDto
+                {
+                    From = history.From, To = history.To, Summary = history.Summary,
+                    Days = history.Days.Select(d => new StudentOwnAttendanceDayDto { Date = d.Date, StatusCode = d.StatusCode, StatusName = d.StatusName }).ToList()
+                });
+            }
+            catch (Exception ex) { return Error<StudentOwnAttendanceDto>(ex, "fetching a student's own attendance"); }
         }
 
         public async Task<ApiResponse<StudentAttendanceHistoryDto>> GetOwnYearAsync(string? schoolId, long callerUserId, CancellationToken ct)

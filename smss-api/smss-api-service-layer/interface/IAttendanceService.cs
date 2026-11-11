@@ -13,6 +13,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<StudentAttendanceHistoryDto>> GetStudentAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, string studentId, DateOnly from, DateOnly to, CancellationToken ct);
         /// <summary>The caller's OWN marks for the school's current academic year (start to today) with the per-status summary: the same computation as <see cref="GetStudentAsync"/>, scoped to the caller. The student is the caller; there is no id to pass.</summary>
         Task<ApiResponse<StudentAttendanceHistoryDto>> GetOwnYearAsync(string? schoolId, long callerUserId, CancellationToken ct);
+        /// <summary>The caller's OWN marks for a range of at most 92 days, student-safe (no audit fields). The student is the caller; there is no id to pass.</summary>
+        Task<ApiResponse<StudentOwnAttendanceDto>> GetMyAsync(string? schoolId, long callerUserId, DateOnly from, DateOnly to, CancellationToken ct);
         Task<ApiResponse<MissingAttendanceDto>> GetMissingAsync(string? schoolId, DateOnly? date, long? academicYearId, CancellationToken ct);
         /// <summary>
         /// The monthly report of one section. `callerSeesAllSections` (School Admin / Principal, read-only) may ask for any section of the school; anyone else must be the section's

@@ -52,6 +52,16 @@ namespace smss_api.Controllers
             return Reply(await _service.GetSectionAsync(User.GetSchoolId(), userId, User.IsSchoolAdmin(), sectionId, date, ct));
         }
 
+        // GET api/Attendance/student/my?from=2026-10-01&to=2026-10-31   (a Student: their OWN marks, student-safe fields only; at most 92 days; the student comes from the token)
+        [HttpGet("student/my")]
+        public async Task<IActionResult> GetStudentMy([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+        {
+            if (!User.IsStudent()) return this.Forbidden("Only a student can see their own attendance here.");
+            if (!TryUser(out var userId)) return Unauthorized();
+            if (from is null || to is null) return BadRequestMessage("from and to are required.");
+            return Reply(await _service.GetMyAsync(User.GetSchoolId(), userId, from.Value, to.Value, ct));
+        }
+
         // GET api/Attendance/student/{studentId}?from=2026-10-01&to=2026-10-31   (at most 366 days)
         [HttpGet("student/{studentId:length(1,20)}")]
         public async Task<IActionResult> GetStudent(string studentId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)

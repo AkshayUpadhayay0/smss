@@ -179,4 +179,21 @@ namespace smss_api_service_layer.dto
         public DateTime CorrectedAt { get; set; }
         public string CorrectionReason { get; set; } = null!;
     }
+
+    /// <summary>One day of a student's OWN attendance. Deliberately no section, no who-marked and no correction audit fields: a student sees the status only.</summary>
+    public class StudentOwnAttendanceDayDto
+    {
+        public DateOnly Date { get; set; }
+        public string StatusCode { get; set; } = null!;
+        public string StatusName { get; set; } = null!;
+    }
+
+    /// <summary>A student's own marks for a range (GET Attendance/student/my), with the same per-status summary the teacher view uses.</summary>
+    public class StudentOwnAttendanceDto
+    {
+        public DateOnly From { get; set; }
+        public DateOnly To { get; set; }
+        public List<StudentOwnAttendanceDayDto> Days { get; set; } = new();
+        public AttendanceSummaryDto Summary { get; set; } = new();
+    }
 }
