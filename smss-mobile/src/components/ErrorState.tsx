@@ -12,7 +12,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
         <Icon name="alert-circle" size={26} color={colors.danger} />
       </View>
       <Text variant="heading" style={styles.center}>
-        Something went wrong
+        Could not load this
       </Text>
       <Text variant="small" style={styles.center} accessibilityLiveRegion="polite">
         {message}

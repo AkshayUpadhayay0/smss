@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
 import { api } from '../api';
+import { clearAttachmentCache } from '../lib/attachments';
 import type { AuthUser } from '../api/types';
 import { resolveRole, type AppRole } from './roles';
 
@@ -30,6 +31,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const endLocally = useCallback(() => {
     queryClient.clear(); // never let the next user see the previous user's cached data
+    clearAttachmentCache(); // ...or the previous user's downloaded files
     setUser(null);
     setStatus('signedOut');
   }, [queryClient]);

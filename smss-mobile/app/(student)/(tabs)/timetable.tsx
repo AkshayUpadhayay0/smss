@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { StudentTimetable } from '../../../src/features/student/TimetableScreen';
 
 export default function TimetableTab() {
-  return <PlaceholderScreen title="Timetable" />;
+  return <StudentTimetable />;
 }

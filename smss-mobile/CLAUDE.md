@@ -99,5 +99,9 @@ Render real API data only; a screen that has fewer fields than a design shows fe
 - Initials avatars only in v1: student/employee photos are private (`/api/Student/{id}/photo`), not loaded.
 
 ## Status
-Phase 1 (skeleton, theme, API client, auth, role routing, unsupported screen, empty tab shells): built. Phases 2 and 3: not started.
-The Home shells carry a TEMPORARY sign-out button; its permanent home is undecided.
+- Phase 1 (skeleton, theme, API client, auth, role routing, unsupported screen): built; live-verified against the API (see git history).
+- Phase 2 (student screens 3-8 + the shared profile sheet): built. Student API calls live in `src/api/student.ts`, hooks in `src/features/student/queries.ts`.
+  "Today" always comes from the dashboard's server date (`useServerToday`), never the phone clock. Notices are marked read by `GET /api/Notice/{id}` only.
+  Attachments: `src/lib/attachments.ts` (authenticated download to the cache folder, then the share sheet; the folder is purged on sign-out).
+- Phase 3 (teacher screens 9-13): not started. The Teacher Home is a shell with the avatar/profile sheet.
+- The profile sheet (`src/components/ProfileSheet.tsx`, opened from the avatar in `HomeHeader`) is where Sign out lives. A Change password entry is deliberately not there yet.

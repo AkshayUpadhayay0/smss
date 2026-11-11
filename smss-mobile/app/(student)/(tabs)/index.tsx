@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { StudentHome } from '../../../src/features/student/HomeScreen';
 
 export default function HomeTab() {
-  return <PlaceholderScreen title="Home" showSession />;
+  return <StudentHome />;
 }

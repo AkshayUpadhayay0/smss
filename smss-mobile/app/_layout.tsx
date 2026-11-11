@@ -1,9 +1,10 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import { Text } from '../src/components/Text';
 import { Screen } from '../src/components/Screen';
 import { SessionProvider, useSession } from '../src/auth/session';
@@ -11,6 +12,15 @@ import { env } from '../src/config/env';
 import { ApiError } from '../src/api/errors';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// React Query's focus = the app coming back to the foreground, so a student who opens the app the next morning sees fresh data (and the new server date).
+function useAppFocus() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (state) => focusManager.setFocused(state === 'active'));
+    return () => sub.remove();
+  }, []);
+}
 
 function makeQueryClient() {
   return new QueryClient({
@@ -64,6 +74,7 @@ function Gate() {
 
 export default function RootLayout() {
   const [queryClient] = useState(makeQueryClient);
+  useAppFocus();
 
   // A missing / non-HTTPS API URL is a build mistake: say so plainly instead of failing on the first request.
   let configError: string | null = null;

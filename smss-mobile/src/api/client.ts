@@ -182,9 +182,8 @@ export function createApiClient(deps: ClientDeps) {
     return refreshing;
   }
 
-  async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-    if (opts.auth === false) return parse<T>(await send(path, opts, null));
-
+  /** Sends an authenticated request, refreshing once on a 401. Returns the raw Response (the caller parses it). */
+  async function authedSend(path: string, opts: RequestOptions): Promise<Response> {
     const sess = await current();
     if (!sess) throw new ApiError('unauthorized', 'Please sign in.', 401);
 
@@ -197,11 +196,28 @@ export function createApiClient(deps: ClientDeps) {
         throw new ApiError('unauthorized', EXPIRED, 401);
       }
     }
-    return parse<T>(res);
+    return res;
+  }
+
+  async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+    if (opts.auth === false) return parse<T>(await send(path, opts, null));
+    return parse<T>(await authedSend(path, opts));
+  }
+
+  /** An authenticated file download (e.g. a homework attachment). A failure answers with the JSON envelope, which becomes an ApiError like any other. */
+  async function download(path: string, opts: Pick<RequestOptions, 'signal'> = {}): Promise<{ bytes: ArrayBuffer; contentType: string }> {
+    const res = await authedSend(path, opts);
+    if (!res.ok) {
+      const error = toApiError(res.status, await readBody(res));
+      if (error.kind === 'password_change_required') handlers.onPasswordChangeRequired?.();
+      throw error;
+    }
+    return { bytes: await res.arrayBuffer(), contentType: res.headers.get('content-type') ?? 'application/octet-stream' };
   }
 
   return {
     request,
+    download,
     setHandlers(next: ClientHandlers) {
       handlers = next;
     },

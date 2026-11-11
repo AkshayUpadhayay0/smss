@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { StudentNotices } from '../../../src/features/student/NoticesScreen';
 
 export default function NoticesTab() {
-  return <PlaceholderScreen title="Notices" />;
+  return <StudentNotices />;
 }
