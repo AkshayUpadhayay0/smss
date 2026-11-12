@@ -7,7 +7,8 @@ namespace smss_api_service_layer.@interface
 {
     public interface IAuthService
     {
-        Task<ApiResponse<object>> LoginAsync(LoginRequest request);
+        /// <param name="clientKey">The caller address bucket (ClientAddress.PartitionKey), used only by the login throttle.</param>
+        Task<ApiResponse<object>> LoginAsync(LoginRequest request, string? clientKey = null);
         Task<ApiResponse<object>> RefreshAsync(RefreshTokenRequest request);
         Task<ApiResponse<object>> LogoutAsync(RefreshTokenRequest request);
         Task<ApiResponse<object>> GetCurrentUserAsync(long userId);

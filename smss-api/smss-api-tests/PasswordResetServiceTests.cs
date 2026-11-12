@@ -77,7 +77,7 @@ namespace smss_api_tests
         private static (PasswordResetService Svc, FakeRepo Repo, CapturingLogger<PasswordResetService> Log) Make(FakeRepo? repo = null)
         {
             repo ??= Repo(); var log = new CapturingLogger<PasswordResetService>();
-            return (new PasswordResetService(repo, log), repo, log);
+            return (new PasswordResetService(repo, log, new LoginThrottle(new LoginThrottleOptions())), repo, log);
         }
 
         private static PasswordResetCaller Caller(long id, string? school, params string[] roles) => new(id, school, roles);
@@ -237,7 +237,7 @@ namespace smss_api_tests
 
             var failing = new ThrowingRepo(Repo().Targets);
             var log2 = new CapturingLogger<PasswordResetService>();
-            var r = await new PasswordResetService(failing, log2).ResetAsync(Caller(10, S1, RoleNames.SchoolAdmin), Req("SCH1EM001", "secret-reason-text"), default);
+            var r = await new PasswordResetService(failing, log2, new LoginThrottle(new LoginThrottleOptions())).ResetAsync(Caller(10, S1, RoleNames.SchoolAdmin), Req("SCH1EM001", "secret-reason-text"), default);
             Assert.Equal(500, r.StatusCode); Assert.Null(r.Data);
             var user = failing.Targets.First(t => t.User.UserId == 12).User;
             var failedLog = string.Join("\n", log2.Lines);

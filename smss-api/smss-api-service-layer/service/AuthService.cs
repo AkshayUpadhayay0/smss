@@ -23,30 +23,53 @@ namespace smss_api_service_layer.service
         private readonly IAuthRepository _repo;
         private readonly JwtTokenGenerator _jwt;
         private readonly ILogger<AuthService> _logger;
+        private readonly ILoginThrottle _throttle;
 
-        public AuthService(IAuthRepository repo, JwtTokenGenerator jwt, ILogger<AuthService> logger)
+        public AuthService(IAuthRepository repo, JwtTokenGenerator jwt, ILogger<AuthService> logger, ILoginThrottle throttle)
         {
             _repo = repo;
             _jwt = jwt;
             _logger = logger;
+            _throttle = throttle;
         }
 
-        public async Task<ApiResponse<object>> LoginAsync(LoginRequest req)
+        public async Task<ApiResponse<object>> LoginAsync(LoginRequest req, string? clientKey = null)
         {
             try
             {
                 // The login credential is tb_users.org_user_id (SUAD001, FIRS261013001, DPS001ST001); display_name is only a label
                 var loginId = req.LoginId.Trim();
+                var client = clientKey ?? ClientAddress.Unknown;
+
+                // Too many recent failures for this id or this address: answer before looking at the id or the password, so a throttled reply is the same for known and unknown ids
+                var wait = _throttle.RetryAfter(loginId, client);
+                if (wait != null)
+                {
+                    var seconds = (int)Math.Ceiling(wait.Value.TotalSeconds);
+                    var minutes = Math.Max(1, (int)Math.Ceiling(wait.Value.TotalMinutes));
+                    return new ApiResponse<object>
+                    {
+                        Status = false, StatusCode = 429, Data = new LoginThrottledDto { RetryAfterSeconds = seconds },
+                        Message = $"Too many failed sign-in attempts. Please wait {minutes} minute{(minutes == 1 ? "" : "s")} and try again."
+                    };
+                }
+
                 var user = await _repo.GetUserByLoginIdAsync(loginId, track: true);
 
                 if (user == null || string.IsNullOrEmpty(user.PasswordHash))
                 {
                     PasswordHelper.Verify(req.Password, DummyHash);
+                    _throttle.RecordFailure(loginId, client);
                     return Fail(401, InvalidCredentials);
                 }
 
                 if (!PasswordHelper.Verify(req.Password, user.PasswordHash))
+                {
+                    _throttle.RecordFailure(loginId, client);
                     return Fail(401, InvalidCredentials);
+                }
+
+                _throttle.RecordSuccess(loginId);   // the right password: this id starts from zero again
 
                 var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
                 if (activeId == null)

@@ -22,6 +22,12 @@ namespace smss_api_service_layer.dto
         [Required, StringLength(200)] public string RefreshToken { get; set; } = null!;
     }
 
+    /// <summary>The data of a 429 from /Auth/login (the controller also sends it as the Retry-After header).</summary>
+    public class LoginThrottledDto
+    {
+        public int RetryAfterSeconds { get; set; }
+    }
+
     public class ChangePasswordRequest
     {
         [Required, StringLength(200)] public string CurrentPassword { get; set; } = null!;

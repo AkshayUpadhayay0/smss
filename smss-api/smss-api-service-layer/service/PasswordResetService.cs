@@ -19,11 +19,13 @@ namespace smss_api_service_layer.service
         public const int MaxReasonLength = 500;
         private readonly IPasswordResetRepository _repo;
         private readonly ILogger<PasswordResetService> _logger;
+        private readonly ILoginThrottle _throttle;
 
-        public PasswordResetService(IPasswordResetRepository repo, ILogger<PasswordResetService> logger)
+        public PasswordResetService(IPasswordResetRepository repo, ILogger<PasswordResetService> logger, ILoginThrottle throttle)
         {
             _repo = repo;
             _logger = logger;
+            _throttle = throttle;
         }
 
         public async Task<ApiResponse<PasswordResetResultDto>> ResetAsync(PasswordResetCaller caller, ResetPasswordRequest request, CancellationToken ct)
@@ -79,6 +81,9 @@ namespace smss_api_service_layer.service
                     Reason = reason,
                     ResetAt = now
                 }, user.UserId, now, ct);
+
+                // The person must be able to sign in with the new password at once, even if earlier wrong guesses had throttled the id
+                _throttle.ClearLogin(user.OrgUserId ?? loginId);
 
                 // Ids only: never the password and never the reason text
                 _logger.LogInformation("Password reset: user {TargetUserId} by user {ResetByUserId}", user.UserId, caller.UserId);

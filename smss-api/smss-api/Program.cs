@@ -30,6 +30,8 @@ builder.Services.AddScoped<IMasterDataRepository, MasterDataRepository>();
 builder.Services.AddScoped<IMasterDataService, MasterDataService>();
 
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddSingleton<smss_api_service_layer.@interface.ILoginThrottle>(sp =>
+    new smss_api_service_layer.helper.LoginThrottle(smss_api_service_layer.helper.LoginThrottleOptions.From(sp.GetRequiredService<IConfiguration>())));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<JwtTokenGenerator>();
 

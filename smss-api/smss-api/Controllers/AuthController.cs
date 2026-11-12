@@ -22,7 +22,9 @@ namespace smss_api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var response = await _authService.LoginAsync(request);
+            var client = smss_api_service_layer.helper.ClientAddress.PartitionKey(HttpContext.Connection.RemoteIpAddress);   // the real client address when the proxy settings are configured
+            var response = await _authService.LoginAsync(request, client);
+            if (response.StatusCode == 429 && response.Data is LoginThrottledDto throttled) Response.Headers.RetryAfter = throttled.RetryAfterSeconds.ToString();
             return StatusCode(response.StatusCode, response);
         }
 
