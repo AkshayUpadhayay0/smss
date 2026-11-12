@@ -23,3 +23,8 @@ Docs/smss-db*.sql
 *.dump
 *.bak
 *backup*
+
+# Visual Studio per-user state (never commit)
+.vs/
+**/.vs/
+*.csproj.user
