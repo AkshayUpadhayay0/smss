@@ -3,6 +3,7 @@ import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Breadcrumb, IconName } from '../../../../shared/components';
 import { PlaceholderPageComponent } from '../../../placeholder/placeholder-page.component';
+import { AccountantDashboardComponent } from '../accountant-dashboard/accountant-dashboard.component';
 import { PrincipalDashboardComponent } from '../principal-dashboard/principal-dashboard.component';
 import { SchoolDashboardComponent } from '../school-dashboard/school-dashboard.component';
 import { SuperAdminDashboardComponent } from '../super-admin-dashboard/super-admin-dashboard.component';
@@ -15,7 +16,7 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [PlaceholderPageComponent, PrincipalDashboardComponent, SchoolDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
+  imports: [AccountantDashboardComponent, PlaceholderPageComponent, PrincipalDashboardComponent, SchoolDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isStudent()) {
@@ -28,6 +29,8 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
       <app-school-dashboard />
     } @else if (isPrincipal()) {
       <app-principal-dashboard />
+    } @else if (isAccountant()) {
+      <app-accountant-dashboard />
     } @else {
       <app-placeholder-page [title]="title()" [subtitle]="subtitle()" [icon]="icon()" [breadcrumbs]="breadcrumbs()" />
     }
@@ -50,4 +53,5 @@ export class DashboardPageComponent {
   protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().includes(ROLES.SCHOOL_ADMIN));
   // the role dashboards below come last for the same reason: an account that also holds one of the roles above keeps that dashboard
   protected readonly isPrincipal = computed(() => this.auth.currentUserRoles().includes(ROLES.PRINCIPAL));
+  protected readonly isAccountant = computed(() => this.auth.currentUserRoles().includes(ROLES.ACCOUNTANT));
 }

@@ -30,6 +30,12 @@ namespace smss_api.Helpers
         /// <summary>School Admin only (the employee module, ...). Keep role-name matching in this one file.</summary>
         public static bool IsSchoolAdmin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
+        /// <summary>The Accountant role (the Accountant dashboard).</summary>
+        public static bool IsAccountant(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Accountant);
+
+        /// <summary>The Admission Staff role (the Admission dashboard).</summary>
+        public static bool IsAdmissionStaff(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.AdmissionStaff);
+
         /// <summary>
         /// Whether the caller may create / change / delete calendar events: a School Admin or a Principal. Reading the calendar needs no role
         /// (every role of the school sees every event). Kept separate from IsSchoolAdmin / CanManageFees so each permission says what it is for.

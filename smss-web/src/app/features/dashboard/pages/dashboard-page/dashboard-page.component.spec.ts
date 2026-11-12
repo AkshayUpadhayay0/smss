@@ -77,7 +77,15 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it.each([['Accountant']])('leaves %s on the existing placeholder and calls nothing', (role) => {
+  it('gives the Accountant their own dashboard (one AccountantDashboard request, no placeholder)', () => {
+    const { fixture, http } = open(['Accountant']);
+    http.expectOne(`${environment.apiUrl}/api/AccountantDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-accountant-dashboard')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
+    http.verify();
+  });
+
+  it.each([['Admission Staff']])('leaves %s on the existing placeholder and calls nothing', (role) => {
     const { fixture, http } = open([role]);
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();
