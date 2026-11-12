@@ -45,11 +45,6 @@ namespace smss_api_db_layer.entity
 
         [Column("logo_url")] public string? LogoUrl { get; set; }
 
-        [Column("subscription_plan_id")] public long? SubscriptionPlanId { get; set; }
-        [Column("subscription_start_date")] public DateOnly? SubscriptionStartDate { get; set; }
-        [Column("subscription_end_date")] public DateOnly? SubscriptionEndDate { get; set; }
-        [Column("subscription_status_id")] public int? SubscriptionStatusId { get; set; }
-
         [Column("school_status_id")] public int? SchoolStatusId { get; set; }
 
         [Column("created_at")] public DateTime CreatedAt { get; set; }
