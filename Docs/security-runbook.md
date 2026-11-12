@@ -44,7 +44,7 @@ DROP TABLE tb_refresh_tokens_revoked_20261106;   -- when you no longer need the 
 
 Passwords are BCrypt hashes. `tb_users.is_first_login = true` makes the API answer 403 "Password change required" to everything except changing the password, until the user sets a new one (checked on every request, so it also stops sessions already open). The change needs the *current* password, so it does **not** help against someone who already knows the old password: they could change it first.
 
-There is **no** "reset password" or "forgot password" feature in the app today, and Super Admin has no endpoint to reset a school login. The only way to set a new password for an existing login is SQL.
+Since 2026-11 an admin can reset a password in the app (no SQL needed): `POST /api/PasswordReset { loginId, reason }`, from the Reset Password action on the employee profile, the student profile and the Super Admin school list. A Super Admin resets a School Admin; a School Admin resets any other login of their own school (never a Super Admin, never their own). It sets a random temporary password (shown once), forces a password change at the next sign-in, ends all of that person's sessions, clears their sign-in throttle (section 2a) and writes one row to `tb_password_reset_audit` (who, whom, when, why; never the password). There is still **no** self-service "forgot password" (almost no login has an email on file), and nobody can reset a Super Admin's password in the app, so for those the SQL below is the way.
 
 Make a new temporary password hash (tested against the app's login; `pip install bcrypt` once):
 
@@ -70,6 +70,21 @@ UPDATE tb_users SET is_first_login = true WHERE school_id = '<school id>';
 Which logins exist (real database, counts only): Super Admin SUAD01 (1); Akshay Public School: School Admin 1, Employee 1, Student 1; Little Angels School: School Admin 1, Employee 24, Student 39; Green Hills School: School Admin 1, Employee 24, Student 39. The Little Angels and Green Hills logins are the invented demo schools: their School Admin password (`Admin@Demo26`) is in `scripts/demo-seed/seed_setup.py` and the temporary passwords of their staff and students were in `Docs/demo-credentials.txt`, both public, so treat all of those logins as known to anyone. If the demo schools are not meant to be reachable from outside, nothing more is needed; if they are, reset the School Admin logins or deactivate the schools.
 
 Schools that appear in the dumps in the history (names only): Akshay Public School, ABC Public School, First Test School, GSSS Bhojnagar, Test School, ZZ Role Test School, ZZ Test School (renamed), plus the platform's own "SMSS Admin" record. The dumps hold their users' password hashes, and (where the dump has them) students, guardians and employees. Decide who must be told; only Akshay Public School exists in the current database.
+
+## 2a. Sign-in throttling and the client address
+
+`POST /api/Auth/login` counts FAILED sign-ins in a sliding window (appsettings `LoginThrottle`, defaults: 5 per login id and 30 per client address in 15 minutes). Over the limit the API answers 429 with a `Retry-After` header, the same for an id that exists and one that does not; nothing is locked for good. A right password resets that id's count, and an admin password reset clears it.
+
+**Where the client address comes from** (verified against the code, `Program.cs` and `AuthController`): the throttle uses `HttpContext.Connection.RemoteIpAddress`, read AFTER `app.UseForwardedHeaders()` (which runs first in the pipeline, before authentication and the controllers). So:
+
+- **Kestrel exposed directly** (no proxy): the address is the TCP peer. `X-Forwarded-For` is ignored for any caller that is not loopback, so a client cannot choose its own address.
+- **Behind a reverse proxy / load balancer**: `X-Forwarded-For` and `-Proto` are trusted ONLY when the request comes from an address in `ForwardedHeaders:KnownProxies` (IPs) or `ForwardedHeaders:KnownNetworks` (CIDR ranges); `ForwardLimit` (default 1) is how many hops are read. **Both lists are empty by default.** If you deploy behind a proxy and do not list it, every visitor looks like the proxy's address, they all share ONE per-address bucket, and 30 failed sign-ins from anyone throttle sign-in for everybody for 15 minutes. List the proxy before going live, then check with two different clients that they are counted separately.
+- IPv6 clients are grouped by their /64 (one subscriber normally gets a whole /64); an IPv4-mapped IPv6 address counts as its IPv4 address.
+- The per-login-id limit does not depend on the address at all, so it works even when the address cannot be told apart.
+
+**State is in memory**: it is lost when the API restarts (a restart clears every throttle) and each API instance counts on its own, so with N instances behind a load balancer the effective limits are up to N times higher. If you ever run more than one instance, move the counters to a shared store.
+
+To check it on a test system: sign in with a wrong password six times; the sixth answer is 429 with `Retry-After: 900`. The same public enquiry form limit (`RateLimiting:PublicEnquiries`) uses the same address rule.
 
 ## 3. Rewriting the git history
 
