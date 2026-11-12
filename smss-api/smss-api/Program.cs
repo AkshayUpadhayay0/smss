@@ -128,6 +128,8 @@ builder.Services.AddScoped<ISchoolDashboardService, SchoolDashboardService>();
 builder.Services.AddScoped<IPrincipalDashboardService, PrincipalDashboardService>();
 builder.Services.AddScoped<IAccountantDashboardRepository, AccountantDashboardRepository>();
 builder.Services.AddScoped<IAccountantDashboardService, AccountantDashboardService>();
+builder.Services.AddScoped<IAdmissionDashboardRepository, AdmissionDashboardRepository>();
+builder.Services.AddScoped<IAdmissionDashboardService, AdmissionDashboardService>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IClassTeacherRepository, ClassTeacherRepository>();

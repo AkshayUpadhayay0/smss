@@ -1,0 +1,88 @@
+<app-page-header title="Dashboard" subtitle="Admission applications at a glance" icon="layout-dashboard" [breadcrumbs]="breadcrumbs">
+  <a routerLink="/admissions" class="header-link" data-link="admissions">Open Admissions</a>
+</app-page-header>
+
+@if (loading() && !data()) {
+  <app-card><p class="muted center" role="status">Loading your dashboard…</p></app-card>
+} @else if (loadFailed() || !data()) {
+  <app-card>
+    <div class="state" role="alert"><p>Your dashboard could not be loaded.</p><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  </app-card>
+} @else {
+  @let d = data()!;
+
+  <!-- ============================================================ headline numbers -->
+  <section class="cards" [class.loading]="loading()" aria-label="Headline numbers">
+    @for (c of cards(); track c.id) {
+      <a class="stat" [class]="c.tone" [class.unavailable]="c.unavailable" [routerLink]="c.link" [attr.data-card]="c.id">
+        <span class="label">{{ c.label }}</span>
+        <strong>{{ c.value }}</strong>
+        <span class="foot"><small>{{ c.note }}</small></span>
+      </a>
+    }
+  </section>
+
+  <div class="grid halves">
+    <!-- ============================================================ applications by status -->
+    <app-card title="Applications by status">
+      @if (applicationsDown()) {
+        <p class="muted">This could not be loaded.</p>
+      } @else if (d.totalApplications === 0) {
+        <p class="muted" data-empty="applications">No admission applications yet.</p>
+      } @else {
+        <ul class="list" aria-label="Applications by status">
+          @for (s of d.byStatus; track s.statusName) {
+            <li [attr.data-status]="s.statusName">
+              <span class="body"><span class="pill" [class]="statusTone(s.statusName)">{{ statusLabel(s.statusName) }}</span></span>
+              <strong>{{ s.count }}</strong>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    <!-- ============================================================ missing documents -->
+    <app-card>
+      <div class="panel-head"><h3>Missing documents</h3><a routerLink="/admissions">View all</a></div>
+      @if (documentsDown()) {
+        <p class="muted">This could not be loaded.</p>
+      } @else if (d.missingDocuments.length === 0) {
+        <p class="muted" data-empty="documents">Every open application has its required documents.</p>
+      } @else {
+        <ul class="list" aria-label="Applications missing documents">
+          @for (m of d.missingDocuments; track m.admissionId) {
+            <li>
+              <a class="body" [routerLink]="['/admissions', m.admissionId]">
+                <strong>{{ m.applicantFullName }}</strong>
+                <small>{{ m.applicationNumber }} · missing {{ m.missingDocuments.join(', ') }}</small>
+              </a>
+              <span class="pill" [class]="statusTone(m.statusName)">{{ statusLabel(m.statusName) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+  </div>
+
+  <!-- ============================================================ last 10 applications -->
+  <app-card>
+    <div class="panel-head"><h3>Last 10 applications</h3><a routerLink="/admissions">View all</a></div>
+    @if (applicationsDown()) {
+      <p class="muted">This could not be loaded.</p>
+    } @else if (d.recentApplications.length === 0) {
+      <p class="muted" data-empty="recent">No admission applications yet.</p>
+    } @else {
+      <ul class="list" aria-label="Latest admission applications">
+        @for (a of d.recentApplications; track a.admissionId) {
+          <li>
+            <a class="body" [routerLink]="['/admissions', a.admissionId]">
+              <strong>{{ a.applicantFullName }}</strong>
+              <small>{{ a.applicationNumber }}@if (a.appliedClassName) { · {{ a.appliedClassName }} } · {{ date(a.applicationDate) }}</small>
+            </a>
+            <span class="pill" [class]="statusTone(a.statusName)">{{ statusLabel(a.statusName) }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </app-card>
+}

@@ -85,7 +85,22 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it.each([['Admission Staff']])('leaves %s on the existing placeholder and calls nothing', (role) => {
+  it('gives Admission Staff their own dashboard (one AdmissionDashboard request, no placeholder)', () => {
+    const { fixture, http } = open(['Admission Staff']);
+    http.expectOne(`${environment.apiUrl}/api/AdmissionDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-admission-dashboard')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
+    http.verify();
+  });
+
+  it('keeps the Principal dashboard for an account that is both a Principal and Admission Staff', () => {
+    const { fixture, http } = open(['Principal', 'Admission Staff']);
+    http.expectOne(`${environment.apiUrl}/api/PrincipalDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-admission-dashboard')).toBeNull();
+    http.verify();
+  });
+
+  it.each([['Guardian']])('leaves %s on the existing placeholder and calls nothing', (role) => {
     const { fixture, http } = open([role]);
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();

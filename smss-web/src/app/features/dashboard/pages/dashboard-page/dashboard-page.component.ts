@@ -4,6 +4,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { Breadcrumb, IconName } from '../../../../shared/components';
 import { PlaceholderPageComponent } from '../../../placeholder/placeholder-page.component';
 import { AccountantDashboardComponent } from '../accountant-dashboard/accountant-dashboard.component';
+import { AdmissionDashboardComponent } from '../admission-dashboard/admission-dashboard.component';
 import { PrincipalDashboardComponent } from '../principal-dashboard/principal-dashboard.component';
 import { SchoolDashboardComponent } from '../school-dashboard/school-dashboard.component';
 import { SuperAdminDashboardComponent } from '../super-admin-dashboard/super-admin-dashboard.component';
@@ -11,12 +12,12 @@ import { StudentDashboardComponent } from '../student-dashboard/student-dashboar
 import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboard.component';
 
 /**
- * /dashboard for every role. A Student, a Teacher, the Super Admin and a School Admin get their own dashboard; every other role still sees the "coming soon"
- * placeholder (fed from the same route data as before) until its own dashboard is built.
+ * /dashboard for every role. A Student, a Teacher, the Super Admin, a School Admin, a Principal, an Accountant and Admission Staff get their own dashboard; every other role
+ * (a Guardian) still sees the "coming soon" placeholder (fed from the same route data as before) until its own dashboard is built.
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [AccountantDashboardComponent, PlaceholderPageComponent, PrincipalDashboardComponent, SchoolDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
+  imports: [AccountantDashboardComponent, AdmissionDashboardComponent, PlaceholderPageComponent, PrincipalDashboardComponent, SchoolDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isStudent()) {
@@ -31,6 +32,8 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
       <app-principal-dashboard />
     } @else if (isAccountant()) {
       <app-accountant-dashboard />
+    } @else if (isAdmissionStaff()) {
+      <app-admission-dashboard />
     } @else {
       <app-placeholder-page [title]="title()" [subtitle]="subtitle()" [icon]="icon()" [breadcrumbs]="breadcrumbs()" />
     }
@@ -54,4 +57,5 @@ export class DashboardPageComponent {
   // the role dashboards below come last for the same reason: an account that also holds one of the roles above keeps that dashboard
   protected readonly isPrincipal = computed(() => this.auth.currentUserRoles().includes(ROLES.PRINCIPAL));
   protected readonly isAccountant = computed(() => this.auth.currentUserRoles().includes(ROLES.ACCOUNTANT));
+  protected readonly isAdmissionStaff = computed(() => this.auth.currentUserRoles().includes(ROLES.ADMISSION_STAFF));
 }
