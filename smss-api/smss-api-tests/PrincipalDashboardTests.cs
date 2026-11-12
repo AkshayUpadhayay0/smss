@@ -17,7 +17,7 @@ namespace smss_api_tests
             Dictionary<string, object?>? leave = null, Dictionary<string, object?>? admissions = null, Dictionary<string, object?>? results = null, Dictionary<string, object?>? events = null,
             Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = smss_api_service_layer.helper.SchoolClock.Today();
             return new PrincipalDashboardService(
                 Fake.Of<IAttendanceService>(attendance ?? new() { ["GetMySectionsAsync"] = Fake.Ok(new MySectionsDto { AcademicYearId = 1, AcademicYearName = "2026-27", Sections = new() { new() { RosterCount = 30 }, new() { RosterCount = 25 } } }) }),
                 Fake.Of<IFeeReportService>(fees ?? new() { ["GetDashboardAsync"] = Fake.Ok(new FeeDashboardDto { TotalDue = 100000m, TotalCollected = 60000m, TotalOutstanding = 40000m }) }),
