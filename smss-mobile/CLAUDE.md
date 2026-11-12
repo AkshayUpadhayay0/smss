@@ -74,6 +74,7 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
   (`FirstLoginEnforcementMiddleware`): every authenticated call except `change-password`, `me`, `refresh` and `logout` answers 403
   "Password change required…". `errors.ts` maps that exact message to `password_change_required` (not a generic error) and the session flips to
   the locked state. `POST /api/Auth/change-password` returns a FRESH token pair with `isFirstLogin=false`: store it, no re-login needed.
+- **Sign-out navigates to `app/signing-out.tsx` first**, then ends the session (150 ms later). Removing a whole signed-in route group under the user made expo-router loop ("Maximum update depth exceeded"); found only on a real device with live data. Do not put nested `Stack.Protected` guards inside `(auth)`: reachability is decided by the root layout guards + `app/index.tsx`.
 - Route protection is client-side only to decide what to SHOW (`Stack.Protected` guards in `app/_layout.tsx`, fail-closed). The server is the authority.
 
 ## Roles

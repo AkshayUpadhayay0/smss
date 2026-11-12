@@ -42,6 +42,7 @@ function RootStack() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="signing-out" />
       <Stack.Protected guard={signedOut || needsPasswordChange}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>

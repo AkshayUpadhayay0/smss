@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
@@ -30,10 +31,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const endLocally = useCallback(() => {
-    queryClient.clear(); // never let the next user see the previous user's cached data
-    clearAttachmentCache(); // ...or the previous user's downloaded files
+    // Leave the signed-in screens FIRST. Clearing the query cache while their useQuery observers are still mounted makes them resubscribe and
+    // refetch in a loop ("Maximum update depth exceeded", found on the emulator when signing out from a data screen). So: stop the queries,
+    // flip the state (the route guards unmount the screens), and only then drop the cached data / downloaded files.
+    void queryClient.cancelQueries();
     setUser(null);
     setStatus('signedOut');
+    setTimeout(() => {
+      queryClient.clear(); // never let the next user see the previous user's cached data
+      clearAttachmentCache(); // ...or the previous user's downloaded files
+    }, 300);
   }, [queryClient]);
 
   // Wire the HTTP layer's events into React state, then restore the stored session.
@@ -84,6 +91,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Move to the neutral screen first (see app/signing-out.tsx), give the navigator a moment, then end the session.
+    try {
+      router.replace('/signing-out');
+    } catch {
+      // navigation not ready: ending the session below still works
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
     try {
       const refreshToken = await api.refreshToken();
       if (refreshToken) {
