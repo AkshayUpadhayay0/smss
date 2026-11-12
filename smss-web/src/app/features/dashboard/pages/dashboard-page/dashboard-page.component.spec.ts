@@ -61,7 +61,23 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it.each([['Principal'], ['Accountant']])('leaves %s on the existing placeholder and calls nothing', (role) => {
+  it('gives the Principal their own dashboard (one PrincipalDashboard request, no placeholder)', () => {
+    const { fixture, http } = open(['Principal']);
+    http.expectOne(`${environment.apiUrl}/api/PrincipalDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-principal-dashboard')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-school-dashboard')).toBeNull();
+    http.verify();
+  });
+
+  it('keeps the School Admin dashboard for an account that is both a School Admin and a Principal', () => {
+    const { fixture, http } = open(['School Admin', 'Principal']);
+    http.expectOne(`${environment.apiUrl}/api/SchoolDashboard/summary`);
+    expect(fixture.nativeElement.querySelector('app-principal-dashboard')).toBeNull();
+    http.verify();
+  });
+
+  it.each([['Accountant']])('leaves %s on the existing placeholder and calls nothing', (role) => {
     const { fixture, http } = open([role]);
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();

@@ -125,6 +125,7 @@ builder.Services.AddScoped<ITeacherDashboardRepository, TeacherDashboardReposito
 builder.Services.AddScoped<ITeacherDashboardService, TeacherDashboardService>();
 builder.Services.AddScoped<ISchoolDashboardRepository, SchoolDashboardRepository>();
 builder.Services.AddScoped<ISchoolDashboardService, SchoolDashboardService>();
+builder.Services.AddScoped<IPrincipalDashboardService, PrincipalDashboardService>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IClassTeacherRepository, ClassTeacherRepository>();
