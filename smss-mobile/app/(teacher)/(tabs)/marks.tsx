@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { TeacherMarks } from '../../../src/features/teacher/MarksTab';
 
 export default function MarksTab() {
-  return <PlaceholderScreen title="Marks" />;
+  return <TeacherMarks />;
 }

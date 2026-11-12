@@ -79,6 +79,9 @@ export function StudentHome() {
                     <Text variant="heading">Attendance</Text>
                     <Icon name="chevron-right" size={20} color={colors.muted} />
                   </View>
+                  <Text variant="label" color={colors.muted}>
+                    Academic year to date
+                  </Text>
                   <Text variant="display" color={colors.primaryText}>
                     {d.attendance.presentPercentage === null ? '—' : `${d.attendance.presentPercentage}%`}
                   </Text>
@@ -86,7 +89,7 @@ export function StudentHome() {
                     style={styles.track}
                     accessible
                     accessibilityRole="progressbar"
-                    accessibilityLabel={`Attendance ${d.attendance.presentPercentage ?? 0} percent`}
+                    accessibilityLabel={`Attendance for the academic year to date, ${d.attendance.presentPercentage ?? 0} percent`}
                   >
                     <View style={[styles.fill, { width: `${Math.max(0, Math.min(100, d.attendance.presentPercentage ?? 0))}%` }]} />
                   </View>
@@ -97,7 +100,6 @@ export function StudentHome() {
                     <Text variant="label" color={colors.danger}>
                       Absent {d.attendance.absentCount}
                     </Text>
-                    <Text variant="small">This academic year</Text>
                   </View>
                 </Card>
               </Pressable>

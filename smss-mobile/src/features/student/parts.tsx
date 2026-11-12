@@ -8,11 +8,11 @@ import { diffDays, formatShort } from '../../lib/dates';
 import { openHomeworkAttachment } from '../../lib/attachments';
 import { colors, MIN_TOUCH, radii } from '../../theme/tokens';
 
-/** "Due tomorrow" is the one warning (per the design); every other date is neutral. `today` is the SERVER's date. */
+/** "Due today" and "Due tomorrow" are the warnings; every other date (including overdue items in the Past list) is neutral. `today` is the SERVER's date. */
 export function DueChip({ dueDate, today }: { dueDate: string; today: string }) {
   const diff = diffDays(dueDate, today);
   if (diff === 1) return <Chip label="Due tomorrow" tone="warning" icon="clock" />;
-  if (diff === 0) return <Chip label="Due today" tone="neutral" icon="clock" />;
+  if (diff === 0) return <Chip label="Due today" tone="warning" icon="clock" />;
   return <Chip label={`Due ${formatShort(dueDate)}`} tone="neutral" icon="calendar" />;
 }
 

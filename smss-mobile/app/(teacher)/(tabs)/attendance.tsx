@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { TeacherAttendanceTab } from '../../../src/features/teacher/AttendanceTab';
 
 export default function AttendanceTab() {
-  return <PlaceholderScreen title="Attendance" />;
+  return <TeacherAttendanceTab />;
 }

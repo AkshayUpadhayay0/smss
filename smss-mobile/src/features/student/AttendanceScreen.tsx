@@ -123,10 +123,13 @@ export function AttendanceScreen() {
               </Pressable>
             </View>
 
+            <Text variant="small" style={{ marginBottom: -4 }}>
+              {formatMonthYear(shown.year, shown.month)} only. The Home screen shows the whole academic year.
+            </Text>
             <View style={styles.tiles}>
               <Tile label="Present" value={String(present)} tone="success" />
               <Tile label="Absent" value={String(absent)} tone="danger" />
-              <Tile label="Rate" value={rate === null || rate === undefined ? '—' : `${rate}%`} tone="primary" />
+              <Tile label="Month rate" value={rate === null || rate === undefined ? '—' : `${rate}%`} tone="primary" />
             </View>
 
             <Card style={{ gap: 8 }}>

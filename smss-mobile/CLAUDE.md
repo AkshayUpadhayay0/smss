@@ -95,7 +95,11 @@ Render real API data only; a screen that has fewer fields than a design shows fe
 ## Security
 - Never log tokens, passwords, or response bodies. No secrets in the repo (`.env` is gitignored).
 - Attachments (Phase 2/3): authenticated download to the cache directory with `expo-file-system`, then open with `expo-sharing`. No plain URLs.
-  Uploads: PDF/PNG/JPG/JPEG/WEBP, ≤ 5 MB (validate client-side too; the server re-checks the signature).
+  Uploads: PDF/PNG/JPG/JPEG/WEBP, ≤ 5 MB (validated client-side too; the server re-checks the signature).
+  **Multipart uploads go through `XMLHttpRequest` (`sendMultipart` in `src/api/client.ts`) with React Native's `{ uri, name, type }` FormData part.**
+  Do NOT switch to fetch: Expo's fetch throws "Unsupported FormDataPart implementation" for that part, and `expo-file-system`'s `File` cannot read the
+  document picker's copy inside Expo Go ("Missing READ permission"). Found on the emulator; unit tests cannot catch it. Homework is two calls
+  (create, then attachment); a failed attachment keeps the homework and offers retry / continue without.
 - Initials avatars only in v1: student/employee photos are private (`/api/Student/{id}/photo`), not loaded.
 
 ## Status
@@ -103,5 +107,8 @@ Render real API data only; a screen that has fewer fields than a design shows fe
 - Phase 2 (student screens 3-8 + the shared profile sheet): built. Student API calls live in `src/api/student.ts`, hooks in `src/features/student/queries.ts`.
   "Today" always comes from the dashboard's server date (`useServerToday`), never the phone clock. Notices are marked read by `GET /api/Notice/{id}` only.
   Attachments: `src/lib/attachments.ts` (authenticated download to the cache folder, then the share sheet; the folder is purged on sign-out).
-- Phase 3 (teacher screens 9-13): not started. The Teacher Home is a shell with the avatar/profile sheet.
+- Phase 3 (teacher screens 9-13): built. API in `src/api/teacher.ts`, hooks in `src/features/teacher/queries.ts`, pure rules in `rules.ts` / `derive.ts` (unit-tested).
+  Section / subject pickers and "my periods today" come from the teacher's own `/Timetable/my`; the server re-checks what a teacher may do. A tile the server
+  lists in `partsUnavailable` is hidden, never shown as 0. Forms that are seeded from the server (attendance roster, marks roster) do not refetch silently
+  under unsaved input (explicit pull-to-refresh only). Student leave is fetched WITHOUT a status filter and split into Pending / Decided client-side.
 - The profile sheet (`src/components/ProfileSheet.tsx`, opened from the avatar in `HomeHeader`) is where Sign out lives. A Change password entry is deliberately not there yet.

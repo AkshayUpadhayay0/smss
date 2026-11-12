@@ -34,12 +34,15 @@ export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   query?: Record<string, string | number | boolean | undefined | null>;
   body?: unknown;
+  /** A multipart upload (a file). Sent as-is: fetch sets the multipart boundary itself, so no JSON content type. */
+  formData?: FormData;
   /** false for anonymous calls (login, refresh, logout). Default true. */
   auth?: boolean;
   signal?: AbortSignal;
 }
 
 const REFRESH_PATH = '/api/Auth/refresh';
+const UPLOAD_TIMEOUT_MS = 60_000; // a 5 MB file on a slow connection
 const EXPIRED = 'Your session has expired. Please sign in again.';
 
 function toQuery(query: RequestOptions['query']): string {
@@ -94,25 +97,46 @@ export function createApiClient(deps: ClientDeps) {
     if (notify) handlers.onSessionExpired?.();
   }
 
+  /**
+   * Multipart uploads go through React Native's XMLHttpRequest, not fetch: RN's FormData file part ({ uri, name, type }) is read natively by
+   * XHR, whereas Expo's fetch rejects it ("Unsupported FormDataPart implementation") and expo-file-system cannot read the document picker's
+   * copy inside Expo Go. The result is wrapped in a Response so the rest of the client treats it like any other call.
+   */
+  function sendMultipart(url: string, headers: Record<string, string>, form: FormData, signal?: AbortSignal): Promise<Response> {
+    return new Promise<Response>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+      xhr.timeout = UPLOAD_TIMEOUT_MS;
+      xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
+      xhr.onerror = () => reject(new Error('upload failed'));
+      xhr.ontimeout = () => reject(new Error('upload timed out'));
+      xhr.onabort = () => reject(new Error('upload aborted'));
+      signal?.addEventListener('abort', () => xhr.abort());
+      xhr.send(form);
+    });
+  }
+
   async function send(path: string, opts: RequestOptions, accessToken: string | null): Promise<Response> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = opts.formData ? null : setTimeout(() => controller.abort(), timeoutMs);
     const onAbort = () => controller.abort();
     opts.signal?.addEventListener('abort', onAbort);
     try {
       const headers: Record<string, string> = { Accept: 'application/json' };
-      if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+      if (opts.body !== undefined && !opts.formData) headers['Content-Type'] = 'application/json';
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+      if (opts.formData) return await sendMultipart(`${deps.baseUrl()}${path}${toQuery(opts.query)}`, headers, opts.formData, controller.signal);
       return await fetchFn(`${deps.baseUrl()}${path}${toQuery(opts.query)}`, {
         method: opts.method ?? 'GET',
         headers,
-        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        body: opts.formData ?? (opts.body === undefined ? undefined : JSON.stringify(opts.body)),
         signal: controller.signal,
       });
     } catch {
       throw new ApiError('network', NETWORK_MESSAGE);
     } finally {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       opts.signal?.removeEventListener('abort', onAbort);
     }
   }

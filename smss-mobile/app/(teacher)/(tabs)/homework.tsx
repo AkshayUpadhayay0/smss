@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../../src/features/shell/PlaceholderScreen';
+import { TeacherHomework } from '../../../src/features/teacher/HomeworkTab';
 
 export default function HomeworkTab() {
-  return <PlaceholderScreen title="Homework" />;
+  return <TeacherHomework />;
 }

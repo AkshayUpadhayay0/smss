@@ -9,9 +9,13 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   error?: string | null;
   /** Adds the show/hide toggle and hides the text. */
   password?: boolean;
+  /** Shows "n / maxLength" under the field (use with maxLength). */
+  showCount?: boolean;
+  /** Helper text under the field (replaced by the error when there is one). */
+  hint?: string;
 }
 
-export function Input({ label, error, password, ...rest }: InputProps) {
+export function Input({ label, error, password, showCount, hint, ...rest }: InputProps) {
   const [hidden, setHidden] = useState(true);
   const [focused, setFocused] = useState(false);
   return (
@@ -31,7 +35,7 @@ export function Input({ label, error, password, ...rest }: InputProps) {
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          style={styles.input}
+          style={[styles.input, rest.multiline && styles.multiline]}
         />
         {password ? (
           <Pressable
@@ -49,6 +53,13 @@ export function Input({ label, error, password, ...rest }: InputProps) {
         <Text variant="small" color={colors.danger} accessibilityLiveRegion="polite">
           {error}
         </Text>
+      ) : hint ? (
+        <Text variant="small">{hint}</Text>
+      ) : null}
+      {showCount && rest.maxLength ? (
+        <Text variant="small" style={{ textAlign: 'right' }}>
+          {(rest.value ?? '').length} / {rest.maxLength}
+        </Text>
       ) : null}
     </View>
   );
@@ -60,5 +71,6 @@ const styles = StyleSheet.create({
   focused: { borderColor: colors.primary },
   errored: { borderColor: colors.danger },
   input: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 16, color: colors.ink },
+  multiline: { minHeight: 96, textAlignVertical: 'top' },
   toggle: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
 });
