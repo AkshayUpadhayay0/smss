@@ -115,9 +115,6 @@ export class MasterDataService {
   getGeneralStatusOptions(): Observable<SelectOption[]> {
     return this.getStatusesByType('general status').pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));
   }
-  getSubscriptionStatusOptions(): Observable<SelectOption[]> {
-    return this.getStatusesByType('school plan status').pipe(map((l) => l.map((s) => ({ label: s.sname, value: s.sid.toString() }))));
-  }
 
   private label(name: string, isActive: boolean): string {
     return isActive ? name : `${name} (Inactive)`;

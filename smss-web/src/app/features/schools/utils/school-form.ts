@@ -5,11 +5,9 @@ import {
   PAN_RE,
   PINCODE_RE,
   UDISE_RE,
-  endDateValidator,
   establishYearValidator,
   mobileValidator,
   pattern,
-  positiveIntValidator,
   requiredTrimmed,
   primaryContactValidator,
   urlValidator,
@@ -62,11 +60,6 @@ export function createSchoolForm() {
     mobileNumber: new FormControl('', { nonNullable: true, validators: [mobileValidator] }),
     website: new FormControl('', { nonNullable: true, validators: [urlValidator, Validators.maxLength(200)] }),
 
-    subscriptionPlanId: new FormControl('', { nonNullable: true, validators: [positiveIntValidator] }),
-    subscriptionStartDate: new FormControl('', { nonNullable: true }),
-    subscriptionEndDate: new FormControl('', { nonNullable: true, validators: [endDateValidator] }),
-    subscriptionStatusId: new FormControl('', { nonNullable: true }),
-
     contacts: new FormArray<ContactGroup>([], { validators: [primaryContactValidator] }),
   });
 }
@@ -98,10 +91,6 @@ export function schoolToFormValue(s: SchoolsListModel) {
     email: toText(s.email),
     mobileNumber: toText(s.mobileNumber),
     website: toText(s.website),
-    subscriptionPlanId: toText(s.subscriptionPlanId),
-    subscriptionStartDate: toText(s.subscriptionStartDate)?.slice(0, 10),
-    subscriptionEndDate: toText(s.subscriptionEndDate)?.slice(0, 10),
-    subscriptionStatusId: toText(s.subscriptionStatusId),
   };
 }
 
@@ -139,10 +128,6 @@ function toBase(v: FormValue): SchoolBase {
     email: str(v.email),
     mobileNumber: str(v.mobileNumber),
     website: str(v.website),
-    subscriptionPlanId: num(v.subscriptionPlanId),
-    subscriptionStartDate: str(v.subscriptionStartDate),
-    subscriptionEndDate: str(v.subscriptionEndDate),
-    subscriptionStatusId: num(v.subscriptionStatusId),
   };
 }
 

@@ -149,9 +149,9 @@ Build these as the foundation BEFORE any feature screens:
   `^[A-Za-z0-9_-]+$` for the code and 'exactly one primary IF contacts exist', so these two rules live in the UI only.
 - `MasterDataService` rebuilt (`core/services/`) on `ApiService`; failed lookups are not cached.
 - API facts learned: SchoolRegistration controller is `[Authorize]` (JWT needed — login not built yet);
-  update never deletes contacts (so saved contacts can't be removed in the UI); update OVERWRITES
-  `subscriptionStatusId`, so it is part of the form even though the original spec omitted it; there is no
-  subscription-plan lookup endpoint (plan ID is a plain number input).
+  update never deletes contacts (so saved contacts can't be removed in the UI). The legacy
+  subscription block (plan id / status / start / end on tb_schools) was REMOVED from the Register/Edit School form and from the
+  request/response DTOs; subscriptions live only in tb_school_subscriptions. The old tb_schools columns still exist, unused.
 - All School and Master Data API calls were verified live with curl (not clicked through in a browser yet).
   Test records left in the DB (inactive): school ZZ-TEST-001 (+ its login user), ZZTEST board type / school type /
   school level / role, and two "ZZ Test Status" rows.

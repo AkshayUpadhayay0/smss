@@ -298,7 +298,7 @@ describe('SchoolFormComponent', () => {
       expect(selected).toEqual(expect.arrayContaining(['India', 'Delhi', 'New Delhi', 'Connaught Place']));
     });
 
-    it('shows the school code read-only and sends an update without schoolCode, keeping contact ids and subscription status', () => {
+    it('shows the school code read-only and sends an update without schoolCode, keeping contact ids', () => {
       loadEdit();
       flushLookups(http);
       fixture.detectChanges();
@@ -311,7 +311,9 @@ describe('SchoolFormComponent', () => {
       expect(req.request.body).not.toHaveProperty('schoolCode');
       expect(req.request.body.schoolName).toBe('Green Valley 2');
       expect(req.request.body.email).toBeNull();
-      expect(req.request.body.subscriptionStatusId).toBe(7);
+      for (const k of ['subscriptionPlanId', 'subscriptionStartDate', 'subscriptionEndDate', 'subscriptionStatusId']) {
+        expect(req.request.body).not.toHaveProperty(k);
+      }
       expect(req.request.body.contacts[0]).toMatchObject({ contactId: 11, isPrimary: true });
       req.flush(envelope(makeSchool({ schoolName: 'Green Valley 2' })));
     });

@@ -81,7 +81,6 @@ export class SchoolFormComponent implements OnInit {
   protected readonly schoolTypeOptions = toSignal(this.safe(this.master.getSchoolTypeOptions()), { initialValue: [] });
   protected readonly schoolLevelOptions = toSignal(this.safe(this.master.getSchoolLevelOptions()), { initialValue: [] });
   protected readonly boardTypeOptions = toSignal(this.safe(this.master.getBoardTypeOptions()), { initialValue: [] });
-  protected readonly subscriptionStatusOptions = toSignal(this.safe(this.master.getSubscriptionStatusOptions()), { initialValue: [] });
   protected readonly countryOptions = toSignal(this.safe(this.master.getCountryOptions()), { initialValue: [] });
   protected readonly stateOptions = signal<SelectOption[]>([]);
   protected readonly districtOptions = signal<SelectOption[]>([]);
@@ -89,7 +88,6 @@ export class SchoolFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.setupLocationCascade();
-    this.setupDateRevalidation();
     this.setChildrenEnabled({ state: false, district: false, city: false });
 
     if (this.isAdd()) {
@@ -225,12 +223,6 @@ export class SchoolFormComponent implements OnInit {
     apply(c.stateId, enabled.state);
     apply(c.districtId, enabled.district);
     apply(c.cityId, enabled.city);
-  }
-
-  private setupDateRevalidation(): void {
-    this.form.controls.subscriptionStartDate.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.form.controls.subscriptionEndDate.updateValueAndValidity());
   }
 
   // ── Contacts ────────────────────────────────────────────────────────

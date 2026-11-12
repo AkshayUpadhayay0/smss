@@ -70,15 +70,6 @@
       </div>
     </app-card>
 
-    <app-card title="Subscription">
-      <div class="grid">
-        <app-input label="Subscription plan ID" type="number" placeholder="Optional" formControlName="subscriptionPlanId" [errorText]="err('subscriptionPlanId')" />
-        <app-select label="Subscription status" [options]="subscriptionStatusOptions()" formControlName="subscriptionStatusId" />
-        <app-input label="Start date" type="date" formControlName="subscriptionStartDate" />
-        <app-input label="End date" type="date" formControlName="subscriptionEndDate" [errorText]="err('subscriptionEndDate')" />
-      </div>
-    </app-card>
-
     <app-card title="School Contacts">
       <p class="hint required-note">A primary contact is required: add at least one contact and mark exactly one as primary. Every contact needs a name, email and mobile number.</p>
       @if (contacts.length === 0) {

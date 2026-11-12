@@ -67,20 +67,14 @@ namespace smss_api_service_layer.dto
         [Url, StringLength(200)] public string? Website { get; set; }
         //public string? LogoUrl { get; set; }
 
-        public long? SubscriptionPlanId { get; set; }
-        public DateOnly? SubscriptionStartDate { get; set; }
-        public DateOnly? SubscriptionEndDate { get; set; }
-        public int? SubscriptionStatusId { get; set; }
+        // The legacy subscription_* fields are no longer part of this request: subscriptions live in
+        // tb_school_subscriptions. A client that still sends them has them ignored (unknown JSON members are skipped).
         public int? SchoolStatusId { get; set; }
 
         public virtual IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
             if (SchoolEstablishYear > DateTime.UtcNow.Year)
                 yield return new ValidationResult("Establish year cannot be in the future.", new[] { nameof(SchoolEstablishYear) });
-
-            if (SubscriptionStartDate.HasValue && SubscriptionEndDate.HasValue
-                && SubscriptionEndDate < SubscriptionStartDate)
-                yield return new ValidationResult("Subscription end date cannot be before start date.", new[] { nameof(SubscriptionEndDate) });
 
             // Geography: the DB uses composite foreign keys, so parents are required for children
             if (StateId.HasValue && !CountryId.HasValue)

@@ -38,18 +38,6 @@ export function establishYearValidator(c: AbstractControl): ValidationErrors | n
   return null;
 }
 
-export function positiveIntValidator(c: AbstractControl): ValidationErrors | null {
-  const v = String(c.value ?? '').trim();
-  return v === '' || /^[1-9][0-9]*$/.test(v) ? null : { int: 'Enter a whole number' };
-}
-
-/** Put on the end-date control; reads its sibling `subscriptionStartDate`. */
-export function endDateValidator(c: AbstractControl): ValidationErrors | null {
-  const end = String(c.value ?? '');
-  const start = String(c.parent?.get('subscriptionStartDate')?.value ?? '');
-  return end && start && end < start ? { range: 'End date cannot be before start date' } : null;
-}
-
 /** A primary contact is mandatory: at least one contact, and exactly one of them marked primary. */
 export function primaryContactValidator(array: AbstractControl): ValidationErrors | null {
   const rows = (array.value ?? []) as { isPrimary: boolean }[];

@@ -435,10 +435,6 @@ namespace smss_api_service_layer.service
             s.MobileNumber = Clean(r.MobileNumber);
             s.Website = Clean(r.Website);
             //s.LogoUrl = Clean(r.LogoUrl);
-            s.SubscriptionPlanId = r.SubscriptionPlanId;
-            s.SubscriptionStartDate = r.SubscriptionStartDate;
-            s.SubscriptionEndDate = r.SubscriptionEndDate;
-            s.SubscriptionStatusId = r.SubscriptionStatusId;
             s.UpdatedAt = now;
         }
 

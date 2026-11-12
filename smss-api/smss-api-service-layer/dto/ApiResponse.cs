@@ -51,10 +51,6 @@ namespace smss_api_service_layer.dto
         public string? MobileNumber { get; set; }
         public string? Website { get; set; }
         public string? LogoUrl { get; set; }
-        public long? SubscriptionPlanId { get; set; }
-        public DateOnly? SubscriptionStartDate { get; set; }
-        public DateOnly? SubscriptionEndDate { get; set; }
-        public int? SubscriptionStatusId { get; set; }
         public int? SchoolStatusId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

@@ -34,14 +34,6 @@ export interface SchoolBase {
   email?: string | null;
   mobileNumber?: string | null;
   website?: string | null;
-  subscriptionPlanId?: number | null;
-  subscriptionStartDate?: string | null; // yyyy-MM-dd
-  subscriptionEndDate?: string | null;
-  /**
-   * Not in the original spec, but the API has it on the request DTO and OVERWRITES it on every update,
-   * so omitting it from edits would wipe the stored value.
-   */
-  subscriptionStatusId?: number | null;
 }
 
 export interface CreateSchoolRequest extends SchoolBase {
@@ -54,10 +46,7 @@ export interface UpdateSchoolRequest extends SchoolBase {
 }
 
 /** A School Admin editing their own school: no subscription, status, code, logo or contacts. */
-export type UpdateMySchoolProfileRequest = Omit<
-  SchoolBase,
-  'subscriptionPlanId' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'subscriptionStatusId'
->;
+export type UpdateMySchoolProfileRequest = SchoolBase;
 
 export interface SchoolsListModel extends SchoolBase {
   schoolId: string; // e.g. "sch2026001"
