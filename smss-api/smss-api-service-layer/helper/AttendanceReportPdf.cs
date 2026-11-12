@@ -53,8 +53,8 @@ namespace smss_api_service_layer.helper
                         foreach (var d in r.Days)
                             h.Cell().Element(c => Head(c, !d.IsWorkingDay)).Column(x =>
                             {
-                                x.Item().AlignCenter().Text(d.Date.Day.ToString()).Bold().FontSize(6.5f);
-                                x.Item().AlignCenter().Text("MTWTFSS"[d.DayOfWeek - 1].ToString()).FontSize(5.5f).FontColor(Muted);
+                                x.Item().AlignCenter().Text(d.Date.Day.ToString()).Bold().FontSize(7);
+                                x.Item().AlignCenter().Text("MTWTFSS"[d.DayOfWeek - 1].ToString()).FontSize(7).FontColor(Muted);
                             });
                         h.Cell().Element(c => Head(c)).Text("Present").Bold();
                         h.Cell().Element(c => Head(c)).Text("Absent").Bold();
@@ -70,7 +70,7 @@ namespace smss_api_service_layer.helper
                             var mark = s.Marks[i];
                             var grey = !r.Days[i].IsWorkingDay || mark == AttendanceReportBuilder.NotEnrolled;
                             var text = mark switch { AttendanceReportBuilder.Present => "P", AttendanceReportBuilder.Absent => "A", AttendanceReportBuilder.NotMarked => r.Days[i].IsFuture ? "" : "-", _ => "" };
-                            var cell = t.Cell().Element(c => Cell(c, grey)).Text(text).FontSize(6.5f);
+                            var cell = t.Cell().Element(c => Cell(c, grey)).Text(text).FontSize(7);
                             if (mark == AttendanceReportBuilder.Absent) cell.Bold().FontColor(Red);
                         }
                         t.Cell().Element(c => Cell(c)).Text(s.PresentDays.ToString());
@@ -83,8 +83,8 @@ namespace smss_api_service_layer.helper
                 page.Footer().Row(row =>
                 {
                     row.RelativeItem().Text("P present   A absent   - not marked   grey = Sunday, holiday or not yet enrolled   % = present / (present + absent) over marked working days; red = below " + r.Summary.ThresholdPercentage.ToString("0") + "%")
-                        .FontSize(6).FontColor(Muted);
-                    row.AutoItem().Text(x => { x.Span("Page ").FontSize(6.5f); x.CurrentPageNumber().FontSize(6.5f); x.Span(" of ").FontSize(6.5f); x.TotalPages().FontSize(6.5f); });
+                        .FontSize(7).FontColor(Muted);
+                    row.AutoItem().Text(x => { x.Span("Page ").FontSize(7); x.CurrentPageNumber().FontSize(7); x.Span(" of ").FontSize(7); x.TotalPages().FontSize(7); });
                 });
             })).GeneratePdf();
         }
