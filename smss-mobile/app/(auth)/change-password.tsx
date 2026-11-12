@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { messageOf } from '../../src/api/errors';
@@ -13,12 +14,15 @@ const MIN_LENGTH = 8; // the API's rule (ChangePasswordRequest)
 
 /** The first-login screen. While it is up, the root layout lets nothing else open (and the server 403s every other call). */
 export default function ChangePassword() {
-  const { changePassword, signOut } = useSession();
+  const { changePassword, signOut, status, needsPasswordChange } = useSession();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // After the change (or a sign-out) this screen no longer applies: hand over to the anchor route.
+  if (status === 'signedOut' || (status === 'signedIn' && !needsPasswordChange)) return <Redirect href="/" />;
 
   function validate(): string | null {
     if (!current) return 'Enter your temporary password.';

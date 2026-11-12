@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -10,12 +11,15 @@ import { Text } from '../../src/components/Text';
 import { colors, fonts } from '../../src/theme/tokens';
 
 export default function SignIn() {
-  const { signIn } = useSession();
+  const { signIn, status } = useSession();
   const insets = useSafeAreaInsets();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Once signed in, this screen no longer applies: hand over to the anchor route, which sends the user to the right place (change password / their app).
+  if (status !== 'signedOut' && status !== 'loading') return <Redirect href="/" />;
 
   async function submit() {
     if (busy) return;

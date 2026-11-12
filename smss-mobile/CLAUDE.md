@@ -103,6 +103,28 @@ Render real API data only; a screen that has fewer fields than a design shows fe
   (create, then attachment); a failed attachment keeps the homework and offers retry / continue without.
 - Initials avatars only in v1: student/employee photos are private (`/api/Student/{id}/photo`), not loaded.
 
+## Testing
+- **Unit tests:** `npm test` (jest-expo). They cover the API client (refresh lock, rotation, retry), role resolution, error mapping, date helpers and the teacher rules.
+  They cannot catch native-module behaviour (multipart upload, router guards, pickers): anything touching those must be run on the emulator.
+- **Live checks use a dev database, never `smss-db`.** `smss-db-dev` on the local PostgreSQL is a schema-only copy of `smss-db` plus the `lut_*` lookup data
+  (`pg_dump --schema-only` and `--data-only -t 'public.lut_*'`). It holds NO real data and is kept empty of `tb_*` rows between sessions. Do not drop it unless asked.
+- **Run the API against it with environment overrides, no config edits** (never put the dev connection string or a key in `appsettings*.json`):
+  publish a copy (`dotnet publish smss-api/smss-api -c Release -o <scratch>/api`), then from that folder with
+  `ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=smss-db-dev;...`, a random `Jwt__Key`, `ASPNETCORE_ENVIRONMENT=Development`,
+  `ASPNETCORE_URLS=http://localhost:5290`, and `FileStorage__RootPath` / `FileStorage__PrivateRootPath` pointing at scratch folders (so uploads never land in the repo).
+  Run `dotnet smss-api.dll`. A School's `school_short_code` is required for generated login ids; an "Existing Student" admission type is required before onboarding students.
+- **Tunnel (only while emulator checks run):** `cloudflared tunnel --url http://localhost:5290 --no-autoupdate` (plain http origin, so no `--no-tls-verify`), put the printed
+  `https://*.trycloudflare.com` URL in `.env` as `EXPO_PUBLIC_API_BASE_URL`, `npx expo start --clear`. Stop the tunnel and delete `.env` as soon as the checks finish.
+  The quick-tunnel hostname can take a minute to resolve; one transient failure on first load is normal (Retry recovers it).
+- **Throwaway data rule:** every account/row created for a check is a `ZZMOB` throwaway in the dev database's demo school, with random alphanumeric passwords kept only in a scratch file
+  (server-generated temporary passwords contain `@#$%*!`, which `adb input text` mangles: set a known temp password with a bcrypt hash via SQL instead). Never use a real account.
+  Scripts live outside the repo and are deleted afterwards. Take a row-count fingerprint of all tables before and after; clean up by exact ids or by truncating `tb_*` in the DEV database only.
+- **Attachment files are part of cleanup:** homework attachments are files on disk (`<FileStorage:PrivateRootPath>/<school code>/homework/<id>/...`), not just rows. Delete them with the rows.
+- **Auth-screen lesson:** `app/(auth)/sign-in.tsx` and `change-password.tsx` each `<Redirect href="/" />` as soon as their state no longer applies (signed in / password changed / signed out); `app/index.tsx` then routes. Without that, a first-login sign-in looped (found by the live first-login check, after the sign-out fix removed the nested guards).
+- **Sign-out lesson:** signing out from a screen showing live data once crashed with "Maximum update depth exceeded". Sign-out therefore goes through the neutral
+  `app/signing-out.tsx` screen first (see Auth). Always test sign-out from a data screen, not only from the shells/auth screens.
+- Day rollover: a long session can cross midnight; re-read the server's "today" (`/api/StudentDashboard`) instead of reusing one saved earlier.
+
 ## Status
 - Phase 1 (skeleton, theme, API client, auth, role routing, unsupported screen): built; live-verified against the API (see git history).
 - Phase 2 (student screens 3-8 + the shared profile sheet): built. Student API calls live in `src/api/student.ts`, hooks in `src/features/student/queries.ts`.

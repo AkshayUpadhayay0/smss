@@ -84,7 +84,7 @@ export function TeacherHome() {
                           Class teacher
                         </Text>
                         <Text variant="title">{label}</Text>
-                        {ms ? <Text variant="small">{ms.rosterCount} students</Text> : null}
+                        {ms ? <Text variant="small">{ms.rosterCount} {ms.rosterCount === 1 ? 'student' : 'students'}</Text> : null}
                       </View>
                       {markedToday === undefined ? null : markedToday ? (
                         <Chip label="Marked today" tone="success" icon="check" />
