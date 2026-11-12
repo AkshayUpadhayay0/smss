@@ -17,6 +17,7 @@ import {
   TableColumn,
   TableComponent,
 } from '../../../../shared/components';
+import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
 import { SchoolsListModel } from '../../models/school.model';
 import { SchoolService } from '../../services/school.service';
 
@@ -27,7 +28,7 @@ interface SchoolRow extends SchoolsListModel {
 
 @Component({
   selector: 'app-school-list',
-  imports: [ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, ResetPasswordDialogComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-list.component.scss',
   templateUrl: './school-list.component.html',
@@ -49,6 +50,8 @@ export class SchoolListComponent {
 
   protected readonly rows = signal<SchoolRow[]>([]);
   protected readonly loading = signal(true);
+  /** The school whose School Admin login is being reset (the school's login id IS its school id). */
+  protected readonly resetTarget = signal<SchoolRow | null>(null);
   protected readonly loadFailed = signal(false);
   protected readonly togglingId = signal<string | null>(null);
 

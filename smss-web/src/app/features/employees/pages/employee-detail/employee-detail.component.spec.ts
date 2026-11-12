@@ -63,6 +63,30 @@ describe('EmployeeDetailComponent', () => {
     expect(button('Create Login')).toBeUndefined();
   });
 
+  it('has a login: offers Reset Password, which opens the confirmation dialog for that login id', () => {
+    open({ ...EMP, loginId: 'DPS001EM001', loginRoles: ['Teacher'] });
+    button('Reset Password')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-reset-password-dialog')).not.toBeNull();
+    expect(el().textContent).toContain('Reset password?');
+  });
+
+  it('no login yet: there is nothing to reset', () => {
+    open();
+    expect(button('Reset Password')).toBeUndefined();
+  });
+
+  it('an Inactive record cannot be reset (the server would answer 409), and the page says why', () => {
+    open({ ...EMP, statusName: 'Inactive', loginId: 'DPS001EM001', loginRoles: ['Teacher'] });
+    expect(button('Reset Password')!.disabled).toBe(true);
+    expect(el().textContent).toContain('Activate this record before resetting the password');
+  });
+
+  it("your own login is not offered a reset (nobody resets their own password this way)", () => {
+    open({ ...EMP, loginId: 'SUAD001', loginRoles: ['School Admin'] }); // the seeded user's login id is SUAD001
+    expect(button('Reset Password')).toBeUndefined();
+  });
+
   it('an Inactive record cannot get a login until it is activated', () => {
     open({ ...EMP, statusName: 'Inactive' });
     expect(button('Create Login')!.disabled).toBe(true);

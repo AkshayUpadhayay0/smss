@@ -105,6 +105,11 @@
           <dl class="grid">
             <div><dt>Login ID</dt><dd>{{ s.loginId }}</dd></div>
           </dl>
+          @if (isSchoolAdmin()) {
+            <div class="login-empty">
+              <app-button variant="secondary" (click)="resetDialogOpen.set(true)"><app-icon name="lock" [size]="16" />Reset Password</app-button>
+            </div>
+          }
         } @else {
           <div class="login-empty">
             <p class="hint">This student does not have a login yet.</p>
@@ -126,6 +131,9 @@
     </div>
     }
 
+    @if (resetDialogOpen() && s.loginId) {
+      <app-reset-password-dialog [loginId]="s.loginId" [displayName]="s.fullName" (done)="resetDialogOpen.set(false)" (closed)="resetDialogOpen.set(false)" />
+    }
     @if (loginDialogOpen()) {
       <app-student-login-dialog
         [studentId]="s.studentId"

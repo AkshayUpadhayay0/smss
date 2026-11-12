@@ -64,6 +64,14 @@
             <div><dt>Roles</dt><dd>{{ e.loginRoles.join(', ') || '—' }}</dd></div>
           </dl>
           <p class="note small">The password cannot be viewed again. Roles decide what this person can do; the designation is only a job title.</p>
+          @if (!isOwnLogin()) {
+            <div class="login-empty">
+              <app-button variant="secondary" [disabled]="!isActive()" (click)="resetOpen.set(true)"><app-icon name="lock" [size]="16" />Reset Password</app-button>
+            </div>
+            @if (!isActive()) {
+              <p class="note small">Activate this record before resetting the password.</p>
+            }
+          }
         } @else {
           <div class="login-empty">
             <p class="note small">This employee has no login yet. Create one to let them sign in; you choose the roles that decide what they can do.</p>
@@ -80,6 +88,9 @@
 
     @if (photoOpen()) {
       <app-employee-photo-dialog [employeeId]="e.employeeId" [employeeName]="e.fullName" [currentUrl]="photoUrl()" (saved)="onPhotoSaved($event)" (closed)="photoOpen.set(false)" />
+    }
+    @if (resetOpen() && e.loginId) {
+      <app-reset-password-dialog [loginId]="e.loginId" [displayName]="e.fullName" (done)="resetOpen.set(false)" (closed)="resetOpen.set(false)" />
     }
     @if (loginOpen()) {
       <app-employee-login-dialog [employeeId]="e.employeeId" [employeeName]="e.fullName" [roles]="lookups()?.assignableRoles ?? []" (created)="onLoginCreated($event)" (closed)="loginOpen.set(false)" />

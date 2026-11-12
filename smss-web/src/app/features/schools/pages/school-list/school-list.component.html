@@ -32,6 +32,9 @@
       <app-button variant="secondary" size="sm" aria-label="Edit school" title="Edit" (click)="edit(row)">
         <app-icon name="pencil" [size]="14" />
       </app-button>
+      <app-button variant="secondary" size="sm" aria-label="Reset School Admin password" title="Reset School Admin password" [disabled]="!isActive(row)" (click)="resetTarget.set(row)">
+        <app-icon name="lock" [size]="14" />
+      </app-button>
       @if (isActive(row)) {
         <app-button variant="danger-ghost" size="sm" [disabled]="togglingId() === row.schoolId" (click)="toggleStatus(row)">
           <app-icon name="toggle-left" [size]="14" />Deactivate
@@ -56,3 +59,7 @@
     (pageSizeChange)="onPageSize($event)"
   />
 </app-card>
+
+@if (resetTarget(); as t) {
+  <app-reset-password-dialog [loginId]="t.schoolId" [displayName]="t.schoolName" (done)="resetTarget.set(null)" (closed)="resetTarget.set(null)" />
+}

@@ -101,6 +101,17 @@ describe('StudentProfileComponent', () => {
     expect(el().textContent).toContain('Back to Students');
   });
 
+  it('School Admin: a student with a login can have the password reset (confirmation dialog first, nothing sent yet)', () => {
+    openAs(['School Admin']);
+    const reset = [...el().querySelectorAll('button')].find((b) => b.textContent?.includes('Reset Password')) as HTMLButtonElement;
+    expect(reset).toBeDefined();
+    reset.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-reset-password-dialog')).not.toBeNull();
+    expect(el().textContent).toContain('Reset password?');
+    http.expectNone(`${API}/api/PasswordReset`);
+  });
+
   it('Accountant: only the Fees tab (no Profile tab, photo or student-login actions), and back goes to the class report', () => {
     openAs(['Accountant']);
     const tabs = [...el().querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim());

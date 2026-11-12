@@ -36,6 +36,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbUsers> Users { get; set; } = null!; 
         public DbSet<TbUserRoles> UserRoles { get; set; } = null!;
         public DbSet<TbRefreshTokens> RefreshTokens { get; set; } = null!;
+        public DbSet<TbPasswordResetAudit> PasswordResetAudit { get; set; } = null!;
         public DbSet<TbSchoolContacts> SchoolContacts { get; set; } = null!;
         public DbSet<TbAcademicYears> AcademicYears { get; set; } = null!;
         public DbSet<TbClasses> Classes { get; set; } = null!;

@@ -2,10 +2,12 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
+import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
 import { EmployeeDocumentsComponent } from '../../components/employee-documents/employee-documents.component';
 import { EmployeeLoginDialogComponent } from '../../components/employee-login-dialog/employee-login-dialog.component';
 import { EmployeePhotoDialogComponent } from '../../components/employee-photo-dialog/employee-photo-dialog.component';
@@ -15,7 +17,7 @@ import { EmployeeService } from '../../services/employee.service';
 /** One employee: details, photo, documents and the login. */
 @Component({
   selector: 'app-employee-detail',
-  imports: [ButtonComponent, CardComponent, EmployeeDocumentsComponent, EmployeeLoginDialogComponent, EmployeePhotoDialogComponent, IconComponent, PageHeaderComponent, SecureImageComponent],
+  imports: [ButtonComponent, CardComponent, EmployeeDocumentsComponent, EmployeeLoginDialogComponent, EmployeePhotoDialogComponent, IconComponent, PageHeaderComponent, ResetPasswordDialogComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './employee-detail.component.scss',
   templateUrl: './employee-detail.component.html',
@@ -26,6 +28,7 @@ export class EmployeeDetailComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
   /** Bound from the :employeeId route param (withComponentInputBinding). */
   readonly employeeId = input.required<string>();
@@ -37,6 +40,13 @@ export class EmployeeDetailComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly photoOpen = signal(false);
   protected readonly loginOpen = signal(false);
+  protected readonly resetOpen = signal(false);
+  /** Nobody resets their own password this way (the server refuses it too): a School Admin who is also an employee uses Change Password. */
+  protected readonly isOwnLogin = computed(() => {
+    const mine = this.auth.user()?.orgUserId?.toLowerCase();
+    const login = this.employee()?.loginId?.toLowerCase();
+    return !!mine && mine === login;
+  });
 
   protected readonly fmt = formatDate;
   protected readonly tone = employmentStatusTone;

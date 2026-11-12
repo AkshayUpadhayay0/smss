@@ -9,6 +9,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
+import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
 import { formatDate } from '../../../admissions/models/admission.model';
@@ -30,7 +31,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -143,6 +144,7 @@ export class StudentProfileComponent implements OnInit {
   }
 
   protected readonly loginDialogOpen = signal(false);
+  protected readonly resetDialogOpen = signal(false);
 
   /** The user has seen the credentials: close the dialog and show the Login ID on the profile. */
   protected onLoginCreated(login: StudentLoginCreated): void {

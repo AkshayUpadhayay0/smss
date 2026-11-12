@@ -73,9 +73,23 @@ describe('SchoolListComponent', () => {
     expect(labels).toEqual(['Deactivate', 'Activate', 'Deactivate']);
   });
 
+  it('has a Reset School Admin password action per row, disabled for an Inactive school', () => {
+    const buttons = [...el().querySelectorAll<HTMLButtonElement>('app-button[aria-label="Reset School Admin password"] button')];
+    expect(buttons).toHaveLength(3);
+    expect(buttons.map((b) => b.disabled)).toEqual([false, true, false]);
+  });
+
+  it("opens the reset dialog for the school's login (its school id) and sends nothing until confirmed", () => {
+    el().querySelectorAll<HTMLButtonElement>('app-button[aria-label="Reset School Admin password"] button')[0].click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-reset-password-dialog')).not.toBeNull();
+    expect(el().textContent).toContain('Alpha School');
+    http.expectNone(`${API}/api/PasswordReset`);
+  });
+
   it('asks for confirmation, then toggles status and updates the row', async () => {
     vi.spyOn(confirm, 'confirm').mockResolvedValue(true);
-    (bodyRows()[0].querySelectorAll('button')[2] as HTMLButtonElement).click();
+    ([...bodyRows()[0].querySelectorAll('button')].find((b) => b.textContent?.includes('Deactivate')) as HTMLButtonElement).click();
     await fixture.whenStable();
 
     const req = http.expectOne(`${API}/api/SchoolRegistration/schools/s1/toggle-status`);
@@ -89,7 +103,7 @@ describe('SchoolListComponent', () => {
 
   it('does nothing when the confirmation is cancelled', async () => {
     vi.spyOn(confirm, 'confirm').mockResolvedValue(false);
-    (bodyRows()[0].querySelectorAll('button')[2] as HTMLButtonElement).click();
+    ([...bodyRows()[0].querySelectorAll('button')].find((b) => b.textContent?.includes('Deactivate')) as HTMLButtonElement).click();
     await fixture.whenStable();
     http.expectNone((r) => r.url.includes('toggle-status'));
     expect(button('Deactivate')).toBeTruthy();
