@@ -21,7 +21,7 @@ class StubChartComponent {
 
 const day = (i: number) => `2026-11-${String(i + 1).padStart(2, '0')}`;
 
-export function principalDashboard(over: Partial<PrincipalDashboard> = {}): PrincipalDashboard {
+function principalDashboard(over: Partial<PrincipalDashboard> = {}): PrincipalDashboard {
   return {
     today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27',
     stats: { totalStudents: 420, totalStaff: 31, attendanceMarkedToday: 400, attendancePresentToday: 372, attendancePercentToday: 93, feeTotalDue: 1000000, feeCollected: 650000, feeOutstanding: 350000 },

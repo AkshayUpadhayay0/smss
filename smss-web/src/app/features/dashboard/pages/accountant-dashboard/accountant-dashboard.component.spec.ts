@@ -21,7 +21,7 @@ class StubChartComponent {
 
 const months = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10-01', '2026-11-01'];
 
-export function accountantDashboard(over: Partial<AccountantDashboard> = {}): AccountantDashboard {
+function accountantDashboard(over: Partial<AccountantDashboard> = {}): AccountantDashboard {
   return {
     today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27',
     stats: { collectedToday: 2500, collectedThisMonth: 15000, outstanding: 40000, overdueCount: 6, overdueAmount: 12000, upcomingCount: 4, upcomingAmount: 8000, upcomingDays: 7 },

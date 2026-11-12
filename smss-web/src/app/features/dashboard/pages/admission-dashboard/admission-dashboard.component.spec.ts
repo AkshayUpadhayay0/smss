@@ -12,7 +12,7 @@ const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', dat
 
 const STATUSES = ['APPLICATION_SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'ADMITTED', 'REJECTED', 'CANCELLED'];
 
-export function admissionDashboard(over: Partial<AdmissionDashboard> = {}): AdmissionDashboard {
+function admissionDashboard(over: Partial<AdmissionDashboard> = {}): AdmissionDashboard {
   return {
     today: '2026-11-14',
     byStatus: STATUSES.map((s, i) => ({ statusName: s, count: [3, 3, 1, 3, 1, 1][i] })),
