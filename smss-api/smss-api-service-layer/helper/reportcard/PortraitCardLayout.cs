@@ -50,7 +50,7 @@ namespace smss_api_service_layer.helper.reportcard
                         if (m.ShowGradeLegend) r.RelativeItem().Element(c => LegendP(c, m, muted)); else r.RelativeItem();
                         r.ConstantItem(150).AlignRight().Text(t =>
                         {
-                            t.DefaultTextStyle(s => s.FontSize(6).FontColor(muted));
+                            t.DefaultTextStyle(s => s.FontSize(7).FontColor(muted));
                             t.Span(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : ""));
                         });
                     });
@@ -69,10 +69,10 @@ namespace smss_api_service_layer.helper.reportcard
                 r.RelativeItem().PaddingLeft(x.Logo != null ? 6 : 0).Column(col =>
                 {
                     col.Item().Text(m.Header.SchoolName).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.SchoolName, 17f, 36, 9f)).Bold().FontColor(accent);
-                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.Line, 8.5f, 80, 6f));
+                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.Line, 8.5f, 80, 7f));
                     var rec = string.Join("  ·  ", new[] { m.Header.Recognition, m.Header.Udise }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                    if (rec.Length > 0) col.Item().Text(rec).FontSize(FitSize(rec, 7f, 100, 5.5f)).FontColor(muted);
-                    if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontSize(FitSize(m.Header.AddressLine, 7f, 110, 5.5f)).FontColor(muted);
+                    if (rec.Length > 0) col.Item().Text(rec).FontSize(FitSize(rec, 7f, 100, 7f)).FontColor(muted);
+                    if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontSize(FitSize(m.Header.AddressLine, 7f, 110, 7f)).FontColor(muted);
                     col.Item().PaddingTop(1).Text(Title(m)).FontFamily(new[] { Serif, Sans }).FontSize(10).Bold().FontColor(accent2);
                 });
             });
@@ -84,7 +84,7 @@ namespace smss_api_service_layer.helper.reportcard
         {
             var s = m.Student;
             void KV(ColumnDescriptor col, string key, string? value, bool bold = false) =>
-                col.Item().Row(r => { r.ConstantItem(62).Text(key).FontSize(6.5f).FontColor(muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 7.5f, 30, 6.5f)).FontColor(ink); if (bold) tx.Bold(); });
+                col.Item().Row(r => { r.ConstantItem(62).Text(key).FontSize(7f).FontColor(muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 7.5f, 30, 7f)).FontColor(ink); if (bold) tx.Bold(); });
             c.Border(0.5f).BorderColor(rule).Padding(3).Row(r =>
             {
                 r.RelativeItem(1.35f).Column(col => { KV(col, "Name", s.Name, true); KV(col, "Father", s.Father); KV(col, "Mother", s.Mother); KV(col, "Date of joining", s.Doj); });
@@ -98,7 +98,7 @@ namespace smss_api_service_layer.helper.reportcard
             var terms = m.Terms; var many = terms.Count > 1;
             var dense = m.Subjects.Count > 12 || terms.Count == 3;
             // a short list is drawn larger so the page is used; a long one smaller. ScaleToFit still catches the rest.
-            var size = dense ? 6f : m.Subjects.Count > 9 || terms.Count == 2 && m.Subjects.Count > 7 ? 7f : 8f;
+            var size = dense ? RcKit.MinFontPt : m.Subjects.Count > 9 || terms.Count == 2 && m.Subjects.Count > 7 ? 7f : 8f;
             var headFill = style.Mono ? "#FFFFFF" : Tint(m.Primary, 0.84); var zebra = style.Mono ? "#FFFFFF" : Tint(m.Primary, 0.94);
             var headLine = style.Mono ? 0.9f : 0.4f;
 
@@ -141,12 +141,12 @@ namespace smss_api_service_layer.helper.reportcard
                         var e = terms[p.Term].Exams[p.Exam];
                         t.Cell().Row(2).Column(col).Element(Head).AlignCenter().Column(cc =>
                         {
-                            cc.Item().AlignCenter().Text(e.Name).FontSize(size - 0.5f).Bold();
-                            if (e.Max != null) cc.Item().AlignCenter().Text($"({Num(e.Max.Value)})").FontSize(size - 1.5f).FontColor(muted);
+                            cc.Item().AlignCenter().Text(e.Name).FontSize(RcKit.Pt(size - 0.5f)).Bold();
+                            if (e.Max != null) cc.Item().AlignCenter().Text($"({Num(e.Max.Value)})").FontSize(RcKit.Pt(size - 1.5f)).FontColor(muted);
                         });
                     }
                     else if (p.Kind == "termtotal")
-                        t.Cell().Row(2).Column(col).Element(Head).AlignCenter().Column(cc => { cc.Item().AlignCenter().Text("Total").FontSize(size - 0.5f).Bold(); cc.Item().AlignCenter().Text($"({Num(terms[p.Term].Exams.Sum(e => e.Weight ?? e.Max ?? 0))})").FontSize(size - 1.5f).FontColor(muted); });
+                        t.Cell().Row(2).Column(col).Element(Head).AlignCenter().Column(cc => { cc.Item().AlignCenter().Text("Total").FontSize(RcKit.Pt(size - 0.5f)).Bold(); cc.Item().AlignCenter().Text($"({Num(terms[p.Term].Exams.Sum(e => e.Weight ?? e.Max ?? 0))})").FontSize(RcKit.Pt(size - 1.5f)).FontColor(muted); });
                 }
                 // term group headings (row 1) span the term's columns
                 for (var ti = 0; ti < terms.Count; ti++)
@@ -183,7 +183,7 @@ namespace smss_api_service_layer.helper.reportcard
                             default:
                                 // the latest term that has a remark for this subject (the school's final comment on it)
                                 var rem = s.Terms.AsEnumerable().Reverse().Select(q => q.Remark).FirstOrDefault(q => !string.IsNullOrWhiteSpace(q)) ?? "";
-                                t.Cell().Row(row).Column(cc).Element(z => Body(z, shade)).Text(rem).FontSize(size - 0.5f).FontColor(muted); break;
+                                t.Cell().Row(row).Column(cc).Element(z => Body(z, shade)).Text(rem).FontSize(RcKit.Pt(size - 0.5f)).FontColor(muted); break;
                         }
                     }
                 }
@@ -242,7 +242,7 @@ namespace smss_api_service_layer.helper.reportcard
                         t.Header(h =>
                         {
                             h.Cell().BorderBottom(0.6f).BorderColor(accent).PaddingBottom(1).Text("Conduct").FontFamily(new[] { Serif, Sans }).FontSize(8).Bold().FontColor(accent);
-                            foreach (var x in terms) h.Cell().BorderBottom(0.6f).BorderColor(accent).PaddingBottom(1).AlignCenter().Text(x.Name).FontSize(6.5f).Bold().FontColor(muted);
+                            foreach (var x in terms) h.Cell().BorderBottom(0.6f).BorderColor(accent).PaddingBottom(1).AlignCenter().Text(x.Name).FontSize(7f).Bold().FontColor(muted);
                         });
                         foreach (var area in areas)
                         {
@@ -250,7 +250,7 @@ namespace smss_api_service_layer.helper.reportcard
                             foreach (var x in sums)
                             {
                                 var a = x.Sum?.Activities.FirstOrDefault(q => q.Category == "DISCIPLINE" && q.Area == area);
-                                t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(1).AlignCenter().Text(a == null ? "-" : string.IsNullOrWhiteSpace(a.GradeLabel) ? a.Grade : $"{a.Grade} ({a.GradeLabel})").FontSize(6.5f);
+                                t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(1).AlignCenter().Text(a == null ? "-" : string.IsNullOrWhiteSpace(a.GradeLabel) ? a.Grade : $"{a.Grade} ({a.GradeLabel})").FontSize(7f);
                             }
                         }
                     });
@@ -293,7 +293,7 @@ namespace smss_api_service_layer.helper.reportcard
             if (m.Legend.Count == 0) return;
             c.Text(t =>
             {
-                t.DefaultTextStyle(x => x.FontSize(6).FontColor(muted));
+                t.DefaultTextStyle(x => x.FontSize(7).FontColor(muted));
                 t.Span("Grades: ");
                 var ordered = m.Legend.OrderByDescending(b => b.Min ?? 0).ToList();
                 for (var i = 0; i < ordered.Count; i++)

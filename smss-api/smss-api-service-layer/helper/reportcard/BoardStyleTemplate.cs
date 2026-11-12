@@ -22,10 +22,13 @@ namespace smss_api_service_layer.helper.reportcard
             var ink = style.Mono ? "#000000" : Ink; var muted = style.Mono ? "#333333" : Muted; var rule = style.Mono ? "#000000" : Rule;
             var accent = style.Mono ? "#000000" : pal.PrimaryText; var accent2 = style.Mono ? "#000000" : pal.SecondaryText;
             var photo = m.ShowPhoto && !style.Mono;       // Minimal never draws a photo: it is the ink-saving design
+            // A long list (subjects x terms rows) is fitted with tighter margins and spacing, never with a font below RcKit.MinFontPt
+            var dense = m.Subjects.Count * Math.Max(1, m.Terms.Count) > 20;
             doc.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(8, Unit.Millimetre);
+                page.MarginHorizontal(8, Unit.Millimetre);
+                page.MarginVertical(dense ? 5 : 8, Unit.Millimetre);
                 page.DefaultTextStyle(s => s.FontFamily(Sans).FontSize(Font).FontColor(ink));
                 DraftMark(page, x.Draft);
                 page.Header().Column(h =>
@@ -45,8 +48,9 @@ namespace smss_api_service_layer.helper.reportcard
                 });
                 page.Content().Column(col =>
                 {
-                    col.Spacing(3);
-                    col.Item().Text("Part 1 · Scholastic areas").FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(accent);
+                    col.Spacing(dense ? 1.5f : 3);
+                    if (!dense || m.Subjects.Count * Math.Max(1, m.Terms.Count) <= 28)   // a very long list drops this label to keep the card on one page
+                        col.Item().Text("Part 1 · Scholastic areas").FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(accent);
                     foreach (var term in m.Terms) col.Item().Element(c => TermTable(c, m, style, term, accent, rule, muted));
                     col.Item().ShowEntire().Element(c => Activities(c, m, style, accent, rule, muted));
                     col.Item().ShowEntire().Element(c => ResultBlock(c, m, style, accent, rule, muted));
@@ -60,7 +64,7 @@ namespace smss_api_service_layer.helper.reportcard
                         if (m.ShowGradeLegend) r.RelativeItem().Element(c => PortraitCardLayout.LegendP(c, m, muted)); else r.RelativeItem();
                         r.ConstantItem(150).AlignRight().Text(t =>
                         {
-                            t.DefaultTextStyle(s => s.FontSize(6).FontColor(muted));
+                            t.DefaultTextStyle(s => s.FontSize(7).FontColor(muted));
                             t.Span(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : ""));
                         });
                     });
@@ -79,7 +83,7 @@ namespace smss_api_service_layer.helper.reportcard
                 r.AutoItem().PaddingRight(8).Text($"Progress Report · {m.SessionName}").FontSize(7.5f).FontColor(muted);
                 r.AutoItem().Text(t =>
                 {
-                    t.Span(string.IsNullOrWhiteSpace(s.Name) ? "-" : s.Name).Bold().FontSize(FitSize(s.Name, 8f, 28, 6.5f));
+                    t.Span(string.IsNullOrWhiteSpace(s.Name) ? "-" : s.Name).Bold().FontSize(FitSize(s.Name, 8f, 28, 7f));
                     t.Span($"   {s.ClassName} {s.SectionName}".TrimEnd() + (string.IsNullOrWhiteSpace(s.Roll) ? "" : $" · Roll {s.Roll}")).FontColor(muted).FontSize(7.5f);
                 });
             });
@@ -107,12 +111,13 @@ namespace smss_api_service_layer.helper.reportcard
             var headFill = style.Mono ? "#FFFFFF" : Tint(m.Primary, 0.84); var zebra = style.Mono ? "#FFFFFF" : Tint(m.Primary, 0.95);
             // the more subject rows the card has to carry (subjects x terms), the tighter the rows: a ten-subject, three-term card still fits one page
             var rowCount = subjects.Count * Math.Max(1, m.Terms.Count);
-            var size = rowCount <= 24 ? Font : rowCount <= 28 ? 6.5f : 6f;
-            var vpad = rowCount <= 24 ? 0.8f : rowCount <= 28 ? 0.5f : 0.25f;
+            var size = Font;   // never below RcKit.MinFontPt: a long subject list is fitted by spacing, not by a smaller font
+            var vpad = rowCount <= 20 ? 0.8f : rowCount <= 28 ? 0.4f : 0f;
+            var hpad = rowCount <= 20 ? 1f : 0.5f;
             var sum = m.TermSummaries.FirstOrDefault(q => q.TermId == term.TermId);
             c.Column(col =>
             {
-                col.Item().PaddingBottom(1).Text(term.Name).FontFamily(new[] { Serif, Sans }).FontSize(8).Bold().FontColor(accent);
+                col.Item().PaddingBottom(rowCount <= 20 ? 1f : 0f).Text(term.Name).FontFamily(new[] { Serif, Sans }).FontSize(8).Bold().FontColor(accent);
                 col.Item().Table(t =>
                 {
                     t.ColumnsDefinition(cd =>
@@ -122,7 +127,7 @@ namespace smss_api_service_layer.helper.reportcard
                         if (marks && many) cd.RelativeColumn(1.4f);
                         cd.ConstantColumn(30);
                     });
-                    IContainer Head(IContainer e) => e.Border(style.Mono ? 0.8f : 0.4f).BorderColor(rule).Fill(headFill).PaddingVertical(1).PaddingHorizontal(2).AlignMiddle();
+                    IContainer Head(IContainer e) => e.Border(style.Mono ? 0.8f : 0.4f).BorderColor(rule).Fill(headFill).PaddingVertical(hpad).PaddingHorizontal(2).AlignMiddle();
                     IContainer Body(IContainer e, bool z) => e.Border(style.Mono ? 0.6f : 0.3f).BorderColor(rule).Fill(z ? zebra : "#FFFFFF").PaddingVertical(vpad).PaddingHorizontal(2).AlignMiddle();
                     t.Header(h =>
                     {
@@ -130,16 +135,16 @@ namespace smss_api_service_layer.helper.reportcard
                         foreach (var e in term.Exams)
                             h.Cell().Element(Head).AlignCenter().Text(tx =>
                             {
-                                tx.AlignCenter(); tx.Span(e.Name).FontSize(size - 0.3f).Bold();
-                                if (marks && e.Max != null) tx.Span($" ({Num(e.Max.Value)})").FontSize(size - 1.5f).FontColor(muted);
+                                tx.AlignCenter(); tx.Span(e.Name).FontSize(RcKit.Pt(size - 0.3f)).Bold();
+                                if (marks && e.Max != null) tx.Span($" ({Num(e.Max.Value)})").FontSize(RcKit.Pt(size - 1.5f)).FontColor(muted);
                             });
-                        if (marks && many) h.Cell().Element(Head).AlignCenter().Text(tx => { tx.AlignCenter(); tx.Span("Total").FontSize(size - 0.3f).Bold(); tx.Span($" ({Num(term.Exams.Sum(e => e.Weight ?? e.Max ?? 0))})").FontSize(size - 1.5f).FontColor(muted); });
-                        h.Cell().Element(Head).AlignCenter().Text("Grade").FontSize(size - 0.3f).Bold();
+                        if (marks && many) h.Cell().Element(Head).AlignCenter().Text(tx => { tx.AlignCenter(); tx.Span("Total").FontSize(RcKit.Pt(size - 0.3f)).Bold(); tx.Span($" ({Num(term.Exams.Sum(e => e.Weight ?? e.Max ?? 0))})").FontSize(RcKit.Pt(size - 1.5f)).FontColor(muted); });
+                        h.Cell().Element(Head).AlignCenter().Text("Grade").FontSize(RcKit.Pt(size - 0.3f)).Bold();
                     });
                     for (var i = 0; i < subjects.Count; i++)
                     {
                         var s = subjects[i]; var z = i % 2 == 1; var st = termIndex >= 0 && termIndex < s.Terms.Count ? s.Terms[termIndex] : null;
-                        t.Cell().Element(e => Body(e, z)).Text(s.Name + (marks && !s.Included ? " *" : "")).FontSize(FitSize(s.Name, size, 34, 6f));
+                        t.Cell().Element(e => Body(e, z)).Text(s.Name + (marks && !s.Included ? " *" : "")).FontSize(FitSize(s.Name, size, 34, 7f));
                         foreach (var e in term.Exams)
                         {
                             var cell = st?.Cells.FirstOrDefault(q => q.ExamId == e.ExamId);
@@ -154,13 +159,14 @@ namespace smss_api_service_layer.helper.reportcard
                         t.Cell().Element(e => Body(e, false)).AlignCenter().Text(sum.Grade ?? "-").FontSize(size).Bold();
                     }
                 });
-                if (marks && m.Subjects.Any(s => !s.Included) && termIndex == m.Terms.Count - 1) col.Item().PaddingTop(1).Text("* not counted in the total").FontSize(6f).FontColor(muted);
+                if (marks && m.Subjects.Any(s => !s.Included) && termIndex == m.Terms.Count - 1) col.Item().PaddingTop(1).Text("* not counted in the total").FontSize(7f).FontColor(muted);
             });
         }
 
         /// <summary>Part 2 (co-scholastic) and Part 3 (discipline) side by side; with only one of them, that one takes the whole width.</summary>
         private static void Activities(IContainer c, ReportCardModel m, PortraitStyle style, string accent, string rule, string muted)
         {
+            var apad = m.Subjects.Count * Math.Max(1, m.Terms.Count) > 20 ? 0.3f : 0.8f;
             var sums = m.Terms.Select(t => (Term: t, Sum: m.TermSummaries.FirstOrDefault(s => s.TermId == t.TermId))).ToList();
             List<string> Areas(string category) => sums.SelectMany(q => q.Sum?.Activities ?? new List<RcActivity>()).Where(a => a.Category == category).Select(a => a.Area).Distinct().ToList();
             var co = Areas("CO_SCHOLASTIC"); var dis = Areas("DISCIPLINE");
@@ -176,16 +182,16 @@ namespace smss_api_service_layer.helper.reportcard
                         t.Header(h =>
                         {
                             h.Cell().BorderBottom(style.Mono ? 0.9f : 0.6f).BorderColor(accent).PaddingBottom(1).Text("Area").FontSize(Font).Bold();
-                            foreach (var q in sums) h.Cell().BorderBottom(style.Mono ? 0.9f : 0.6f).BorderColor(accent).PaddingBottom(1).AlignCenter().Text(q.Term.Name).FontSize(Font - 0.5f).Bold().FontColor(muted);
+                            foreach (var q in sums) h.Cell().BorderBottom(style.Mono ? 0.9f : 0.6f).BorderColor(accent).PaddingBottom(1).AlignCenter().Text(q.Term.Name).FontSize(RcKit.Pt(Font - 0.5f)).Bold().FontColor(muted);
                         });
                         foreach (var area in areas)
                         {
-                            t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(0.8f).Text(area).FontSize(Font);
+                            t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(apad).Text(area).FontSize(Font);
                             foreach (var q in sums)
                             {
                                 var a = q.Sum?.Activities.FirstOrDefault(z => z.Category == category && z.Area == area);
                                 var text = a == null ? "-" : withLabel && !string.IsNullOrWhiteSpace(a.GradeLabel) ? $"{a.Grade} ({a.GradeLabel})" : a.Grade;
-                                t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(0.8f).AlignCenter().Text(text).FontSize(Font - 0.5f);
+                                t.Cell().BorderBottom(0.25f).BorderColor(rule).PaddingVertical(apad).AlignCenter().Text(text).FontSize(RcKit.Pt(Font - 0.5f));
                             }
                         }
                     });

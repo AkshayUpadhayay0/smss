@@ -67,7 +67,7 @@ namespace smss_api_service_layer.helper.reportcard
                     col.Item().ExtendVertical().AlignBottom().AlignCenter().Column(f =>
                     {
                         if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) f.Item().AlignCenter().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontSize(8.5f).FontColor(muted).AlignCenter();
-                        if (!string.IsNullOrWhiteSpace(m.Footer)) f.Item().AlignCenter().PaddingTop(2).Text(m.Footer).FontSize(FitSize(m.Footer, 8f, 140, 6f)).FontColor(muted).AlignCenter();
+                        if (!string.IsNullOrWhiteSpace(m.Footer)) f.Item().AlignCenter().PaddingTop(2).Text(m.Footer).FontSize(FitSize(m.Footer, 8f, 140, 7f)).FontColor(muted).AlignCenter();
                     });
                 });
             });
@@ -106,7 +106,7 @@ namespace smss_api_service_layer.helper.reportcard
                 page.Footer().Column(f =>
                 {
                     f.Item().BorderTop(0.5f).BorderColor(mono ? "#000000" : Rule).PaddingTop(4).AlignCenter().Text(string.Join("  ·  ", new[] { m.Header.AddressLine, m.Header.Phone }.Where(v => !string.IsNullOrWhiteSpace(v)))).FontSize(8.5f).FontColor(muted).AlignCenter();
-                    if (!string.IsNullOrWhiteSpace(m.Footer)) f.Item().AlignCenter().PaddingTop(2).Text(m.Footer).FontSize(FitSize(m.Footer, 8f, 140, 6f)).FontColor(muted).AlignCenter();
+                    if (!string.IsNullOrWhiteSpace(m.Footer)) f.Item().AlignCenter().PaddingTop(2).Text(m.Footer).FontSize(FitSize(m.Footer, 8f, 140, 7f)).FontColor(muted).AlignCenter();
                 });
             });
         }

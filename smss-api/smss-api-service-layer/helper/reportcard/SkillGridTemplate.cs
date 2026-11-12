@@ -54,7 +54,7 @@ namespace smss_api_service_layer.helper.reportcard
                         if (m.ShowGradeLegend) r.RelativeItem().Element(c => GradeLegend(c, m)); else r.RelativeItem();
                         r.ConstantItem(170).AlignRight().Text(t =>
                         {
-                            t.DefaultTextStyle(s => s.FontSize(6).FontColor(Muted));
+                            t.DefaultTextStyle(s => s.FontSize(7).FontColor(Muted));
                             t.Span(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : ""));
                         });
                     });
@@ -100,8 +100,12 @@ namespace smss_api_service_layer.helper.reportcard
         private static void Matrix(IContainer c, ReportCardModel m, IdCardPalette pal, List<SubjectCols> subjects)
         {
             var total = subjects.Sum(s => s.Skills.Count);
-            var size = total > 18 ? 6.5f : 7.5f;
+            var size = total > 18 ? RcKit.MinFontPt : 7.5f;
             var headFill = Tint(m.Primary, 0.84); var termFill = Tint(m.Secondary, 0.8); var zebra = Tint(m.Primary, 0.95);
+            // Many skill columns are fitted with tighter cell padding (a skill name wraps in a narrow column at the 7 pt floor), never with a smaller font
+            var tight = total > 18;
+            IContainer SkillHead(IContainer e) => tight ? e.Border(0.4f).BorderColor(Rule).Fill(headFill).PaddingVertical(1).PaddingHorizontal(0.5f).AlignMiddle() : HeadCell(e, headFill);
+            IContainer Body(IContainer e, bool zb, string tint) => tight ? e.Border(0.3f).BorderColor(Rule).Fill(zb ? tint : "#FFFFFF").PaddingVertical(0.8f).PaddingHorizontal(1).AlignMiddle() : BodyCell(e, zb, tint);
             c.Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.ConstantColumn(58); for (var i = 0; i < total; i++) cd.RelativeColumn(1f); });
@@ -109,22 +113,22 @@ namespace smss_api_service_layer.helper.reportcard
                 {
                     h.Cell().RowSpan(2).Element(e => HeadCell(e, headFill)).Text("Exam").FontSize(size).Bold().FontColor(pal.PrimaryText);
                     foreach (var s in subjects)
-                        h.Cell().ColumnSpan((uint)s.Skills.Count).Element(e => HeadCell(e, headFill)).AlignCenter().Text(s.Subject.Name).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(s.Subject.Name, size + 0.5f, 6 * s.Skills.Count, 5.5f)).Bold().FontColor(pal.PrimaryText);
+                        h.Cell().ColumnSpan((uint)s.Skills.Count).Element(e => HeadCell(e, headFill)).AlignCenter().Text(s.Subject.Name).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(s.Subject.Name, size + 0.5f, 6 * s.Skills.Count, 7f)).Bold().FontColor(pal.PrimaryText);
                     foreach (var s in subjects)
                         foreach (var k in s.Skills)
-                            h.Cell().Element(e => HeadCell(e, headFill)).AlignCenter().Text(k).FontSize(FitSize(k, 5.8f, 8, 4.4f)).FontColor(Ink);
+                            h.Cell().Element(SkillHead).AlignCenter().Text(k).FontSize(FitSize(k, 7f, 8, 7f)).FontColor(Ink);
                 });
                 for (var ti = 0; ti < m.Terms.Count; ti++)
                 {
                     var term = m.Terms[ti];
-                    t.Cell().ColumnSpan((uint)(1 + total)).Element(e => BodyCell(e, true, termFill)).Text(term.Name).FontSize(size).Bold().FontColor(pal.SecondaryText);
+                    t.Cell().ColumnSpan((uint)(1 + total)).Element(e => Body(e, true, termFill)).Text(term.Name).FontSize(size).Bold().FontColor(pal.SecondaryText);
                     for (var ei = 0; ei < term.Exams.Count; ei++)
                     {
                         var exam = term.Exams[ei]; var z = ei % 2 == 1;
-                        t.Cell().Element(e => BodyCell(e, z, zebra)).Text(exam.Name).FontSize(size).FontColor(Ink);
+                        t.Cell().Element(e => Body(e, z, zebra)).Text(exam.Name).FontSize(size).FontColor(Ink);
                         foreach (var s in subjects)
                             foreach (var k in s.Skills)
-                                t.Cell().Element(e => BodyCell(e, z, zebra)).AlignCenter().Text(GradeText(s.Subject, ti, exam, k)).FontSize(size).Bold();
+                                t.Cell().Element(e => Body(e, z, zebra)).AlignCenter().Text(GradeText(s.Subject, ti, exam, k)).FontSize(size).Bold();
                     }
                 }
             });

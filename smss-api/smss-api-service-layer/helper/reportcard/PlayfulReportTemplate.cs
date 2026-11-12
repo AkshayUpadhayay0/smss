@@ -48,7 +48,7 @@ namespace smss_api_service_layer.helper.reportcard
                     page.Footer().Column(col =>
                     {
                         col.Item().PaddingTop(4).Element(c => SignatureRow(c, x, "Class Teacher", "Parent", "Principal"));
-                        col.Item().PaddingTop(4).AlignRight().Text(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : "")).FontSize(6.5f).FontColor(Muted);
+                        col.Item().PaddingTop(4).AlignRight().Text(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : "")).FontSize(7f).FontColor(Muted);
                         FooterText(col, m);
                     });
                 });
@@ -64,10 +64,10 @@ namespace smss_api_service_layer.helper.reportcard
                 r.RelativeItem().PaddingLeft(x.Logo != null ? 8 : 4).Column(col =>
                 {
                     col.Item().Text(m.Header.SchoolName).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.SchoolName, 17f, 34, 9f)).Bold().FontColor(pal.OnPrimary);
-                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontSize(FitSize(m.Header.Line, 8.5f, 80, 6f)).FontColor(pal.OnPrimary);
+                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontSize(FitSize(m.Header.Line, 8.5f, 80, 7f)).FontColor(pal.OnPrimary);
                     var rec = string.Join("  ·  ", new[] { m.Header.Recognition, m.Header.Udise }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                    if (rec.Length > 0) col.Item().Text(rec).FontSize(FitSize(rec, 7f, 100, 5.5f)).FontColor(pal.OnPrimary);
-                    if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontSize(FitSize(m.Header.AddressLine, 7f, 100, 5.5f)).FontColor(pal.OnPrimary);
+                    if (rec.Length > 0) col.Item().Text(rec).FontSize(FitSize(rec, 7f, 100, 7f)).FontColor(pal.OnPrimary);
+                    if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontSize(FitSize(m.Header.AddressLine, 7f, 100, 7f)).FontColor(pal.OnPrimary);
                 });
                 r.AutoItem().AlignMiddle().Background(pal.Secondary).CornerRadius(12).PaddingVertical(4).PaddingHorizontal(10).Text(term.Name).FontSize(10).Bold().FontColor(pal.OnSecondary);
             });
@@ -124,8 +124,8 @@ namespace smss_api_service_layer.helper.reportcard
                     IContainer Body() => t.Cell().BorderBottom(0.5f).BorderColor(Tint(m.Primary, 0.7)).Fill(fill).PaddingVertical(dense ? 3 : 5).PaddingHorizontal(6).AlignMiddle();
                     Body().Text(s.Name).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(s.Name, size + 0.5f, 22, 7f)).Bold().FontColor(pal.PrimaryText);
                     Body().AlignCenter().Element(e => e.Background(pal.Primary).CornerRadius(9).PaddingVertical(2).PaddingHorizontal(9).Text(TermGrade(s, ti)).FontSize(size + 1).Bold().FontColor(pal.OnPrimary));
-                    Body().Text(string.IsNullOrWhiteSpace(st?.Improvement) ? "" : st!.Improvement).FontSize(size - 0.5f);
-                    Body().Text(string.IsNullOrWhiteSpace(st?.Remark) ? "" : st!.Remark).FontSize(size - 0.5f);
+                    Body().Text(string.IsNullOrWhiteSpace(st?.Improvement) ? "" : st!.Improvement).FontSize(RcKit.Pt(size - 0.5f));
+                    Body().Text(string.IsNullOrWhiteSpace(st?.Remark) ? "" : st!.Remark).FontSize(RcKit.Pt(size - 0.5f));
                 }
             });
         }

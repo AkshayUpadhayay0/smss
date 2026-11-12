@@ -72,9 +72,14 @@ namespace smss_api_service_layer.helper.reportcard
         public static float FitSize(string? text, float baseSize, int comfortableChars, float minSize = 8f)
         {
             var n = (text ?? "").Length;
-            if (n <= comfortableChars) return baseSize;
-            return Math.Max(minSize, baseSize * comfortableChars / n);
+            if (n <= comfortableChars) return Pt(baseSize);
+            return Pt(Math.Max(minSize, baseSize * comfortableChars / n));
         }
+
+        /// <summary>The smallest text a report card may print, in points. Dense designs fit their content with spacing and by shortening it, never with a smaller font (a test renders every design and fails below this).</summary>
+        public const float MinFontPt = 7f;
+        /// <summary>A font size, never below <see cref="MinFontPt"/>: wrap any size that is computed (size - 1, a ratio ...) in this.</summary>
+        public static float Pt(float size) => Math.Max(MinFontPt, size);
 
         /// <summary>The school's name and address, with the logo when the school record has one. A long name shrinks instead of spilling over.</summary>
         public static void Header(IContainer c, RcContext x, string subtitle)
@@ -87,9 +92,9 @@ namespace smss_api_service_layer.helper.reportcard
                 {
                     var pal = Pal(m);
                     col.Item().Text(m.Header.SchoolName).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.SchoolName, 16f, 34)).Bold().FontColor(pal.PrimaryText);
-                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.Line, 8f, 90, 6f)).FontColor(Ink);
+                    if (!string.IsNullOrWhiteSpace(m.Header.Line)) col.Item().Text(m.Header.Line).FontFamily(new[] { Serif, Sans }).FontSize(FitSize(m.Header.Line, 8f, 90, 7f)).FontColor(Ink);
                     var rec = string.Join("  ·  ", new[] { m.Header.Recognition, m.Header.Udise }.Where(x => !string.IsNullOrWhiteSpace(x)));
-                    if (rec.Length > 0) col.Item().Text(rec).FontFamily(Sans).FontSize(FitSize(rec, 7f, 110, 5.5f)).FontColor(Muted);
+                    if (rec.Length > 0) col.Item().Text(rec).FontFamily(Sans).FontSize(FitSize(rec, 7f, 110, 7f)).FontColor(Muted);
                     if (!string.IsNullOrWhiteSpace(m.Header.AddressLine)) col.Item().Text(m.Header.AddressLine + (string.IsNullOrWhiteSpace(m.Header.Phone) ? "" : "  ·  " + m.Header.Phone)).FontFamily(Sans).FontSize(7.5f).FontColor(Muted);
                     col.Item().PaddingTop(1).Text(subtitle).FontFamily(new[] { Serif, Sans }).FontSize(9).Bold().FontColor(pal.SecondaryText);
                 });
@@ -108,7 +113,7 @@ namespace smss_api_service_layer.helper.reportcard
         }
 
         public static void KeyValue(ColumnDescriptor col, string key, string? value, bool bold = false) =>
-            col.Item().Row(r => { r.ConstantItem(68).Text(key).FontFamily(Sans).FontSize(7).FontColor(Muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 8f, 34, 6f)).FontColor(Ink); if (bold) tx = tx.Bold(); });
+            col.Item().Row(r => { r.ConstantItem(68).Text(key).FontFamily(Sans).FontSize(7).FontColor(Muted); var tx = r.RelativeItem().Text(string.IsNullOrWhiteSpace(value) ? "-" : value).FontFamily(new[] { Sans }).FontSize(FitSize(value, 8f, 34, 7f)).FontColor(Ink); if (bold) tx = tx.Bold(); });
 
         /// <summary>One bordered, shaded header cell and one body cell, the building blocks of every ruled table.</summary>
         public static IContainer HeadCell(IContainer c, string fill) => c.Border(0.4f).BorderColor(Rule).Fill(fill).PaddingVertical(2).PaddingHorizontal(2).AlignMiddle();
@@ -119,7 +124,7 @@ namespace smss_api_service_layer.helper.reportcard
             if (m.Legend.Count == 0) return;
             c.Text(t =>
             {
-                t.DefaultTextStyle(x => x.FontFamily(Sans).FontSize(6).FontColor(Muted));
+                t.DefaultTextStyle(x => x.FontFamily(Sans).FontSize(7).FontColor(Muted));
                 t.Span("Grades: ");
                 var ordered = m.Legend.OrderByDescending(b => b.Min ?? 0).ToList();
                 for (var i = 0; i < ordered.Count; i++)
@@ -148,7 +153,7 @@ namespace smss_api_service_layer.helper.reportcard
         /// <summary>The school's footer text (settings), centred and small, when there is one.</summary>
         public static void FooterText(ColumnDescriptor col, ReportCardModel m)
         {
-            if (!string.IsNullOrWhiteSpace(m.Footer)) col.Item().PaddingTop(2).AlignCenter().Text(m.Footer).FontFamily(new[] { Sans }).FontSize(FitSize(m.Footer, 6.5f, 150, 5f)).FontColor(Muted);
+            if (!string.IsNullOrWhiteSpace(m.Footer)) col.Item().PaddingTop(2).AlignCenter().Text(m.Footer).FontFamily(new[] { Sans }).FontSize(FitSize(m.Footer, 7f, 150, 7f)).FontColor(Muted);
         }
 
         /// <summary>

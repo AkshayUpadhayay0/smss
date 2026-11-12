@@ -57,7 +57,7 @@ namespace smss_api_service_layer.helper.reportcard
                             if (m.ShowGradeLegend) r.RelativeItem().Element(c => GradeLegend(c, m)); else r.RelativeItem();
                             r.ConstantItem(150).AlignRight().Text(t =>
                             {
-                                t.DefaultTextStyle(s => s.FontSize(6).FontColor(Muted));
+                                t.DefaultTextStyle(s => s.FontSize(7).FontColor(Muted));
                                 t.Span(x.Draft ? "DRAFT preview - not an official copy" : $"Version {m.Version}" + (m.PublishedAt != null ? $" · {m.PublishedAt}" : ""));
                                 t.Span($"   Page {i + 1}/{sheets.Count}");
                             });
@@ -75,13 +75,13 @@ namespace smss_api_service_layer.helper.reportcard
             var summary = m.TermSummaries.FirstOrDefault(s => s.TermId == term.TermId);
             var tint = Tint(m.Primary, 0.92); var headFill = Tint(m.Primary, 0.82);
             var exams = term.Exams;
-            var size = exams.Count <= 3 ? 7.5f : exams.Count <= 5 ? 6.5f : 5.5f;
+            var size = exams.Count <= 3 ? 7.5f : RcKit.MinFontPt;
             c.Border(0.6f).BorderColor(Pal(m).PrimaryText).Padding(5).Column(col =>
             {
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text(term.Name).FontFamily(new[] { Serif, Sans }).FontSize(11).Bold().FontColor(Pal(m).PrimaryText);
-                    r.AutoItem().Text($"{term.Start} - {term.End}").FontFamily(Sans).FontSize(6.5f).FontColor(Muted);
+                    r.AutoItem().Text($"{term.Start} - {term.End}").FontFamily(Sans).FontSize(7f).FontColor(Muted);
                 });
                 col.Item().PaddingTop(3).Table(t =>
                 {
@@ -100,7 +100,7 @@ namespace smss_api_service_layer.helper.reportcard
                             h.Cell().Element(cc => HeadCell(cc, headFill)).AlignCenter().Column(cc =>
                             {
                                 cc.Item().AlignCenter().Text(e.Name).FontSize(size).Bold();
-                                if (marks && e.Max != null) cc.Item().AlignCenter().Text(e.Weight != null && e.Weight != e.Max ? $"{Num(e.Max.Value)} → {Num(e.Weight.Value)}" : $"({Num(e.Max.Value)})").FontSize(size - 1f).FontColor(Muted);
+                                if (marks && e.Max != null) cc.Item().AlignCenter().Text(e.Weight != null && e.Weight != e.Max ? $"{Num(e.Max.Value)} → {Num(e.Weight.Value)}" : $"({Num(e.Max.Value)})").FontSize(RcKit.Pt(size - 1f)).FontColor(Muted);
                             });
                         if (marks) h.Cell().Element(e => HeadCell(e, headFill)).AlignCenter().Text("Total").FontSize(size).Bold();
                         h.Cell().Element(e => HeadCell(e, headFill)).AlignCenter().Text("Grade").FontSize(size).Bold();
@@ -120,10 +120,10 @@ namespace smss_api_service_layer.helper.reportcard
                         }
                         if (marks) t.Cell().Element(e => BodyCell(e, zebra, tint)).AlignCenter().Text(s.GradeOnly ? "" : $"{Num(st.Obtained)}/{Num(st.OutOf)}").FontSize(size).Bold().FontColor(st.Failed ? "#B91C1C" : Ink);
                         t.Cell().Element(e => BodyCell(e, zebra, tint)).AlignCenter().Text(st.Grade ?? "").FontSize(size).Bold();
-                        t.Cell().Element(e => BodyCell(e, zebra, tint)).Text(st.Remark ?? "").FontSize(size - 0.5f).FontColor(Muted);
+                        t.Cell().Element(e => BodyCell(e, zebra, tint)).Text(st.Remark ?? "").FontSize(RcKit.Pt(size - 0.5f)).FontColor(Muted);
                     }
                 });
-                if (m.Subjects.Any(s => marks && !s.Included)) col.Item().PaddingTop(1).Text("* not counted in the total").FontSize(5.5f).FontColor(Muted);
+                if (m.Subjects.Any(s => marks && !s.Included)) col.Item().PaddingTop(1).Text("* not counted in the total").FontSize(7f).FontColor(Muted);
 
                 if (summary != null && marks)
                     col.Item().PaddingTop(3).Background(tint).Padding(3).Row(r =>
@@ -141,9 +141,9 @@ namespace smss_api_service_layer.helper.reportcard
                     if (summary.Activities.Count > 0)
                         col.Item().PaddingTop(4).Row(r =>
                         {
-                            r.RelativeItem().Column(cc => { cc.Item().Text("Co-scholastic").FontSize(7).Bold().FontColor(Pal(m).PrimaryText); foreach (var a in co) cc.Item().Text($"{a.Area}: {a.Grade}{(string.IsNullOrWhiteSpace(a.GradeLabel) ? "" : " (" + a.GradeLabel + ")")}").FontSize(6.5f); if (co.Count == 0) cc.Item().Text("-").FontSize(6.5f).FontColor(Muted); });
+                            r.RelativeItem().Column(cc => { cc.Item().Text("Co-scholastic").FontSize(7).Bold().FontColor(Pal(m).PrimaryText); foreach (var a in co) cc.Item().Text($"{a.Area}: {a.Grade}{(string.IsNullOrWhiteSpace(a.GradeLabel) ? "" : " (" + a.GradeLabel + ")")}").FontSize(7f); if (co.Count == 0) cc.Item().Text("-").FontSize(7f).FontColor(Muted); });
                             r.ConstantItem(6);
-                            r.RelativeItem().Column(cc => { cc.Item().Text("Discipline").FontSize(7).Bold().FontColor(Pal(m).PrimaryText); foreach (var a in di) cc.Item().Text($"{a.Area}: {a.Grade}{(string.IsNullOrWhiteSpace(a.GradeLabel) ? "" : " (" + a.GradeLabel + ")")}").FontSize(6.5f); if (di.Count == 0) cc.Item().Text("-").FontSize(6.5f).FontColor(Muted); });
+                            r.RelativeItem().Column(cc => { cc.Item().Text("Discipline").FontSize(7).Bold().FontColor(Pal(m).PrimaryText); foreach (var a in di) cc.Item().Text($"{a.Area}: {a.Grade}{(string.IsNullOrWhiteSpace(a.GradeLabel) ? "" : " (" + a.GradeLabel + ")")}").FontSize(7f); if (di.Count == 0) cc.Item().Text("-").FontSize(7f).FontColor(Muted); });
                         });
                     if (m.ShowAttendance && summary.WorkingDays != null && summary.PresentDays != null)
                         col.Item().PaddingTop(3).Text(t =>
