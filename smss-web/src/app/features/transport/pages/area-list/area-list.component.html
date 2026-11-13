@@ -1,0 +1,50 @@
+<app-page-header title="Transport Areas" subtitle="The areas your school buses cover, with the transport fee for each" icon="map-pin" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="openCreate()"><app-icon name="plus" [size]="16" />Add Area</app-button>
+  }
+</app-page-header>
+
+<app-card>
+  <div class="filters">
+    <app-select label="Status" [options]="statusOptions" [formControl]="statusControl" />
+  </div>
+</app-card>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input placeholder="Search areas…" prefixIcon="search" [formControl]="searchControl" />
+    </div>
+    <span class="count">
+      {{ total() }} {{ total() === 1 ? 'area' : 'areas' }}
+      @if (hasFilter()) {
+        <app-button variant="secondary" size="sm" (click)="clearFilters()"><app-icon name="x" [size]="14" />Clear filters</app-button>
+      }
+    </span>
+  </div>
+
+  <app-table [columns]="columns" [rows]="rows()" [loading]="loading()" [hasActions]="canManage()" [emptyMessage]="emptyMessage()">
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)"><app-icon name="pencil" [size]="14" /></app-button>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="busyId() === row.areaId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-left" [size]="14" />Deactivate
+        </app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.areaId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-right" [size]="14" />Activate
+        </app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+</app-card>
+
+@if (modal(); as m) {
+  <app-area-form-modal [area]="m.area" (saved)="onSaved()" (closed)="modal.set(null)" />
+}

@@ -139,7 +139,7 @@ describe('route-roles', () => {
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my'];
+      const schoolSide = ['/transport/areas', '/transport/vehicles', '/transport/drivers', '/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }
@@ -213,5 +213,22 @@ describe('route-roles', () => {
       expect(links.length).toBeGreaterThan(5);
       for (const link of links) expect([link, accessFor(link) !== null]).toEqual([link, true]);
     });
+  });
+});
+
+describe('route-roles: Transport', () => {
+  const PAGES = ['/transport/areas', '/transport/vehicles', '/transport/drivers'];
+
+  it('School Admin and Principal open the three pages; nobody else does (the Principal only reads, the screens hide the write buttons)', () => {
+    for (const path of PAGES) {
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect([path, canAccess(path, [role])]).toEqual([path, true]);
+      for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN, ROLES.DRIVER, 'Test Role']) {
+        expect([path, role, canAccess(path, [role])]).toEqual([path, role, false]);
+      }
+    }
+  });
+
+  it('a Driver login can open no staff screen at all (fail closed: the role is listed nowhere)', () => {
+    expect(Object.entries(ROUTE_ROLES).filter(([, access]) => Array.isArray(access) && access.includes(ROLES.DRIVER))).toEqual([]);
   });
 });

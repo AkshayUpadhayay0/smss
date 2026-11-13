@@ -166,9 +166,9 @@ describe('app routes', () => {
         expect(harness.routeNativeElement?.querySelector('app-student-profile')).not.toBeNull();
       });
 
-      it('sees Dashboard, Calendar, Timetable, Mark Attendance, Attendance Report, Homework, Assessments, Leave Requests, School Profile, the Students group, School Setup, Employees, Fee Setup and Fees in the menu — no My Leave (the school login is not an employee), no Registered Schools, no Masters', async () => {
+      it('sees Dashboard, Calendar, Timetable, Mark Attendance, Attendance Report, Homework, Assessments, Leave Requests, School Profile, the Students group, School Setup, Employees, Transport, Fee Setup and Fees in the menu — no My Leave (the school login is not an employee), no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests | School Profile | Students | Examinations | School Setup | Employees | Fee Setup | Fees');
+        expect(nav(harness)).toBe('Dashboard | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests | School Profile | Students | Examinations | School Setup | Employees | Transport | Fee Setup | Fees');
       });
 
       it.each(['/enquiries', '/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(

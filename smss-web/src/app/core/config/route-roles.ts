@@ -17,6 +17,8 @@ export const ROLES = {
   ACCOUNTANT: 'Accountant',
   STUDENT: 'Student',
   GUARDIAN: 'Guardian',
+  /** A driver's own login. It has NO screens in the web app yet, so it appears in no ROUTE_ROLES entry (fail closed). */
+  DRIVER: 'Driver',
 } as const;
 
 /** Any signed-in user, whatever their roles (also covers custom roles created in Master Data). */
@@ -121,6 +123,10 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/employees/new': [ROLES.SCHOOL_ADMIN],
   '/employees/:employeeId': [ROLES.SCHOOL_ADMIN],
   '/employees/:employeeId/edit': [ROLES.SCHOOL_ADMIN],
+  // Transport (areas, vehicles, drivers): the School Admin manages; the Principal reads (the screens hide every write button; the API enforces the same).
+  '/transport/areas': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/transport/vehicles': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  '/transport/drivers': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   // Fee dashboard + reports: read-only for the Principal (the API sends canManage=false; the screens hide drill-down / export)
   '/fee-dashboard': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
   // Fee Status of a class teacher's own section (read-only; the API checks WHICH teacher). The School Admin has the fee dashboard and reports instead.

@@ -1,0 +1,63 @@
+<app-page-header title="Drivers" subtitle="Your school's drivers, their licences, vehicles and areas" icon="user" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="openForm(null)"><app-icon name="plus" [size]="16" />Add Driver</app-button>
+  }
+</app-page-header>
+
+<app-card>
+  <div class="filters">
+    <app-select label="Vehicle" [options]="vehicleOptions()" [formControl]="vehicleControl" />
+    <app-select label="Status" [options]="statusOptions" [formControl]="statusControl" />
+  </div>
+</app-card>
+
+<app-card [noPadding]="true">
+  <div class="toolbar">
+    <div class="search">
+      <app-input placeholder="Search by name, ID, mobile or licence…" prefixIcon="search" [formControl]="searchControl" />
+    </div>
+    <span class="count">
+      {{ total() }} {{ total() === 1 ? 'driver' : 'drivers' }}
+      @if (hasFilter()) {
+        <app-button variant="secondary" size="sm" (click)="clearFilters()"><app-icon name="x" [size]="14" />Clear filters</app-button>
+      }
+    </span>
+  </div>
+
+  <app-table [columns]="columns" [rows]="rows()" [loading]="loading()" [hasActions]="canManage()" [emptyMessage]="emptyMessage()">
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openForm(row)"><app-icon name="pencil" [size]="14" /></app-button>
+      <app-button variant="secondary" size="sm" aria-label="Photo" title="Photo" (click)="photoFor.set(itemOf(row))"><app-icon name="upload" [size]="14" /></app-button>
+      @if (!row.hasLogin && row.isActive) {
+        <app-button variant="secondary" size="sm" aria-label="Create login" title="Create login" (click)="loginFor.set(itemOf(row))"><app-icon name="lock" [size]="14" />Login</app-button>
+      }
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="busyId() === row.driverId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-left" [size]="14" />Deactivate
+        </app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.driverId" (click)="toggleStatus(row)">
+          <app-icon name="toggle-right" [size]="14" />Activate
+        </app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (loadFailed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+</app-card>
+
+@if (modal(); as m) {
+  @if (lookups(); as l) {
+    <app-driver-form-modal [driverId]="m.driverId" [lookups]="l" (saved)="onSaved()" (closed)="modal.set(null)" />
+  }
+}
+@if (photoFor(); as d) {
+  <app-driver-photo-dialog [driverId]="d.driverId" [driverName]="d.fullName" [currentUrl]="d.photoUrl" (saved)="onPhotoSaved()" (closed)="photoFor.set(null)" />
+}
+@if (loginFor(); as d) {
+  <app-driver-login-dialog [driverId]="d.driverId" [driverName]="d.fullName" (created)="onLoginCreated()" (closed)="loginFor.set(null)" />
+}

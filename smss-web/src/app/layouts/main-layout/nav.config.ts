@@ -92,6 +92,15 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    label: 'Transport',
+    icon: 'truck',
+    children: [
+      { label: 'Areas', route: '/transport/areas' },
+      { label: 'Vehicles', route: '/transport/vehicles' },
+      { label: 'Drivers', route: '/transport/drivers' },
+    ],
+  },
+  {
     label: 'Fee Setup',
     icon: 'file-text',
     children: [

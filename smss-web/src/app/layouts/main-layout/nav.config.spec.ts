@@ -106,3 +106,17 @@ describe('visibleNav: Examinations group', () => {
     }
   });
 });
+
+describe('visibleNav: Transport group', () => {
+  const transport = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Transport');
+
+  it('School Admin and Principal get Areas, Vehicles and Drivers', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) {
+      expect(transport([role])?.children?.map((c) => c.route)).toEqual(['/transport/areas', '/transport/vehicles', '/transport/drivers']);
+    }
+  });
+
+  it('no other role, including a Driver, sees it', () => {
+    for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN, ROLES.DRIVER]) expect(transport([role])).toBeUndefined();
+  });
+});
