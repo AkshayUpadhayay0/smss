@@ -87,6 +87,10 @@ builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IDriverRepository, DriverRepository>();
 builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IDriverPhotoService, DriverPhotoService>();
+builder.Services.Configure<smss_api_service_layer.helper.TransportLiveOptions>(builder.Configuration.GetSection(smss_api_service_layer.helper.TransportLiveOptions.Section));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IDriverDutyRepository, DriverDutyRepository>();
+builder.Services.AddScoped<IDriverDutyService, DriverDutyService>();
 builder.Services.AddScoped<IStudentLoginRepository, StudentLoginRepository>();
 builder.Services.AddScoped<IStudentLoginService, StudentLoginService>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
@@ -246,6 +250,19 @@ builder.Services.AddRateLimiter(options =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = enquiryLimit, Window = enquiryWindow, QueueLimit = 0, AutoReplenishment = true }));
+    // Driver location pings: a coarse shield per tracking token (hashed: the raw token is never used as a key), per client address when there is none.
+    // The authoritative minimum interval is enforced in DriverDutyService; this only stops a flood.
+    var driverPermit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:DriverLocation:PermitLimit") ?? 12);
+    var driverWindow = TimeSpan.FromSeconds(Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:DriverLocation:WindowSeconds") ?? 60));
+    options.AddPolicy(smss_api.Controllers.DriverDutyController.RateLimitPolicy, httpContext =>
+    {
+        var header = httpContext.Request.Headers[smss_api.Controllers.DriverDutyController.TokenHeader].ToString();
+        var key = string.IsNullOrEmpty(header)
+            ? "ip:" + smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress)
+            : "tok:" + smss_api_service_layer.helper.DutyRules.Hash(header);
+        return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(key,
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = driverPermit, Window = driverWindow, QueueLimit = 0, AutoReplenishment = true });
+    });
     options.OnRejected = async (context, token) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;

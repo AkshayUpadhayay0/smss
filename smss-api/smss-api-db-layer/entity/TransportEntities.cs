@@ -103,4 +103,43 @@ namespace smss_api_db_layer.entity
         [Column("area_id")] public long AreaId { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
     }
+
+    /// <summary>
+    /// One stretch of duty by one driver. At most ONE open session (ended_at IS NULL) per driver, enforced by a partial unique index.
+    /// No coordinates are stored here. The tracking token is stored only as its SHA-256 hash.
+    /// </summary>
+    [Table("tb_driver_duty_sessions", Schema = "public")]
+    public class TbDriverDutySession
+    {
+        [Key][DatabaseGenerated(DatabaseGeneratedOption.Identity)][Column("session_id")] public long SessionId { get; set; }
+        [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
+        [Column("driver_id")][StringLength(20)] public string DriverId { get; set; } = null!;
+        /// <summary>The driver's vehicle when duty started (a snapshot).</summary>
+        [Column("vehicle_id")] public long VehicleId { get; set; }
+        [Column("started_at")] public DateTime StartedAt { get; set; }
+        [Column("ended_at")] public DateTime? EndedAt { get; set; }
+        /// <summary>DRIVER_ENDED | AUTO_TIMEOUT | DRIVER_DEACTIVATED | SESSION_EXPIRED; null while open.</summary>
+        [Column("end_reason")][StringLength(20)] public string? EndReason { get; set; }
+        [Column("tracking_token_hash")][StringLength(64)] public string TrackingTokenHash { get; set; } = null!;
+        [Column("created_at")] public DateTime CreatedAt { get; set; }
+    }
+
+    /// <summary>The LATEST fix of a driver on duty: one row per driver, no history. Written only by the raw upsert in DriverDutyRepository; read here.</summary>
+    [Table("tb_driver_live_location", Schema = "public")]
+    public class TbDriverLiveLocation
+    {
+        [Key][DatabaseGenerated(DatabaseGeneratedOption.None)][Column("driver_id")][StringLength(20)] public string DriverId { get; set; } = null!;
+        [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
+        [Column("session_id")] public long SessionId { get; set; }
+        [Column("vehicle_id")] public long VehicleId { get; set; }
+        [Column("latitude")] public double Latitude { get; set; }
+        [Column("longitude")] public double Longitude { get; set; }
+        [Column("accuracy_m")] public float? AccuracyM { get; set; }
+        [Column("speed_mps")] public float? SpeedMps { get; set; }
+        [Column("heading_deg")] public float? HeadingDeg { get; set; }
+        /// <summary>The device clock: orders fixes only.</summary>
+        [Column("recorded_at")] public DateTime RecordedAt { get; set; }
+        /// <summary>The server clock: LIVE / STALE / OFFLINE are computed from this.</summary>
+        [Column("received_at")] public DateTime ReceivedAt { get; set; }
+    }
 }

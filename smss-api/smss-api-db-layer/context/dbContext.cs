@@ -73,6 +73,8 @@ namespace smss_api_db_layer.context
         public DbSet<TbVehicle> Vehicles { get; set; } = null!;
         public DbSet<TbDriver> Drivers { get; set; } = null!;
         public DbSet<TbDriverArea> DriverAreas { get; set; } = null!;
+        public DbSet<TbDriverDutySession> DriverDutySessions { get; set; } = null!;
+        public DbSet<TbDriverLiveLocation> DriverLiveLocations { get; set; } = null!;
         public DbSet<TbClassTeacherAssignment> ClassTeacherAssignments { get; set; } = null!;
         public DbSet<LutAttendanceStatus> LutAttendanceStatuses { get; set; } = null!;
         public DbSet<TbStudentAttendance> StudentAttendance { get; set; } = null!;
