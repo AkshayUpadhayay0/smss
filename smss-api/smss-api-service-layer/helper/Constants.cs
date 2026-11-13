@@ -14,6 +14,7 @@ namespace smss_api_service_layer.helper
         public const string Student = "Student";
         public const string Guardian = "Guardian";
         public const string Employee = "Employee";
+        public const string Driver = "Driver";
     }
 
     public static class RoleCodes
@@ -27,13 +28,18 @@ namespace smss_api_service_layer.helper
         public const string Student = "STUDENT";
         public const string Guardian = "GUARDIAN";
         public const string AdmissionStaff = "ADMISSION_STAFF";
+        /// <summary>A school transport driver (tb_drivers). Never handed out through the Employee screen: only the driver create-login action assigns it.</summary>
+        public const string Driver = "DRIVER";
 
         /// <summary>The roles a school may give an EMPLOYEE's login, by role_code (an allow-list: add e.g. LIBRARIAN here once that role exists in lut_roles).</summary>
         private static readonly string[] EmployeeAllowList = { SchoolAdmin, Principal, Teacher, Accountant, AdmissionStaff };
         /// <summary>Never given to an employee login, even if someone adds them to the allow-list by mistake.</summary>
-        private static readonly string[] NeverForEmployees = { SuperAdmin, Student, Guardian };
+        private static readonly string[] NeverForEmployees = { SuperAdmin, Student, Guardian, Driver };
 
         public static IReadOnlyCollection<string> AssignableToEmployees { get; } = EmployeeAllowList.Except(NeverForEmployees).ToArray();
+
+        /// <summary>The roles a DRIVER login may carry (an allow-list by role_code). SUPER_ADMIN, STUDENT and GUARDIAN are excluded by construction, and so is every staff role.</summary>
+        public static IReadOnlyCollection<string> AssignableToDrivers { get; } = new[] { Driver }.Except(new[] { SuperAdmin, Student, Guardian }).ToArray();
     }
 
     public static class EmploymentStatusCodes
@@ -57,6 +63,7 @@ namespace smss_api_service_layer.helper
         public const string SuperAdmin = "Super Admin";
         public const string Student = "Student";
         public const string Guardian = "Guardian";
+        public const string Driver = "Driver";
     }
     public static class PaymentStatuses
     {

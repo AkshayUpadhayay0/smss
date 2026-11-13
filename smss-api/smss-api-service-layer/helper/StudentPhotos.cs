@@ -25,6 +25,17 @@ namespace smss_api_service_layer.helper
         };
     }
 
+    /// <summary>Driver photos: private storage, the database keeps the key, DTOs carry the authenticated path.</summary>
+    public static class DriverPhotos
+    {
+        public static string? ApiPath(string driverId, string? stored)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return null;
+            var v = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(stored)))[..10].ToLowerInvariant();
+            return $"/api/Drivers/{driverId}/photo?v={v}";
+        }
+    }
+
     /// <summary>Employee photos follow the same rule as student photos: private storage, the database keeps the key, DTOs carry the authenticated path.</summary>
     public static class EmployeePhotos
     {

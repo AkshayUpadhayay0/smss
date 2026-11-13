@@ -48,7 +48,7 @@ namespace smss_api.Controllers
         // Reads (list, profile): every staff role keeps the access it had (an Accountant still gets the limited view, handled below), but a Student or Guardian login is
         // refused outright - a student account must never be able to pull up another student's record.
         private IActionResult? RefuseStudentLogin() =>
-            User.IsStudentOrGuardianLogin() ? this.Forbidden("Student and Guardian accounts can't view student records.") : null;
+            User.IsStudentOrGuardianLogin() || User.IsDriver() ? this.Forbidden("Student, Guardian and Driver accounts can't view student records.") : null;
 
         // A Teacher-only login reads students through GET api/Student/my-class (the sections they are class teacher of or teach in), never through the school-wide reads below.
         // A user who is ALSO a School Admin or Principal keeps the wider access those roles have.
@@ -66,7 +66,7 @@ namespace smss_api.Controllers
         [HttpGet("{studentId:length(1,20)}/photo")]
         public async Task<IActionResult> GetPhoto(string studentId, CancellationToken ct)
         {
-            if (User.IsGuardianLogin()) return this.Forbidden("Guardian accounts cannot view student photos.");
+            if (User.IsGuardianLogin() || User.IsDriver()) return this.Forbidden("Guardian and Driver accounts cannot view student photos.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var viewer = User.IsStudent() ? PhotoViewer.Student : User.IsTeacher() && !User.IsSchoolAdmin() && !User.IsPrincipal() ? PhotoViewer.Teacher : PhotoViewer.Staff;
             var r = await _photos.GetAsync(User.GetSchoolId(), userId, viewer, studentId, ct);

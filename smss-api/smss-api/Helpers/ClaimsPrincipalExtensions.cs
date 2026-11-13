@@ -123,6 +123,20 @@ namespace smss_api.Helpers
         public static smss_api_service_layer.@interface.ReportCaller ToReportCaller(this ClaimsPrincipal user, long userId) =>
             new(userId, HasAnyRole(user, RoleNames.SchoolAdmin), HasAnyRole(user, RoleNames.Principal), HasAnyRole(user, RoleNames.Teacher));
 
+        /// <summary>
+        /// Transport (areas, vehicles, drivers): every write, the driver login creation and the photo upload are School Admin only. No other role, a Driver included.
+        /// </summary>
+        public static bool CanConfigureTransport(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
+
+        /// <summary>Reads transport data: School Admin and the Principal (view-only). No other role, a Driver included.</summary>
+        public static bool CanViewTransport(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
+        /// <summary>
+        /// A transport driver's login. A Driver is neither staff nor a Student or Guardian, so every check that only refuses Student and Guardian
+        /// logins (the student and employee reads) must refuse this role too.
+        /// </summary>
+        public static bool IsDriver(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Driver);
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

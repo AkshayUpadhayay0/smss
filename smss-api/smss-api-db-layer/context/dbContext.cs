@@ -66,6 +66,13 @@ namespace smss_api_db_layer.context
         public DbSet<LutEmploymentStatus> LutEmploymentStatuses { get; set; } = null!;
         public DbSet<TbEmployee> Employees { get; set; } = null!;
         public DbSet<TbEmployeeDocument> EmployeeDocuments { get; set; } = null!;
+        // Transport (stage 1)
+        public DbSet<LutVehicleType> LutVehicleTypes { get; set; } = null!;
+        public DbSet<LutVehicleOwnership> LutVehicleOwnerships { get; set; } = null!;
+        public DbSet<TbTransportArea> TransportAreas { get; set; } = null!;
+        public DbSet<TbVehicle> Vehicles { get; set; } = null!;
+        public DbSet<TbDriver> Drivers { get; set; } = null!;
+        public DbSet<TbDriverArea> DriverAreas { get; set; } = null!;
         public DbSet<TbClassTeacherAssignment> ClassTeacherAssignments { get; set; } = null!;
         public DbSet<LutAttendanceStatus> LutAttendanceStatuses { get; set; } = null!;
         public DbSet<TbStudentAttendance> StudentAttendance { get; set; } = null!;

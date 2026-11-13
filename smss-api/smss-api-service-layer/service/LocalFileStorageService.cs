@@ -79,6 +79,19 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/employees/{employeeId}/{fileName}";
         }
 
+        public async Task<string> SaveDriverPhotoAsync(string schoolCode, string driverId, Stream content, string extension, CancellationToken ct)
+        {
+            EnsureSafeIds(schoolCode, driverId);
+            var folder = Path.Combine(_privateRootPath, schoolCode, "drivers", driverId);
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"photo_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{schoolCode}/drivers/{driverId}/{fileName}";
+        }
+
         public async Task<string> SaveEmployeeDocumentAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct)
         {
             EnsureSafeIds(schoolCode, employeeId);
