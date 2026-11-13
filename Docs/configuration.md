@@ -7,6 +7,8 @@ The committed `smss-api/smss-api/appsettings.json` holds **no secrets**. Every s
 
 If a required setting is missing, empty, or still a placeholder (`CHANGE_ME…`, `<…>`), the API **refuses to start** and the error names the setting (never its value). Secrets are never logged.
 
+> **Upgrading from an older checkout:** earlier versions of `appsettings.json` carried a real database password and JWT key. Both are now empty in the file, so the API will not start until you provide them (user-secrets in Development, environment variables in Production, see below). Anything that was ever committed must be treated as exposed: rotate it (see *Rotating a secret*).
+
 ## Settings
 
 | Setting | Secret? | Required | What it does |
