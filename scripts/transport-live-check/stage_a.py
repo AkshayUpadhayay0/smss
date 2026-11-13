@@ -5,8 +5,16 @@ import api, devdb
 st = api.session()
 today = datetime.date.today()
 d = lambda n: (today + datetime.timedelta(days=n)).isoformat()
-ADMIN_PW, PRINCIPAL_PW, SUPER_PW = 'ZZ-Admin#2026a', 'ZZ-Princ#2026a', 'ZZ-Super#2026a'
-DRIVER_PW = {'D1': 'ZZ-Drv1#2026a', 'D2': 'ZZ-Drv2#2026a'}
+import secrets
+
+
+def new_password() -> str:
+    """A fresh random password for each throwaway login (letters, digits and symbols). It is written only to session.json (git-ignored) and printed to your own terminal."""
+    return 'Zz' + secrets.token_urlsafe(12) + '#9'
+
+
+ADMIN_PW, PRINCIPAL_PW, SUPER_PW = new_password(), new_password(), new_password()
+DRIVER_PW = {'D1': new_password(), 'D2': new_password()}
 
 # --- super admin (bootstrap endpoint, enabled only on this scratch process) + the one global row dev needs for registration
 r = api.call('POST', '/api/SystemSetup/bootstrap-super-admin', headers={'X-Setup-Key': st['setupKey']},

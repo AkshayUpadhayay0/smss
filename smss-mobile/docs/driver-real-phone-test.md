@@ -6,8 +6,8 @@ Use a **throwaway driver login in the dev database** (never a real driver, never
 - An Android phone, Android 8 or newer (Android 11+ is the interesting case: "Allow all the time" is a Settings step).
 - A Windows PC with this repo, Android SDK platform-tools (`adb`), JDK 17, Node.
 - The scratch API running against `smss-db-dev` (ask Claude to start it: it uses a throwaway JWT key and mail pointed at a closed port).
-- A throwaway driver login: `ZZDE001DR001` / `ZZ-Drv1#2026a` (School "ZZ Demo Transport School"). Its driver is assigned to vehicle "ZZ Bus 1" and two areas.
-- The web Live map open on the PC (`http://localhost:4300`, School Admin `ZZDE261113001` / `ZZ-Admin#2026a`) to watch the marker.
+- A throwaway driver login in the dev database (the setup script prints each login's id and a random password; Claude gives you the ones to use). The demo driver `ZZDE001DR001` is assigned to vehicle "ZZ Bus 1" and two areas. Never write these passwords into a file in the repo.
+- The web Live map open on the PC (`http://localhost:4300`, School Admin login `ZZDE261113001`, password from the setup output) to watch the marker.
 
 ## Option A: at your desk, over a USB cable (no internet exposure at all)
 1. Phone: Settings > About phone > tap "Build number" 7 times; then Settings > Developer options > turn on **USB debugging**. Plug the phone into the PC and accept the prompt.

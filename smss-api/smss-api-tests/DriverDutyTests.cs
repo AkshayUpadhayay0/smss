@@ -738,10 +738,10 @@ namespace smss_api_tests
                 ["EndByTokenAsync"] = (Func<object?[], object?>)(a => { seen.Add((string?)a[0]); return Fake.Ok(new DutyEndedDto { Ended = true }); }),
             });
             var c = new DriverDutyController(svc) { ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() } };
-            c.Request.Headers[DriverDutyController.TokenHeader] = "tok-123";
+            c.Request.Headers[DriverDutyController.TokenHeader] = "dummy-header-value";
             await c.Location(new DutyLocationRequest(), default);
             await c.End(default);
-            Assert.Equal(new string?[] { "tok-123", "tok-123" }, seen);
+            Assert.Equal(new string?[] { "dummy-header-value", "dummy-header-value" }, seen);
             Assert.Equal("X-Duty-Token", DriverDutyController.TokenHeader);
 
             seen.Clear();

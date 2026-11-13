@@ -41,13 +41,13 @@ const ok: PingHttpResult = { kind: 'response', status: 200, body: { data: { acce
 describe('runPing', () => {
   it('reads the token from storage on EVERY ping and sends that one (a resume replaces it)', async () => {
     const h = harness([ok, ok, ok]);
-    await h.store.writeToken('token-one');
+    await h.store.writeToken('TEST-A');
     await runPing(h.deps, [fix()]);
-    await h.store.writeToken('token-two');                       // a resume at duty start issued a new token
+    await h.store.writeToken('TEST-B');                       // a resume at duty start issued a new token
     await runPing(h.deps, [fix()]);
-    await h.store.writeToken('token-three');
+    await h.store.writeToken('TEST-C');
     await runPing(h.deps, [fix()]);
-    expect(h.sent.map((s) => s.token)).toEqual(['token-one', 'token-two', 'token-three']);
+    expect(h.sent.map((s) => s.token)).toEqual(['TEST-A', 'TEST-B', 'TEST-C']);
     expect(h.reads()).toBe(3);
   });
 
@@ -81,7 +81,7 @@ describe('runPing', () => {
     [409, { code: 'DRIVER_DEACTIVATED' }, 'DRIVER_DEACTIVATED'],
   ])('STOP on %s %j: the token is deleted and the reason remembered', async (status, data, reason) => {
     const h = harness([{ kind: 'response', status, body: { data } }]);
-    await h.store.writeToken('secret-token');
+    await h.store.writeToken('TEST-STOP');
     const out = await runPing(h.deps, [fix()]);
     expect(out).toEqual({ action: 'STOP', stopReason: reason });
     expect(await h.store.readToken()).toBeNull();                // deleted
@@ -95,10 +95,10 @@ describe('runPing', () => {
     ['503', { kind: 'response', status: 503, body: null } as PingHttpResult],
   ])('RETRY on %s: nothing is stopped or deleted, the token stays for the next ping', async (_label, result) => {
     const h = harness([result, ok]);
-    await h.store.writeToken('keep-me');
+    await h.store.writeToken('TEST-KEEP');
     expect((await runPing(h.deps, [fix()])).action).toBe('RETRY');
     expect(h.stops).toEqual([]);
-    expect(await h.store.readToken()).toBe('keep-me');
+    expect(await h.store.readToken()).toBe('TEST-KEEP');
     expect((await runPing(h.deps, [fix(26.9)])).action).toBe('OK');   // the next ping sends a fresh fix, nothing was queued
     expect(h.sent).toHaveLength(2);
     expect(h.sent[1].body.latitude).toBe(26.9);
@@ -125,7 +125,7 @@ describe('runPing', () => {
   it('does not log anything (no coordinates, tokens or bodies)', async () => {
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => jest.spyOn(console, m).mockImplementation(() => {}));
     const h = harness([ok, { kind: 'response', status: 401, body: null }, { kind: 'network' }]);
-    await h.store.writeToken('super-secret-token');
+    await h.store.writeToken('TEST-NOLOG');
     await runPing(h.deps, [fix()]);
     await runPing(h.deps, [fix()]);
     await runPing(h.deps, [fix()]);
@@ -140,9 +140,9 @@ describe('dutyStore', () => {
   it('keeps the token only under one secure-storage key and clears it', async () => {
     const kv = memoryKv();
     const store = createDutyStore(kv);
-    await store.writeToken('abc');
+    await store.writeToken('TEST-STORE');
     expect([...kv.data.keys()]).toEqual(['smss.duty.token']);
-    expect(await store.readToken()).toBe('abc');
+    expect(await store.readToken()).toBe('TEST-STORE');
     await store.clearToken();
     expect(await store.readToken()).toBeNull();
   });

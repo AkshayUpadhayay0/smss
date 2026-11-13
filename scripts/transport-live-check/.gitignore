@@ -1,0 +1,7 @@
+# run state: ids and the random throwaway passwords. Never commit.
+session.json
+pubapi/
+artapi/
+files/
+*.log
+__pycache__/
