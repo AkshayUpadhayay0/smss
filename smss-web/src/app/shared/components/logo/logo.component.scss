@@ -5,15 +5,10 @@
 }
 
 .mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  flex: none;
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-lg);
-  background: var(--gradient-brand);
-  color: var(--color-on-primary);
-  box-shadow: var(--shadow-primary);
 }
 
 .wordmark {

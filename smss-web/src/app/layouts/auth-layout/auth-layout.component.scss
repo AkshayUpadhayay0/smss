@@ -10,10 +10,11 @@
   gap: var(--space-6);
   min-height: 100vh;
   padding: var(--space-6) var(--space-4);
-  background:
-    radial-gradient(60% 50% at 15% 10%, var(--color-primary-100) 0%, transparent 70%),
-    radial-gradient(50% 50% at 90% 90%, var(--color-primary-50) 0%, transparent 70%),
-    var(--color-bg);
+  background-color: #f7f6fb;
+  background-image: url('/login-bg.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .card {
