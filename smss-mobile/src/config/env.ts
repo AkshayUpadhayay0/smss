@@ -22,7 +22,16 @@ export function resolveApiBaseUrl(raw: unknown, isDev: boolean): string {
   return value;
 }
 
+/** DEV builds only: a shorter duty interval in seconds (1..600), or null. Anything else (empty, not a number, out of range) is ignored. */
+export function parseDutyIntervalOverride(raw: unknown): number | null {
+  const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : typeof raw === 'number' ? raw : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 600 ? n : null;
+}
+
 export const env = {
+  get dutyIntervalOverrideSeconds(): number | null {
+    return parseDutyIntervalOverride(Constants.expoConfig?.extra?.dutyIntervalSeconds);
+  },
   get apiBaseUrl(): string {
     return resolveApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl, __DEV__);
   },

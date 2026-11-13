@@ -16,3 +16,14 @@ describe('resolveApiBaseUrl', () => {
     expect(() => resolveApiBaseUrl('not a url', true)).toThrow(/valid URL/);
   });
 });
+
+import { parseDutyIntervalOverride } from '../src/config/env';
+
+describe('parseDutyIntervalOverride (dev builds only)', () => {
+  it('accepts whole seconds from 1 to 600', () => {
+    expect(parseDutyIntervalOverride('15')).toBe(15);
+    expect(parseDutyIntervalOverride(' 60 ')).toBe(60);
+    expect(parseDutyIntervalOverride(600)).toBe(600);
+  });
+  it.each(['', '0', '-5', '601', 'abc', '1.5', undefined, null])('ignores %j', (v) => expect(parseDutyIntervalOverride(v)).toBeNull());
+});
