@@ -19,6 +19,7 @@ If a required setting is missing, empty, or still a placeholder (`CHANGE_ME…`,
 | `Email:SenderEmail`, `Email:SenderName`, `Email:SmtpHost`, `Email:SmtpPort`, `Email:LoginUrl` | no | `SenderEmail` outside Development | Who the e-mails come from, the SMTP server, and the login link put in the e-mails (set `LoginUrl` to the real site in production). |
 | `Bootstrap:Enabled` | no | no (committed: `false`) | Turns the one-time Super Admin creation endpoint on. Keep it `false`; it already refuses once a Super Admin exists. |
 | `Bootstrap:SuperAdminSetupKey` | **yes** | only while `Bootstrap:Enabled` is `true` | The `X-Setup-Key` header value that endpoint demands. |
+| `Cors:AllowedOrigins` | no | outside Development | Array of web-app origins allowed to call the API, e.g. `https://app.example.com` (scheme + host [+ port], no path). Env form `Cors__AllowedOrigins__0`, `__1`, ... Development defaults to `http://localhost:4200`; elsewhere the API refuses to start without at least one. `*` is not accepted. |
 | `FileStorage:RootPath` | no | no (`uploads`) | Folder for public files (school logos). Relative paths are under the API's content root. |
 | `FileStorage:PrivateRootPath` | no | no (`uploads-private`) | Folder for private files: student photos, employee documents and photos, homework and admission documents, signatures. Never served by URL. |
 | `AllowedHosts` | no | no | Standard ASP.NET host filter. |
@@ -55,6 +56,7 @@ Jwt__Key=<long random string, at least 32 characters>
 Email__SenderAppPassword=<smtp app password>
 Email__SenderEmail=<sender address>
 Email__LoginUrl=https://your-site/login
+Cors__AllowedOrigins__0=https://your-site
 ```
 
 Do **not** set `Bootstrap__Enabled=true` except for the moment you create the very first Super Admin, with `Bootstrap__SuperAdminSetupKey` set; switch it off again afterwards.

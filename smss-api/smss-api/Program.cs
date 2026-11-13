@@ -275,7 +275,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularDev", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        // Origins come from Cors:AllowedOrigins (StartupConfigGuard has already refused to start outside Development without one)
+        policy.WithOrigins(smss_api.Helpers.StartupConfigGuard.CorsOrigins(builder.Configuration, builder.Environment.IsDevelopment()))
               .AllowAnyHeader()
               .AllowAnyMethod();
     });

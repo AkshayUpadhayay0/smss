@@ -225,6 +225,8 @@ A marketing site lives inside the SAME Angular app. Visitors submit Contact Us /
 - Client IP: `UseForwardedHeaders` runs first. X-Forwarded-For/-Proto are trusted ONLY from `ForwardedHeaders:KnownProxies` / `KnownNetworks`
   (loopback otherwise; `ForwardLimit` default 1). `ClientAddress.PartitionKey` is the rate-limit bucket (IPv6 grouped by /64). Behind a proxy or load
   balancer you MUST list its address, or every visitor shares one bucket.
+- CORS: allowed web origins come from `Cors:AllowedOrigins` (array; env `Cors__AllowedOrigins__0`, `__1`, ...). Development defaults to `http://localhost:4200`;
+  outside Development the API REFUSES TO START with none configured (`StartupConfigGuard`), and `*` is not accepted. Never `AllowAnyOrigin`. Details: `Docs/configuration.md`.
 
 **SEO / prerender (public pages only)**
 - `@angular/ssr` with `outputMode: "static"`: `/`, `/contact`, `/request-demo`, `/privacy-policy`, `/terms` are prerendered to HTML at build time

@@ -24,9 +24,31 @@ namespace smss_api.Helpers
             string.IsNullOrWhiteSpace(value) || value.Trim().Length < minLength || value.StartsWith("CHANGE_ME", StringComparison.OrdinalIgnoreCase) || value.StartsWith("<");
 
         /// <summary>Names of the settings that are missing or still a placeholder, for the given environment. Pure: no values are returned or logged.</summary>
-        public static List<string> Missing(IConfiguration config, bool isDevelopment) =>
-            Settings.Where(s => (s.EvenInDevelopment || !isDevelopment) && (s.Applies == null || s.Applies(config)) && IsMissing(config[s.Key], s.MinLength))
-                    .Select(s => $"{s.Key} ({s.Why})").ToList();
+        public static List<string> Missing(IConfiguration config, bool isDevelopment)
+        {
+            var missing = Settings.Where(s => (s.EvenInDevelopment || !isDevelopment) && (s.Applies == null || s.Applies(config)) && IsMissing(config[s.Key], s.MinLength))
+                                  .Select(s => $"{s.Key} ({s.Why})").ToList();
+            if (!isDevelopment && CorsOrigins(config, false).Length == 0)
+                missing.Add("Cors:AllowedOrigins (the web app origin(s) allowed to call the API, e.g. Cors__AllowedOrigins__0=https://app.example.com; \"*\" is not accepted)");
+            return missing;
+        }
+
+        public const string DevelopmentCorsOrigin = "http://localhost:4200";
+
+        /// <summary>
+        /// The origins the API accepts cross-origin calls from: "Cors:AllowedOrigins" (an array; env form Cors__AllowedOrigins__0, __1, ...).
+        /// Development falls back to the local Angular dev server when none are configured. Outside Development there is NO fallback, and "*" is ignored
+        /// (WithOrigins("*") would mean "any origin"). Trailing slashes are removed because a browser's Origin header never has one.
+        /// </summary>
+        public static string[] CorsOrigins(IConfiguration config, bool isDevelopment)
+        {
+            var origins = (config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                .Select(o => o?.Trim().TrimEnd('/') ?? "")
+                .Where(o => o.Length > 0 && o != "*")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            return origins.Length == 0 && isDevelopment ? new[] { DevelopmentCorsOrigin } : origins;
+        }
 
         public static void Validate(IConfiguration config, IHostEnvironment env)
         {
