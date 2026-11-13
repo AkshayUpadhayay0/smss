@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
+using smss_api.Helpers;
 
 namespace smss_api.Controllers
 {
@@ -69,6 +70,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/board-types
         [HttpPost("board-types")]
+        [SuperAdminOnly]
         //[Authorize(Roles = "SUPER_ADMIN")]
         public async Task<IActionResult> CreateBoardType([FromBody] CreateBoardTypeRequestDto request)
         {
@@ -78,6 +80,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/board-types/{id}
         [HttpPut("board-types/{id:long}")]
+        [SuperAdminOnly]
         //[Authorize(Roles = "SUPER_ADMIN")]
         public async Task<IActionResult> UpdateBoardType(long id, [FromBody] UpdateBoardTypeRequestDto request)
         {
@@ -87,6 +90,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/board-types/{id}/toggle-status
         [HttpPost("board-types/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         //[Authorize(Roles = "SUPER_ADMIN")]
         public async Task<IActionResult> ToggleBoardTypeStatus(long id)
         {
@@ -111,6 +115,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/school-types
         [HttpPost("school-types")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateSchoolType([FromBody] CreateSchoolTypeRequestDto request)
         {
@@ -120,6 +125,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/school-types/{id}
         [HttpPut("school-types/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateSchoolType(long id, [FromBody] UpdateSchoolTypeRequestDto request)
         {
@@ -129,6 +135,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/school-types/{id}/toggle-status
         [HttpPost("school-types/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleSchoolTypeStatus(long id)
         {
@@ -153,6 +160,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/school-levels
         [HttpPost("school-levels")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateSchoolLevel([FromBody] CreateSchoolLevelRequestDto request)
         {
@@ -162,6 +170,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/school-levels/{id}
         [HttpPut("school-levels/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateSchoolLevel(long id, [FromBody] UpdateSchoolLevelRequestDto request)
         {
@@ -171,6 +180,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/school-levels/{id}/toggle-status
         [HttpPost("school-levels/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleSchoolLevelStatus(long id)
         {
@@ -195,6 +205,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/status
         [HttpPost("status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateStatus([FromBody] CreateStatusRequestDto request)
         {
@@ -204,6 +215,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/status/{id}
         [HttpPut("status/{id:int}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequestDto request)
         {
@@ -213,6 +225,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/status/{id}/toggle-status
         [HttpPost("status/{id:int}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleStatusActive(int id)
         {
@@ -238,6 +251,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/role
         [HttpPost("role")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequestDto request)
         {
@@ -247,6 +261,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/role/{id}
         [HttpPut("role/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateRole(long id, [FromBody] UpdateRoleRequestDto request)
         {
@@ -256,6 +271,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/role/{id}/toggle-status
         [HttpPost("role/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleRoleStatus(long id)
         {
@@ -280,6 +296,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/religion-categories
         [HttpPost("religion-categories")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateReligionCategory([FromBody] CreateReligionCategoryRequestDto request)
         {
@@ -289,6 +306,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/religion-categories/{id}
         [HttpPut("religion-categories/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateReligionCategory(long id, [FromBody] UpdateReligionCategoryRequestDto request)
         {
@@ -298,6 +316,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/religion-categories/{id}/toggle-status
         [HttpPost("religion-categories/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleReligionCategoryStatus(long id)
         {
@@ -320,6 +339,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/blood-groups
         [HttpPost("blood-groups")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateBloodGroup([FromBody] CreateBloodGroupRequestDto request)
         {
@@ -329,6 +349,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/blood-groups/{id}
         [HttpPut("blood-groups/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateBloodGroup(long id, [FromBody] UpdateBloodGroupRequestDto request)
         {
@@ -338,6 +359,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/blood-groups/{id}/toggle-status
         [HttpPost("blood-groups/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleBloodGroupStatus(long id)
         {
@@ -360,6 +382,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/genders
         [HttpPost("genders")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateGender([FromBody] CreateGenderRequestDto request)
         {
@@ -369,6 +392,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/genders/{id}
         [HttpPut("genders/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateGender(long id, [FromBody] UpdateGenderRequestDto request)
         {
@@ -378,6 +402,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/genders/{id}/toggle-status
         [HttpPost("genders/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleGenderStatus(long id)
         {
@@ -400,6 +425,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/student-categories
         [HttpPost("student-categories")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> CreateStudentCategory([FromBody] CreateStudentCategoryRequestDto request)
         {
@@ -409,6 +435,7 @@ namespace smss_api.Controllers
 
         // PUT: api/MasterData/student-categories/{id}
         [HttpPut("student-categories/{id:long}")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> UpdateStudentCategory(long id, [FromBody] UpdateStudentCategoryRequestDto request)
         {
@@ -418,6 +445,7 @@ namespace smss_api.Controllers
 
         // POST: api/MasterData/student-categories/{id}/toggle-status
         [HttpPost("student-categories/{id:long}/toggle-status")]
+        [SuperAdminOnly]
         // [Authorize(Roles = "SUPER_ADMIN")]  // TODO (auth)
         public async Task<IActionResult> ToggleStudentCategoryStatus(long id)
         {

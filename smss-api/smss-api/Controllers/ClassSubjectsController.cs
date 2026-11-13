@@ -35,6 +35,7 @@ namespace smss_api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateClassSubjectRequest request)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change class-subject mappings.");
             var response = await _service.CreateAsync(User.GetSchoolId(), request);
             return StatusCode(response.StatusCode, response);
         }
@@ -43,6 +44,7 @@ namespace smss_api.Controllers
         [HttpDelete("{id:long}")]
         public async Task<IActionResult> Delete(long id)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change class-subject mappings.");
             var response = await _service.DeleteAsync(User.GetSchoolId(), id);
             return StatusCode(response.StatusCode, response);
         }
@@ -51,6 +53,7 @@ namespace smss_api.Controllers
         [HttpPost("bulk")]
         public async Task<IActionResult> BulkSet([FromBody] BulkSetClassSubjectsRequest request)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change class-subject mappings.");
             var response = await _service.BulkSetAsync(User.GetSchoolId(), request);
             return StatusCode(response.StatusCode, response);
         }

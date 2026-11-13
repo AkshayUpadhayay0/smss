@@ -28,6 +28,7 @@ namespace smss_api.Controllers
         [HttpPost("import")]
         public async Task<IActionResult> Import([FromBody] ImportMastersRequest request, CancellationToken ct)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change master data imports.");
             var response = await _service.ImportAsync(User.GetSchoolId(), request, ct);
             return StatusCode(response.StatusCode, response);
         }
