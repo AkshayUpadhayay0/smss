@@ -24,6 +24,9 @@ export function intervalSeconds(started: Pick<DutyStarted, 'intervalSeconds' | '
   return Math.max(started.minIntervalSeconds, override ?? started.intervalSeconds);
 }
 
+/** Balanced (wifi / cell, battery friendly) in production. A DEV build may ask for High so the emulator's GPS route playback produces fixes. */
+const accuracy = (): Location.Accuracy => (__DEV__ && env.dutyAccuracyOverride === 'high' ? Location.Accuracy.High : Location.Accuracy.Balanced);
+
 async function stopService(): Promise<void> {
   try {
     if (await isSharing()) await Location.stopLocationUpdatesAsync(TASK_NAME);
@@ -40,7 +43,7 @@ export async function stopSharing(): Promise<void> {
 
 async function startService(seconds: number): Promise<void> {
   await Location.startLocationUpdatesAsync(TASK_NAME, {
-    accuracy: Location.Accuracy.Balanced,
+    accuracy: accuracy(),
     timeInterval: seconds * 1000,
     distanceInterval: 0,
     pausesUpdatesAutomatically: false,
@@ -52,7 +55,7 @@ async function startService(seconds: number): Promise<void> {
 /** The first fix goes out at once (not after the first interval), through the same path as every later one. A failure here never fails duty: the next ping follows. */
 async function sendFirstFix(): Promise<void> {
   try {
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    const loc = await Location.getCurrentPositionAsync({ accuracy: accuracy() });
     await runPing(nativePingDeps, [loc as DeviceLocation]);
   } catch {
     // no fix yet: the service will deliver one
@@ -98,6 +101,21 @@ async function endEverywhere(): Promise<boolean> {
   }
   await stopSharing();
   return ended;
+}
+
+/**
+ * The login ended on its own (refresh token revoked, e.g. the account was deactivated): stop sharing and end the session with the TRACKING token only
+ * (never the login, which no longer works). Best effort; never throws.
+ */
+export async function abandonDuty(): Promise<void> {
+  try {
+    await stopService();
+    await endWithToken();
+  } catch {
+    // the server will see the vehicle go OFFLINE
+  } finally {
+    await stopSharing();
+  }
 }
 
 /**

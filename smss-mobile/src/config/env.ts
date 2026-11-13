@@ -28,7 +28,15 @@ export function parseDutyIntervalOverride(raw: unknown): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 600 ? n : null;
 }
 
+/** DEV builds only: 'high' (GPS) instead of the production Balanced accuracy, because the Android emulator has no network location. Anything else is ignored. */
+export function parseDutyAccuracyOverride(raw: unknown): 'high' | null {
+  return typeof raw === 'string' && raw.trim().toLowerCase() === 'high' ? 'high' : null;
+}
+
 export const env = {
+  get dutyAccuracyOverride(): 'high' | null {
+    return parseDutyAccuracyOverride(Constants.expoConfig?.extra?.dutyAccuracy);
+  },
   get dutyIntervalOverrideSeconds(): number | null {
     return parseDutyIntervalOverride(Constants.expoConfig?.extra?.dutyIntervalSeconds);
   },

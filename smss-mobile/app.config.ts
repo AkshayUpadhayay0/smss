@@ -59,6 +59,8 @@ const config: ExpoConfig = {
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
     // DEV BUILDS ONLY (ignored in release builds): send a fix every N seconds instead of the server's 60, for quick emulator passes.
     dutyIntervalSeconds: process.env.EXPO_PUBLIC_DUTY_INTERVAL_SECONDS ?? '',
+    // DEV BUILDS ONLY: 'high' asks for GPS-grade fixes. The Android emulator has no network location, so Balanced (wifi / cell) never produces a fix there.
+    dutyAccuracy: process.env.EXPO_PUBLIC_DUTY_ACCURACY ?? '',
   },
 };
 

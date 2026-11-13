@@ -13,13 +13,17 @@ import { Screen } from '../../components/Screen';
 import { Text } from '../../components/Text';
 import { colors, spacing } from '../../theme/tokens';
 import { SIGN_OUT_ON_DUTY_WARNING, STOP_MESSAGES } from './copy';
-import { endDuty, startDuty, stopSharing } from './duty';
+import { onSessionEnded } from '../../auth/session';
+import { abandonDuty, endDuty, startDuty, stopSharing } from './duty';
 import { deriveDutyView, formatClock, lastSentText, startBlockedMessage, STATUS_HELP, STATUS_TEXT, type DutyStatus } from './dutyView';
 import { dutyStore } from './nativeStore';
 import { canShareLocation, gateFor } from './permissions';
 import { androidApi } from './permissionsNative';
 import { driverKeys, useDisclosureAccepted, useDriverMe, usePermissions, useServiceRunning, useStoppedReason } from './queries';
 import { setupSkipped } from './setupState';
+
+// If the login ends by itself while the driver app is loaded (refresh token revoked), stop sharing too: no tracking for a signed-out phone.
+onSessionEnded(abandonDuty);
 
 const STATUS_TONE: Record<DutyStatus, 'success' | 'warning' | 'neutral'> = { LIVE: 'success', STALE: 'warning', OFFLINE: 'neutral' };
 

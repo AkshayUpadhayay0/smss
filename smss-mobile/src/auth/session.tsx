@@ -24,6 +24,16 @@ interface SessionValue {
 const SessionContext = createContext<SessionValue | null>(null);
 
 const LOGOUT_WAIT_MS = 5_000;
+const END_HOOK_WAIT_MS = 3_000;
+
+// Features that hold state outside the session (the driver app's location service) register a hook here: it runs when the session ENDS BY ITSELF (the refresh token
+// was refused or revoked) so nothing keeps working for a user who is no longer signed in. An explicit sign-out has its own steps. Hooks must not use the login.
+type SessionEndHook = () => Promise<void>;
+const endHooks = new Set<SessionEndHook>();
+export function onSessionEnded(hook: SessionEndHook): () => void {
+  endHooks.add(hook);
+  return () => void endHooks.delete(hook);
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -43,10 +53,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }, 300);
   }, [queryClient]);
 
+  // The session ended on its own (the refresh token was refused or revoked, e.g. the school deactivated this account). Leave through the neutral
+  // /signing-out screen exactly like an explicit sign-out: removing the signed-in route group while one of its screens is showing made expo-router loop
+  // ("Maximum update depth exceeded", found on the emulator when a driver's refresh tokens were revoked mid-session).
+  const expireSession = useCallback(() => {
+    void Promise.race([Promise.allSettled([...endHooks].map((h) => h())), new Promise((resolve) => setTimeout(resolve, END_HOOK_WAIT_MS))]);
+    try {
+      router.replace('/signing-out');
+    } catch {
+      // navigation not ready: ending the session below still works
+    }
+    setTimeout(endLocally, 150);
+  }, [endLocally]);
+
   // Wire the HTTP layer's events into React state, then restore the stored session.
   useEffect(() => {
     api.setHandlers({
-      onSessionExpired: endLocally,
+      onSessionExpired: expireSession,
       onPasswordChangeRequired: () => setUser((u) => (u ? { ...u, isFirstLogin: true } : u)),
       onSession: (fresh) => setUser(fresh),
     });
@@ -73,7 +96,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [endLocally]);
+  }, [expireSession]);
 
   const signIn = useCallback(
     async (loginId: string, password: string) => {
