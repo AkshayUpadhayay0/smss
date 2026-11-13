@@ -95,6 +95,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Transport',
     icon: 'truck',
     children: [
+      { label: 'Live map', route: '/transport/live' },
       { label: 'Areas', route: '/transport/areas' },
       { label: 'Vehicles', route: '/transport/vehicles' },
       { label: 'Drivers', route: '/transport/drivers' },

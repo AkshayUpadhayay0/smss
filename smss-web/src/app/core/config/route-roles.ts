@@ -124,6 +124,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/employees/:employeeId': [ROLES.SCHOOL_ADMIN],
   '/employees/:employeeId/edit': [ROLES.SCHOOL_ADMIN],
   // Transport (areas, vehicles, drivers): the School Admin manages; the Principal reads (the screens hide every write button; the API enforces the same).
+  '/transport/live': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/transport/areas': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/transport/vehicles': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/transport/drivers': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],

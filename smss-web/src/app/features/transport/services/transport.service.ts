@@ -8,6 +8,7 @@ import {
   DriverLookups,
   DriverPhoto,
   DriverRequest,
+  LiveBoard,
   Paged,
   TransportArea,
   TransportAreaRequest,
@@ -97,5 +98,10 @@ export class TransportService {
   /** Returns the generated credentials ONCE. */
   createDriverLogin(id: string): Observable<DriverLoginCreated> {
     return this.api.post<DriverLoginCreated>(`/api/Drivers/${encodeURIComponent(id)}/create-login`);
+  }
+
+  // ---- live map (School Admin and Principal)
+  live(): Observable<LiveBoard> {
+    return this.api.get<LiveBoard>('/api/Transport/live', undefined, { skipErrorToast: true });
   }
 }

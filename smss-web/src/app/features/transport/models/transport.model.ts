@@ -206,3 +206,52 @@ export function formatMoney(value: number | null | undefined): string {
 export function normalizeCode(value: unknown): string {
   return String(value ?? '').replace(/\s+/g, '').toUpperCase();
 }
+
+// ----------------------------------------------------------------- live map (Stage 2)
+export type DutyStatus = 'LIVE' | 'STALE' | 'OFFLINE';
+
+export interface LiveDriver {
+  driverId: string;
+  driverName: string;
+  vehicleId: number;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  areas: string[];
+  hasFix: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMeters: number | null;
+  speedKmh: number | null;
+  headingDegrees: number | null;
+  status: DutyStatus;
+  updatedAt: string | null;
+  /** Age of the last fix in seconds AT THE TIME OF THE RESPONSE (server clock). */
+  ageSeconds: number | null;
+  sessionStartedAt: string;
+}
+
+export interface LiveBoard {
+  serverTime: string;
+  counts: { live: number; stale: number; offline: number };
+  items: LiveDriver[];
+}
+
+/** "just now", "40 s ago", "3 min ago", "2 h ago". */
+export function formatAge(seconds: number | null | undefined): string {
+  if (seconds == null) return 'no location yet';
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 10) return 'just now';
+  if (s < 60) return `${s} s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  return `${Math.floor(s / 3600)} h ago`;
+}
+
+/** Text for the pill on the map and the label in the list: driver and vehicle. */
+export function liveLabel(d: Pick<LiveDriver, 'driverName' | 'vehicleLabel'>): string {
+  return `${d.driverName} · ${d.vehicleLabel}`;
+}
+
+/** Escapes text that goes into a Leaflet divIcon (HTML). Driver and vehicle names are typed by users. */
+export function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}

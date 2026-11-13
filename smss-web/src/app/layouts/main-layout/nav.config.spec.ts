@@ -110,9 +110,9 @@ describe('visibleNav: Examinations group', () => {
 describe('visibleNav: Transport group', () => {
   const transport = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Transport');
 
-  it('School Admin and Principal get Areas, Vehicles and Drivers', () => {
+  it('School Admin and Principal get Live map, Areas, Vehicles and Drivers', () => {
     for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) {
-      expect(transport([role])?.children?.map((c) => c.route)).toEqual(['/transport/areas', '/transport/vehicles', '/transport/drivers']);
+      expect(transport([role])?.children?.map((c) => c.route)).toEqual(['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers']);
     }
   });
 
