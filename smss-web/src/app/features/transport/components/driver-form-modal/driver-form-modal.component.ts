@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -46,6 +47,18 @@ const DL = /^[A-Z0-9/-]{5,30}$/;
               These areas are inactive and will be removed from this driver when you save: {{ droppedAreas().join(', ') }}.
             </p>
           }
+          @if (timeRows().length > 0) {
+            <div class="times" formGroupName="times">
+              <p class="hint">Approximate time the bus reaches this area. Not a per-student time.</p>
+              @for (row of timeRows(); track row.id) {
+                <div class="time-row" [formGroupName]="row.id">
+                  <span class="time-row__area">{{ row.name }}</span>
+                  <app-input label="Approximate pickup" type="time" formControlName="pickup" />
+                  <app-input label="Approximate drop" type="time" formControlName="drop" [errorText]="timeError(row.id)" />
+                </div>
+              }
+            </div>
+          }
           <!-- lets Enter submit; the visible button lives in the modal footer -->
           <button type="submit" hidden tabindex="-1"></button>
         </form>
@@ -79,6 +92,31 @@ const DL = /^[A-Z0-9/-]{5,30}$/;
       font-size: var(--text-sm);
       color: var(--color-text-muted);
     }
+    .times {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .time-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: var(--space-4);
+      align-items: end;
+    }
+    .time-row__area {
+      font-weight: 600;
+      padding-bottom: var(--space-2);
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 640px) {
+      .time-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .time-row__area {
+        grid-column: 1 / -1;
+        padding-bottom: 0;
+      }
+    }
   `,
 })
 export class DriverFormModalComponent implements OnInit {
@@ -109,6 +147,9 @@ export class DriverFormModalComponent implements OnInit {
     return `The assigned vehicle ${d.vehicleLabel ?? ''} is inactive, so it is not offered here. Pick another vehicle, or leave it unassigned, then save.`;
   });
 
+  /** One row of approximate times per SELECTED area (the controls live in form.times, keyed by the area id). */
+  protected readonly timeRows = signal<{ id: string; name: string }[]>([]);
+
   protected readonly form = new FormGroup({
     fullName: new FormControl('', { nonNullable: true, validators: [Validators.required, notBlank, Validators.maxLength(150)] }),
     mobileNumber: new FormControl('', { nonNullable: true, validators: [Validators.required, mobile] }),
@@ -118,7 +159,32 @@ export class DriverFormModalComponent implements OnInit {
     dlValidUpto: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     vehicleId: new FormControl('', { nonNullable: true }),
     areaIds: new FormControl<string[]>([], { nonNullable: true }),
+    times: new FormGroup<Record<string, AbstractControl>>({}),
   });
+
+  constructor() {
+    this.form.controls.areaIds.valueChanges.pipe(takeUntilDestroyed()).subscribe((ids) => this.syncTimeRows(ids));
+  }
+
+  /** Adds a pair of time controls for each newly selected area (keeping what was typed for the others) and drops the ones of deselected areas. */
+  private syncTimeRows(ids: string[]): void {
+    const group = this.form.controls.times;
+    for (const key of Object.keys(group.controls)) if (!ids.includes(key)) group.removeControl(key);
+    for (const id of ids) {
+      if (group.controls[id]) continue;
+      group.addControl(
+        id,
+        new FormGroup({ pickup: new FormControl('', { nonNullable: true }), drop: new FormControl('', { nonNullable: true }) }, { validators: [pickupBeforeDrop] }),
+      );
+    }
+    this.timeRows.set(ids.map((id) => ({ id, name: this.lookups().areas.find((a) => String(a.id) === id)?.name ?? `Area ${id}` })));
+  }
+
+  protected timeError(id: string): string | undefined {
+    const g = this.form.controls.times.controls[id];
+    if (!g || !g.hasError('order') || !(g.touched || this.submitted())) return undefined;
+    return 'Pickup must be earlier than drop.';
+  }
 
   ngOnInit(): void {
     const id = this.driverId();
@@ -141,6 +207,10 @@ export class DriverFormModalComponent implements OnInit {
             vehicleId: d.vehicleId != null && activeVehicle ? String(d.vehicleId) : '',
             areaIds: d.areas.filter((a) => a.isActive).map((a) => String(a.areaId)),
           });
+          // the rows were created by the selection above; now fill in the saved times
+          const times: Record<string, { pickup: string; drop: string }> = {};
+          for (const a of d.areas.filter((x) => x.isActive)) times[String(a.areaId)] = { pickup: a.morningPickupTime ?? '', drop: a.afternoonDropTime ?? '' };
+          this.form.controls.times.patchValue(times);
         },
         error: () => this.closed.emit(), // already toasted by the interceptor
       });
@@ -172,7 +242,10 @@ export class DriverFormModalComponent implements OnInit {
       dlNumber: normalizeCode(v.dlNumber),
       dlValidUpto: v.dlValidUpto,
       vehicleId: v.vehicleId ? Number(v.vehicleId) : null,
-      areaIds: v.areaIds.map(Number),
+      areas: v.areaIds.map((id) => {
+        const t = v.times[id];
+        return { areaId: Number(id), morningPickupTime: t?.pickup?.trim().slice(0, 5) || null, afternoonDropTime: t?.drop?.trim().slice(0, 5) || null };
+      }),
     };
     const id = this.driverId();
 
@@ -192,6 +265,13 @@ export class DriverFormModalComponent implements OnInit {
 
 function notBlank(control: AbstractControl): ValidationErrors | null {
   return String(control.value ?? '').trim() === '' ? { blank: true } : null;
+}
+
+/** Both times set: the pickup must be earlier than the drop ("HH:mm" strings compare correctly because they are zero-padded). */
+function pickupBeforeDrop(group: AbstractControl): ValidationErrors | null {
+  const pickup = String(group.get('pickup')?.value ?? '').trim();
+  const drop = String(group.get('drop')?.value ?? '').trim();
+  return pickup !== '' && drop !== '' && pickup >= drop ? { order: true } : null;
 }
 
 function mobile(control: AbstractControl): ValidationErrors | null {

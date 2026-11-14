@@ -149,7 +149,10 @@ describe('Transport dialogs', () => {
     const DRIVER = {
       driverId: 'DPS001DR001', fullName: 'Ramesh Kumar', mobileNumber: '9876543210', email: null, address: '12 Main Road', dlNumber: 'UP32-2020-001',
       dlValidUpto: '2030-01-31', dlStatus: 'OK', dlDaysLeft: 900, vehicleId: 3, vehicleLabel: 'Bus 1', vehiclePlate: 'UP32AB1234',
-      areas: [{ areaId: 1, areaName: 'Civil Lines', isActive: true }, { areaId: 9, areaName: 'Old Colony', isActive: false }],
+      areas: [
+        { areaId: 1, areaName: 'Civil Lines', isActive: true, morningPickupTime: '07:30', afternoonDropTime: '14:15' },
+        { areaId: 9, areaName: 'Old Colony', isActive: false, morningPickupTime: '08:00', afternoonDropTime: null },
+      ],
       statusName: 'Active', photoUrl: null, hasLogin: false, loginId: null,
     };
     const open = (driverId: string | null = null) => {
@@ -171,7 +174,11 @@ describe('Transport dialogs', () => {
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
         fullName: 'Ramesh Kumar', mobileNumber: '9876543210', email: null, address: '12 Main Road', dlNumber: 'UP322020001', dlValidUpto: '2030-01-31',
-        vehicleId: 3, areaIds: [1, 2],
+        vehicleId: 3,
+        areas: [
+          { areaId: 1, morningPickupTime: null, afternoonDropTime: null },
+          { areaId: 2, morningPickupTime: null, afternoonDropTime: null },
+        ],
       });
       req.flush(env({ driverId: 'DPS001DR001' }, 201));
     });
@@ -193,8 +200,95 @@ describe('Transport dialogs', () => {
       cmp().submit();
       const req = http.expectOne(`${API}/api/Drivers/DPS001DR001`);
       expect(req.request.method).toBe('PUT');
-      expect(req.request.body).toMatchObject({ fullName: 'Ramesh Kumar', vehicleId: 3, areaIds: [1] });
+      expect(req.request.body).toMatchObject({ fullName: 'Ramesh Kumar', vehicleId: 3, areas: [{ areaId: 1, morningPickupTime: '07:30', afternoonDropTime: '14:15' }] });
+      expect(req.request.body.areaIds).toBeUndefined();   // the old shape is gone
       req.flush(env(DRIVER));
+    });
+
+    describe('approximate pickup and drop times', () => {
+      const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
+      const fillBase = () =>
+        cmp().form.patchValue({ fullName: 'Ramesh Kumar', mobileNumber: '9876543210', address: '12 Main Road', dlNumber: 'UP32-2020-001', dlValidUpto: '2030-01-31' });
+
+      it('shows a pair of inputs per SELECTED area, with the approximate wording and the help text', () => {
+        open();
+        expect(text()).not.toContain('Approximate pickup');
+        cmp().form.patchValue({ areaIds: ['1', '2'] });
+        fixture.detectChanges();
+        expect(text()).toContain('Approximate time the bus reaches this area. Not a per-student time.');
+        expect((text().match(/Approximate pickup/g) ?? []).length).toBe(2);
+        expect((text().match(/Approximate drop/g) ?? []).length).toBe(2);
+        expect(text()).toContain('Civil Lines');
+        expect(text()).toContain('Ring Road');
+        expect((fixture.nativeElement as HTMLElement).querySelectorAll('input[type="time"]').length).toBe(4);
+      });
+
+      it('sends the typed times as HH:mm and a blank one as null', () => {
+        open();
+        fillBase();
+        cmp().form.patchValue({ areaIds: ['1', '2'] });
+        cmp().form.controls.times.patchValue({ '1': { pickup: '07:30', drop: '14:15' }, '2': { pickup: '', drop: '15:00' } });
+        cmp().submit();
+        const req = http.expectOne(`${API}/api/Drivers`);
+        expect(req.request.body.areas).toEqual([
+          { areaId: 1, morningPickupTime: '07:30', afternoonDropTime: '14:15' },
+          { areaId: 2, morningPickupTime: null, afternoonDropTime: '15:00' },
+        ]);
+        req.flush(env({ driverId: 'DPS001DR001' }, 201));
+      });
+
+      it('refuses a pickup that is not earlier than the drop, naming the problem, and sends nothing', () => {
+        open();
+        fillBase();
+        cmp().form.patchValue({ areaIds: ['1'] });
+        cmp().form.controls.times.patchValue({ '1': { pickup: '15:00', drop: '07:30' } });
+        cmp().submit();
+        fixture.detectChanges();
+        http.expectNone(`${API}/api/Drivers`);
+        expect(text()).toContain('Pickup must be earlier than drop.');
+        cmp().form.controls.times.patchValue({ '1': { pickup: '07:30', drop: '07:30' } });
+        cmp().submit();
+        http.expectNone(`${API}/api/Drivers`);
+        cmp().form.controls.times.patchValue({ '1': { pickup: '07:30', drop: '07:31' } });
+        cmp().submit();
+        http.expectOne(`${API}/api/Drivers`).flush(env({ driverId: 'DPS001DR001' }, 201));
+      });
+
+      it('deselecting an area removes its row and its times; selecting it again starts blank', () => {
+        open();
+        fillBase();
+        cmp().form.patchValue({ areaIds: ['1', '2'] });
+        cmp().form.controls.times.patchValue({ '1': { pickup: '07:30', drop: '14:15' }, '2': { pickup: '08:00', drop: '15:00' } });
+        cmp().form.patchValue({ areaIds: ['2'] });
+        fixture.detectChanges();
+        expect(Object.keys(cmp().form.controls.times.controls)).toEqual(['2']);
+        expect(Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.time-row__area')).map((e) => e.textContent?.trim())).toEqual(['Ring Road']);
+        cmp().form.patchValue({ areaIds: ['1', '2'] });
+        expect(cmp().form.controls.times.getRawValue()['1']).toEqual({ pickup: '', drop: '' });
+        expect(cmp().form.controls.times.getRawValue()['2']).toEqual({ pickup: '08:00', drop: '15:00' });   // the kept area kept what was typed
+      });
+
+      it('edit: shows the saved times, and clearing one sends null for it', () => {
+        open('DPS001DR001');
+        http.expectOne(`${API}/api/Drivers/DPS001DR001`).flush(env(DRIVER));
+        fixture.detectChanges();
+        expect(cmp().form.controls.times.getRawValue()).toEqual({ '1': { pickup: '07:30', drop: '14:15' } });   // the inactive area has no row
+        cmp().form.controls.times.patchValue({ '1': { pickup: '', drop: '14:15' } });
+        cmp().submit();
+        const req = http.expectOne(`${API}/api/Drivers/DPS001DR001`);
+        expect(req.request.body.areas).toEqual([{ areaId: 1, morningPickupTime: null, afternoonDropTime: '14:15' }]);
+        req.flush(env(DRIVER));
+      });
+
+      it('an area without times is sent with nulls (the server keeps the link, the times stay empty)', () => {
+        open();
+        fillBase();
+        cmp().form.patchValue({ areaIds: ['1'] });
+        cmp().submit();
+        const req = http.expectOne(`${API}/api/Drivers`);
+        expect(req.request.body.areas).toEqual([{ areaId: 1, morningPickupTime: null, afternoonDropTime: null }]);
+        req.flush(env({ driverId: 'DPS001DR001' }, 201));
+      });
     });
 
     it('edit: an assigned vehicle that is no longer offered (inactive) is cleared and the user is told', () => {

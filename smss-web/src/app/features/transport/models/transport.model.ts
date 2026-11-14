@@ -89,6 +89,10 @@ export interface DriverArea {
   areaId: number;
   areaName: string;
   isActive: boolean;
+  /** "HH:mm" or null: the approximate time the bus reaches this area in the morning (school local time). */
+  morningPickupTime: string | null;
+  /** "HH:mm" or null: the approximate time the bus reaches this area in the afternoon. */
+  afternoonDropTime: string | null;
 }
 
 export interface DriverListItem {
@@ -136,7 +140,14 @@ export interface DriverRequest {
   dlNumber: string;
   dlValidUpto: string;
   vehicleId: number | null;
-  areaIds: number[];
+  /** The driver's areas, each with optional approximate times. The list REPLACES the previous set (an area not listed is removed; a null time clears it). */
+  areas: DriverAreaRequest[];
+}
+
+export interface DriverAreaRequest {
+  areaId: number;
+  morningPickupTime: string | null;
+  afternoonDropTime: string | null;
 }
 
 export interface DriverLookups {
