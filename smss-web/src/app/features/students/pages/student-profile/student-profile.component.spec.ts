@@ -36,7 +36,7 @@ describe('StudentProfileComponent', () => {
     http.expectOne(`${API}/api/Student/DPS261013001/DPS001ST001`).flush(env(PROFILE));
     fixture.detectChanges();
     // the Fees tab (open from the start for an Accountant) loads its own data: answer it all with empty fee data
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {   // the Transport card adds a request (and, for a School Admin, a second one for the areas)
       http.match(() => true).forEach((r) => r.flush(env(r.request.url.includes('FeePayment') ? [] : null)));
       fixture.detectChanges();
     }
@@ -140,6 +140,11 @@ describe('StudentProfileComponent', () => {
       }),
     );
     fixture.detectChanges();
+    // the Transport card (School Admin) loads its own data: this test is about the profile, so answer it with nothing
+    for (let i = 0; i < 3; i++) {
+      http.match((r) => r.url.includes('/api/StudentTransport') || r.url.includes('/api/TransportAreas')).forEach((r) => r.flush(env(null)));
+      fixture.detectChanges();
+    }
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Abhinav Kumar');
