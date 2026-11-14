@@ -49,6 +49,20 @@ namespace smss_api_service_layer.dto
         public double? Longitude { get; set; }
         /// <summary>Seconds since the last location arrived, for "updated X ago". Null for OFFLINE.</summary>
         public int? AgeSeconds { get; set; }
+        /// <summary>This driver's approximate morning time for the STUDENT'S OWN area, "HH:mm", or null when not set.</summary>
+        public string? MorningPickupTime { get; set; }
+        /// <summary>This driver's approximate afternoon time for the student's own area, "HH:mm", or null when not set.</summary>
+        public string? AfternoonDropTime { get; set; }
+    }
+
+    /// <summary>A driver of the student's area who is NOT on duty now but has approximate times there. No status, no position.</summary>
+    public class MyBusScheduledDto
+    {
+        public string DriverName { get; set; } = null!;
+        public string VehicleLabel { get; set; } = null!;
+        public string VehiclePlate { get; set; } = null!;
+        public string? MorningPickupTime { get; set; }
+        public string? AfternoonDropTime { get; set; }
     }
 
     public class MyBusDto
@@ -56,7 +70,10 @@ namespace smss_api_service_layer.dto
         /// <summary>False when the student has no active transport assignment this year (that is a 200, not an error).</summary>
         public bool Assigned { get; set; }
         public MyBusAreaDto? Area { get; set; }
+        /// <summary>Drivers of the student's area who are on duty now. A driver appears here or in <see cref="Scheduled"/>, never in both.</summary>
         public List<MyBusItemDto> Buses { get; set; } = new();
+        /// <summary>Active drivers of the student's area with at least one time who are not on duty now.</summary>
+        public List<MyBusScheduledDto> Scheduled { get; set; } = new();
         public DateTime ServerTime { get; set; }
         public string? Message { get; set; }
     }

@@ -41,7 +41,7 @@ namespace smss_api_db_layer.repository
              where da.SchoolId == schoolId && da.DriverId == driverId
              join a in _db.TransportAreas.AsNoTracking() on new { da.SchoolId, da.AreaId } equals new { a.SchoolId, a.AreaId }
              orderby a.AreaName
-             select new AreaRef(a.AreaId, a.AreaName, a.StatusId)).ToListAsync(ct);
+             select new AreaRef(a.AreaId, a.AreaName, a.StatusId, da.MorningPickupTime, da.AfternoonDropTime)).ToListAsync(ct);
 
         public Task<TbDriverDutySession?> GetOpenSessionAsync(string schoolId, string driverId, CancellationToken ct) =>
             _db.DriverDutySessions.AsNoTracking().Where(s => s.SchoolId == schoolId && s.DriverId == driverId && s.EndedAt == null).FirstOrDefaultAsync(ct);
@@ -139,6 +139,23 @@ WHERE live.session_id = EXCLUDED.session_id AND live.recorded_at < EXCLUDED.reco
                     l?.Latitude, l?.Longitude, l?.AccuracyM, l?.SpeedMps, l?.HeadingDeg, l?.ReceivedAt);
             }).ToList();
         }
+
+        public Task<List<AreaTimesRow>> GetAreaTimesAsync(string schoolId, long areaId, IReadOnlyCollection<string> driverIds, CancellationToken ct)
+        {
+            var ids = driverIds.ToArray();
+            return _db.DriverAreas.AsNoTracking().Where(da => da.SchoolId == schoolId && da.AreaId == areaId && ids.Contains(da.DriverId))
+                .Select(da => new AreaTimesRow(da.DriverId, da.MorningPickupTime, da.AfternoonDropTime)).ToListAsync(ct);
+        }
+
+        public Task<List<ScheduledRow>> ListScheduledAsync(string schoolId, long areaId, int activeStatusId, CancellationToken ct) =>
+            (from da in _db.DriverAreas.AsNoTracking()
+             where da.SchoolId == schoolId && da.AreaId == areaId && (da.MorningPickupTime != null || da.AfternoonDropTime != null)
+             join d in _db.Drivers.AsNoTracking() on new { da.SchoolId, da.DriverId } equals new { d.SchoolId, d.DriverId }
+             where d.StatusId == activeStatusId
+             join v in _db.Vehicles.AsNoTracking() on new { d.SchoolId, VehicleId = d.VehicleId } equals new { v.SchoolId, VehicleId = (long?)v.VehicleId }
+             where v.StatusId == activeStatusId
+             orderby d.FullName, d.DriverId
+             select new ScheduledRow(d.DriverId, d.FullName, v.VehicleLabel, v.RegistrationNumber, da.MorningPickupTime, da.AfternoonDropTime)).ToListAsync(ct);
 
         public async Task<Dictionary<string, List<string>>> GetAreaNamesAsync(string schoolId, IReadOnlyCollection<string> driverIds, CancellationToken ct)
         {

@@ -49,7 +49,8 @@ namespace smss_api_tests
 
         public Task<List<AreaRef>> GetAssignedAreasAsync(string schoolId, string driverId, CancellationToken ct) =>
             Task.FromResult(Store.Links.Where(l => l.SchoolId == schoolId && l.DriverId == driverId)
-                .Select(l => Store.Areas.First(a => a.SchoolId == schoolId && a.AreaId == l.AreaId)).OrderBy(a => a.AreaName).Select(a => new AreaRef(a.AreaId, a.AreaName, a.StatusId)).ToList());
+                .Select(l => (l, a: Store.Areas.First(a => a.SchoolId == schoolId && a.AreaId == l.AreaId))).OrderBy(x => x.a.AreaName)
+                .Select(x => new AreaRef(x.a.AreaId, x.a.AreaName, x.a.StatusId, x.l.MorningPickupTime, x.l.AfternoonDropTime)).ToList());
 
         public Task<TbDriverDutySession?> GetOpenSessionAsync(string schoolId, string driverId, CancellationToken ct) =>
             Task.FromResult(Sessions.FirstOrDefault(s => s.SchoolId == schoolId && s.DriverId == driverId && s.EndedAt == null));
@@ -123,6 +124,17 @@ namespace smss_api_tests
             }
             return Task.FromResult(rows.OrderBy(r => r.DriverName).ThenBy(r => r.DriverId).ToList());
         }
+
+        public Task<List<AreaTimesRow>> GetAreaTimesAsync(string schoolId, long areaId, IReadOnlyCollection<string> driverIds, CancellationToken ct) =>
+            Task.FromResult(Store.Links.Where(l => l.SchoolId == schoolId && l.AreaId == areaId && driverIds.Contains(l.DriverId)).Select(l => new AreaTimesRow(l.DriverId, l.MorningPickupTime, l.AfternoonDropTime)).ToList());
+
+        public Task<List<ScheduledRow>> ListScheduledAsync(string schoolId, long areaId, int activeStatusId, CancellationToken ct) =>
+            Task.FromResult(Store.Links.Where(l => l.SchoolId == schoolId && l.AreaId == areaId && (l.MorningPickupTime != null || l.AfternoonDropTime != null))
+                .Select(l => (l, d: Store.Drivers.First(x => x.SchoolId == schoolId && x.DriverId == l.DriverId)))
+                .Where(x => x.d.StatusId == activeStatusId && x.d.VehicleId != null)
+                .Select(x => (x.l, x.d, v: Store.Vehicles.First(v => v.SchoolId == schoolId && v.VehicleId == x.d.VehicleId)))
+                .Where(x => x.v.StatusId == activeStatusId).OrderBy(x => x.d.FullName).ThenBy(x => x.d.DriverId)
+                .Select(x => new ScheduledRow(x.d.DriverId, x.d.FullName, x.v.VehicleLabel, x.v.RegistrationNumber, x.l.MorningPickupTime, x.l.AfternoonDropTime)).ToList());
 
         public Task<Dictionary<string, List<string>>> GetAreaNamesAsync(string schoolId, IReadOnlyCollection<string> driverIds, CancellationToken ct) =>
             Task.FromResult(Store.Links.Where(l => l.SchoolId == schoolId && driverIds.Contains(l.DriverId)).GroupBy(l => l.DriverId)

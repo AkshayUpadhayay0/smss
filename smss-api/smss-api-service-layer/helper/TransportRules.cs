@@ -29,6 +29,22 @@ namespace smss_api_service_layer.helper
 
         public static bool IsValidContact(string contact) => ContactPattern.IsMatch(contact);
 
+        // ---------------------------------------------------------------- approximate pickup / drop times ("HH:mm", school local time, no zone)
+        private static readonly Regex TimePattern = new(@"^([01][0-9]|2[0-3]):[0-5][0-9]$", RegexOptions.Compiled);
+
+        /// <summary>Blank is valid and means "not set" (null). Otherwise exactly two-digit "HH:mm", 00:00 to 23:59. Seconds and other spellings are refused.</summary>
+        public static bool TryParseTime(string? text, out TimeOnly? time)
+        {
+            time = null;
+            var t = text?.Trim();
+            if (string.IsNullOrEmpty(t)) return true;
+            if (!TimePattern.IsMatch(t)) return false;
+            time = new TimeOnly(int.Parse(t[..2]), int.Parse(t[3..]));
+            return true;
+        }
+
+        public static string? FormatTime(TimeOnly? time) => time?.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+
         /// <summary>
         /// The badge for an expiry date, computed from today's date in the school's time zone and never stored: NOT_SET when there is no date,
         /// EXPIRED when it is before today, EXPIRING when it falls within the next 30 days (today included), otherwise OK.

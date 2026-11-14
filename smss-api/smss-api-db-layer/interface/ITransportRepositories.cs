@@ -7,7 +7,10 @@ namespace smss_api_db_layer.@interface
     /// <summary>A driver as named in "still assigned to ..." messages.</summary>
     public record DriverRef(string DriverId, string FullName);
     public record VehicleRef(long VehicleId, string Label, string Plate, int StatusId);
-    public record AreaRef(long AreaId, string Name, int StatusId);
+    /// <summary>An area; the two times are filled only where the row comes from a driver-area link (the driver's own assigned areas).</summary>
+    public record AreaRef(long AreaId, string Name, int StatusId, TimeOnly? MorningPickupTime = null, TimeOnly? AfternoonDropTime = null);
+    /// <summary>One wanted driver-area link with its optional approximate times.</summary>
+    public record DriverAreaInput(long AreaId, TimeOnly? MorningPickupTime, TimeOnly? AfternoonDropTime);
 
     public record AreaRow(TbTransportArea Area, string StatusName, int ActiveDriverCount);
     public record VehicleRow(TbVehicle Vehicle, string TypeName, string OwnershipName, string OwnershipCode, string StatusName, int ActiveDriverCount);
@@ -69,8 +72,8 @@ namespace smss_api_db_layer.@interface
         Task<VehicleRef?> GetVehicleAsync(string schoolId, long vehicleId, CancellationToken ct);
         Task<List<AreaRef>> GetAreasAsync(string schoolId, IReadOnlyCollection<long> areaIds, CancellationToken ct);
         Task<List<AreaRef>> GetAssignedAreasAsync(string schoolId, string driverId, CancellationToken ct);
-        /// <summary>Makes the driver's pickup areas exactly <paramref name="areaIds"/>: link rows not listed are DELETED, new ones added. The caller saves.</summary>
-        Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<long> areaIds, CancellationToken ct);
+        /// <summary>Makes the driver's pickup areas exactly <paramref name="areas"/>: link rows not listed are DELETED, new ones added, and the times of rows already there are SET to the listed values (null clears). The caller saves.</summary>
+        Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<DriverAreaInput> areas, CancellationToken ct);
         Task<List<VehicleRef>> GetActiveVehiclesAsync(string schoolId, int activeStatusId, CancellationToken ct);
         Task<List<AreaRef>> GetActiveAreasAsync(string schoolId, int activeStatusId, CancellationToken ct);
 

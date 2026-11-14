@@ -280,17 +280,23 @@ namespace smss_api_db_layer.repository
              join a in _db.TransportAreas.AsNoTracking() on new { da.SchoolId, da.AreaId } equals new { a.SchoolId, a.AreaId }
              where da.SchoolId == schoolId && da.DriverId == driverId
              orderby a.AreaName
-             select new AreaRef(a.AreaId, a.AreaName, a.StatusId)).ToListAsync(ct);
+             select new AreaRef(a.AreaId, a.AreaName, a.StatusId, da.MorningPickupTime, da.AfternoonDropTime)).ToListAsync(ct);
 
-        public async Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<long> areaIds, CancellationToken ct)
+        public async Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<DriverAreaInput> areas, CancellationToken ct)
         {
-            var wanted = areaIds.ToHashSet();
+            var wanted = areas.ToDictionary(a => a.AreaId);
             var existing = await _db.DriverAreas.Where(x => x.SchoolId == schoolId && x.DriverId == driverId).ToListAsync(ct);
-            _db.DriverAreas.RemoveRange(existing.Where(x => !wanted.Contains(x.AreaId)));   // hard delete: a mapping set, not a business record
+            _db.DriverAreas.RemoveRange(existing.Where(x => !wanted.ContainsKey(x.AreaId)));   // hard delete: a mapping set, not a business record
+            foreach (var row in existing.Where(x => wanted.ContainsKey(x.AreaId)))             // a kept row takes the listed times (null clears)
+            {
+                var w = wanted[row.AreaId];
+                row.MorningPickupTime = w.MorningPickupTime;
+                row.AfternoonDropTime = w.AfternoonDropTime;
+            }
             var have = existing.Select(x => x.AreaId).ToHashSet();
             var now = DateTime.UtcNow;
-            foreach (var id in wanted.Where(id => !have.Contains(id)))
-                await _db.DriverAreas.AddAsync(new TbDriverArea { SchoolId = schoolId, DriverId = driverId, AreaId = id, CreatedAt = now }, ct);
+            foreach (var w in wanted.Values.Where(w => !have.Contains(w.AreaId)))
+                await _db.DriverAreas.AddAsync(new TbDriverArea { SchoolId = schoolId, DriverId = driverId, AreaId = w.AreaId, MorningPickupTime = w.MorningPickupTime, AfternoonDropTime = w.AfternoonDropTime, CreatedAt = now }, ct);
         }
 
         public Task<List<VehicleRef>> GetActiveVehiclesAsync(string schoolId, int activeStatusId, CancellationToken ct) =>

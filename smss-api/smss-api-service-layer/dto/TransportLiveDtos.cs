@@ -14,6 +14,10 @@ namespace smss_api_service_layer.dto
     {
         public long AreaId { get; set; }
         public string AreaName { get; set; } = null!;
+        /// <summary>The driver's own approximate morning time for this area, "HH:mm", or null.</summary>
+        public string? MorningPickupTime { get; set; }
+        /// <summary>The driver's own approximate afternoon time for this area, "HH:mm", or null.</summary>
+        public string? AfternoonDropTime { get; set; }
     }
 
     /// <summary>Today's duty state of the signed-in driver.</summary>

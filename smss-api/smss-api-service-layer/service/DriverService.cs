@@ -115,7 +115,7 @@ namespace smss_api_service_layer.service
                 Apply(driver, input);
                 await _repo.AddAsync(driver, ct);
                 await _repo.SaveChangesAsync(ct);   // the driver row first: the link rows reference it
-                await _repo.ReplaceAreasAsync(schoolId, driverId, input.AreaIds, ct);
+                await _repo.ReplaceAreasAsync(schoolId, driverId, input.Areas, ct);
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
 
@@ -149,7 +149,7 @@ namespace smss_api_service_layer.service
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 Apply(driver, input);
                 driver.UpdatedAt = DateTime.UtcNow;
-                await _repo.ReplaceAreasAsync(schoolId, driverId, input.AreaIds, ct);   // the new set replaces the old one; unlisted link rows are deleted
+                await _repo.ReplaceAreasAsync(schoolId, driverId, input.Areas, ct);   // the new set replaces the old one: unlisted link rows are deleted, listed ones take the times sent
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
 
@@ -341,7 +341,7 @@ namespace smss_api_service_layer.service
             return login;
         }
 
-        private sealed record Input(string FullName, string Mobile, string? Email, string Address, string Dl, DateOnly DlValidUpto, long? VehicleId, List<long> AreaIds);
+        private sealed record Input(string FullName, string Mobile, string? Email, string Address, string Dl, DateOnly DlValidUpto, long? VehicleId, List<DriverAreaInput> Areas);
 
         /// <summary>Trims and normalises the request. Blank optional text becomes null; the licence number is stored without spaces, upper-cased.</summary>
         private static (Input? Input, string? Error) Normalize(DriverRequest r)
@@ -355,9 +355,26 @@ namespace smss_api_service_layer.service
             var today = SchoolClock.Today();
             if (r.DlValidUpto!.Value < new DateOnly(2000, 1, 1) || r.DlValidUpto.Value > today.AddYears(50)) return (null, "Enter a valid licence valid-upto date.");
 
-            var areaIds = (r.AreaIds ?? new List<long>()).Distinct().ToList();
-            if (areaIds.Any(id => id <= 0)) return (null, "One or more of the selected areas are not valid.");
-            return (new Input(name, r.MobileNumber!.Trim(), Clean(r.Email), address, dl, r.DlValidUpto.Value, r.VehicleId, areaIds), null);
+            if (r.AreaIds != null) return (null, "Areas are now sent as 'areas' (each with an areaId and optional times). 'areaIds' is not accepted.");
+            var (areas, areaError) = NormalizeAreas(r.Areas);
+            if (areas == null) return (null, areaError);
+            return (new Input(name, r.MobileNumber!.Trim(), Clean(r.Email), address, dl, r.DlValidUpto.Value, r.VehicleId, areas), null);
+        }
+
+        /// <summary>Each area needs a valid id (listed once); the optional times are "HH:mm" and, when both are set, the pickup is earlier than the drop.</summary>
+        private static (List<DriverAreaInput>? Areas, string? Error) NormalizeAreas(List<DriverAreaRequest>? requested)
+        {
+            var result = new List<DriverAreaInput>();
+            foreach (var a in requested ?? new List<DriverAreaRequest>())
+            {
+                if (a == null || a.AreaId is not > 0) return (null, "One or more of the selected areas are not valid.");
+                if (result.Any(x => x.AreaId == a.AreaId)) return (null, "An area is listed more than once.");
+                if (!TransportRules.TryParseTime(a.MorningPickupTime, out var pickup)) return (null, "Enter the approximate pickup time as HH:mm (for example 07:30).");
+                if (!TransportRules.TryParseTime(a.AfternoonDropTime, out var drop)) return (null, "Enter the approximate drop time as HH:mm (for example 14:30).");
+                if (pickup != null && drop != null && pickup >= drop) return (null, "The approximate pickup time must be earlier than the approximate drop time.");
+                result.Add(new DriverAreaInput(a.AreaId.Value, pickup, drop));
+            }
+            return (result, null);
         }
 
         private static void Apply(TbDriver d, Input i)
@@ -380,10 +397,11 @@ namespace smss_api_service_layer.service
                 var kept = !driverActive && existing!.VehicleId == vehicleId;
                 if (vehicle.StatusId != activeId && !kept) return (400, $"Vehicle '{vehicle.Label}' is inactive. Choose an active vehicle.");
             }
-            if (input.AreaIds.Count > 0)
+            if (input.Areas.Count > 0)
             {
-                var areas = await _repo.GetAreasAsync(schoolId, input.AreaIds, ct);
-                if (areas.Count != input.AreaIds.Count) return (404, "One or more of the selected areas were not found.");
+                var areaIds = input.Areas.Select(a => a.AreaId).ToList();
+                var areas = await _repo.GetAreasAsync(schoolId, areaIds, ct);
+                if (areas.Count != areaIds.Count) return (404, "One or more of the selected areas were not found.");
                 var current = existing == null ? new HashSet<long>() : (await _repo.GetAssignedAreasAsync(schoolId, existing.DriverId, ct)).Select(a => a.AreaId).ToHashSet();
                 var inactive = areas.Where(a => a.StatusId != activeId && !(!driverActive && current.Contains(a.AreaId))).ToList();
                 if (inactive.Count > 0) return (400, $"Area {string.Join(", ", inactive.Select(a => $"'{a.Name}'"))} is inactive. Choose active areas.");
@@ -417,7 +435,8 @@ namespace smss_api_service_layer.service
             {
                 DriverId = d.DriverId, FullName = d.FullName, MobileNumber = d.MobileNumber, Email = d.Email, Address = d.Address, DlNumber = d.DlNumber,
                 DlValidUpto = d.DlValidUpto, DlStatus = dl, DlDaysLeft = days, VehicleId = d.VehicleId, VehicleLabel = r.VehicleLabel, VehiclePlate = r.VehiclePlate,
-                Areas = r.Areas.Select(a => new DriverAreaDto { AreaId = a.AreaId, AreaName = a.Name, IsActive = a.StatusId == activeStatusId }).ToList(),
+                Areas = r.Areas.Select(a => new DriverAreaDto { AreaId = a.AreaId, AreaName = a.Name, IsActive = a.StatusId == activeStatusId,
+                    MorningPickupTime = TransportRules.FormatTime(a.MorningPickupTime), AfternoonDropTime = TransportRules.FormatTime(a.AfternoonDropTime) }).ToList(),
                 StatusName = r.StatusName, PhotoUrl = DriverPhotos.ApiPath(d.DriverId, d.PhotoPath), HasLogin = r.LoginId != null, LoginId = r.LoginId,
                 CreatedAt = d.CreatedAt, UpdatedAt = d.UpdatedAt
             };

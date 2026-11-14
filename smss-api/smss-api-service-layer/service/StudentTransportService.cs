@@ -160,12 +160,20 @@ namespace smss_api_service_layer.service
 
                 // every driver ON DUTY (an open session, Active driver) who covers the student's area: the same school, the same area
                 var open = await _duty.ListOpenAsync(schoolId, row.Row.AreaId, null, activeId.Value, ct);
+                var times = (await _duty.GetAreaTimesAsync(schoolId, row.Row.AreaId, open.Select(o => o.DriverId).ToList(), ct)).ToDictionary(t => t.DriverId);   // THIS area's link rows only
+                var shown = new HashSet<string>();
                 var buses = new List<(int Rank, MyBusItemDto Item)>();
                 foreach (var r in open)
                 {
                     var status = DutyRules.Status(r.ReceivedAt, now, _o);
                     if (status == DutyStatuses.Offline && (now - (r.ReceivedAt ?? r.SessionStartedAt)).TotalMinutes > _o.HideOfflineAfterMinutes) continue;   // the same hiding rule as the school's live board
                     var item = new MyBusItemDto { DriverName = r.DriverName, VehicleLabel = r.VehicleLabel, VehiclePlate = r.VehiclePlate, Status = status };
+                    if (times.TryGetValue(r.DriverId, out var t))
+                    {
+                        item.MorningPickupTime = TransportRules.FormatTime(t.MorningPickupTime);
+                        item.AfternoonDropTime = TransportRules.FormatTime(t.AfternoonDropTime);
+                    }
+                    shown.Add(r.DriverId);
                     if (status != DutyStatuses.Offline && r.ReceivedAt != null && r.Latitude != null && r.Longitude != null)
                     {
                         // OFFLINE never carries a position; STALE carries the last one and the app marks it clearly
@@ -176,6 +184,10 @@ namespace smss_api_service_layer.service
                     buses.Add((status == DutyStatuses.Live ? 0 : status == DutyStatuses.Stale ? 1 : 2, item));
                 }
                 dto.Buses = buses.OrderBy(b => b.Rank).ThenBy(b => b.Item.DriverName).Select(b => b.Item).ToList();
+                // everyone else with times on this area (not on duty, or an old offline session that is hidden above): the schedule, never a second entry for a driver already shown
+                dto.Scheduled = (await _duty.ListScheduledAsync(schoolId, row.Row.AreaId, activeId.Value, ct)).Where(s => !shown.Contains(s.DriverId))
+                    .Select(s => new MyBusScheduledDto { DriverName = s.DriverName, VehicleLabel = s.VehicleLabel, VehiclePlate = s.VehiclePlate,
+                        MorningPickupTime = TransportRules.FormatTime(s.MorningPickupTime), AfternoonDropTime = TransportRules.FormatTime(s.AfternoonDropTime) }).ToList();
                 if (dto.Buses.Count == 0) dto.Message = "No bus is on duty for your area right now.";
                 return Result(200, "Successfully fetched", dto);
             }

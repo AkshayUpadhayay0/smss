@@ -173,7 +173,7 @@ namespace smss_api.Controllers
             return Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
         }
 
-        // PUT api/Drivers/{driverId}   (areaIds REPLACES the driver's pickup areas)
+        // PUT api/Drivers/{driverId}   (areas REPLACES the driver's areas; each area may carry approximate pickup and drop times)
         [HttpPut("{driverId:length(1,20)}")]
         public async Task<IActionResult> Update(string driverId, [FromBody] DriverRequest request, CancellationToken ct)
         {

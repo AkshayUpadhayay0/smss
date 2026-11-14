@@ -65,9 +65,9 @@ v1 = api.ok(api.call('POST', '/api/Vehicles', tok, {'vehicleLabel': 'ZZ Bus 1', 
 v2 = api.ok(api.call('POST', '/api/Vehicles', tok, {'vehicleLabel': 'ZZ Van 2', 'registrationNumber': 'ZZ02CD2002', 'vehicleTypeId': vt['Van'], 'ownershipId': ow['Rented'], 'modelYear': 2022,
         'seatingCapacity': 14, 'ownerName': 'ZZ Sharma Travels', 'ownerContact': '9000000031', 'lastServiceDate': d(-20), 'pucExpiryDate': d(140), 'insuranceExpiryDate': d(10)}), 'vehicle 2')
 dr1 = api.ok(api.call('POST', '/api/Drivers', tok, {'fullName': 'ZZ Ramesh Kumar', 'mobileNumber': '9000000011', 'email': 'zz-ramesh@example.invalid', 'address': '12 ZZ Main Road',
-        'dlNumber': 'ZZDL-2020-0001', 'dlValidUpto': d(1900), 'vehicleId': v1['vehicleId'], 'areaIds': [areas['A1'], areas['A2']]}), 'driver 1')
+        'dlNumber': 'ZZDL-2020-0001', 'dlValidUpto': d(1900), 'vehicleId': v1['vehicleId'], 'areas': [{'areaId': areas['A1']}, {'areaId': areas['A2']}]}), 'driver 1')
 dr2 = api.ok(api.call('POST', '/api/Drivers', tok, {'fullName': 'ZZ Suresh Yadav', 'mobileNumber': '9000000012', 'address': '7 ZZ Market Lane',
-        'dlNumber': 'ZZDL-2019-0002', 'dlValidUpto': d(22), 'vehicleId': v2['vehicleId'], 'areaIds': [areas['A2'], areas['A3']]}), 'driver 2')
+        'dlNumber': 'ZZDL-2019-0002', 'dlValidUpto': d(22), 'vehicleId': v2['vehicleId'], 'areas': [{'areaId': areas['A2']}, {'areaId': areas['A3']}]}), 'driver 2')
 st['areas'], st['vehicles'], st['drivers'] = areas, {'V1': v1['vehicleId'], 'V2': v2['vehicleId']}, {'D1': dr1['driverId'], 'D2': dr2['driverId']}
 api.save(st)
 

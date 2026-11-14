@@ -12,6 +12,12 @@ namespace smss_api_db_layer.@interface
     public record LiveRow(string DriverId, string DriverName, long VehicleId, string VehicleLabel, string VehiclePlate, long SessionId, DateTime SessionStartedAt,
         double? Latitude, double? Longitude, float? AccuracyM, float? SpeedMps, float? HeadingDeg, DateTime? ReceivedAt);
 
+    /// <summary>One driver's approximate times for ONE area (a driver-area link row).</summary>
+    public record AreaTimesRow(string DriverId, TimeOnly? MorningPickupTime, TimeOnly? AfternoonDropTime);
+
+    /// <summary>An Active driver with an Active vehicle who covers an area and has at least one time there (on duty or not).</summary>
+    public record ScheduledRow(string DriverId, string DriverName, string VehicleLabel, string VehiclePlate, TimeOnly? MorningPickupTime, TimeOnly? AfternoonDropTime);
+
     /// <summary>The values of one accepted fix, already validated by the service.</summary>
     public record LocationFix(double Latitude, double Longitude, float? AccuracyM, float? SpeedMps, float? HeadingDeg, DateTime RecordedAt, DateTime ReceivedAt);
 
@@ -45,6 +51,10 @@ namespace smss_api_db_layer.@interface
 
         /// <summary>The open sessions of the school (drivers that are Active), optionally for one area or vehicle, with their latest fix.</summary>
         Task<List<LiveRow>> ListOpenAsync(string schoolId, long? areaId, long? vehicleId, int activeStatusId, CancellationToken ct);
+        /// <summary>The times of the given drivers for ONE area of the school (only link rows of that area; other areas are never read).</summary>
+        Task<List<AreaTimesRow>> GetAreaTimesAsync(string schoolId, long areaId, IReadOnlyCollection<string> driverIds, CancellationToken ct);
+        /// <summary>Active drivers (with an Active vehicle) who cover the area and have at least one time there, whether or not they are on duty.</summary>
+        Task<List<ScheduledRow>> ListScheduledAsync(string schoolId, long areaId, int activeStatusId, CancellationToken ct);
         Task<Dictionary<string, List<string>>> GetAreaNamesAsync(string schoolId, IReadOnlyCollection<string> driverIds, CancellationToken ct);
     }
 }

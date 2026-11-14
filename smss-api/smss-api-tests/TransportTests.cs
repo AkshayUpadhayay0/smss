@@ -452,7 +452,7 @@ namespace smss_api_tests
         }
         private static DriverRequest Req(string name = "Ramesh Kumar", string dl = "DL-0420110149646", string? email = null, long? vehicle = null, params long[] areas) => new()
         {
-            FullName = name, MobileNumber = "9876543210", Email = email, Address = "12 Main Road", DlNumber = dl, DlValidUpto = new DateOnly(2035, 5, 1), VehicleId = vehicle, AreaIds = areas.ToList()
+            FullName = name, MobileNumber = "9876543210", Email = email, Address = "12 Main Road", DlNumber = dl, DlValidUpto = new DateOnly(2035, 5, 1), VehicleId = vehicle, Areas = areas.Select(id => new DriverAreaRequest { AreaId = id }).ToList()
         };
 
         [Fact]
@@ -729,7 +729,7 @@ namespace smss_api_tests
             Assert.Equal(400, (await svc.CreateAsync(A, r, default)).StatusCode);
             r.DlValidUpto = SchoolClock.Today().AddYears(60);
             Assert.Equal(400, (await svc.CreateAsync(A, r, default)).StatusCode);
-            var ids = Req(); ids.AreaIds = new List<long> { 0 };
+            var ids = Req(); ids.Areas = new List<DriverAreaRequest> { new() { AreaId = 0 } };
             Assert.Equal(400, (await svc.CreateAsync(A, ids, default)).StatusCode);
         }
     }

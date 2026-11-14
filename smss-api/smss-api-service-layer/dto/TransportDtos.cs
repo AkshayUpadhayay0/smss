@@ -113,8 +113,20 @@ namespace smss_api_service_layer.dto
         [Required(ErrorMessage = "Licence valid-upto date is required.")] public DateOnly? DlValidUpto { get; set; }
         /// <summary>Optional. A driver drives at most one vehicle; a vehicle may have several drivers.</summary>
         public long? VehicleId { get; set; }
-        /// <summary>The driver's pickup areas. The list REPLACES the previous set on every save; null or empty clears it.</summary>
-        [MaxLength(100)] public List<long>? AreaIds { get; set; }
+        /// <summary>The driver's areas, each with optional approximate times. The list REPLACES the previous set on every save: an area not listed is removed,
+        /// a listed area takes the times sent (null or blank clears a time); null or empty clears them all.</summary>
+        [MaxLength(100)] public List<DriverAreaRequest>? Areas { get; set; }
+        /// <summary>The OLD shape. It is no longer accepted: any request that carries it is refused with a 400 (never silently ignored, which would clear the areas).</summary>
+        public List<long>? AreaIds { get; set; }
+    }
+
+    public class DriverAreaRequest
+    {
+        public long? AreaId { get; set; }
+        /// <summary>Approximate time the bus reaches this area in the morning, "HH:mm" (school local time). Optional.</summary>
+        public string? MorningPickupTime { get; set; }
+        /// <summary>Approximate time the bus reaches this area in the afternoon, "HH:mm". Optional; must be later than the pickup time when both are set.</summary>
+        public string? AfternoonDropTime { get; set; }
     }
 
     public class DriverAreaDto
@@ -122,6 +134,10 @@ namespace smss_api_service_layer.dto
         public long AreaId { get; set; }
         public string AreaName { get; set; } = null!;
         public bool IsActive { get; set; }
+        /// <summary>"HH:mm" or null.</summary>
+        public string? MorningPickupTime { get; set; }
+        /// <summary>"HH:mm" or null.</summary>
+        public string? AfternoonDropTime { get; set; }
     }
 
     public class DriverListItemDto

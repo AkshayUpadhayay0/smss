@@ -70,7 +70,7 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully fetched", new DriverMeDto
                 {
                     DriverId = d.DriverId, FullName = d.FullName, Vehicle = VehicleOf(d, activeId.Value),
-                    Areas = areas.Select(a => new DutyAreaDto { AreaId = a.AreaId, AreaName = a.Name }).ToList(),
+                    Areas = areas.Select(a => new DutyAreaDto { AreaId = a.AreaId, AreaName = a.Name, MorningPickupTime = TransportRules.FormatTime(a.MorningPickupTime), AfternoonDropTime = TransportRules.FormatTime(a.AfternoonDropTime) }).ToList(),
                     Duty = duty, CanStartDuty = block == null, StartBlockedReason = block,
                     IntervalSeconds = _o.IntervalSeconds, MinIntervalSeconds = _o.MinIntervalSeconds, ServerTime = now
                 });

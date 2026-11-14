@@ -221,6 +221,14 @@ namespace smss_api_tests
             return (user, id);
         }
 
+        /// <summary>Sets the approximate times of the link row (driver, area), "HH:mm" or null.</summary>
+        private void SetTimes(string driverId, long areaId, string? pickup, string? drop)
+        {
+            var link = _duty.Store.Links.First(l => l.DriverId == driverId && l.AreaId == areaId);
+            link.MorningPickupTime = pickup == null ? null : TimeOnly.ParseExact(pickup, "HH:mm");
+            link.AfternoonDropTime = drop == null ? null : TimeOnly.ParseExact(drop, "HH:mm");
+        }
+
         private async Task<string> OnDuty(string school, long user)
         {
             var dutySvc = new DriverDutyService(_duty, Options.Create(_o), _clock, NullLogger<DriverDutyService>.Instance);
@@ -368,24 +376,147 @@ namespace smss_api_tests
             Assert.Equal(400, (await _svc.GetMyBusAsync(null, StudentUser, default)).StatusCode);
         }
 
+        // ------------------------------------------------------------------------------------------------ Stage D: approximate times and scheduled[]
+        [Fact]
+        public async Task My_bus_gives_each_driver_their_OWN_times_for_the_students_area_only()
+        {
+            await AssignStudentTo(_civil);
+            var (u1, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil, _ring);
+            var (u2, _) = AddDriver(SchoolA, "DPS001DR002", "Suresh Yadav", "Van 2", "UP32CD2222", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15"); SetTimes("DPS001DR001", _ring, "06:00", "13:00");   // Ring Road is NOT the student's area
+            SetTimes("DPS001DR002", _civil, null, "15:00");                                                         // one driver may have only a drop time
+            await Ping(await OnDuty(SchoolA, u1), 26.1); await Ping(await OnDuty(SchoolA, u2), 26.2);
+
+            var r = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Equal(new[] { ("Ramesh Kumar", "07:30", "14:15"), ("Suresh Yadav", (string?)null, "15:00") }, r.Buses.Select(b => (b.DriverName, b.MorningPickupTime, b.AfternoonDropTime)));
+            Assert.Empty(r.Scheduled);
+            var json = JsonSerializer.Serialize(r);
+            Assert.DoesNotContain("06:00", json); Assert.DoesNotContain("13:00", json);
+        }
+
+        [Fact]
+        public async Task A_student_of_another_area_never_sees_these_times()
+        {
+            await AssignStudentTo(_ring);
+            var (u1, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15");
+            await Ping(await OnDuty(SchoolA, u1), 26.1);
+            var r = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Empty(r.Buses); Assert.Empty(r.Scheduled);
+            Assert.DoesNotContain("07:30", JsonSerializer.Serialize(r));
+        }
+
+        [Fact]
+        public async Task Scheduled_lists_active_drivers_with_a_time_who_are_not_on_duty_and_nobody_else()
+        {
+            await AssignStudentTo(_civil);
+            var (onDuty, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            AddDriver(SchoolA, "DPS001DR002", "Suresh Yadav", "Van 2", "UP32CD2222", _civil);          // off duty, has times
+            AddDriver(SchoolA, "DPS001DR003", "No Times", "Bus 3", "UP32EF3333", _civil);              // off duty, no times at all: not listed
+            AddDriver(SchoolA, "DPS001DR004", "Wrong Area", "Bus 4", "UP32GH4444", _ring);             // has times, but on another area
+            AddDriver(SchoolA, "DPS001DR005", "Hidden Driver", "Bus 5", "UP32IJ5555", _civil);         // a deactivated driver
+            AddDriver(SchoolA, "DPS001DR006", "Closed Vehicle", "Bus 6", "UP32KL6666", _civil);        // an inactive vehicle
+            AddDriver(SchoolB, "XYZ002DR001", "Other School", "Bus B", "UP32ZZ9999");                   // another school
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15");
+            SetTimes("DPS001DR002", _civil, "07:45", null);
+            SetTimes("DPS001DR004", _ring, "07:00", "14:00");
+            SetTimes("DPS001DR005", _civil, "07:10", "14:10");
+            SetTimes("DPS001DR006", _civil, "07:20", "14:20");
+            _duty.Store.Drivers.First(d => d.DriverId == "DPS001DR005").StatusId = TransportStore.Inactive;
+            _duty.Store.Vehicles.First(v => v.VehicleLabel == "Bus 6").StatusId = TransportStore.Inactive;
+            await Ping(await OnDuty(SchoolA, onDuty), 26.1);
+
+            var r = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Equal(new[] { "Ramesh Kumar" }, r.Buses.Select(b => b.DriverName));
+            var only = Assert.Single(r.Scheduled);
+            Assert.Equal(("Suresh Yadav", "Van 2", "UP32CD2222", "07:45", (string?)null), (only.DriverName, only.VehicleLabel, only.VehiclePlate, only.MorningPickupTime, only.AfternoonDropTime));
+        }
+
+        [Fact]
+        public async Task A_driver_is_in_exactly_one_list_buses_while_on_duty_scheduled_after()
+        {
+            await AssignStudentTo(_civil);
+            var (u, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15");
+
+            var before = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Empty(before.Buses); Assert.Single(before.Scheduled);
+            Assert.Contains("No bus is on duty", before.Message);                                  // the schedule is shown WITH the "nobody on duty" line
+
+            var token = await OnDuty(SchoolA, u); await Ping(token, 26.1);
+            var during = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Single(during.Buses); Assert.Empty(during.Scheduled);
+
+            var dutySvc = new DriverDutyService(_duty, Options.Create(_o), _clock, NullLogger<DriverDutyService>.Instance);
+            await dutySvc.EndByTokenAsync(token, default);
+            var after = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Empty(after.Buses); Assert.Single(after.Scheduled);
+        }
+
+        [Fact]
+        public async Task An_old_offline_session_that_is_hidden_from_buses_falls_back_to_scheduled()
+        {
+            await AssignStudentTo(_civil);
+            var (u, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15");
+            await OnDuty(SchoolA, u);                                                               // started, never sent a fix
+            _clock.Advance(_o.HideOfflineAfterMinutes * 60 + 5);
+            var r = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Empty(r.Buses);
+            Assert.Equal("Ramesh Kumar", Assert.Single(r.Scheduled).DriverName);                    // still exactly one entry for the driver
+        }
+
+        [Fact]
+        public async Task Scheduled_entries_carry_no_status_position_age_or_ids_and_not_assigned_has_none()
+        {
+            Assert.Empty((await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!.Scheduled);   // not assigned yet
+            await AssignStudentTo(_civil);
+            AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", null);
+            var json = JsonSerializer.Serialize((await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            using var doc = JsonDocument.Parse(json);
+            var entry = doc.RootElement.GetProperty("scheduled")[0];
+            Assert.Equal(new[] { "afternoonDropTime", "driverName", "morningPickupTime", "vehicleLabel", "vehiclePlate" }, entry.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
+            foreach (var bad in new[] { "DPS001DR001", "status", "latitude", "ageSeconds", "driverId" }) Assert.DoesNotContain(bad, json, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task An_inactive_area_shows_no_schedule()
+        {
+            await AssignStudentTo(_civil);
+            AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15");
+            _duty.Store.Areas.First(a => a.AreaId == _civil).StatusId = TransportStore.Inactive;
+            var r = (await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data!;
+            Assert.Empty(r.Buses); Assert.Empty(r.Scheduled);
+        }
+
         // ------------------------------------------------------------------------------------------------ what a student may see
         [Fact]
         public async Task The_student_response_exposes_EXACTLY_these_fields_and_nothing_else()
         {
             // If you add a property to a student-facing DTO this test fails on purpose: a child's view must be extended by a reviewed decision, not by accident.
-            Assert.Equal(new[] { "Area", "Assigned", "Buses", "Message", "ServerTime" }, PropertyNames(typeof(MyBusDto)));
+            Assert.Equal(new[] { "Area", "Assigned", "Buses", "Message", "Scheduled", "ServerTime" }, PropertyNames(typeof(MyBusDto)));
             Assert.Equal(new[] { "AreaName" }, PropertyNames(typeof(MyBusAreaDto)));
-            Assert.Equal(new[] { "AgeSeconds", "DriverName", "Latitude", "Longitude", "Status", "VehicleLabel", "VehiclePlate" }, PropertyNames(typeof(MyBusItemDto)));
+            Assert.Equal(new[] { "AfternoonDropTime", "AgeSeconds", "DriverName", "Latitude", "Longitude", "MorningPickupTime", "Status", "VehicleLabel", "VehiclePlate" }, PropertyNames(typeof(MyBusItemDto)));
+            Assert.Equal(new[] { "AfternoonDropTime", "DriverName", "MorningPickupTime", "VehicleLabel", "VehiclePlate" }, PropertyNames(typeof(MyBusScheduledDto)));   // no status, no position, no ids
 
             // and the real serialised answer carries no extra key, however the data looks
             await AssignStudentTo(_civil);
-            var (u, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil);
+            var (u, _) = AddDriver(SchoolA, "DPS001DR001", "Ramesh Kumar", "Bus 1", "UP32AB1234", _civil, _ring);
+            SetTimes("DPS001DR001", _civil, "07:30", "14:15"); SetTimes("DPS001DR001", _ring, "06:05", "13:10");                 // the OTHER area's times must never appear
+            AddDriver(SchoolA, "DPS001DR002", "Suresh Yadav", "Van 2", "UP32CD2222", _civil);                                    // off duty, with times: goes to scheduled[]
+            SetTimes("DPS001DR002", _civil, "08:00", null);
             await Ping(await OnDuty(SchoolA, u), 26.85, 80.95);
             var json = JsonSerializer.Serialize((await _svc.GetMyBusAsync(SchoolA, StudentUser, default)).Data, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             using var doc = JsonDocument.Parse(json);
-            Assert.Equal(new[] { "area", "assigned", "buses", "message", "serverTime" }, doc.RootElement.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
+            Assert.Equal(new[] { "area", "assigned", "buses", "message", "scheduled", "serverTime" }, doc.RootElement.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
             var bus = doc.RootElement.GetProperty("buses")[0];
-            Assert.Equal(new[] { "ageSeconds", "driverName", "latitude", "longitude", "status", "vehicleLabel", "vehiclePlate" }, bus.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
+            Assert.Equal(new[] { "afternoonDropTime", "ageSeconds", "driverName", "latitude", "longitude", "morningPickupTime", "status", "vehicleLabel", "vehiclePlate" }, bus.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
+            var sched = doc.RootElement.GetProperty("scheduled")[0];
+            Assert.Equal(new[] { "afternoonDropTime", "driverName", "morningPickupTime", "vehicleLabel", "vehiclePlate" }, sched.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
+            Assert.Equal("07:30", bus.GetProperty("morningPickupTime").GetString());
+            foreach (var otherArea in new[] { "06:05", "13:10" }) Assert.DoesNotContain(otherArea, json);                     // another area's times of the same driver
             foreach (var secret in new[] { "9876543210", "DL12345", "addr", "photo", "DPS001DR001", "driverId", "mobile", "phone", "email" })
                 Assert.DoesNotContain(secret, json, StringComparison.OrdinalIgnoreCase);
         }

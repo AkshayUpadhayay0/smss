@@ -43,7 +43,9 @@ namespace smss_api_tests
             var d = new TbDriver { DriverId = id, SchoolId = school, FullName = name, MobileNumber = "9876543210", Email = email, Address = "addr", DlNumber = dl, DlValidUpto = new DateOnly(2035, 1, 1), VehicleId = vehicleId, StatusId = status };
             Drivers.Add(d); return d;
         }
-        public void Link(string school, string driverId, long areaId) => Links.Add(new TbDriverArea { DriverAreaId = NextLink(), SchoolId = school, DriverId = driverId, AreaId = areaId });
+        public void Link(string school, string driverId, long areaId, string? pickup = null, string? drop = null) =>
+            Links.Add(new TbDriverArea { DriverAreaId = NextLink(), SchoolId = school, DriverId = driverId, AreaId = areaId, MorningPickupTime = T(pickup), AfternoonDropTime = T(drop) });
+        private static TimeOnly? T(string? hhmm) => hhmm == null ? null : TimeOnly.ParseExact(hhmm, "HH:mm");
     }
 
     internal sealed class FakeTx : IDbContextTransaction
@@ -129,7 +131,8 @@ namespace smss_api_tests
 
         private VehicleRef? Veh(string school, long? id) => id == null ? null : _s.Vehicles.Where(v => v.SchoolId == school && v.VehicleId == id).Select(v => new VehicleRef(v.VehicleId, v.VehicleLabel, v.RegistrationNumber, v.StatusId)).FirstOrDefault();
         private List<AreaRef> AreasOf(string school, string driverId) =>
-            _s.Links.Where(l => l.SchoolId == school && l.DriverId == driverId).Select(l => _s.Areas.First(a => a.SchoolId == school && a.AreaId == l.AreaId)).OrderBy(a => a.AreaName).Select(a => new AreaRef(a.AreaId, a.AreaName, a.StatusId)).ToList();
+            _s.Links.Where(l => l.SchoolId == school && l.DriverId == driverId).Select(l => (l, a: _s.Areas.First(a => a.SchoolId == school && a.AreaId == l.AreaId))).OrderBy(x => x.a.AreaName)
+                .Select(x => new AreaRef(x.a.AreaId, x.a.AreaName, x.a.StatusId, x.l.MorningPickupTime, x.l.AfternoonDropTime)).ToList();
 
         public Task<(List<DriverListRow> Rows, int Total)> ListAsync(string schoolId, string? search, int? statusId, long? vehicleId, int page, int pageSize, CancellationToken ct)
         {
@@ -158,10 +161,16 @@ namespace smss_api_tests
         public Task<List<AreaRef>> GetAreasAsync(string schoolId, IReadOnlyCollection<long> areaIds, CancellationToken ct) =>
             Task.FromResult(_s.Areas.Where(a => a.SchoolId == schoolId && areaIds.Contains(a.AreaId)).Select(a => new AreaRef(a.AreaId, a.AreaName, a.StatusId)).ToList());
         public Task<List<AreaRef>> GetAssignedAreasAsync(string schoolId, string driverId, CancellationToken ct) => Task.FromResult(AreasOf(schoolId, driverId));
-        public Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<long> areaIds, CancellationToken ct)
+        public Task ReplaceAreasAsync(string schoolId, string driverId, IReadOnlyCollection<DriverAreaInput> areas, CancellationToken ct)
         {
-            _s.Links.RemoveAll(l => l.SchoolId == schoolId && l.DriverId == driverId && !areaIds.Contains(l.AreaId));   // hard delete
-            foreach (var id in areaIds.Where(id => !_s.Links.Any(l => l.SchoolId == schoolId && l.DriverId == driverId && l.AreaId == id))) _s.Link(schoolId, driverId, id);
+            var ids = areas.Select(a => a.AreaId).ToHashSet();
+            _s.Links.RemoveAll(l => l.SchoolId == schoolId && l.DriverId == driverId && !ids.Contains(l.AreaId));   // hard delete
+            foreach (var a in areas)
+            {
+                var row = _s.Links.FirstOrDefault(l => l.SchoolId == schoolId && l.DriverId == driverId && l.AreaId == a.AreaId);
+                if (row == null) { _s.Link(schoolId, driverId, a.AreaId); row = _s.Links.Last(); }   // a kept row takes the listed times (null clears)
+                row.MorningPickupTime = a.MorningPickupTime; row.AfternoonDropTime = a.AfternoonDropTime;
+            }
             return Task.CompletedTask;
         }
         public Task<List<VehicleRef>> GetActiveVehiclesAsync(string schoolId, int activeStatusId, CancellationToken ct) =>

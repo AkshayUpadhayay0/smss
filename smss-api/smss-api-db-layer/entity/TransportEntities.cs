@@ -101,6 +101,10 @@ namespace smss_api_db_layer.entity
         [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
         [Column("driver_id")][StringLength(20)] public string DriverId { get; set; } = null!;
         [Column("area_id")] public long AreaId { get; set; }
+        /// <summary>Approximate time the bus reaches this area in the morning (school local time, no zone). Optional.</summary>
+        [Column("morning_pickup_time", TypeName = "time")] public TimeOnly? MorningPickupTime { get; set; }
+        /// <summary>Approximate time the bus reaches this area in the afternoon (school local time, no zone). Optional; later than the pickup when both are set.</summary>
+        [Column("afternoon_drop_time", TypeName = "time")] public TimeOnly? AfternoonDropTime { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
     }
 
