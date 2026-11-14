@@ -10,6 +10,7 @@ import {
   DriverRequest,
   LiveBoard,
   Paged,
+  StudentTransport,
   TransportArea,
   TransportAreaRequest,
   Vehicle,
@@ -103,5 +104,16 @@ export class TransportService {
   // ---- live map (School Admin and Principal)
   live(): Observable<LiveBoard> {
     return this.api.get<LiveBoard>('/api/Transport/live', undefined, { skipErrorToast: true });
+  }
+
+  // ---- a student's transport area (Student profile card)
+  getStudentTransport(studentId: string): Observable<StudentTransport> {
+    return this.api.get<StudentTransport>(`/api/StudentTransport/${encodeURIComponent(studentId)}`);
+  }
+  assignStudentTransport(studentId: string, areaId: number): Observable<StudentTransport> {
+    return this.api.put<StudentTransport>(`/api/StudentTransport/${encodeURIComponent(studentId)}`, { areaId });
+  }
+  removeStudentTransport(studentId: string): Observable<StudentTransport> {
+    return this.api.post<StudentTransport>(`/api/StudentTransport/${encodeURIComponent(studentId)}/remove`);
   }
 }

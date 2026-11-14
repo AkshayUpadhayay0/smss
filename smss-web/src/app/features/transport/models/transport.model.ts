@@ -255,3 +255,21 @@ export function liveLabel(d: Pick<LiveDriver, 'driverName' | 'vehicleLabel'>): s
 export function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+// ----------------------------------------------------------- student transport (Stage 3)
+/** Who may change a student's transport area: the same role as every other Transport write. The Principal reads. */
+export interface StudentTransportAssignment {
+  areaId: number;
+  areaName: string;
+  /** False when the area was deactivated after the student was assigned: the school should move the student. */
+  areaIsActive: boolean;
+}
+
+export interface StudentTransport {
+  studentId: string;
+  studentName: string;
+  academicYearId: number;
+  academicYearName: string;
+  isCurrentYear: boolean;
+  assignment: StudentTransportAssignment | null;
+}

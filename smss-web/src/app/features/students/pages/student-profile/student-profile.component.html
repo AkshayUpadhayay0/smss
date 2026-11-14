@@ -92,6 +92,10 @@
         }
       </app-card>
 
+      @if (!restricted()) {
+        <app-student-transport-card [studentId]="s.studentId" />
+      }
+
       <app-card title="Contact">
         <dl class="grid">
           <div><dt>Email</dt><dd>{{ s.email || '—' }}</dd></div>
