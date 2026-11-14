@@ -71,6 +71,22 @@ export function StudentHome() {
       <QueryState loading={dashboard.isPending} error={dashboard.error} onRetry={refresh} skeletons={2}>
         {d && today ? (
           <>
+            {/* My bus: always offered (the screen says "not assigned" itself): where the school bus for the student's area is */}
+            <Pressable onPress={() => go('/(student)/bus')} accessibilityRole="button" accessibilityLabel="Where is my bus">
+              <Card style={styles.busRow}>
+                <View style={styles.busIcon}>
+                  <Icon name="map-pin" size={22} color={colors.primaryText} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="heading" style={{ fontSize: 15 }}>
+                    My bus
+                  </Text>
+                  <Text variant="small">See where your school bus is</Text>
+                </View>
+                <Icon name="chevron-right" size={20} color={colors.muted} />
+              </Card>
+            </Pressable>
+
             {/* Attendance summary */}
             {d.attendance ? (
               <Pressable onPress={() => go('/(student)/attendance')} accessibilityRole="button" accessibilityLabel="Attendance details">
@@ -190,6 +206,8 @@ const styles = StyleSheet.create({
   bell: { width: MIN_TOUCH, height: MIN_TOUCH, borderRadius: MIN_TOUCH / 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  busRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  busIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' },
   track: { height: 10, borderRadius: 5, backgroundColor: colors.tint, overflow: 'hidden' },
   fill: { height: 10, borderRadius: 5, backgroundColor: colors.primary },
   stats: { flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' },

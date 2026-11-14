@@ -9,6 +9,7 @@ export const studentKeys = {
   timetable: ['student', 'timetable'] as const,
   notices: ['student', 'notices'] as const,
   unread: ['student', 'unread-count'] as const,
+  bus: ['student', 'my-bus'] as const,
   attendance: (from: string, to: string) => ['student', 'attendance', from, to] as const,
 };
 
@@ -26,3 +27,10 @@ export function useServerToday() {
   const dashboard = useDashboard();
   return { today: dashboard.data?.today, query: dashboard };
 }
+
+/**
+ * The student's bus. Polled every `pollSeconds` ONLY while the screen is focused (and, through react-query's focus manager, only while the app is in the foreground);
+ * the answer is never reused for long: a position older than a few seconds is stale news.
+ */
+export const useMyBus = (pollSeconds: number | false) =>
+  useQuery({ queryKey: studentKeys.bus, queryFn: student.getMyBus, refetchInterval: pollSeconds === false ? false : pollSeconds * 1000, staleTime: 0, gcTime: 60_000 });
