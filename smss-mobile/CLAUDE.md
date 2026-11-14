@@ -184,7 +184,7 @@ Development and ON in production. Airplane mode: `adb shell cmd connectivity air
 
 ### Student: "Where is my bus" (Stage C)
 - Student Home has a **My bus** card (always shown) that opens `app/(student)/bus.tsx` (no tab bar). The server decides everything: `GET /api/Transport/my-bus` (Student role, identity from the token) returns only
-  `{assigned, area, buses[]}` with driver name, vehicle label and plate, status, location and age; **no driver phone, photo, address or licence, and no coordinates for an OFFLINE bus**. Never add a field to that
+  `{assigned, area, buses[], scheduled[]}` with driver name, vehicle label and plate, status, location, age and (Stage D) the approximate times; **no driver phone, photo, address or licence, and no coordinates for an OFFLINE bus**. Never add a field to that
   response on the app side without the API side's reviewed test failing first.
 - The map is `react-native-webview` showing a page with **Leaflet bundled in the app** (`src/features/student/bus/leafletAssets.generated.ts`, generated from the `leaflet` devDependency by `npm run build:leaflet`;
   re-run it and commit the file when changing the version). **No CDN.** Tile URL, attribution, poll interval and the `baseUrl` are in `src/config/map.ts`: `baseUrl` is the origin the page claims, so every tile request carries a valid
@@ -192,6 +192,18 @@ Development and ON in production. Airplane mode: `adb shell cmd connectivity air
 - Markers are moved with `injectJavaScript` (`buildUpdateScript`: data through `JSON.stringify`, names set with `textContent` in the page, never as HTML). The screen polls every 20 s only while it is focused (`useFocusEffect`) and the app is in the foreground
   (react-query's focus manager); OFFLINE buses are listed with their state but never pinned; a STALE bus is pinned at its last position with an explicit warning.
 - The only link in the WebView is the OpenStreetMap credit: it opens in the browser; the page itself never navigates (`onShouldStartLoadWithRequest`).
+
+### Approximate pickup and drop times (Stage D)
+- Each driver-and-area link has two optional "HH:mm" times (school local time, no zone): **Approximate pickup** and **Approximate drop**. The wording is fixed by the product owner everywhere (school form labels, student and driver screens):
+  they are the time the bus reaches the AREA, never a per-student time (the web form says so). The School Admin sets them in the Driver form; the API (`PUT api/Drivers/{id}`) takes `areas[{areaId, morningPickupTime, afternoonDropTime}]`
+  and refuses the old `areaIds`.
+- Student: `GET /api/Transport/my-bus` gives each bus ON DUTY its own two times for the STUDENT'S OWN area, and `scheduled[]` lists the Active drivers of that area with at least one time who are NOT on duty
+  (`driverName`, `vehicleLabel`, `vehiclePlate`, the two times; no status, no position, no ids). A driver is in exactly one list. "My bus" shows the times in each bus card and a **Not on duty now** section from `scheduled[]`
+  (it stays visible when nobody is on duty, which is when a schedule matters). The Home card runs one `useMyBus(false)` query (no polling) and shows the earliest "Pickup about HH:mm" (else "Drop about HH:mm");
+  if the query fails or there is no time the card is unchanged. The phone's clock is not used to pick the "next" time. Pure helpers (wording, validation of the strings, the Home line): `src/lib/busTimes.ts`.
+- Driver: `GET api/Drivers/me` returns the driver's OWN times in `areas[]`; Home shows them read-only under "Your areas".
+- Database: `Docs/smss-transport-times.sql` (run after the Stage 1, 2 and 3 scripts; idempotent; two nullable `time` columns on `tb_driver_areas` plus a guarded CHECK that the pickup is earlier than the drop). Live checks:
+  `scripts/transport-live-check/live_check_d.py` and `live_check_d_isolation.py` (see the README there).
 
 ### Findings from the Android emulator run (Android 15, Pixel 9 image) — keep for the next person
 - **Windows build error and its durable fix.** The first `npx expo run:android` on Windows can fail in `buildCMakeDebug` with "ninja: error: Stat(...)": the generated codegen object paths exceed 260 characters and the default CMake 3.22.1 ships ninja 1.10 (no long-path support). Fix (committed, survives `prebuild --clean`): the config plugin `plugins/withAndroidCmakeVersion.js` pins the CMake version when `SMSS_ANDROID_CMAKE_VERSION` is set. Steps: (1) once, in the Android SDK Manager install "CMake 4.1.2" (SDK Tools; `%LOCALAPPDATA%\Android\Sdk\cmake.1.2in
