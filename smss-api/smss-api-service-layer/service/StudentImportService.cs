@@ -1,3 +1,4 @@
+using smss_api_db_layer.constants;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -251,9 +252,9 @@ namespace smss_api_service_layer.service
             // ---- the school's own set-up must be in place
             var active = await _repo.GetActiveStatusIdAsync(ct);
             if (active == null) { FileError("The system is not configured correctly. Please contact support."); return v; }
-            var type = await _repo.GetAdmissionTypeByNameAsync(StudentOnboardingService.ExistingStudentTypeName, ct);
-            if (type == null) { FileError($"The '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type is not set up. Please contact support."); return v; }
-            if (!type.IsActive) { FileError($"The '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type is inactive. Please contact support."); return v; }
+            // always Existing Student, found by code: an import never takes a type from the file or the client
+            var (type, typeError) = await AdmissionTypeDefaults.ResolveAsync(_repo.GetAdmissionTypeByCodeAsync, AdmissionTypeCodes.ExistingStudent, ct);
+            if (type == null) { FileError(typeError!); return v; }
             var year = await _repo.GetCurrentYearAsync(schoolId, active.Value, ct);
             if (year == null) { FileError("Set a current academic year first (School Setup). Students are imported into the current year."); return v; }
             var shortCode = await _repo.GetSchoolShortCodeAsync(schoolId, ct);

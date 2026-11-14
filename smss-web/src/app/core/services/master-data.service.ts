@@ -111,9 +111,11 @@ export class MasterDataService {
   }
   /** Admission types for the school Admission form: ACTIVE ones only (the server decides; deactivated types never appear here). */
   getAdmissionTypeOptions(): Observable<SelectOption[]> {
-    return this.cachedAt<{ admissionTypeId: number; typeName: string }[]>('admission-types', '/api/AdmissionTypes').pipe(
-      map((l) => l.map((t) => ({ label: t.typeName, value: t.admissionTypeId.toString() }))),
-    );
+    return this.getAdmissionTypes().pipe(map((l) => l.map((t) => ({ label: t.typeName, value: t.admissionTypeId.toString() }))));
+  }
+  /** The active admission types with their codes (the forms pick their default by CODE: NEW_ADMISSION / EXISTING_STUDENT). */
+  getAdmissionTypes(): Observable<{ admissionTypeId: number; typeCode: string; typeName: string }[]> {
+    return this.cachedAt('admission-types', '/api/AdmissionTypes');
   }
   getStudentCategoryOptions(): Observable<SelectOption[]> {
     return this.cached<{ studentCategoryId: number; categoryName: string }[]>('student-categories', 'student-categories').pipe(

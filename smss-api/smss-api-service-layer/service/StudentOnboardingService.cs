@@ -1,3 +1,4 @@
+using smss_api_db_layer.constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -41,11 +42,9 @@ namespace smss_api_service_layer.service
                 var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);
                 if (activeId == null) return ConfigError("'Active' general status missing from lut_status");
 
-                var type = await _repo.GetAdmissionTypeByNameAsync(ExistingStudentTypeName, ct);
-                if (type == null)
-                    return Result(400, $"The '{ExistingStudentTypeName}' Admission Type is not set up. Please contact support.", null);
-                if (!type.IsActive)
-                    return Result(400, $"The '{ExistingStudentTypeName}' Admission Type is inactive. Please contact support.", null);
+                // ALWAYS Existing Student, found by code. The request has no admission type field, so nothing a client sends can change it.
+                var (type, typeError) = await AdmissionTypeDefaults.ResolveAsync(_repo.GetAdmissionTypeByCodeAsync, AdmissionTypeCodes.ExistingStudent, ct);
+                if (type == null) return Result(400, typeError!, null);
 
                 // ---- ids come from the client: school-owned ones must belong to THIS school ----
                 if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct))

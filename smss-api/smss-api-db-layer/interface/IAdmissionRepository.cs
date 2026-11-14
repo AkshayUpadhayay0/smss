@@ -34,8 +34,8 @@ namespace smss_api_db_layer.@interface
         Task<bool> ClassBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct);
         /// <summary>True when the (global) admission type exists and, unless <paramref name="allowInactive"/>, is active.</summary>
         Task<bool> AdmissionTypeUsableAsync(long id, bool allowInactive, CancellationToken ct);
-        /// <summary>The global admission type with that name (case-insensitive), or null.</summary>
-        Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct);
+        /// <summary>The global admission type with that code (case-insensitive), or null.</summary>
+        Task<LutAdmissionType?> GetAdmissionTypeByCodeAsync(string code, CancellationToken ct);
         Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct);
         Task<bool> GenderExistsAsync(long id, CancellationToken ct);
         Task<bool> BloodGroupExistsAsync(long id, CancellationToken ct);

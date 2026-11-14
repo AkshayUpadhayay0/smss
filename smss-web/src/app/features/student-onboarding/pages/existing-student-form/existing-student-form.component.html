@@ -37,6 +37,7 @@
   <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <app-card title="Admission Record">
       <div class="grid">
+        <app-input label="Admission type" helpText="Set automatically for students who are already studying at the school." [formControl]="admissionTypeShown" />
         <app-input
           label="Admission number"
           placeholder="Leave blank to auto-generate"

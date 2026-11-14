@@ -14,7 +14,7 @@ namespace smss_api_db_layer.@interface
     public interface IStudentImportRepository
     {
         Task<int?> GetActiveStatusIdAsync(CancellationToken ct);
-        Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct);
+        Task<LutAdmissionType?> GetAdmissionTypeByCodeAsync(string code, CancellationToken ct);
         Task<TbAcademicYears?> GetCurrentYearAsync(string schoolId, int activeStatusId, CancellationToken ct);
         Task<string?> GetSchoolShortCodeAsync(string schoolId, CancellationToken ct);
         Task<List<ImportClassRow>> ListClassesAsync(string schoolId, int activeStatusId, CancellationToken ct);

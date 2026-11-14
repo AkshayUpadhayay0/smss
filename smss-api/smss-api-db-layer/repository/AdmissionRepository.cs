@@ -61,11 +61,11 @@ namespace smss_api_db_layer.repository
         public Task<bool> AdmissionTypeUsableAsync(long id, bool allowInactive, CancellationToken ct) =>
             _db.LutAdmissionTypes.AnyAsync(t => t.AdmissionTypeId == id && (allowInactive || t.IsActive), ct);
 
-        public Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct)
+        public Task<LutAdmissionType?> GetAdmissionTypeByCodeAsync(string code, CancellationToken ct)
         {
-            var wanted = name.Trim().ToLower();
+            var wanted = code.Trim().ToUpper();
             return _db.LutAdmissionTypes.AsNoTracking()
-                .Where(t => t.TypeName.ToLower() == wanted)
+                .Where(t => t.TypeCode.ToUpper() == wanted)
                 .FirstOrDefaultAsync(ct);
         }
 

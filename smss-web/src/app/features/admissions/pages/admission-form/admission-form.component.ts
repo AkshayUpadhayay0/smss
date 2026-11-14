@@ -198,7 +198,12 @@ export class AdmissionFormComponent implements OnInit {
     this.classes.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) =>
       this.classOptions.set(active(list).map((c) => ({ label: c.className, value: String(c.classId) }))),
     );
-    this.master.getAdmissionTypeOptions().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) => this.activeTypeOptions.set(list));
+    this.master.getAdmissionTypes().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
+      this.activeTypeOptions.set(list.map((t) => ({ label: t.typeName, value: String(t.admissionTypeId) })));
+      // a NEW application starts as "New Admission" (by code); an edit keeps its own type, and the server applies the same default if none is sent
+      const def = list.find((t) => t.typeCode === 'NEW_ADMISSION');
+      if (def && !this.editing() && !this.form.controls.admissionTypeId.value) this.form.controls.admissionTypeId.setValue(String(def.admissionTypeId));
+    });
   }
 
   // ── Cascading location (same behaviour as the school form) ─────────

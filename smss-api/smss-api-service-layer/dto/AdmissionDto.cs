@@ -9,7 +9,8 @@ namespace smss_api_service_layer.dto
     {
         [Required] public long AcademicYearId { get; set; }
         [Required] public long AppliedClassId { get; set; }
-        [Required] public long AdmissionTypeId { get; set; }
+        /// <summary>Optional: left out, a new application is New Admission (found by code); an edit keeps its current type.</summary>
+        public long? AdmissionTypeId { get; set; }
         [Required, MaxLength(100)] public string ApplicantFirstName { get; set; } = null!;
         [MaxLength(100)] public string? ApplicantMiddleName { get; set; }
         [Required, MaxLength(100)] public string ApplicantLastName { get; set; } = null!;

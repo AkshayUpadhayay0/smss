@@ -12,7 +12,7 @@ const env = <T>(data: T, statusCode = 200) => ({ status: true, statusCode, messa
 
 const YEARS = [{ academicYearId: 5, yearName: '2025-26', isCurrent: false, statusName: 'Active' }, { academicYearId: 6, yearName: '2026-27', isCurrent: true, statusName: 'Active' }];
 const CLASSES = [{ classId: 3, className: 'Class 1', statusName: 'Active' }, { classId: 4, className: 'Class 2', statusName: 'Active' }];
-const TYPES = [{ admissionTypeId: 1, typeName: 'New Admission', statusName: 'Active' }];
+const TYPES = [{ admissionTypeId: 1, typeCode: 'NEW_ADMISSION', typeName: 'New Admission' }, { admissionTypeId: 2, typeCode: 'EXISTING_STUDENT', typeName: 'Existing Student' }];
 const DETAIL = (statusName: string) => ({
   admissionId: 7, applicationNumber: 'ADM20260007', applicantFullName: 'Anil Kumar Applicant', statusName, applicationDate: '2026-10-20', academicYearId: 5, appliedClassId: 4, admissionTypeId: 1,
   applicantFirstName: 'Anil', applicantMiddleName: 'Kumar', applicantLastName: 'Applicant', dateOfBirth: '2018-05-06T00:00:00', genderId: 2, aadharNumberMasked: 'XXXX XXXX 7777', email: 'a@example.com',
@@ -58,14 +58,26 @@ describe('AdmissionFormComponent', () => {
   it('the Admission type dropdown is filled from the read-only school endpoint (active types only), never the old school-level screen', () => {
     open();
     answer();
-    expect((cmp()['admissionTypeOptions']() as { label: string }[]).map((o) => o.label)).toEqual(['New Admission']);
+    expect((cmp()['admissionTypeOptions']() as { label: string }[]).map((o) => o.label)).toEqual(['New Admission', 'Existing Student']);
+  });
+
+  it('a new application starts with "New Admission" selected (found by code, not by position or name)', () => {
+    open();
+    answer();
+    expect(cmp()['form'].controls.admissionTypeId.value).toBe('1');
+  });
+
+  it('an edit keeps its own type instead of the default', () => {
+    open('7');
+    answer({ '/api/Admission/S/7': { ...DETAIL('APPLICATION_SUBMITTED'), admissionTypeId: 2 } });
+    expect(cmp()['form'].controls.admissionTypeId.value).toBe('2');
   });
 
   it('editing an old application whose type was deactivated keeps that type selectable (marked inactive) so it is not lost', () => {
     open('7');
     answer({ '/api/Admission/S/7': { ...DETAIL('APPLICATION_SUBMITTED'), admissionTypeId: 99, admissionTypeName: 'Old Style' } });
     const labels = (cmp()['admissionTypeOptions']() as { label: string; value: string }[]);
-    expect(labels.map((o) => o.label)).toEqual(['New Admission', 'Old Style (inactive)']);
+    expect(labels.map((o) => o.label)).toEqual(['New Admission', 'Existing Student', 'Old Style (inactive)']);
     expect(cmp()['form'].controls.admissionTypeId.value).toBe('99');
     expect(cmp()['form'].controls.admissionTypeId.valid).toBe(true);
   });

@@ -16,7 +16,7 @@ import { firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '..
 import { DirectStudentEntryRequest, StudentOnboardingResult, StudentOnboardingService } from '../../services/student-onboarding.service';
 
 /** The school's own Admission Type used for these students (must match the API's StudentOnboardingService). */
-const EXISTING_STUDENT_TYPE = 'existing student';
+const EXISTING_STUDENT_CODE = 'EXISTING_STUDENT';
 const AADHAAR_RE = /^[0-9]{12}$/;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -118,6 +118,8 @@ export class ExistingStudentFormComponent implements OnInit {
   }
 
   /** null = still checking; false = the school has no active "Existing Student" admission type yet. */
+  /** Shown, never editable: every student added here is an Existing Student (the server sets it by code and ignores anything else). */
+  protected readonly admissionTypeShown = new FormControl({ value: 'Existing Student', disabled: true }, { nonNullable: true });
   protected readonly typeReady = signal<boolean | null>(null);
   protected readonly typeMissing = computed(() => this.typeReady() === false);
   /** Set when the server itself reports the missing type (e.g. it was deactivated after this page loaded). */
@@ -151,9 +153,11 @@ export class ExistingStudentFormComponent implements OnInit {
     });
 
     // Admission types are a global master now; the school endpoint returns the ACTIVE ones only.
-    this.master.getAdmissionTypeOptions().pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
+    this.master.getAdmissionTypes().pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
       if (list === null) return; // couldn't check: let the server decide on submit
-      this.typeReady.set(list.some((t) => t.label.trim().toLowerCase() === EXISTING_STUDENT_TYPE));
+      const type = list.find((t) => t.typeCode === EXISTING_STUDENT_CODE);
+      this.typeReady.set(!!type);
+      if (type) this.admissionTypeShown.setValue(type.typeName);
     });
   }
 
