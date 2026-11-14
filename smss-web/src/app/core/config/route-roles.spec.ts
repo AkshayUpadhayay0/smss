@@ -127,6 +127,15 @@ describe('route-roles', () => {
     });
   });
 
+  describe('admission type is a global master', () => {
+    it('only the Super Admin opens /masters/admission-type; the old school-level screen is gone (fail closed for everyone)', () => {
+      expect(canAccess('/masters/admission-type', [ROLES.SUPER_ADMIN])).toBe(true);
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN]) expect(canAccess('/masters/admission-type', [role])).toBe(false);
+      expect(ROUTE_ROLES['/school-setup/admission-types']).toBeUndefined();
+      for (const role of [ROLES.SUPER_ADMIN, ROLES.SCHOOL_ADMIN]) expect(canAccess('/school-setup/admission-types', [role])).toBe(false);
+    });
+  });
+
   describe('fee dashboard and reports', () => {
     it.each(['/fee-dashboard', '/fee-reports/class'])('%s: School Admin, Accountant and Principal (view-only) may open it; Teacher, Student and Guardian may not', (url) => {
       for (const role of [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL]) expect(canAccess(url, [role])).toBe(true);
@@ -139,7 +148,7 @@ describe('route-roles', () => {
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers', '/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/school-setup/admission-types', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my'];
+      const schoolSide = ['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers', '/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }

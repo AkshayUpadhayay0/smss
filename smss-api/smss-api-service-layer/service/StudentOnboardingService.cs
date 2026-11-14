@@ -13,8 +13,7 @@ namespace smss_api_service_layer.service
     // minus the admission record. Never touches tb_admissions.
     public class StudentOnboardingService : IStudentOnboardingService
     {
-        // The school's own Admission Type (managed on its Admission Type master screen) used for these students.
-        // tb_admission_types has no code column, so it is found by name.
+        // The global Admission Type (lut_admission_type, managed by the Super Admin) used for these students; found by name.
         public const string ExistingStudentTypeName = "Existing Student";
 
         private const string AdmissionNumberConstraint = "uq_tb_students_school_admno";
@@ -38,15 +37,15 @@ namespace smss_api_service_layer.service
         {
             try
             {
-                // ---- the Existing Student admission type must already be set up (never auto-created here) ----
+                // ---- the Existing Student admission type must already exist (a global master; never auto-created here) ----
                 var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);
                 if (activeId == null) return ConfigError("'Active' general status missing from lut_status");
 
-                var type = await _repo.GetAdmissionTypeByNameAsync(schoolId, ExistingStudentTypeName, ct);
+                var type = await _repo.GetAdmissionTypeByNameAsync(ExistingStudentTypeName, ct);
                 if (type == null)
-                    return Result(400, $"Add an '{ExistingStudentTypeName}' Admission Type before onboarding existing students.", null);
-                if (type.StatusId != activeId)
-                    return Result(400, $"The '{ExistingStudentTypeName}' Admission Type is inactive. Activate it before onboarding existing students.", null);
+                    return Result(400, $"The '{ExistingStudentTypeName}' Admission Type is not set up. Please contact support.", null);
+                if (!type.IsActive)
+                    return Result(400, $"The '{ExistingStudentTypeName}' Admission Type is inactive. Please contact support.", null);
 
                 // ---- ids come from the client: school-owned ones must belong to THIS school ----
                 if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct))

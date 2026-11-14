@@ -11,7 +11,6 @@ namespace smss_api_db_layer.@interface
         Task<List<string>> GetSubjectNamesAsync(string schoolId, CancellationToken ct);
         Task<List<string>> GetDesignationNamesAsync(string schoolId, CancellationToken ct);
         Task<List<string>> GetDepartmentNamesAsync(string schoolId, CancellationToken ct);
-        Task<List<string>> GetAdmissionTypeNamesAsync(string schoolId, CancellationToken ct);
         Task<List<string>> GetDocumentCodesAsync(string schoolId, CancellationToken ct);
         Task<int?> GetActiveStatusIdAsync(CancellationToken ct);
 

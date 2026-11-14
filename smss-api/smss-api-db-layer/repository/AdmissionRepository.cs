@@ -34,8 +34,8 @@ namespace smss_api_db_layer.repository
             _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && ids.Contains(c.ClassId))
                 .ToDictionaryAsync(c => c.ClassId, c => c.ClassName, ct);
 
-        public Task<Dictionary<long, string>> GetAdmissionTypeNamesAsync(string schoolId, IReadOnlyCollection<long> ids, CancellationToken ct) =>
-            _db.AdmissionTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && ids.Contains(t.AdmissionTypeId))
+        public Task<Dictionary<long, string>> GetAdmissionTypeNamesAsync(IReadOnlyCollection<long> ids, CancellationToken ct) =>
+            _db.LutAdmissionTypes.AsNoTracking().Where(t => ids.Contains(t.AdmissionTypeId))
                 .ToDictionaryAsync(t => t.AdmissionTypeId, t => t.TypeName, ct);
 
         public Task<Dictionary<long, string>> GetAcademicYearNamesAsync(string schoolId, IReadOnlyCollection<long> ids, CancellationToken ct) =>
@@ -58,14 +58,14 @@ namespace smss_api_db_layer.repository
         public Task<bool> ClassBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct) =>
             _db.Classes.AnyAsync(c => c.SchoolId == schoolId && c.ClassId == id, ct);
 
-        public Task<bool> AdmissionTypeBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct) =>
-            _db.AdmissionTypes.AnyAsync(t => t.SchoolId == schoolId && t.AdmissionTypeId == id, ct);
+        public Task<bool> AdmissionTypeUsableAsync(long id, bool allowInactive, CancellationToken ct) =>
+            _db.LutAdmissionTypes.AnyAsync(t => t.AdmissionTypeId == id && (allowInactive || t.IsActive), ct);
 
-        public Task<TbAdmissionTypes?> GetAdmissionTypeByNameAsync(string schoolId, string name, CancellationToken ct)
+        public Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct)
         {
             var wanted = name.Trim().ToLower();
-            return _db.AdmissionTypes.AsNoTracking()
-                .Where(t => t.SchoolId == schoolId && t.TypeName.ToLower() == wanted)
+            return _db.LutAdmissionTypes.AsNoTracking()
+                .Where(t => t.TypeName.ToLower() == wanted)
                 .FirstOrDefaultAsync(ct);
         }
 

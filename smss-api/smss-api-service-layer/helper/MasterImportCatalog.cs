@@ -97,18 +97,6 @@ namespace smss_api_service_layer.helper
             new("Human Resources"),
         };
 
-        // "Existing Student" is the name the Add Existing Student screen looks for (StudentOnboardingService.ExistingStudentTypeName)
-        public static readonly IReadOnlyList<CatalogSimple> AdmissionTypes = new CatalogSimple[]
-        {
-            new("New Admission"),
-            new("Existing Student"),
-            new("Transfer Admission"),
-            new("Re-admission"),
-            new("RTE Admission"),
-            new("Sibling Admission"),
-            new("Staff Ward"),
-        };
-
         public static readonly IReadOnlyList<CatalogDocument> DocumentTypes = new CatalogDocument[]
         {
             new("BIRTH_CERT", "Birth Certificate", "STUDENT", true),

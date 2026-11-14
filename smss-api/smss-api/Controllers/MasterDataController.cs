@@ -452,5 +452,45 @@ namespace smss_api.Controllers
             var response = await _masterDataService.ToggleStudentCategoryStatusAsync(id);
             return StatusCode(response.StatusCode, response);
         }
+
+        // =========================================================
+        // ADMISSION TYPES (global; the school form reads the active ones from GET api/AdmissionTypes)
+        // =========================================================
+
+        // GET: api/MasterData/admission-types?includeInactive=true   (inactive rows are for the Super Admin's screen only)
+        [HttpGet("admission-types")]
+        public async Task<IActionResult> GetAdmissionTypes([FromQuery] bool includeInactive = false)
+        {
+            if (includeInactive && !User.IsSuperAdmin()) return this.Forbidden("Only the Super Admin can see inactive admission types.");
+            var response = await _masterDataService.GetAdmissionTypesAsync(includeInactive);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/admission-types
+        [HttpPost("admission-types")]
+        [SuperAdminOnly]
+        public async Task<IActionResult> CreateAdmissionType([FromBody] CreateAdmissionTypeRequestDto request)
+        {
+            var response = await _masterDataService.CreateAdmissionTypeAsync(request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT: api/MasterData/admission-types/{id}
+        [HttpPut("admission-types/{id:long}")]
+        [SuperAdminOnly]
+        public async Task<IActionResult> UpdateAdmissionType(long id, [FromBody] UpdateAdmissionTypeRequestDto request)
+        {
+            var response = await _masterDataService.UpdateAdmissionTypeAsync(id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST: api/MasterData/admission-types/{id}/toggle-status
+        [HttpPost("admission-types/{id:long}/toggle-status")]
+        [SuperAdminOnly]
+        public async Task<IActionResult> ToggleAdmissionTypeStatus(long id)
+        {
+            var response = await _masterDataService.ToggleAdmissionTypeStatusAsync(id);
+            return StatusCode(response.StatusCode, response);
+        }
     }
 }

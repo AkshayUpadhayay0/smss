@@ -101,8 +101,6 @@ builder.Services.AddScoped<IEmployeeDesignationRepository, EmployeeDesignationRe
 builder.Services.AddScoped<IEmployeeDesignationService, EmployeeDesignationService>();
 builder.Services.AddScoped<IEmployeeDepartmentRepository, EmployeeDepartmentRepository>();
 builder.Services.AddScoped<IEmployeeDepartmentService, EmployeeDepartmentService>();
-builder.Services.AddScoped<IAdmissionTypeRepository, AdmissionTypeRepository>();
-builder.Services.AddScoped<IAdmissionTypeService, AdmissionTypeService>();
 builder.Services.AddScoped<IFeeTypeRepository, FeeTypeRepository>();
 builder.Services.AddScoped<IFeeTypeService, FeeTypeService>();
 builder.Services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();

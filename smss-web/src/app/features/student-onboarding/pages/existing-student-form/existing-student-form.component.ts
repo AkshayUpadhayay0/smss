@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -12,7 +11,6 @@ import { FeeItemSelection } from '../../../students/models/student-billing.model
 import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
-import { SchoolLookupService } from '../../../school-setup/services/school-lookup.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { DirectStudentEntryRequest, StudentOnboardingResult, StudentOnboardingService } from '../../services/student-onboarding.service';
@@ -49,9 +47,7 @@ export class ExistingStudentFormComponent implements OnInit {
   private readonly master = inject(MasterDataService);
   private readonly years = inject(AcademicYearService);
   private readonly sections = inject(SectionService);
-  private readonly lookups = inject(SchoolLookupService);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -154,9 +150,10 @@ export class ExistingStudentFormComponent implements OnInit {
       this.syncFeePlacement();
     });
 
-    this.lookups.list('AdmissionTypes').pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
+    // Admission types are a global master now; the school endpoint returns the ACTIVE ones only.
+    this.master.getAdmissionTypeOptions().pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
       if (list === null) return; // couldn't check: let the server decide on submit
-      this.typeReady.set(list.some((t) => String(t['typeName'] ?? '').trim().toLowerCase() === EXISTING_STUDENT_TYPE && t.statusName === 'Active'));
+      this.typeReady.set(list.some((t) => t.label.trim().toLowerCase() === EXISTING_STUDENT_TYPE));
     });
   }
 
@@ -170,10 +167,6 @@ export class ExistingStudentFormComponent implements OnInit {
 
   protected onPhotoChanged(change: LogoChange): void {
     this.photo = change.file;
-  }
-
-  protected goToAdmissionTypes(): void {
-    void this.router.navigate(['/school-setup/admission-types']);
   }
 
   protected addAnother(): void {

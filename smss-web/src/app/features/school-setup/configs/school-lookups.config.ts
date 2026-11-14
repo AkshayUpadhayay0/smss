@@ -56,15 +56,3 @@ export const FEE_TYPE_CONFIG: SchoolLookupConfig = {
   optionalFlag: true,
   group: 'Fee Setup',
 };
-
-export const ADMISSION_TYPE_CONFIG: SchoolLookupConfig = {
-  path: 'AdmissionTypes',
-  title: 'Admission Type',
-  singular: 'admission type',
-  subtitle: 'Manage the ways students are admitted to your school',
-  icon: 'inbox',
-  idKey: 'admissionTypeId',
-  nameKey: 'typeName',
-  nameLabel: 'Type name',
-  namePlaceholder: 'e.g. New Admission, Transfer',
-};

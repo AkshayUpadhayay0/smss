@@ -152,8 +152,8 @@ namespace smss_api_db_layer.repository
             return (city, state);
         }
 
-        public Task<string?> GetAdmissionTypeNameAsync(string schoolId, long id, CancellationToken ct) =>
-            _db.AdmissionTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && t.AdmissionTypeId == id)
+        public Task<string?> GetAdmissionTypeNameAsync(long id, CancellationToken ct) =>
+            _db.LutAdmissionTypes.AsNoTracking().Where(t => t.AdmissionTypeId == id)
                 .Select(t => t.TypeName).FirstOrDefaultAsync(ct);
     }
 }

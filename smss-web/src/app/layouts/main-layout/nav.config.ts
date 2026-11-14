@@ -78,7 +78,6 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Class-Subject Mapping', route: '/school-setup/class-subjects' },
       { label: 'Employee Designation', route: '/school-setup/employee-designations' },
       { label: 'Employee Department', route: '/school-setup/employee-departments' },
-      { label: 'Admission Type', route: '/school-setup/admission-types' },
       { label: 'Document Types', route: '/school-setup/document-types' },
       { label: 'ID Card Settings', route: '/school-setup/id-card' },
     ],
@@ -144,6 +143,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Blood Group', route: '/masters/blood-group' },
       { label: 'Gender', route: '/masters/gender' },
       { label: 'Student Category', route: '/masters/student-category' },
+      { label: 'Admission Type', route: '/masters/admission-type' },
     ],
   },
 ];

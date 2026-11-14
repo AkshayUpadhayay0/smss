@@ -90,7 +90,7 @@ namespace smss_api_service_layer.service
         private sealed class Context
         {
             public int ActiveId;
-            public TbAdmissionTypes Type = null!;
+            public LutAdmissionType Type = null!;
             public TbAcademicYears Year = null!;
             public string ShortCode = "";
             public List<ImportClassRow> Classes = new();
@@ -251,9 +251,9 @@ namespace smss_api_service_layer.service
             // ---- the school's own set-up must be in place
             var active = await _repo.GetActiveStatusIdAsync(ct);
             if (active == null) { FileError("The system is not configured correctly. Please contact support."); return v; }
-            var type = await _repo.GetAdmissionTypeByNameAsync(schoolId, StudentOnboardingService.ExistingStudentTypeName, ct);
-            if (type == null) { FileError($"Add an '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type before importing students."); return v; }
-            if (type.StatusId != active) { FileError($"The '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type is inactive. Activate it before importing students."); return v; }
+            var type = await _repo.GetAdmissionTypeByNameAsync(StudentOnboardingService.ExistingStudentTypeName, ct);
+            if (type == null) { FileError($"The '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type is not set up. Please contact support."); return v; }
+            if (!type.IsActive) { FileError($"The '{StudentOnboardingService.ExistingStudentTypeName}' Admission Type is inactive. Please contact support."); return v; }
             var year = await _repo.GetCurrentYearAsync(schoolId, active.Value, ct);
             if (year == null) { FileError("Set a current academic year first (School Setup). Students are imported into the current year."); return v; }
             var shortCode = await _repo.GetSchoolShortCodeAsync(schoolId, ct);

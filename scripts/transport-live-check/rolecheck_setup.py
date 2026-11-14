@@ -25,7 +25,9 @@ ay = api.ok(api.call('POST', '/api/AcademicYear', tok, {'yearName': '2026-27', '
 api.ok(api.call('POST', f"/api/AcademicYear/{ay['academicYearId']}/set-current", tok), 'set current', (200,))
 cl = api.ok(api.call('POST', '/api/Classes', tok, {'className': 'ZZ Class 1', 'classCode': 'ZZC1', 'sequenceOrder': 1}), 'class')
 sec = api.ok(api.call('POST', '/api/Sections', tok, {'classId': cl['classId'], 'sectionName': 'A', 'maxStrength': 40}), 'section')
-adm = api.ok(api.call('POST', '/api/AdmissionTypes', tok, {'typeName': 'Existing Student', 'description': 'ZZ throwaway'}), 'admission type')
+# admission types are a GLOBAL master now: read the active ones (the Super Admin must have added "Existing Student")
+adm = next((t for t in api.ok(api.call('GET', '/api/AdmissionTypes', tok), 'admission types') if t['typeName'].lower() == 'existing student'), None)
+assert adm, 'the "Existing Student" admission type is missing: the Super Admin must add it under Masters > Admission Type'
 st['rolecheck'] = {'academicYearId': ay['academicYearId'], 'classId': cl['classId'], 'sectionId': sec['sectionId'], 'admissionTypeId': adm['admissionTypeId']}
 api.save(st)
 body = {'admissionDate': '2026-04-05T00:00:00', 'academicYearId': ay['academicYearId'], 'classSectionId': sec['sectionId'], 'rollNumber': '1', 'firstName': 'ZZ', 'lastName': 'Pupil',

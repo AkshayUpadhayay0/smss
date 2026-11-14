@@ -61,7 +61,6 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-setup/class-subjects': [ROLES.SCHOOL_ADMIN],
   '/school-setup/employee-designations': [ROLES.SCHOOL_ADMIN],
   '/school-setup/employee-departments': [ROLES.SCHOOL_ADMIN],
-  '/school-setup/admission-types': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-types': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-concessions': [ROLES.SCHOOL_ADMIN],
@@ -160,6 +159,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/masters/blood-group': [ROLES.SUPER_ADMIN],
   '/masters/gender': [ROLES.SUPER_ADMIN],
   '/masters/student-category': [ROLES.SUPER_ADMIN],
+  '/masters/admission-type': [ROLES.SUPER_ADMIN],
 
   // Throwaway page; delete together with src/app/dev.
   '/dev/components-preview': [ROLES.SUPER_ADMIN],

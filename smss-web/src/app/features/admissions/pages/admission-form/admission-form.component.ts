@@ -17,7 +17,6 @@ import {
 } from '../../../../shared/components';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ClassService } from '../../../school-setup/services/class.service';
-import { SchoolLookupService } from '../../../school-setup/services/school-lookup.service';
 import { PINCODE_RE, firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { AdmissionDetail, EDITABLE_STATUSES, GUARDIAN_RELATIONSHIPS, SubmitAdmissionRequest } from '../../models/admission.model';
 import { AdmissionService } from '../../services/admission.service';
@@ -44,7 +43,6 @@ export class AdmissionFormComponent implements OnInit {
   private readonly master = inject(MasterDataService);
   private readonly years = inject(AcademicYearService);
   private readonly classes = inject(ClassService);
-  private readonly lookups = inject(SchoolLookupService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -105,7 +103,15 @@ export class AdmissionFormComponent implements OnInit {
 
   protected readonly yearOptions = signal<SelectOption[]>([]);
   protected readonly classOptions = signal<SelectOption[]>([]);
-  protected readonly admissionTypeOptions = signal<SelectOption[]>([]);
+  /** Active admission types from the school endpoint (a global master; deactivated ones never come back). */
+  private readonly activeTypeOptions = signal<SelectOption[]>([]);
+  /** The type an application being edited already has, if it has since been deactivated: shown (marked) so the form still validates and the type is not silently lost. */
+  private readonly keptType = signal<SelectOption | null>(null);
+  protected readonly admissionTypeOptions = computed(() => {
+    const kept = this.keptType();
+    const active = this.activeTypeOptions();
+    return kept && !active.some((o) => o.value === kept.value) ? [...active, kept] : active;
+  });
   protected readonly setupMissing = computed(() => this.yearOptions().length === 0 || this.classOptions().length === 0 || this.admissionTypeOptions().length === 0);
   protected readonly setupLoaded = signal(false);
 
@@ -137,6 +143,7 @@ export class AdmissionFormComponent implements OnInit {
 
   private patchFrom(a: AdmissionDetail): void {
     const s = (v?: string | number | null) => (v === null || v === undefined ? '' : String(v));
+    this.keptType.set({ label: `${a.admissionTypeName || 'Current type'} (inactive)`, value: String(a.admissionTypeId) });   // only shown when it is no longer in the active list
     this.form.patchValue(
       {
         applicantFirstName: a.applicantFirstName, applicantMiddleName: s(a.applicantMiddleName), applicantLastName: a.applicantLastName, dateOfBirth: a.dateOfBirth.slice(0, 10),
@@ -191,9 +198,7 @@ export class AdmissionFormComponent implements OnInit {
     this.classes.list().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) =>
       this.classOptions.set(active(list).map((c) => ({ label: c.className, value: String(c.classId) }))),
     );
-    this.lookups.list('AdmissionTypes').pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) =>
-      this.admissionTypeOptions.set(active(list).map((t) => ({ label: String(t['typeName']), value: String(t['admissionTypeId']) }))),
-    );
+    this.master.getAdmissionTypeOptions().pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef)).subscribe((list) => this.activeTypeOptions.set(list));
   }
 
   // ── Cascading location (same behaviour as the school form) ─────────

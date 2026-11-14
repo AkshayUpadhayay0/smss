@@ -1,4 +1,5 @@
 import { Route, Routes } from '@angular/router';
+import { ADMISSION_TYPE_CONFIG } from './configs/admission-type.config';
 import { BLOOD_GROUP_CONFIG } from './configs/blood-group.config';
 import { BOARD_TYPE_CONFIG } from './configs/board-type.config';
 import { GENDER_CONFIG } from './configs/gender.config';
@@ -26,4 +27,5 @@ export const MASTERS_ROUTES: Routes = [
   master('blood-group', BLOOD_GROUP_CONFIG),
   master('gender', GENDER_CONFIG),
   master('student-category', STUDENT_CATEGORY_CONFIG),
+  master('admission-type', ADMISSION_TYPE_CONFIG),
 ];

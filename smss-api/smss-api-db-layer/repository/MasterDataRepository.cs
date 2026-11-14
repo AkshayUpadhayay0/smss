@@ -601,5 +601,57 @@ namespace smss_api_db_layer.repository
                 return false;
             }
         }
+
+        // =========================================================
+        // ADMISSION TYPES (global)
+        // =========================================================
+
+        public async Task<List<LutAdmissionType>> GetAdmissionTypesAsync(bool includeInactive = false)
+        {
+            IQueryable<LutAdmissionType> query = _dbContext.LutAdmissionTypes.AsNoTracking();
+            if (!includeInactive) query = query.Where(x => x.IsActive);
+            return await query.OrderBy(x => x.TypeName).ToListAsync();
+        }
+
+        // Tracked on purpose: used for update/toggle.
+        public async Task<LutAdmissionType?> GetAdmissionTypeByIdAsync(long id) =>
+            await _dbContext.LutAdmissionTypes.FirstOrDefaultAsync(x => x.AdmissionTypeId == id);
+
+        public async Task<bool> AdmissionTypeExistsAsync(string code, string name, long? excludeId = null)
+        {
+            string upperCode = code.ToUpper();
+            string lowerName = name.ToLower();
+            return await _dbContext.LutAdmissionTypes.AsNoTracking().AnyAsync(x =>
+                (excludeId == null || x.AdmissionTypeId != excludeId) &&
+                (x.TypeCode.ToUpper() == upperCode || x.TypeName.ToLower() == lowerName));
+        }
+
+        public async Task<bool> AddAdmissionTypeAsync(LutAdmissionType entity)
+        {
+            try
+            {
+                _dbContext.LutAdmissionTypes.Add(entity);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateAdmissionTypeAsync(LutAdmissionType entity)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PgUniqueViolation })
+            {
+                return false;
+            }
+        }
     }
 }

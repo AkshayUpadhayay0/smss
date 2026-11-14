@@ -220,7 +220,7 @@ describe('app routes', () => {
         const { harness } = await go('/dashboard');
         harness.routeNativeElement!.querySelectorAll<HTMLButtonElement>('.group-toggle').forEach((b) => b.click());
         harness.detectChanges();
-        expect(nav(harness)).toBe('Dashboard | Registered Schools | Enquiries | Subscriptions | Invoices | Company Finance | Overview | Employees | Expenses | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category');
+        expect(nav(harness)).toBe('Dashboard | Registered Schools | Enquiries | Subscriptions | Invoices | Company Finance | Overview | Employees | Expenses | Masters | Board Type | School Type | School Level | Status | Role | Religion/Caste Category | Blood Group | Gender | Student Category | Admission Type');
       });
 
       it.each(['/enquiries', '/schools', '/schools/add', '/schools/sch1/edit', '/schools/sch1/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/change-password'])(

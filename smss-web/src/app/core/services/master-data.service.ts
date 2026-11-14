@@ -16,9 +16,13 @@ export class MasterDataService {
   private readonly cache = new Map<string, Observable<unknown>>();
 
   private cached<T>(key: string, path: string): Observable<T> {
+    return this.cachedAt(key, `${BASE}/${path}`);
+  }
+
+  private cachedAt<T>(key: string, url: string): Observable<T> {
     let req = this.cache.get(key) as Observable<T> | undefined;
     if (!req) {
-      req = this.api.get<T>(`${BASE}/${path}`).pipe(
+      req = this.api.get<T>(url).pipe(
         catchError((err) => {
           this.cache.delete(key);
           return throwError(() => err);
@@ -103,6 +107,12 @@ export class MasterDataService {
   getBloodGroupOptions(): Observable<SelectOption[]> {
     return this.cached<{ bloodGroupId: number; bloodGroupName: string }[]>('blood-groups', 'blood-groups').pipe(
       map((l) => l.map((g) => ({ label: g.bloodGroupName, value: g.bloodGroupId.toString() }))),
+    );
+  }
+  /** Admission types for the school Admission form: ACTIVE ones only (the server decides; deactivated types never appear here). */
+  getAdmissionTypeOptions(): Observable<SelectOption[]> {
+    return this.cachedAt<{ admissionTypeId: number; typeName: string }[]>('admission-types', '/api/AdmissionTypes').pipe(
+      map((l) => l.map((t) => ({ label: t.typeName, value: t.admissionTypeId.toString() }))),
     );
   }
   getStudentCategoryOptions(): Observable<SelectOption[]> {

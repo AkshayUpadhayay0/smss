@@ -73,5 +73,12 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> CreateStudentCategoryAsync(CreateStudentCategoryRequestDto request);
         Task<ApiResponse<object>> UpdateStudentCategoryAsync(long id, UpdateStudentCategoryRequestDto request);
         Task<ApiResponse<object>> ToggleStudentCategoryStatusAsync(long id);
+    
+
+        // Admission types (global; read = any signed-in user via AdmissionTypesController, write = Super Admin)
+        Task<ApiResponse<object>> GetAdmissionTypesAsync(bool includeInactive = false);
+        Task<ApiResponse<object>> CreateAdmissionTypeAsync(CreateAdmissionTypeRequestDto request);
+        Task<ApiResponse<object>> UpdateAdmissionTypeAsync(long id, UpdateAdmissionTypeRequestDto request);
+        Task<ApiResponse<object>> ToggleAdmissionTypeStatusAsync(long id);
     }
 }

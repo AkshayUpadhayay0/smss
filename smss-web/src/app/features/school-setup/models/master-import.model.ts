@@ -12,7 +12,7 @@ export interface MasterImportItem {
   alreadyAdded: boolean;
 }
 
-export type MasterImportGroupKey = 'classes' | 'subjects' | 'designations' | 'departments' | 'admissionTypes' | 'documentTypes';
+export type MasterImportGroupKey = 'classes' | 'subjects' | 'designations' | 'departments' | 'documentTypes';
 
 export interface MasterImportCatalog extends Record<MasterImportGroupKey, MasterImportItem[]> {
   defaultSectionName: string;
@@ -32,7 +32,6 @@ export interface MasterImportResult {
   subjects: ImportCount;
   designations: ImportCount;
   departments: ImportCount;
-  admissionTypes: ImportCount;
   documentTypes: ImportCount;
   totalCreated: number;
 }
@@ -49,6 +48,5 @@ export const MASTER_IMPORT_GROUPS: MasterImportGroup[] = [
   { key: 'subjects', title: 'Subjects', hint: 'Subjects taught in the school.' },
   { key: 'designations', title: 'Employee Designations', hint: 'Roles your staff hold.' },
   { key: 'departments', title: 'Employee Departments', hint: 'Departments your staff belong to.' },
-  { key: 'admissionTypes', title: 'Admission Types', hint: '"Existing Student" is needed to add students who are already enrolled.' },
   { key: 'documentTypes', title: 'Document Types', hint: 'Documents collected for students and staff.' },
 ];

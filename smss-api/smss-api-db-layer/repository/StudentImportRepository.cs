@@ -14,10 +14,10 @@ namespace smss_api_db_layer.repository
         public Task<int?> GetActiveStatusIdAsync(CancellationToken ct) =>
             _db.LutStatus.AsNoTracking().Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);
 
-        public Task<TbAdmissionTypes?> GetAdmissionTypeByNameAsync(string schoolId, string name, CancellationToken ct)
+        public Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct)
         {
             var wanted = name.Trim().ToLower();
-            return _db.AdmissionTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && t.TypeName.ToLower() == wanted).FirstOrDefaultAsync(ct);
+            return _db.LutAdmissionTypes.AsNoTracking().Where(t => t.TypeName.ToLower() == wanted).FirstOrDefaultAsync(ct);
         }
 
         public Task<TbAcademicYears?> GetCurrentYearAsync(string schoolId, int activeStatusId, CancellationToken ct) =>

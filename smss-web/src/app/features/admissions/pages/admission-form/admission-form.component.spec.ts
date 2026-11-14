@@ -55,6 +55,21 @@ describe('AdmissionFormComponent', () => {
     clearSessions();
   });
 
+  it('the Admission type dropdown is filled from the read-only school endpoint (active types only), never the old school-level screen', () => {
+    open();
+    answer();
+    expect((cmp()['admissionTypeOptions']() as { label: string }[]).map((o) => o.label)).toEqual(['New Admission']);
+  });
+
+  it('editing an old application whose type was deactivated keeps that type selectable (marked inactive) so it is not lost', () => {
+    open('7');
+    answer({ '/api/Admission/S/7': { ...DETAIL('APPLICATION_SUBMITTED'), admissionTypeId: 99, admissionTypeName: 'Old Style' } });
+    const labels = (cmp()['admissionTypeOptions']() as { label: string; value: string }[]);
+    expect(labels.map((o) => o.label)).toEqual(['New Admission', 'Old Style (inactive)']);
+    expect(cmp()['form'].controls.admissionTypeId.value).toBe('99');
+    expect(cmp()['form'].controls.admissionTypeId.valid).toBe(true);
+  });
+
   it('a new application defaults to the current academic year and posts the previous school with the rest', () => {
     open();
     answer();

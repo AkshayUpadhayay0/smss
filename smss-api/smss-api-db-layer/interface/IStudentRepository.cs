@@ -52,7 +52,7 @@ namespace smss_api_db_layer.@interface
         Task<Dictionary<long, string>> GetGenderNamesAsync(CancellationToken ct);
         Task<string?> GetBloodGroupNameAsync(long id, CancellationToken ct);
         Task<string?> GetStudentCategoryNameAsync(long id, CancellationToken ct);
-        Task<string?> GetAdmissionTypeNameAsync(string schoolId, long id, CancellationToken ct);
+        Task<string?> GetAdmissionTypeNameAsync(long id, CancellationToken ct);
         /// <summary>City and state names of an address (LGD composite keys); either is null when not set / not found.</summary>
         Task<(string? City, string? State)> GetPlaceNamesAsync(int? countryId, int? stateId, int? districtId, int? cityId, CancellationToken ct);
     }

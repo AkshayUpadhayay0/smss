@@ -22,7 +22,8 @@ namespace smss_api_db_layer.@interface
 
         // Display names (this school's own rows only)
         Task<Dictionary<long, string>> GetClassNamesAsync(string schoolId, IReadOnlyCollection<long> ids, CancellationToken ct);
-        Task<Dictionary<long, string>> GetAdmissionTypeNamesAsync(string schoolId, IReadOnlyCollection<long> ids, CancellationToken ct);
+        /// <summary>Global admission types: includes deactivated ones, so old applications still show their type.</summary>
+        Task<Dictionary<long, string>> GetAdmissionTypeNamesAsync(IReadOnlyCollection<long> ids, CancellationToken ct);
         Task<Dictionary<long, string>> GetAcademicYearNamesAsync(string schoolId, IReadOnlyCollection<long> ids, CancellationToken ct);
         Task<string?> GetGenderNameAsync(long id, CancellationToken ct);
         Task<string?> GetBloodGroupNameAsync(long id, CancellationToken ct);
@@ -31,9 +32,10 @@ namespace smss_api_db_layer.@interface
         // Ownership / existence checks used before accepting ids from a request
         Task<bool> AcademicYearBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct);
         Task<bool> ClassBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct);
-        Task<bool> AdmissionTypeBelongsToSchoolAsync(string schoolId, long id, CancellationToken ct);
-        /// <summary>This school's admission type with that name (case-insensitive), or null.</summary>
-        Task<TbAdmissionTypes?> GetAdmissionTypeByNameAsync(string schoolId, string name, CancellationToken ct);
+        /// <summary>True when the (global) admission type exists and, unless <paramref name="allowInactive"/>, is active.</summary>
+        Task<bool> AdmissionTypeUsableAsync(long id, bool allowInactive, CancellationToken ct);
+        /// <summary>The global admission type with that name (case-insensitive), or null.</summary>
+        Task<LutAdmissionType?> GetAdmissionTypeByNameAsync(string name, CancellationToken ct);
         Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct);
         Task<bool> GenderExistsAsync(long id, CancellationToken ct);
         Task<bool> BloodGroupExistsAsync(long id, CancellationToken ct);

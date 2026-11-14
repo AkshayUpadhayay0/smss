@@ -25,7 +25,7 @@ namespace smss_api_tests
             new[]
             {
                 typeof(ClassesController), typeof(SectionsController), typeof(SubjectsController), typeof(AcademicYearController), typeof(ClassSubjectsController),
-                typeof(AdmissionTypesController), typeof(EmployeeDesignationsController), typeof(EmployeeDepartmentsController), typeof(DocumentTypeController),
+                typeof(EmployeeDesignationsController), typeof(EmployeeDepartmentsController), typeof(DocumentTypeController),
                 typeof(MasterImportController),
             }.Select(t => new object[] { t });
 
@@ -119,7 +119,7 @@ namespace smss_api_tests
         public void EveryMasterDataWrite_IsSuperAdminOnly()
         {
             var writes = typeof(MasterDataController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Where(IsWrite).ToList();
-            Assert.Equal(27, writes.Count);
+            Assert.Equal(30, writes.Count);
             foreach (var m in writes) Assert.True(m.GetCustomAttribute<SuperAdminOnlyAttribute>() != null, $"MasterDataController.{m.Name} needs [SuperAdminOnly]");
         }
 

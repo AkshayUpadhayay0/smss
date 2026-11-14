@@ -178,7 +178,7 @@ migration later):
 | Subject | school-owned |
 | Employee Designation | school-owned |
 | Employee Department | school-owned |
-| Admission Type | school-owned |
+| Admission Type | global (`lut_admission_type`, Super Admin) — reclassified from school-owned; see `Docs/smss-admission-type-global.sql`. Schools read active types via `GET /api/AdmissionTypes` |
 | Religion/Caste Category | global (`lut_`), school opts in/out |
 | Blood Group | global |
 | Gender | global |

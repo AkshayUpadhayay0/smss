@@ -35,8 +35,6 @@ namespace smss_api_db_layer.repository
         public Task<List<string>> GetDepartmentNamesAsync(string schoolId, CancellationToken ct) =>
             _db.EmployeeDepartments.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.DepartmentName).ToListAsync(ct);
 
-        public Task<List<string>> GetAdmissionTypeNamesAsync(string schoolId, CancellationToken ct) =>
-            _db.AdmissionTypes.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.TypeName).ToListAsync(ct);
 
         public Task<List<string>> GetDocumentCodesAsync(string schoolId, CancellationToken ct) =>
             _db.DocumentTypes.AsNoTracking().Where(s => s.SchoolId == schoolId).Select(s => s.DocumentCode).ToListAsync(ct);

@@ -17,7 +17,7 @@ import { MasterImportService } from '../../services/master-import.service';
 
 type Selection = Record<MasterImportGroupKey, string[]>;
 
-const emptySelection = (): Selection => ({ classes: [], subjects: [], designations: [], departments: [], admissionTypes: [], documentTypes: [] });
+const emptySelection = (): Selection => ({ classes: [], subjects: [], designations: [], departments: [], documentTypes: [] });
 
 /**
  * One page to set up the school's masters in one go: tick what the school uses, press Import, and the classes (each
@@ -150,7 +150,6 @@ export class ImportMastersComponent implements OnInit {
       { label: 'Subjects', ...r.subjects },
       { label: 'Employee designations', ...r.designations },
       { label: 'Employee departments', ...r.departments },
-      { label: 'Admission types', ...r.admissionTypes },
       { label: 'Document types', ...r.documentTypes },
     ];
   });
