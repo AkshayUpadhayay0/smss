@@ -22,7 +22,7 @@ describe('SchoolListComponent', () => {
     flushLookups(http); // general-status lookup
     http.expectOne(`${API}/api/SchoolRegistration/schools`).flush(
       envelope([
-        makeSchool({ schoolId: 's1', schoolCode: 'AAA-1', schoolName: 'Alpha School', email: 'alpha@x.com', schoolStatusId: 1 }),
+        makeSchool({ schoolId: 's1', schoolCode: 'AAA-1', schoolName: 'Alpha School', email: 'alpha@x.com', schoolStatusId: 1, logoUrl: '/uploads/AAA-1/logo/logo_1.png' }),
         makeSchool({ schoolId: 's2', schoolCode: 'BBB-2', schoolName: 'Beta School', email: null, mobileNumber: '9000000001', schoolStatusId: 2 }),
         makeSchool({ schoolId: 's3', schoolCode: 'CCC-3', schoolName: 'Gamma Academy', email: 'gamma@x.com', schoolStatusId: 1 }),
       ]),
@@ -36,6 +36,21 @@ describe('SchoolListComponent', () => {
     const pills = [...el().querySelectorAll('.pill')].map((p) => p.textContent?.trim());
     expect(pills).toEqual(['Active', 'Inactive', 'Active']);
     expect(el().textContent).toContain('3 records');
+  });
+
+  it('shows the logo in its small avatar, and the initials for a school without one', () => {
+    const avatars = bodyRows().map((r) => r.querySelector('.avatar') as HTMLElement);
+    expect(avatars[0].querySelector('img')!.getAttribute('src')).toBe(`${API}/uploads/AAA-1/logo/logo_1.png`);
+    expect(avatars[1].querySelector('img')).toBeNull();
+    expect(avatars[1].textContent?.trim()).toBe('BS');
+  });
+
+  it('the avatar column is not searched (a logo path never makes every row match)', () => {
+    const input = el().querySelector<HTMLInputElement>('input[type="text"]')!;
+    input.value = 'uploads';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('No schools match your search.');
   });
 
   it('filters client-side across visible columns', () => {

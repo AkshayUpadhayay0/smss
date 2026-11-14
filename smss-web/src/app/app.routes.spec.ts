@@ -181,7 +181,8 @@ describe('app routes', () => {
           const text = harness.routeNativeElement?.textContent ?? '';
           expect(text).not.toContain('Registered Schools');
           expect(text).not.toContain('Board Type');
-          http.expectNone((r) => r.url.includes('/api/SchoolRegistration') || r.url.includes('/api/MasterData'));
+          // /api/SchoolRegistration/me/brand is the top bar's own-school name + logo read (every role of a school): not a page's call
+          http.expectNone((r) => (r.url.includes('/api/SchoolRegistration') && !r.url.endsWith('/api/SchoolRegistration/me/brand')) || r.url.includes('/api/MasterData'));
 
           const denied = TestBed.inject(ToastService).toasts().filter((t) => t.title === 'Access denied');
           expect(denied).toHaveLength(1);

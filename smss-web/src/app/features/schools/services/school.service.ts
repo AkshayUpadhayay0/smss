@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiService } from '../../../core/services/api.service';
-import { CreateSchoolRequest, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest } from '../models/school.model';
+import { CreateSchoolRequest, SchoolBrand, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest } from '../models/school.model';
 
 const BASE = '/api/SchoolRegistration';
 
@@ -27,6 +27,11 @@ export class SchoolService {
   }
 
   // ── "My school" (School Admin): the server resolves the school from the token, so no id is ever sent ──
+  /** The caller's own school's name + public logo path: readable by EVERY role of the school (the school comes from the token). */
+  getMyBrand(): Observable<SchoolBrand> {
+    return this.api.get<SchoolBrand>(`${BASE}/me/brand`, undefined, { skipErrorToast: true });
+  }
+
   getMySchool(): Observable<SchoolsListModel> {
     return this.api.get<SchoolsListModel>(`${BASE}/me`);
   }

@@ -77,4 +77,16 @@ describe('SecureImageComponent', () => {
     await settle();
     expect(el().querySelector('img')!.getAttribute('src')).toBe('blob:t/2');
   });
+
+  it('shows the fallback when the picture fails to load, and gives a new source a fresh chance', async () => {
+    fixture.componentInstance.src.set('https://cdn.example/broken.png');
+    await settle();
+    el().querySelector('img')!.dispatchEvent(new Event('error'));
+    await settle();
+    expect(el().querySelector('img')).toBeNull();
+    expect(el().querySelector('.fallback')).not.toBeNull();
+    fixture.componentInstance.src.set('https://cdn.example/good.png');
+    await settle();
+    expect(el().querySelector('img')!.getAttribute('src')).toBe('https://cdn.example/good.png');
+  });
 });

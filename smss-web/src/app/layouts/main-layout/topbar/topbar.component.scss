@@ -93,11 +93,17 @@
   flex-shrink: 0;
 
   &.sm {
+    overflow: hidden;
     width: 32px;
     height: 32px;
     border-radius: var(--radius-md);
     background: var(--gradient-brand);
     color: var(--color-on-primary);
+
+    &.has-logo {
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border);
+    }
   }
 }
 

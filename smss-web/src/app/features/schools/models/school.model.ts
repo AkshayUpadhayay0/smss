@@ -14,6 +14,12 @@ export interface SchoolContact {
   statusId?: number | null;
 }
 
+/** What every role of a school may read of it (GET SchoolRegistration/me/brand): the name and the public logo path. */
+export interface SchoolBrand {
+  schoolName: string;
+  logoUrl?: string | null;
+}
+
 // schoolStatusId and logoUrl are deliberately NOT here — server-controlled, never sent on create/update.
 export interface SchoolBase {
   schoolName: string;

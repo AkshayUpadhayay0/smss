@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
+import { AuthService } from '../../../core/services/auth.service';
 import { clearSessions, makeUser, seedSession } from '../../../core/testing/auth-test-utils';
 import { TopbarComponent } from './topbar.component';
 
@@ -25,6 +26,7 @@ describe('TopbarComponent notification bell', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TopbarComponent);
     fixture.detectChanges();
+    if (schoolId) http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: 'Test School', logoUrl: null }));
   }
   afterEach(() => {
     http.verify();
@@ -72,6 +74,7 @@ describe('TopbarComponent notification bell', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TopbarComponent);
     fixture.detectChanges();
+    http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: 'Test School', logoUrl: null }));
     http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
     (el().querySelector('button.user') as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -86,6 +89,7 @@ describe('TopbarComponent notification bell', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TopbarComponent);
     fixture.detectChanges();
+    http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: 'Test School', logoUrl: null }));
     http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
     (el().querySelector('button.user') as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -161,5 +165,79 @@ describe('TopbarComponent search', () => {
     (el().querySelector('button[aria-label="Search"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect((el().querySelector('.search input') as HTMLInputElement).value).toBe('');
+  });
+});
+
+describe('TopbarComponent school avatar', () => {
+  let fixture: ComponentFixture<TopbarComponent>;
+  let http: HttpTestingController;
+  const el = () => fixture.nativeElement as HTMLElement;
+  const avatar = () => el().querySelector('.org .avatar.sm') as HTMLElement;
+
+  function create(roles: string[], sessionLogo: string | null) {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'Employee', roles, schoolName: 'Test School', logoUrl: sessionLogo }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(TopbarComponent);
+    fixture.detectChanges();
+  }
+  const brand = (logoUrl: string | null, name = 'Test School') => {
+    http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: name, logoUrl }));
+    http.match(`${API}/api/Notice/unread-count`).forEach((r) => r.flush(env({ count: 0 })));
+    fixture.detectChanges();
+  };
+  afterEach(() => {
+    http.verify();
+    clearSessions();
+  });
+
+  it('shows the initial when the school has no logo', () => {
+    create(['Teacher'], null);
+    brand(null);
+    expect(avatar().querySelector('img')).toBeNull();
+    expect(avatar().textContent?.trim()).toBe('T');
+  });
+
+  it('shows the uploaded logo in the small avatar (any role), from the school brand read, without signing in again', () => {
+    create(['Teacher'], null); // the session was made before the logo was uploaded
+    brand('/uploads/12345/logo/logo_1.png');
+    const img = avatar().querySelector('img')!;
+    expect(img.getAttribute('src')).toBe(`${API}/uploads/12345/logo/logo_1.png`);
+    expect(avatar().classList).toContain('has-logo');
+  });
+
+  it('the logo from the session shows straight away, and a removed logo falls back to the initial', () => {
+    create(['Student'], '/uploads/12345/logo/old.png');
+    expect(avatar().querySelector('img')).not.toBeNull();
+    brand(null);
+    expect(avatar().querySelector('img')).toBeNull();
+    expect(avatar().textContent?.trim()).toBe('T');
+  });
+
+  it('falls back to the initial when the image fails to load', () => {
+    create(['Principal'], '/uploads/12345/logo/broken.png');
+    brand('/uploads/12345/logo/broken.png');
+    avatar().querySelector('img')!.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(avatar().querySelector('img')).toBeNull();
+    expect(avatar().textContent?.trim()).toBe('T');
+  });
+
+  it('refreshes at once when the School Admin uploads a logo (the profile page patches the session), with no reload', () => {
+    create(['School Admin'], null);
+    brand(null);
+    expect(avatar().querySelector('img')).toBeNull();
+    TestBed.inject(AuthService).patchUser({ logoUrl: '/uploads/12345/logo/logo_2.png' });
+    fixture.detectChanges();
+    expect(avatar().querySelector('img')!.getAttribute('src')).toBe(`${API}/uploads/12345/logo/logo_2.png`);
+  });
+
+  it('a failing brand read keeps what the session has', () => {
+    create(['Teacher'], '/uploads/12345/logo/keep.png');
+    http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' });
+    http.match(`${API}/api/Notice/unread-count`).forEach((r) => r.flush(env({ count: 0 })));
+    fixture.detectChanges();
+    expect(avatar().querySelector('img')).not.toBeNull();
   });
 });

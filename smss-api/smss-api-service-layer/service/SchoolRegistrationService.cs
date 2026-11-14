@@ -264,6 +264,18 @@ namespace smss_api_service_layer.service
         public Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId) =>
             string.IsNullOrWhiteSpace(schoolId) ? Task.FromResult(Fail(400, NoSchoolMessage)) : GetSchoolByIdAsync(schoolId);
 
+        public async Task<ApiResponse<object>> GetMyBrandAsync(string? schoolId)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);
+            try
+            {
+                var school = await _repo.GetSchoolByIdAsync(schoolId);
+                if (school == null) return Fail(404, "School not found");
+                return Ok(200, "Successfully fetched", new SchoolBrandResponse { SchoolName = school.SchoolName, LogoUrl = school.LogoUrl });
+            }
+            catch (Exception ex) { return Error(ex, "fetching school brand"); }
+        }
+
         public async Task<ApiResponse<object>> UpdateMySchoolAsync(string? schoolId, UpdateMySchoolProfileRequest req)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);

@@ -68,6 +68,14 @@ namespace smss_api.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
+        // GET api/SchoolRegistration/me/brand   (every signed-in role of the school: name + public logo path only; school from the token)
+        [HttpGet("me/brand")]
+        public async Task<IActionResult> GetMyBrand()
+        {
+            var response = await _schoolRegistrationService.GetMyBrandAsync(TokenSchoolId);
+            return StatusCode(response.StatusCode, response);
+        }
+
         // PUT api/SchoolRegistration/me
         [HttpPut("me")]
         public async Task<IActionResult> UpdateMySchool([FromBody] UpdateMySchoolProfileRequest request)

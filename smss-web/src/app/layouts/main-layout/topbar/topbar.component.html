@@ -6,7 +6,7 @@
 
     <div class="dropdown">
       <button type="button" class="org" [attr.aria-expanded]="openMenu() === 'org'" (click)="toggle('org')">
-        <span class="avatar sm">{{ initial(org().name) }}</span>
+        <span class="avatar sm" [class.has-logo]="!!org().logoUrl"><app-secure-img [src]="org().logoUrl" [alt]="org().name" fit="contain">{{ initial(org().name) }}</app-secure-img></span>
         <span class="meta">
           <span class="name">{{ org().name }}</span>
           <span class="sub">{{ org().code }}</span>
@@ -17,7 +17,7 @@
         <div class="menu">
           <div class="menu-title">Current organization</div>
           <div class="menu-item current">
-            <span class="avatar sm">{{ initial(org().name) }}</span>
+            <span class="avatar sm" [class.has-logo]="!!org().logoUrl"><app-secure-img [src]="org().logoUrl" [alt]="org().name" fit="contain">{{ initial(org().name) }}</app-secure-img></span>
             <span class="meta">
               <span class="name">{{ org().name }}</span>
               <span class="sub">{{ org().code }}</span>
