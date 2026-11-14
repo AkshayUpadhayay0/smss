@@ -1,3 +1,4 @@
+-- To run this by hand in pgAdmin use Docs/smss-admission-type-global-RUN-ME.sql (this script plus pre-checks, reports and a final verification, in one file).
 -- =====================================================================================================================
 -- Admission Type becomes a GLOBAL master (lut_admission_type), managed by the Super Admin.
 -- STEP 1 of 2: create + seed + repoint + verify.  (Step 2, dropping the old table, is Docs/smss-admission-type-global-drop-old.sql

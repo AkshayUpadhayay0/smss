@@ -1,3 +1,4 @@
+-- Do not run this yet. The pgAdmin-ready file for step 1 is Docs/smss-admission-type-global-RUN-ME.sql.
 -- =====================================================================================================================
 -- Admission Type global master - STEP 2 of 2: drop the old school-level table tb_admission_types.
 -- Run ONLY after Docs/smss-admission-type-global.sql has been applied, the new API has been live, and the Admission form + student pages
