@@ -3,9 +3,14 @@ using QImage = QuestPDF.Infrastructure.Image;
 
 namespace smss_api_service_layer.helper.idcard
 {
-    /// <summary>A decoded picture with its pixel size (needed to crop a photo to fill its frame without distorting it).</summary>
+    /// <summary>
+    /// A decoded picture with its pixel size (needed to crop a photo to fill its frame without distorting it). <see cref="IsLight"/> is set for a verified logo whose artwork is white or
+    /// near-white (it would vanish on a white plate), so the card puts it on a dark plate instead.
+    /// </summary>
     public sealed record IdCardPicture(QImage Image, int Width, int Height)
     {
+        public bool IsLight { get; init; }
+
         public static IdCardPicture? TryCreate(byte[]? bytes)
         {
             if (bytes == null || bytes.Length == 0) return null;
@@ -16,9 +21,11 @@ namespace smss_api_service_layer.helper.idcard
         }
 
         /// <summary>
-        /// Like <see cref="TryCreate"/>, but also proves the picture can really be decoded and drawn. The header check reads only the first bytes, and QuestPDF decodes lazily and, for a
-        /// corrupt body, silently paints nothing (no exception) - which would leave an empty plate on every card. So the picture is drawn once on a small blank page; if the page comes out
-        /// identical to an empty one, nothing was painted and the logo is treated as missing (the card then keeps its initials / text layout). Used for the school logo, once per render run.
+        /// Like <see cref="TryCreate"/>, but also proves the picture can really be decoded and that it paints something. The header check reads only the first bytes, and QuestPDF decodes
+        /// lazily and, for a corrupt body, silently paints nothing (no exception) - which would leave an empty plate on every card. So the picture is drawn once on a small black page and
+        /// once on a small white page, and each result is compared with an empty page: whatever its colours, a logo is valid when it changes at least one of the two pages (white artwork
+        /// shows on the black one, black artwork on the white one, anything in between on both). One that changes neither - corrupt, or fully transparent - is treated as missing and the card
+        /// keeps its initials / text layout. The same two pages tell whether the artwork is light. Used for the school logo, once per render run.
         /// </summary>
         public static IdCardPicture? TryCreateVerified(byte[]? bytes)
         {
@@ -26,24 +33,34 @@ namespace smss_api_service_layer.helper.idcard
             if (pic == null) return null;
             try
             {
-                var drawn = Probe(pic);
-                return drawn.SequenceEqual(EmptyProbe.Value) ? null : pic;
+                var onBlack = PngRaster.TryDecode(Probe(pic, "#000000"));
+                var onWhite = PngRaster.TryDecode(Probe(pic, "#FFFFFF"));
+                if (onBlack == null || onWhite == null) return null;
+                int ink(byte[] rgb, byte bg) { var n = 0; for (var i = 0; i < rgb.Length; i += 3) if (Math.Abs(rgb[i] - bg) + Math.Abs(rgb[i + 1] - bg) + Math.Abs(rgb[i + 2] - bg) > InkThreshold) n++; return n; }
+                var coveredOnBlack = ink(onBlack.Value.Rgb, 0);
+                var coveredOnWhite = ink(onWhite.Value.Rgb, 255);
+                var total = onBlack.Value.W * onBlack.Value.H;
+                var painted = Math.Max(coveredOnBlack, coveredOnWhite);
+                if (painted < Math.Max(3, total / 500)) return null;                  // nothing visible on either page
+                // light artwork: it shows on the black page but (almost) not on the white one
+                var light = coveredOnBlack >= Math.Max(3, total / 500) && coveredOnWhite * 50 < coveredOnBlack;
+                return pic with { IsLight = light };
             }
             catch { return null; }
         }
 
-        private static readonly Lazy<byte[]> EmptyProbe = new(() => Probe(null));
+        private const int InkThreshold = 45;   // summed difference over the three channels that counts as "painted"
+        private const float ProbeSize = 48;    // pt; rendered at 72 dpi = 48 x 48 pixels
 
-        private static byte[] Probe(IdCardPicture? pic)
+        private static byte[] Probe(IdCardPicture pic, string pageColor)
         {
             smss_api_service_layer.helper.PdfBootstrap.Ensure();
             var doc = Document.Create(d => d.Page(p =>
             {
-                p.Size(new QuestPDF.Helpers.PageSize(24, 24, QuestPDF.Infrastructure.Unit.Point));
+                p.Size(new QuestPDF.Helpers.PageSize(ProbeSize, ProbeSize, QuestPDF.Infrastructure.Unit.Point));
                 p.Margin(0);
-                p.PageColor("#808080");   // a mid grey: both a dark and a light logo differ from it
-                if (pic != null) p.Content().Image(pic.Image).FitArea();
-                else p.Content().Text("");
+                p.PageColor(pageColor);
+                p.Content().Image(pic.Image).FitArea();
             }));
             return doc.GenerateImages(new QuestPDF.Infrastructure.ImageGenerationSettings { ImageFormat = QuestPDF.Infrastructure.ImageFormat.Png, RasterDpi = 72 }).First();
         }

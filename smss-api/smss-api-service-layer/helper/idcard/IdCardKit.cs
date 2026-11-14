@@ -228,9 +228,15 @@ namespace smss_api_service_layer.helper.idcard
         {
             var logo = x.School.Logo;
             if (logo == null) return;
+            // a white / near-white logo would vanish on a light plate: it gets the template's dark colour instead; a thin edge keeps a pale plate visible on a white card body
+            var plate = logo.IsLight ? DarkPlate(x.Pal) : tile;
+            var edge = IdCardPalette.Luminance(plate) > 0.45 ? IdCardPalette.Mix(plate, "#000000", 0.32) : IdCardPalette.Mix(plate, "#FFFFFF", 0.5);
             // padding (0.9 mm) is more than the 0.29 x radius a corner can cut into a square image, so even a full-bleed logo keeps its corners
-            box.Background(tile).CornerRadius(round ? 1.5f : 1.0f).Padding(0.9f, Mm).Image(logo.Image).FitArea();
+            box.Background(plate).Border(0.25f, Mm).BorderColor(edge).CornerRadius(round ? 1.5f : 1.0f).Padding(0.9f, Mm).Image(logo.Image).FitArea();
         }
+
+        /// <summary>The template's own dark colour for a white logo to sit on; a near-black when the brand colour is not dark enough.</summary>
+        public static string DarkPlate(IdCardPalette pal) => IdCardPalette.Luminance(pal.PrimaryDark) < 0.18 ? pal.PrimaryDark : "#1F2430";
 
         public static bool HasLogo(CardCtx x) => x.School.Logo != null;
 

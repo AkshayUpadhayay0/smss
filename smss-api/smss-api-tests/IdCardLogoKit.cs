@@ -33,7 +33,7 @@ namespace smss_api_tests
         public static readonly byte[] Square = LogoPng(240, 240);
 
         public static IdCardSchoolModel School(byte[]? logo, string name = "Greenfield Public School") =>
-            new(name, IdCardPicture.TryCreate(logo), "12 Rajpur Road, Dehradun - 248001", "0135 2740 000");
+            new(name, IdCardPicture.TryCreateVerified(logo), "12 Rajpur Road, Dehradun - 248001", "0135 2740 000");
 
         public static IdCardBrand Brand(string template, IdCardPalette? _ = null)
         {
