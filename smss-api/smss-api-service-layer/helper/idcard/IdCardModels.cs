@@ -1,3 +1,4 @@
+using QuestPDF.Fluent;
 using QImage = QuestPDF.Infrastructure.Image;
 
 namespace smss_api_service_layer.helper.idcard
@@ -12,6 +13,39 @@ namespace smss_api_service_layer.helper.idcard
             if (size == null) return null;
             try { return new IdCardPicture(QImage.FromBinaryData(bytes), size.Value.W, size.Value.H); }
             catch { return null; }
+        }
+
+        /// <summary>
+        /// Like <see cref="TryCreate"/>, but also proves the picture can really be decoded and drawn. The header check reads only the first bytes, and QuestPDF decodes lazily and, for a
+        /// corrupt body, silently paints nothing (no exception) - which would leave an empty plate on every card. So the picture is drawn once on a small blank page; if the page comes out
+        /// identical to an empty one, nothing was painted and the logo is treated as missing (the card then keeps its initials / text layout). Used for the school logo, once per render run.
+        /// </summary>
+        public static IdCardPicture? TryCreateVerified(byte[]? bytes)
+        {
+            var pic = TryCreate(bytes);
+            if (pic == null) return null;
+            try
+            {
+                var drawn = Probe(pic);
+                return drawn.SequenceEqual(EmptyProbe.Value) ? null : pic;
+            }
+            catch { return null; }
+        }
+
+        private static readonly Lazy<byte[]> EmptyProbe = new(() => Probe(null));
+
+        private static byte[] Probe(IdCardPicture? pic)
+        {
+            smss_api_service_layer.helper.PdfBootstrap.Ensure();
+            var doc = Document.Create(d => d.Page(p =>
+            {
+                p.Size(new QuestPDF.Helpers.PageSize(24, 24, QuestPDF.Infrastructure.Unit.Point));
+                p.Margin(0);
+                p.PageColor("#808080");   // a mid grey: both a dark and a light logo differ from it
+                if (pic != null) p.Content().Image(pic.Image).FitArea();
+                else p.Content().Text("");
+            }));
+            return doc.GenerateImages(new QuestPDF.Infrastructure.ImageGenerationSettings { ImageFormat = QuestPDF.Infrastructure.ImageFormat.Png, RasterDpi = 72 }).First();
         }
     }
 

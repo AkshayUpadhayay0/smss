@@ -220,13 +220,16 @@ namespace smss_api_service_layer.helper.idcard
             });
         }
 
-        /// <summary>The school logo in a small round / rounded tile, or nothing when the school has none.</summary>
+        /// <summary>
+        /// The school logo on a light plate (white, or the template's own tint), or nothing when the school has none. The plate is a rounded square whose corner radius is smaller
+        /// than its padding allows to clip, so the logo is never cropped; the image keeps its aspect ratio and is centred inside the box (FitArea), never stretched.
+        /// </summary>
         public static void Logo(IContainer box, CardCtx x, string tile = "#FFFFFF", bool round = true)
         {
             var logo = x.School.Logo;
             if (logo == null) return;
-            var tileBox = box.Background(tile);
-            (round ? tileBox.CornerRadius(100) : tileBox.CornerRadius(1.2f)).Padding(0.7f, Mm).Image(logo.Image).FitArea();
+            // padding (0.9 mm) is more than the 0.29 x radius a corner can cut into a square image, so even a full-bleed logo keeps its corners
+            box.Background(tile).CornerRadius(round ? 1.5f : 1.0f).Padding(0.9f, Mm).Image(logo.Image).FitArea();
         }
 
         public static bool HasLogo(CardCtx x) => x.School.Logo != null;

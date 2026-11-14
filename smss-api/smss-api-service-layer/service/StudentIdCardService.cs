@@ -220,7 +220,7 @@ namespace smss_api_service_layer.service
 
         private IdCardSchoolModel BuildSchool(IdCardSchoolRow s)
         {
-            var logo = IdCardPicture.TryCreate(ReadUpload(s.LogoUrl));
+            var logo = IdCardPicture.TryCreateVerified(ReadUpload(s.LogoUrl));   // once per render run (single, preview or the whole bulk sheet), never per card
             var tail = string.Join(", ", new[] { s.CityName, s.StateName }.Where(p => !string.IsNullOrWhiteSpace(p)));
             if (!string.IsNullOrWhiteSpace(s.Pincode)) tail = tail.Length > 0 ? $"{tail} - {s.Pincode}" : s.Pincode!;
             var address = string.Join(", ", new[] { s.AddressLine1, s.AddressLine2, tail }.Where(p => !string.IsNullOrWhiteSpace(p)));

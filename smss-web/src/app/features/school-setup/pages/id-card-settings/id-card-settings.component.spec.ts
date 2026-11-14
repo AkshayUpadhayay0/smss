@@ -125,6 +125,20 @@ describe('IdCardSettingsComponent', () => {
     answerPreviews(burst);
   });
 
+  it('coming back to the tab re-renders all six previews (a logo uploaded on another screen shows without a reload); a hidden tab does not', () => {
+    open();
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    settle();
+    expect(previewRequests()).toHaveLength(0);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    settle();
+    const again = previewRequests();
+    expect(again).toHaveLength(6);
+    answerPreviews(again);
+  });
+
   it('a failed preview shows a placeholder for that design only and the screen keeps working', () => {
     open();
     cmp()['setColor']('secondaryColor', '#00AA55');
