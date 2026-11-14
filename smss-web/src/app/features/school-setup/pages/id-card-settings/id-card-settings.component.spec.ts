@@ -6,8 +6,9 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { IdCardSettings } from '../../models/id-card-settings.model';
 import { IdCardSettingsComponent } from './id-card-settings.component';
+import { environment } from '../../../../../environments/environment';
 
-const API = 'https://localhost:7037';
+const API = environment.apiUrl;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 const TEMPLATES = [

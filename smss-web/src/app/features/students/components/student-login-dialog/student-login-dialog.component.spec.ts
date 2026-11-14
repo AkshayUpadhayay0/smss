@@ -4,8 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { StudentLoginCreated } from '../../models/student.model';
 import { StudentLoginDialogComponent } from './student-login-dialog.component';
+import { environment } from '../../../../../environments/environment';
 
-const API = 'https://localhost:7037';
+const API = environment.apiUrl;
 const env = <T>(data: T, statusCode = 201) => ({ status: true, statusCode, message: 'ok', data });
 
 describe('StudentLoginDialogComponent', () => {
