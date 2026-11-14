@@ -147,12 +147,27 @@ export interface MyBusItem {
   longitude: number | null;
   /** Seconds since the last location arrived (LIVE and STALE only). */
   ageSeconds: number | null;
+  /** This driver's approximate times for the STUDENT'S OWN area, "HH:mm" or null. */
+  morningPickupTime: string | null;
+  afternoonDropTime: string | null;
+}
+
+/** A driver of the student's area who is not on duty now but has approximate times there. No status, no position. */
+export interface MyBusScheduled {
+  driverName: string;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  morningPickupTime: string | null;
+  afternoonDropTime: string | null;
 }
 
 export interface MyBus {
   assigned: boolean;
   area: { areaName: string } | null;
+  /** On duty now. A driver is in `buses` or in `scheduled`, never both. */
   buses: MyBusItem[];
+  /** Not on duty now, with at least one time on this area. */
+  scheduled: MyBusScheduled[];
   serverTime: string;
   message: string | null;
 }

@@ -4,9 +4,9 @@ import { ageText, buildUpdateScript, deriveBusState, mapPoints, toCard } from '.
 import { buildMapPage } from '../src/features/student/bus/mapPage';
 
 const bus = (over: Partial<MyBusItem> = {}): MyBusItem => ({
-  driverName: 'Ramesh Kumar', vehicleLabel: 'Bus 1', vehiclePlate: 'UP32AB1234', status: 'LIVE', latitude: 26.85, longitude: 80.95, ageSeconds: 12, ...over,
+  driverName: 'Ramesh Kumar', vehicleLabel: 'Bus 1', vehiclePlate: 'UP32AB1234', status: 'LIVE', latitude: 26.85, longitude: 80.95, ageSeconds: 12, morningPickupTime: null, afternoonDropTime: null, ...over,
 });
-const data = (over: Partial<MyBus> = {}): MyBus => ({ assigned: true, area: { areaName: 'Civil Lines' }, buses: [bus()], serverTime: '2026-11-14T10:00:00Z', message: null, ...over });
+const data = (over: Partial<MyBus> = {}): MyBus => ({ assigned: true, area: { areaName: 'Civil Lines' }, buses: [bus()], scheduled: [], serverTime: '2026-11-14T10:00:00Z', message: null, ...over });
 
 describe('ageText', () => {
   it('speaks in seconds, minutes, hours', () => {
@@ -21,7 +21,7 @@ describe('ageText', () => {
 describe('deriveBusState: the screen states', () => {
   it('not assigned (a normal answer, with the server message)', () => {
     expect(deriveBusState(data({ assigned: false, area: null, buses: [], message: 'Ask your school office.' }))).toEqual({ kind: 'NOT_ASSIGNED', message: 'Ask your school office.' });
-    expect(deriveBusState({ assigned: false, area: null, buses: [], serverTime: 'x', message: null }).kind).toBe('NOT_ASSIGNED');
+    expect(deriveBusState({ assigned: false, area: null, buses: [], scheduled: [], serverTime: 'x', message: null }).kind).toBe('NOT_ASSIGNED');
   });
   it('assigned but no bus on duty', () => {
     expect(deriveBusState(data({ buses: [] }))).toMatchObject({ kind: 'NO_BUS', areaName: 'Civil Lines' });

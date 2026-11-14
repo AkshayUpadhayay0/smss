@@ -11,10 +11,11 @@ import { Screen } from '../../components/Screen';
 import { Skeleton } from '../../components/Skeleton';
 import { Text } from '../../components/Text';
 import { messageOf } from '../../api/errors';
+import { homeTimeLine } from '../../lib/busTimes';
 import { classLabel } from '../../lib/format';
 import { diffDays, formatShort, formatTime } from '../../lib/dates';
 import { colors, MIN_TOUCH, radii } from '../../theme/tokens';
-import { useDashboard, useHomework, useUnreadCount } from './queries';
+import { useDashboard, useHomework, useMyBus, useUnreadCount } from './queries';
 import { DueChip, LeaveStatusChip, SectionHeader } from './parts';
 
 function Bell({ count, onPress }: { count: number; onPress: () => void }) {
@@ -54,6 +55,10 @@ export function StudentHome() {
     void unread.refetch();
   };
 
+  // The card's second line shows the approximate time when the school has set one. One request, no polling; if it fails or has nothing, the card is exactly as before.
+  const bus = useMyBus(false);
+  const busLine = bus.data?.assigned ? homeTimeLine([...(bus.data.buses ?? []), ...(bus.data.scheduled ?? [])]) : null;
+
   const classText = d ? classLabel(d.profile.className, d.profile.sectionName) : null;
   const dueSoon =
     today && homework.data
@@ -81,7 +86,7 @@ export function StudentHome() {
                   <Text variant="heading" style={{ fontSize: 15 }}>
                     My bus
                   </Text>
-                  <Text variant="small">See where your school bus is</Text>
+                  <Text variant="small">{busLine ?? 'See where your school bus is'}</Text>
                 </View>
                 <Icon name="chevron-right" size={20} color={colors.muted} />
               </Card>

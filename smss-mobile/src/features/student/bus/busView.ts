@@ -1,4 +1,5 @@
-import type { BusStatus, MyBus, MyBusItem } from '../../../api/student';
+import type { BusStatus, MyBus, MyBusItem, MyBusScheduled } from '../../../api/student';
+import { dropText, pickupText } from '../../../lib/busTimes';
 
 // Pure view logic for the student's "Where is my bus" screen (no React Native imports: unit-tested). Ages and states come from the SERVER; the phone's
 // clock is never used for a decision.
@@ -26,12 +27,25 @@ export interface BusCard {
   /** A clear warning for a bus that is not LIVE; null when LIVE. */
   warning: string | null;
   hasPosition: boolean;
+  /** "Approximate pickup 07:30" / "Approximate drop 14:15", each null when the school has not set it. */
+  pickupText: string | null;
+  dropText: string | null;
+}
+
+/** A driver of the area who is not on duty now: name, vehicle and the approximate times, nothing live. */
+export interface ScheduledCard {
+  key: string;
+  driverName: string;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  pickupText: string | null;
+  dropText: string | null;
 }
 
 export type BusScreenState =
   | { kind: 'NOT_ASSIGNED'; message: string }
-  | { kind: 'NO_BUS'; areaName: string; message: string }
-  | { kind: 'BUSES'; areaName: string; buses: BusCard[] };
+  | { kind: 'NO_BUS'; areaName: string; message: string; scheduled: ScheduledCard[] }
+  | { kind: 'BUSES'; areaName: string; buses: BusCard[]; scheduled: ScheduledCard[] };
 
 const STATUS_TEXT: Record<BusStatus, string> = { LIVE: 'Live', STALE: 'Last known position', OFFLINE: 'Not sharing' };
 
@@ -52,6 +66,19 @@ export function toCard(b: MyBusItem): BusCard {
           ? 'This bus is on duty but is not sharing its location right now.'
           : null,
     hasPosition,
+    pickupText: pickupText(b.morningPickupTime),
+    dropText: dropText(b.afternoonDropTime),
+  };
+}
+
+export function toScheduledCard(s: MyBusScheduled): ScheduledCard {
+  return {
+    key: s.vehiclePlate + '|' + s.driverName,
+    driverName: s.driverName,
+    vehicleLabel: s.vehicleLabel,
+    vehiclePlate: s.vehiclePlate,
+    pickupText: pickupText(s.morningPickupTime),
+    dropText: dropText(s.afternoonDropTime),
   };
 }
 
@@ -59,10 +86,11 @@ export function deriveBusState(data: MyBus): BusScreenState {
   if (!data.assigned || !data.area) {
     return { kind: 'NOT_ASSIGNED', message: data.message ?? 'You are not assigned to a school bus yet. Ask your school office.' };
   }
+  const scheduled = (data.scheduled ?? []).map(toScheduledCard);
   if (data.buses.length === 0) {
-    return { kind: 'NO_BUS', areaName: data.area.areaName, message: data.message ?? 'No bus is on duty for your area right now.' };
+    return { kind: 'NO_BUS', areaName: data.area.areaName, message: data.message ?? 'No bus is on duty for your area right now.', scheduled };
   }
-  return { kind: 'BUSES', areaName: data.area.areaName, buses: data.buses.map(toCard) };
+  return { kind: 'BUSES', areaName: data.area.areaName, buses: data.buses.map(toCard), scheduled };
 }
 
 export interface MapPoint {

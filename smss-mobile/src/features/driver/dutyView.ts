@@ -10,7 +10,8 @@ export interface DriverMe {
   driverId: string;
   fullName: string;
   vehicle: { vehicleId: number; vehicleLabel: string; vehiclePlate: string; isActive: boolean } | null;
-  areas: { areaId: number; areaName: string }[];
+  /** The driver's own approximate times for each area ("HH:mm" or null); read-only here. */
+  areas: { areaId: number; areaName: string; morningPickupTime?: string | null; afternoonDropTime?: string | null }[];
   duty: { onDuty: boolean; sessionId: number | null; startedAt: string | null; status: DutyStatus | null; lastSentAt: string | null; lastSentAgeSeconds: number | null };
   canStartDuty: boolean;
   startBlockedReason: string | null;

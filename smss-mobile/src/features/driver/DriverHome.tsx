@@ -19,6 +19,7 @@ import { deriveDutyView, formatClock, lastSentText, startBlockedMessage, STATUS_
 import { dutyStore } from './nativeStore';
 import { canShareLocation, gateFor } from './permissions';
 import { androidApi } from './permissionsNative';
+import { timesSummary } from '../../lib/busTimes';
 import { driverKeys, useDisclosureAccepted, useDriverMe, usePermissions, useServiceRunning, useStoppedReason } from './queries';
 import { setupSkipped } from './setupState';
 
@@ -140,7 +141,16 @@ export function DriverHome() {
                   Your areas
                 </Text>
               </View>
-              <Text variant="body">{d.areas.length ? d.areas.map((a) => a.areaName).join(', ') : 'No areas assigned.'}</Text>
+              {d.areas.length ? (
+                d.areas.map((a) => (
+                  <View key={a.areaId} style={{ gap: 2 }}>
+                    <Text variant="body">{a.areaName}</Text>
+                    {timesSummary(a) ? <Text variant="small">{timesSummary(a)}</Text> : null}
+                  </View>
+                ))
+              ) : (
+                <Text variant="body">No areas assigned.</Text>
+              )}
             </Card>
 
             <Card style={{ gap: spacing.sm }} accessibilityLiveRegion="polite">

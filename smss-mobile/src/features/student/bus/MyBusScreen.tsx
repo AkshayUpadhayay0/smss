@@ -15,13 +15,54 @@ import { Text } from '../../../components/Text';
 import { MAP_CONFIG } from '../../../config/map';
 import { colors, radii, spacing } from '../../../theme/tokens';
 import { useMyBus } from '../queries';
-import { buildUpdateScript, deriveBusState, mapPoints, type BusCard } from './busView';
+import { buildUpdateScript, deriveBusState, mapPoints, type BusCard, type ScheduledCard } from './busView';
 import { buildMapPage } from './mapPage';
 
 // react-native-webview's class typing does not line up with React 19's JSX types: give it the plain component shape it really has.
 const WebView = NativeWebView as unknown as ComponentType<WebViewProps & RefAttributes<NativeWebView>>;
 
 const TONE: Record<BusCard['status'], ChipTone> = { LIVE: 'success', STALE: 'warning', OFFLINE: 'neutral' };
+
+/** The approximate times of the student's area, one line each (nothing when the school has not set any). */
+function TimeLines({ pickup, drop }: { pickup: string | null; drop: string | null }) {
+  if (!pickup && !drop) return null;
+  return (
+    <View style={{ gap: 2 }}>
+      {pickup ? <Text variant="small">{pickup}</Text> : null}
+      {drop ? <Text variant="small">{drop}</Text> : null}
+    </View>
+  );
+}
+
+/** Drivers of the area who are not on duty now but have approximate times: the schedule, never a position. */
+function ScheduledList({ items }: { items: ScheduledCard[] }) {
+  if (items.length === 0) return null;
+  return (
+    <View style={{ gap: spacing.md }}>
+      <Text variant="heading">Not on duty now</Text>
+      {items.map((s) => (
+        <Card
+          key={s.key}
+          style={{ gap: 6 }}
+          accessible
+          accessibilityLabel={`${s.vehicleLabel}, ${s.vehiclePlate}, driver ${s.driverName}, not on duty${s.pickupText ? ', ' + s.pickupText : ''}${s.dropText ? ', ' + s.dropText : ''}`}
+        >
+          <View style={styles.row}>
+            <Icon name="truck" size={20} color={colors.primaryText} />
+            <Text variant="heading" style={{ flex: 1 }} numberOfLines={1}>
+              {s.vehicleLabel}
+            </Text>
+            <Chip label="Not on duty" tone="neutral" />
+          </View>
+          <Text variant="small">
+            {s.vehiclePlate} · Driver {s.driverName}
+          </Text>
+          <TimeLines pickup={s.pickupText} drop={s.dropText} />
+        </Card>
+      ))}
+    </View>
+  );
+}
 
 /** The map page is built once: Leaflet is inlined and the page never changes, only its markers (through injectJavaScript). */
 const PAGE = buildMapPage({
@@ -81,7 +122,10 @@ export function MyBusScreen() {
       ) : state?.kind === 'NOT_ASSIGNED' ? (
         <EmptyState icon="map-pin" title="No bus assigned" message={state.message} />
       ) : state?.kind === 'NO_BUS' ? (
-        <EmptyState icon="clock" title="No bus on duty" message={state.message} />
+        <>
+          <EmptyState icon="clock" title="No bus on duty" message={state.message} />
+          <ScheduledList items={state.scheduled} />
+        </>
       ) : state?.kind === 'BUSES' ? (
         <>
           {query.isError ? (
@@ -122,7 +166,7 @@ export function MyBusScreen() {
           )}
 
           {state.buses.map((b) => (
-            <Card key={b.key} style={{ gap: 6 }} accessible accessibilityLabel={`${b.vehicleLabel}, ${b.vehiclePlate}, driver ${b.driverName}, ${b.statusText}${b.updatedText ? ', ' + b.updatedText : ''}`}>
+            <Card key={b.key} style={{ gap: 6 }} accessible accessibilityLabel={`${b.vehicleLabel}, ${b.vehiclePlate}, driver ${b.driverName}, ${b.statusText}${b.updatedText ? ', ' + b.updatedText : ''}${b.pickupText ? ', ' + b.pickupText : ''}${b.dropText ? ', ' + b.dropText : ''}`}>
               <View style={styles.row}>
                 <Icon name="truck" size={20} color={colors.primaryText} />
                 <Text variant="heading" style={{ flex: 1 }} numberOfLines={1}>
@@ -138,6 +182,7 @@ export function MyBusScreen() {
                   {b.updatedText}
                 </Text>
               ) : null}
+              <TimeLines pickup={b.pickupText} drop={b.dropText} />
               {b.warning ? (
                 <View style={styles.warning} accessibilityRole="alert">
                   <Text variant="small" color={colors.warningText}>
@@ -147,6 +192,8 @@ export function MyBusScreen() {
               ) : null}
             </Card>
           ))}
+
+          <ScheduledList items={state.scheduled} />
 
           <Pressable onPress={() => void Linking.openURL('https://www.openstreetmap.org/copyright')} accessibilityRole="link" accessibilityLabel="Map data from OpenStreetMap contributors" style={styles.credit}>
             <Text variant="small">Map data © OpenStreetMap contributors</Text>
