@@ -14,7 +14,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> ToggleSchoolStatusAsync(string schoolId);
 
         // "My school": schoolId is taken from the caller's token; null/empty means the account has no school (400)
-        Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId);
+        /// <summary>The caller's own school. <paramref name="full"/> (School Admin / Super Admin) = the whole record; otherwise only the public profile subset (no tax / registration numbers, no contact persons).</summary>
+        Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId, bool full);
         /// <summary>Just the school's name and logo, for the avatar every role of the school sees. The school comes from the token.</summary>
         Task<ApiResponse<object>> GetMyBrandAsync(string? schoolId);
         Task<ApiResponse<object>> UpdateMySchoolAsync(string? schoolId, UpdateMySchoolProfileRequest request);

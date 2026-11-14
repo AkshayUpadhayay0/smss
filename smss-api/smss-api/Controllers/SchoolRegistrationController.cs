@@ -64,7 +64,9 @@ namespace smss_api.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> GetMySchool()
         {
-            var response = await _schoolRegistrationService.GetMySchoolAsync(TokenSchoolId);
+            // The whole record (GSTIN, PAN, contact persons...) only for the people who manage the school; everyone else gets the public profile.
+            var full = User.IsSchoolAdmin() || User.IsSuperAdmin();
+            var response = await _schoolRegistrationService.GetMySchoolAsync(TokenSchoolId, full);
             return StatusCode(response.StatusCode, response);
         }
 

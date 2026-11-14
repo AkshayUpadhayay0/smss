@@ -261,8 +261,18 @@ namespace smss_api_service_layer.service
         // ---------------- MY SCHOOL (school id comes from the caller's token, never the client) ----------------
         private const string NoSchoolMessage = TenantMessages.NoSchool;
 
-        public Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId) =>
-            string.IsNullOrWhiteSpace(schoolId) ? Task.FromResult(Fail(400, NoSchoolMessage)) : GetSchoolByIdAsync(schoolId);
+        public async Task<ApiResponse<object>> GetMySchoolAsync(string? schoolId, bool full)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);
+            if (full) return await GetSchoolByIdAsync(schoolId);
+            try
+            {
+                var school = await _repo.GetSchoolByIdAsync(schoolId);
+                if (school == null) return Fail(404, "School not found");
+                return Ok(200, "Successfully fetched", SchoolMapper.ToPublicProfile(school));
+            }
+            catch (Exception ex) { return Error(ex, "fetching school profile"); }
+        }
 
         public async Task<ApiResponse<object>> GetMyBrandAsync(string? schoolId)
         {

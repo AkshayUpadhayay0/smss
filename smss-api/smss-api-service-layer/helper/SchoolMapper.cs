@@ -8,6 +8,25 @@ namespace smss_api_service_layer.helper
 {
     public static class SchoolMapper
     {
+        /// <summary>What a non-admin role of the school may see: name, logo, address and the school's own contact details. No GSTIN / PAN, status, or contact persons.</summary>
+        public static SchoolPublicProfileResponse ToPublicProfile(TbSchools s) => new()
+        {
+            SchoolCode = s.SchoolCode,
+            SchoolName = s.SchoolName,
+            SchoolShortName = s.SchoolShortName,
+            LogoUrl = s.LogoUrl,
+            CountryId = s.CountryId,
+            StateId = s.StateId,
+            DistrictId = s.DistrictId,
+            CityId = s.CityId,
+            AddressLine1 = s.AddressLine1,
+            AddressLine2 = s.AddressLine2,
+            Pincode = s.Pincode,
+            Email = s.Email,
+            MobileNumber = s.MobileNumber,
+            Website = s.Website
+        };
+
         public static SchoolResponse ToResponse(TbSchools s) => new()
         {
             SchoolId = s.SchoolId,
