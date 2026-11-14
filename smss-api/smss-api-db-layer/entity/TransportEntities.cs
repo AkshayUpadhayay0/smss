@@ -142,4 +142,18 @@ namespace smss_api_db_layer.entity
         /// <summary>The server clock: LIVE / STALE / OFFLINE are computed from this.</summary>
         [Column("received_at")] public DateTime ReceivedAt { get; set; }
     }
+
+    /// <summary>Which transport area a student uses in an academic year. ONE row per student and year: removing sets status Inactive, assigning again reactivates the same row.</summary>
+    [Table("tb_student_transport", Schema = "public")]
+    public class TbStudentTransport
+    {
+        [Key][DatabaseGenerated(DatabaseGeneratedOption.Identity)][Column("student_transport_id")] public long StudentTransportId { get; set; }
+        [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
+        [Column("student_id")][StringLength(20)] public string StudentId { get; set; } = null!;
+        [Column("academic_year_id")] public long AcademicYearId { get; set; }
+        [Column("area_id")] public long AreaId { get; set; }
+        [Column("status_id")] public int StatusId { get; set; }
+        [Column("created_at")] public DateTime CreatedAt { get; set; }
+        [Column("updated_at")] public DateTime UpdatedAt { get; set; }
+    }
 }

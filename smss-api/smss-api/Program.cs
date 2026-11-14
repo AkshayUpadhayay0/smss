@@ -91,6 +91,8 @@ builder.Services.Configure<smss_api_service_layer.helper.TransportLiveOptions>(b
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IDriverDutyRepository, DriverDutyRepository>();
 builder.Services.AddScoped<IDriverDutyService, DriverDutyService>();
+builder.Services.AddScoped<IStudentTransportRepository, StudentTransportRepository>();
+builder.Services.AddScoped<IStudentTransportService, StudentTransportService>();
 builder.Services.AddScoped<IStudentLoginRepository, StudentLoginRepository>();
 builder.Services.AddScoped<IStudentLoginService, StudentLoginService>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
