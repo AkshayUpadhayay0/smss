@@ -1,5 +1,5 @@
-import { ROLES } from '../../core/config/route-roles';
-import { visibleNav } from './nav.config';
+import { ROLES, canAccess } from '../../core/config/route-roles';
+import { searchNav, visibleNav } from './nav.config';
 
 const labels = (roles: string[]) => visibleNav(roles).map((i) => i.label);
 const group = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Students' && i.children);
@@ -118,5 +118,37 @@ describe('visibleNav: Transport group', () => {
 
   it('no other role, including a Driver, sees it', () => {
     for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN, ROLES.DRIVER]) expect(transport([role])).toBeUndefined();
+  });
+});
+
+describe('searchNav (the top bar search)', () => {
+  it('finds a page by part of its label, case-insensitively, and says which group it is in', () => {
+    const hits = searchNav('GENDER', [ROLES.SUPER_ADMIN]);
+    expect(hits).toEqual([{ label: 'Gender', group: 'Masters', route: '/masters/gender' }]);
+  });
+
+  it('every typed word must match (label or group): "admission type" finds the Super Admin master, not Admissions', () => {
+    expect(searchNav('admission type', [ROLES.SUPER_ADMIN]).map((h) => h.route)).toEqual(['/masters/admission-type']);
+    expect(searchNav('masters blood', [ROLES.SUPER_ADMIN]).map((h) => h.route)).toEqual(['/masters/blood-group']);
+  });
+
+  it('only offers pages the role can open: a School Admin searching "masters" or "schools" gets nothing from the Super Admin area', () => {
+    expect(searchNav('masters', [ROLES.SCHOOL_ADMIN]).filter((h) => h.route.startsWith('/masters'))).toEqual([]);
+    expect(searchNav('registered schools', [ROLES.SCHOOL_ADMIN])).toEqual([]);
+    expect(searchNav('registered schools', [ROLES.SUPER_ADMIN]).map((h) => h.route)).toEqual(['/schools']);
+    for (const hit of searchNav('a', [ROLES.TEACHER], true, 100)) expect(canAccess(hit.route, [ROLES.TEACHER])).toBe(true);
+  });
+
+  it('a blank or whitespace query finds nothing; label matches rank before group-only matches; the list is capped', () => {
+    expect(searchNav('', [ROLES.SUPER_ADMIN])).toEqual([]);
+    expect(searchNav('   ', [ROLES.SUPER_ADMIN])).toEqual([]);
+    const hits = searchNav('student', [ROLES.SCHOOL_ADMIN], true, 3);
+    expect(hits.length).toBeLessThanOrEqual(3);
+    expect(searchNav('e', [ROLES.SCHOOL_ADMIN], true, 100).length).toBeGreaterThan(3);
+  });
+
+  it('respects the employee-record rule of the menu (a School Admin login has no My Leave)', () => {
+    expect(searchNav('my leave', [ROLES.SCHOOL_ADMIN, ROLES.TEACHER], false)).toEqual([]);
+    expect(searchNav('my leave', [ROLES.TEACHER], true).map((h) => h.route)).toContain('/leave/my');
   });
 });

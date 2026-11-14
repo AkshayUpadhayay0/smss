@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { canAccess } from '../../../core/config/route-roles';
+import { searchNav } from '../nav.config';
 import { AuthService } from '../../../core/services/auth.service';
 import { Notice } from '../../../features/notices/models/notice.model';
 import { NoticeService } from '../../../features/notices/services/notice.service';
@@ -57,6 +58,26 @@ export class TopbarComponent implements OnInit {
 
   protected readonly openMenu = signal<MenuName | null>(null);
   protected readonly searchOpen = signal(false);
+  protected readonly searchTerm = signal('');
+  /** Pages this role can open that match what was typed (the same set the sidebar offers). */
+  protected readonly searchHits = computed(() => searchNav(this.searchTerm(), this.auth.currentUserRoles(), this.auth.hasEmployeeRecord()));
+
+  protected onSearchInput(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
+  }
+
+  protected closeSearch(): void {
+    this.searchOpen.set(false);
+    this.searchTerm.set('');
+  }
+
+  /** Enter opens the best match. */
+  protected openFirstHit(): void {
+    const first = this.searchHits()[0];
+    if (!first) return;
+    this.closeSearch();
+    void this.router.navigateByUrl(first.route);
+  }
 
   ngOnInit(): void {
     if (!this.auth.user()?.schoolId) return;
@@ -97,6 +118,6 @@ export class TopbarComponent implements OnInit {
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.openMenu.set(null);
-    this.searchOpen.set(false);
+    this.closeSearch();
   }
 }

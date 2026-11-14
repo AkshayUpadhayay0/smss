@@ -148,6 +148,33 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+export interface NavSearchHit {
+  label: string;
+  /** The menu group it sits under (e.g. "Masters"), shown as context; absent for a top-level item. */
+  group?: string;
+  route: string;
+}
+
+/**
+ * The top bar's search: the pages in `visibleNav(roles)` whose label (or group name) contains every word typed, case-insensitively, label matches first.
+ * It only ever offers what the menu already offers this role, so it can never reveal a page the role cannot open.
+ */
+export function searchNav(query: string, roles: readonly string[], hasEmployeeRecord = true, limit = 8): NavSearchHit[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const hits: (NavSearchHit & { rank: number })[] = [];
+  for (const item of visibleNav(roles, hasEmployeeRecord)) {
+    const leaves = item.children ? item.children.map((c) => ({ label: c.label, group: item.label, route: c.route })) : item.route ? [{ label: item.label, group: undefined, route: item.route }] : [];
+    for (const leaf of leaves) {
+      const label = leaf.label.toLowerCase();
+      const both = `${label} ${(leaf.group ?? '').toLowerCase()}`;
+      if (!words.every((w) => both.includes(w))) continue;
+      hits.push({ ...leaf, rank: words.every((w) => label.includes(w)) ? (label.startsWith(words[0]) ? 0 : 1) : 2 });
+    }
+  }
+  return hits.sort((a, b) => a.rank - b.rank).slice(0, limit).map(({ rank: _rank, ...hit }) => hit);
+}
+
 /**
  * What the sidebar shows for `roles`: leaves the role may open, groups cut down to the children it may open (a group
  * with none disappears; a `flatWhenSingle` group with one becomes that child as a plain item). Presentation only: the

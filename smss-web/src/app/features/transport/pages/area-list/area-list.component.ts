@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, finalize } from 'rxjs';
+import { Subscription, debounceTime, finalize } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -109,10 +109,14 @@ export class AreaListComponent implements OnInit {
     this.load();
   }
 
+  /** The request on screen: a new search / filter / page cancels it, so a slower OLDER answer can never overwrite the newer one. */
+  private request?: Subscription;
+
   protected load(): void {
+    this.request?.unsubscribe();
     this.loading.set(true);
     this.loadFailed.set(false);
-    this.service
+    this.request = this.service
       .listAreas({ search: this.searchControl.value, status: this.statusControl.value, page: this.page(), pageSize: this.pageSize() })
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({

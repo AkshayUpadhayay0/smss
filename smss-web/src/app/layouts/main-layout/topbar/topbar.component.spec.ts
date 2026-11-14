@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../core/testing/auth-test-utils';
 import { TopbarComponent } from './topbar.component';
@@ -98,5 +98,68 @@ describe('TopbarComponent notification bell', () => {
     bell().click();
     fixture.detectChanges();
     expect(el().textContent).toContain('No unread notices.');
+  });
+});
+
+describe('TopbarComponent search', () => {
+  let fixture: ComponentFixture<TopbarComponent>;
+  let router: Router;
+  const el = () => fixture.nativeElement as HTMLElement;
+  const type = (value: string) => {
+    const input = el().querySelector('.search input') as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  };
+  const results = () => [...el().querySelectorAll('.search-results li')].map((li) => li.textContent?.trim());
+
+  function create(roles: string[], userType: 'Employee' | 'Super Admin' = 'Employee') {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: roles.includes('Super Admin') ? null : 'S', userType, roles }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture = TestBed.createComponent(TopbarComponent);
+    fixture.detectChanges();
+    (el().querySelector('button[aria-label="Search"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  }
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).match(() => true);
+    clearSessions();
+  });
+
+  it('typing lists the matching pages the role can open (it used to do nothing at all)', () => {
+    create(['Super Admin'], 'Super Admin');
+    expect(results()).toEqual([]);
+    type('gender');
+    expect(results()).toEqual(['Gender · Masters']);
+    type('zzzz');
+    expect(results()).toEqual(['No page matches "zzzz"']);
+  });
+
+  it('a role never sees pages it cannot open', () => {
+    create(['Teacher']);
+    type('masters');
+    expect(results()).toEqual(['No page matches "masters"']);
+  });
+
+  it('Enter opens the best match and closes the search; Escape closes it and clears the text', () => {
+    create(['Super Admin'], 'Super Admin');
+    type('blood');
+    (el().querySelector('.search input') as HTMLInputElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/masters/blood-group');
+    expect(el().querySelector('.search')).toBeNull();
+
+    (el().querySelector('button[aria-label="Search"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    type('gender');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(el().querySelector('.search')).toBeNull();
+    (el().querySelector('button[aria-label="Search"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((el().querySelector('.search input') as HTMLInputElement).value).toBe('');
   });
 });
