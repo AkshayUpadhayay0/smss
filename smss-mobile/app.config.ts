@@ -42,6 +42,8 @@ const config: ExpoConfig = {
     'expo-sharing',
     // Driver duty: location while the app is in the background, shown by a foreground-service notification. Needs a development / EAS build: Expo Go cannot do it.
     'expo-dev-client',
+    // Windows only, opt-in: SMSS_ANDROID_CMAKE_VERSION=4.1.2 pins the CMake version so the first Android build does not fail on 260-character paths (see CLAUDE.md).
+    ...(process.env.SMSS_ANDROID_CMAKE_VERSION ? ([['./plugins/withAndroidCmakeVersion', { version: process.env.SMSS_ANDROID_CMAKE_VERSION }]] as [string, unknown][]) : []),
     [
       'expo-location',
       {
