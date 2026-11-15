@@ -133,3 +133,43 @@ export interface OwnAttendance {
 
 // GET /api/Attendance/student/my: at most 92 days per request; a calendar month is always within that.
 export const getOwnAttendance = (from: string, to: string) => api.request<OwnAttendance>('/api/Attendance/student/my', { query: { from, to } });
+
+// ---- "Where is my bus": GET /api/Transport/my-bus (Student role only). The server answers with ONLY these fields: no phone, photo, address or licence, and no
+// coordinates for an OFFLINE bus. assigned:false is a normal 200.
+export type BusStatus = 'LIVE' | 'STALE' | 'OFFLINE';
+
+export interface MyBusItem {
+  driverName: string;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  status: BusStatus;
+  latitude: number | null;
+  longitude: number | null;
+  /** Seconds since the last location arrived (LIVE and STALE only). */
+  ageSeconds: number | null;
+  /** This driver's approximate times for the STUDENT'S OWN area, "HH:mm" or null. */
+  morningPickupTime: string | null;
+  afternoonDropTime: string | null;
+}
+
+/** A driver of the student's area who is not on duty now but has approximate times there. No status, no position. */
+export interface MyBusScheduled {
+  driverName: string;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  morningPickupTime: string | null;
+  afternoonDropTime: string | null;
+}
+
+export interface MyBus {
+  assigned: boolean;
+  area: { areaName: string } | null;
+  /** On duty now. A driver is in `buses` or in `scheduled`, never both. */
+  buses: MyBusItem[];
+  /** Not on duty now, with at least one time on this area. */
+  scheduled: MyBusScheduled[];
+  serverTime: string;
+  message: string | null;
+}
+
+export const getMyBus = () => api.request<MyBus>('/api/Transport/my-bus');

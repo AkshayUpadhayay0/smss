@@ -7,7 +7,19 @@ import { ProfileSheet } from './ProfileSheet';
 import { Text } from './Text';
 
 /** The top of both Homes: avatar (opens the shared profile sheet), greeting, and an optional trailing control (the student's bell). */
-export function HomeHeader({ subtitle, classText, trailing }: { subtitle?: string | null; classText?: string | null; trailing?: ReactNode }) {
+export function HomeHeader({
+  subtitle,
+  classText,
+  trailing,
+  signOutWarning,
+  beforeSignOut,
+}: {
+  subtitle?: string | null;
+  classText?: string | null;
+  trailing?: ReactNode;
+  signOutWarning?: string | null;
+  beforeSignOut?: () => Promise<void>;
+}) {
   const { user } = useSession();
   const [open, setOpen] = useState(false);
   const first = (user?.displayName ?? '').trim().split(/\s+/)[0] || 'there';
@@ -32,7 +44,7 @@ export function HomeHeader({ subtitle, classText, trailing }: { subtitle?: strin
         </View>
       </Pressable>
       {trailing}
-      <ProfileSheet visible={open} onClose={() => setOpen(false)} classText={classText} />
+      <ProfileSheet visible={open} onClose={() => setOpen(false)} classText={classText} signOutWarning={signOutWarning} beforeSignOut={beforeSignOut} />
     </View>
   );
 }

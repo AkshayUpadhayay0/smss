@@ -41,7 +41,7 @@ namespace smss_api.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> GetMe(CancellationToken ct)
         {
-            if (User.IsStudentOrGuardianLogin()) return this.Forbidden("Student and Guardian accounts have no employee record.");
+            if (User.IsStudentOrGuardianLogin() || User.IsDriver()) return this.Forbidden("Student, Guardian and Driver accounts have no employee record.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             return Reply(await _service.GetMyAsync(User.GetSchoolId(), userId, ct));
         }
@@ -53,7 +53,7 @@ namespace smss_api.Controllers
         [HttpGet("{employeeId:length(1,20)}/photo")]
         public async Task<IActionResult> GetPhoto(string employeeId, CancellationToken ct)
         {
-            if (User.IsStudentOrGuardianLogin()) return this.Forbidden("Student and Guardian accounts cannot view employee photos.");
+            if (User.IsStudentOrGuardianLogin() || User.IsDriver()) return this.Forbidden("Student, Guardian and Driver accounts cannot view employee photos.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var r = await _photos.GetAsync(User.GetSchoolId(), userId, User.IsSchoolAdmin() || User.IsPrincipal(), employeeId, ct);
             if (r.Content == null) return StatusCode(r.StatusCode, new ApiResponse<object> { Status = false, StatusCode = r.StatusCode, Message = r.Message, Data = null });

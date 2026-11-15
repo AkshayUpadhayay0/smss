@@ -20,7 +20,7 @@ regexes = ['''YOUR_DB_PASSWORD''', '''Password=\.\.\.''', '''Password=REDACTED''
 [[rules]]
 id = "smss-config-secret-value"
 description = "A non-empty secret in a JSON config file (Jwt Key, setup key, SMTP app password)"
-regex = '''(?i)"(Key|SuperAdminSetupKey|SenderAppPassword|SecretKey|SigningKey|ClientSecret|ApiKey)"\s*:\s*"[^"\s<]{8,}"'''
+regex = '''(?i)"(Key|SuperAdminSetupKey|SenderAppPassword|SecretKey|SigningKey|ClientSecret|ApiKey)"\s*:\s*"[^"<]{8,}"'''
 path = '''(?i)\.(json|config)$'''
 keywords = ["superadminsetupkey", "senderapppassword", "secretkey", "signingkey", "clientsecret", "apikey", "\"key\""]
 [[rules.allowlists]]
@@ -37,9 +37,13 @@ keywords = ["postgresql database dump"]
 description = "local, git-ignored dumps (Docs/smss-db*.sql); the pre-commit hook also refuses any staged dump by file name"
 paths = ['''Docs/smss-db.*\.sql$''']
 
+[[rules]]
+id = "smss-forbidden-file"
+description = "A database dump, build output, IDE state, uploaded file or credentials file: never commit (a path rule: binary files are not scanned by content)"
+path = '''(?i)(^|/)(bin|obj|\.vs|uploads|uploads-private)/|(^|/)smss-db[^/]*\.sql$|\.(dump|bak|backup|pgdump|dmp)$|demo-credentials'''
+
 [allowlist]
 description = "generated and third-party folders; the secrets of THIS machine live outside the repository"
 paths = [
-  '''(^|/)node_modules/''', '''(^|/)\.angular/''', '''(^|/)dist/''', '''(^|/)(bin|obj)/''', '''(^|/)\.vs/''',
-  '''smss-api/smss-api/uploads(-private)?/''',
+  '''(^|/)node_modules/''', '''(^|/)\.angular/''', '''(^|/)dist/''',
 ]

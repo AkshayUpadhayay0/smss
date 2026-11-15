@@ -134,7 +134,9 @@ def setup(key):
     for d in DES: st['desig'][d] = (ex.get(d) or s('POST','/EmployeeDesignations',{'designationName':d,'description':d})[1]['data'])['designationId']
     ex = existing('/AdmissionTypes','typeName'); st['admtype'] = {}
     for n,dsc in [('Existing Student','Students already studying at the school'),('New Admission','Fresh admission through the application pipeline'),('Transfer Admission','Admission on transfer certificate')]:
-        st['admtype'][n] = (ex.get(n) or s('POST','/AdmissionTypes',{'typeName':n,'description':dsc})[1]['data'])['admissionTypeId']
+        # admission types are a GLOBAL master now (Super Admin manages them): a school can only read them
+        assert n in ex, f"admission type {n!r} is missing: the Super Admin must add it under Masters > Admission Type"
+        st['admtype'][n] = ex[n]['admissionTypeId']
     save()
     # 6. employees + logins
     lk = s('GET','/Employee/lookups')[1]['data']; roles = {r['roleName']: r['roleId'] for r in lk['assignableRoles']}; print('roles', list(roles))

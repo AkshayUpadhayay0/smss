@@ -29,6 +29,7 @@ type Step = 'upload' | 'preview' | 'result';
             <li><strong>Fill one student per row</strong> and save it as an Excel Workbook (.xlsx). Up to {{ maxRows }} students and 1 MB per file.</li>
             <li><strong>Upload it here.</strong> You see a preview first. Nothing is saved until you confirm.</li>
           </ol>
+          <p class="note" data-test="import-type">Admission type: <strong>Existing Student</strong>. It is set automatically for every row and cannot be changed.</p>
           <div class="actions">
             <app-button variant="secondary" [disabled]="downloading()" (click)="downloadTemplate()"><app-icon name="download" [size]="16" />{{ downloading() ? 'Preparing…' : 'Download template' }}</app-button>
           </div>

@@ -83,5 +83,13 @@ namespace smss_api_db_layer.@interface
         Task<bool> StudentCategoryExistsAsync(string code, string name, long? excludeId = null);
         Task<bool> AddStudentCategoryAsync(LutStudentCategory entity);      // false = unique constraint violation
         Task<bool> UpdateStudentCategoryAsync(LutStudentCategory entity);   // false = unique constraint violation
+    
+
+        // Admission types (global)
+        Task<List<LutAdmissionType>> GetAdmissionTypesAsync(bool includeInactive = false);
+        Task<LutAdmissionType?> GetAdmissionTypeByIdAsync(long id);
+        Task<bool> AdmissionTypeExistsAsync(string code, string name, long? excludeId = null);
+        Task<bool> AddAdmissionTypeAsync(LutAdmissionType entity);      // false = unique constraint violation
+        Task<bool> UpdateAdmissionTypeAsync(LutAdmissionType entity);   // false = unique constraint violation
     }
 }

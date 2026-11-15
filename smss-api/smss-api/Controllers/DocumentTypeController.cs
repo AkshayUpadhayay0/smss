@@ -47,6 +47,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}")]
         public async Task<IActionResult> Create(string schoolId, [FromBody] CreateDocumentTypeRequestDto request, CancellationToken ct)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change document types.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.CreateAsync(own, request, ct);
             return StatusCode(response.StatusCode, response);
@@ -55,6 +56,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/update")]
         public async Task<IActionResult> Update(string schoolId, [FromBody] UpdateDocumentTypeRequestDto request, CancellationToken ct)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change document types.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.UpdateAsync(own, request, ct);
             return StatusCode(response.StatusCode, response);
@@ -63,6 +65,7 @@ namespace smss_api.Controllers
         [HttpPost("{schoolId}/{documentTypeId:long}/toggle-status")]
         public async Task<IActionResult> ToggleStatus(string schoolId, long documentTypeId, CancellationToken ct)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change document types.");
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
             var response = await _service.ToggleStatusAsync(own, documentTypeId, ct);
             return StatusCode(response.StatusCode, response);

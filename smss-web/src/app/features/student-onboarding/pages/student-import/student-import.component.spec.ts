@@ -53,6 +53,12 @@ describe('StudentImportComponent', () => {
   });
   afterEach(() => { http.verify(); clearSessions(); vi.restoreAllMocks(); });
 
+  it('says the admission type is Existing Student, set automatically and not a choice (no type field in the template or the file)', () => {
+    expect(el().querySelector('[data-test="import-type"]')?.textContent).toContain('Existing Student');
+    expect(el().querySelector('[data-test="import-type"]')?.textContent).toContain('cannot be changed');
+    expect(el().querySelector('select, app-select')).toBeNull();
+  });
+
   function pick(file: File) {
     const input = el().querySelector<HTMLInputElement>('input[type=file]')!;
     Object.defineProperty(input, 'files', { value: [file], configurable: true });

@@ -1,6 +1,5 @@
 import { Route, Routes } from '@angular/router';
 import {
-  ADMISSION_TYPE_CONFIG,
   EMPLOYEE_DEPARTMENT_CONFIG,
   EMPLOYEE_DESIGNATION_CONFIG,
   FEE_TYPE_CONFIG,
@@ -50,5 +49,4 @@ export const SCHOOL_SETUP_ROUTES: Routes = [
   lookup('subjects', SUBJECT_CONFIG),
   lookup('employee-designations', EMPLOYEE_DESIGNATION_CONFIG),
   lookup('employee-departments', EMPLOYEE_DEPARTMENT_CONFIG),
-  lookup('admission-types', ADMISSION_TYPE_CONFIG),
 ];

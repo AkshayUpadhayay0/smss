@@ -29,7 +29,6 @@ namespace smss_api_service_layer.service
                 var subjects = Set(await _repo.GetSubjectNamesAsync(schoolId, ct));
                 var designations = Set(await _repo.GetDesignationNamesAsync(schoolId, ct));
                 var departments = Set(await _repo.GetDepartmentNamesAsync(schoolId, ct));
-                var types = Set(await _repo.GetAdmissionTypeNamesAsync(schoolId, ct));
                 var docs = Set(await _repo.GetDocumentCodesAsync(schoolId, ct));
 
                 var dto = new MasterImportCatalogDto
@@ -39,7 +38,6 @@ namespace smss_api_service_layer.service
                     Subjects = MasterImportCatalog.Subjects.Select(s => Item(s.Name, s.Name, s.Code, subjects.Contains(s.Name))).ToList(),
                     Designations = MasterImportCatalog.Designations.Select(s => Item(s.Name, s.Name, null, designations.Contains(s.Name))).ToList(),
                     Departments = MasterImportCatalog.Departments.Select(s => Item(s.Name, s.Name, null, departments.Contains(s.Name))).ToList(),
-                    AdmissionTypes = MasterImportCatalog.AdmissionTypes.Select(s => Item(s.Name, s.Name, null, types.Contains(s.Name))).ToList(),
                     DocumentTypes = MasterImportCatalog.DocumentTypes
                         .Select(d => { var i = Item(d.Code, d.Name, d.Code, docs.Contains(d.Code)); i.AppliesTo = d.AppliesTo; i.IsRequired = d.IsRequired; return i; })
                         .ToList()
@@ -59,13 +57,12 @@ namespace smss_api_service_layer.service
                 var subjectPick = Pick(req.Subjects, MasterImportCatalog.Subjects, c => c.Name, out var badSubject);
                 var designationPick = Pick(req.Designations, MasterImportCatalog.Designations, c => c.Name, out var badDesignation);
                 var departmentPick = Pick(req.Departments, MasterImportCatalog.Departments, c => c.Name, out var badDepartment);
-                var typePick = Pick(req.AdmissionTypes, MasterImportCatalog.AdmissionTypes, c => c.Name, out var badType);
                 var docPick = Pick(req.DocumentTypes, MasterImportCatalog.DocumentTypes, c => c.Code, out var badDoc);
 
-                var unknown = new[] { badClass, badSubject, badDesignation, badDepartment, badType, badDoc }.FirstOrDefault(b => b != null);
+                var unknown = new[] { badClass, badSubject, badDesignation, badDepartment, badDoc }.FirstOrDefault(b => b != null);
                 if (unknown != null) return Result<ImportMastersResultDto>(400, $"'{unknown}' is not an available option.", null);
 
-                if (classPick.Count + subjectPick.Count + designationPick.Count + departmentPick.Count + typePick.Count + docPick.Count == 0)
+                if (classPick.Count + subjectPick.Count + designationPick.Count + departmentPick.Count + docPick.Count == 0)
                     return Result<ImportMastersResultDto>(400, "Select at least one item to import.", null);
 
                 var activeId = await _repo.GetActiveStatusIdAsync(ct);
@@ -80,7 +77,6 @@ namespace smss_api_service_layer.service
                 var subjects = Set(await _repo.GetSubjectNamesAsync(schoolId, ct));
                 var designations = Set(await _repo.GetDesignationNamesAsync(schoolId, ct));
                 var departments = Set(await _repo.GetDepartmentNamesAsync(schoolId, ct));
-                var types = Set(await _repo.GetAdmissionTypeNamesAsync(schoolId, ct));
                 var docs = Set(await _repo.GetDocumentCodesAsync(schoolId, ct));
 
                 var now = DateTime.UtcNow;
@@ -110,10 +106,6 @@ namespace smss_api_service_layer.service
                 {
                     SchoolId = schoolId, DepartmentName = s.Name, StatusId = activeId, CreatedAt = now, UpdatedAt = now
                 }).ToList();
-                var newTypes = typePick.Where(s => !types.Contains(s.Name)).Select(s => new TbAdmissionTypes
-                {
-                    SchoolId = schoolId, TypeName = s.Name, StatusId = activeId, CreatedAt = now, UpdatedAt = now
-                }).ToList();
                 var newDocs = docPick.Where(d => !docs.Contains(d.Code)).Select(d => new TbDocumentType
                 {
                     SchoolId = schoolId, DocumentCode = d.Code, DocumentName = d.Name, AppliesTo = d.AppliesTo, IsRequired = d.IsRequired,
@@ -123,7 +115,6 @@ namespace smss_api_service_layer.service
                 result.Subjects = Count(newSubjects.Count, subjectPick.Count);
                 result.Designations = Count(newDesignations.Count, designationPick.Count);
                 result.Departments = Count(newDepartments.Count, departmentPick.Count);
-                result.AdmissionTypes = Count(newTypes.Count, typePick.Count);
                 result.DocumentTypes = Count(newDocs.Count, docPick.Count);
 
                 // ---- all or nothing ----
@@ -133,7 +124,6 @@ namespace smss_api_service_layer.service
                 await _repo.AddRangeAsync(newSubjects, ct);
                 await _repo.AddRangeAsync(newDesignations, ct);
                 await _repo.AddRangeAsync(newDepartments, ct);
-                await _repo.AddRangeAsync(newTypes, ct);
                 await _repo.AddRangeAsync(newDocs, ct);
                 await _repo.SaveChangesAsync(ct);   // new classes now have their ids
 

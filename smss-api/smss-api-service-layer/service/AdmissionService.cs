@@ -1,3 +1,4 @@
+using smss_api_db_layer.constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -47,7 +48,7 @@ namespace smss_api_service_layer.service
                 var list = await _repo.GetAllAsync(schoolId, statusId, classId, academicYearId, ct);
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
                 var classes = await _repo.GetClassNamesAsync(schoolId, list.Select(a => a.AppliedClassId).Distinct().ToList(), ct);
-                var types = await _repo.GetAdmissionTypeNamesAsync(schoolId, list.Select(a => a.AdmissionTypeId).Distinct().ToList(), ct);
+                var types = await _repo.GetAdmissionTypeNamesAsync(list.Select(a => a.AdmissionTypeId).Distinct().ToList(), ct);
                 var years = await _repo.GetAcademicYearNamesAsync(schoolId, list.Select(a => a.AcademicYearId).Distinct().ToList(), ct);
 
                 var dtos = list.Select(a => Fill(new AdmissionResponseDto(), a, statuses, classes, types, years)).ToList();
@@ -69,12 +70,13 @@ namespace smss_api_service_layer.service
 
         // ---------------- submit ----------------
         /// <summary>Everything about a submitted / edited application that can be wrong without touching the database row: foreign ids must be this school's, the date plausible.</summary>
-        private async Task<string?> ValidateRequestAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        /// <param name="keepTypeId">An edit may keep the application's current admission type even if it has since been deactivated.</param>
+        private async Task<string?> ValidateRequestAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct, long? keepTypeId = null)
         {
-            // Ids come from the client: every school-owned one must belong to THIS school
+            // Ids come from the client: every school-owned one must belong to THIS school (admission type, gender, blood group, category are global)
             if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct)) return "The selected academic year was not found for your school.";
             if (!await _repo.ClassBelongsToSchoolAsync(schoolId, req.AppliedClassId, ct)) return "The selected class was not found for your school.";
-            if (!await _repo.AdmissionTypeBelongsToSchoolAsync(schoolId, req.AdmissionTypeId, ct)) return "The selected admission type was not found for your school.";
+            if (req.AdmissionTypeId is not long typeId || !await _repo.AdmissionTypeUsableAsync(typeId, allowInactive: keepTypeId == typeId, ct)) return "The selected admission type is not available.";
             if (req.GenderId.HasValue && !await _repo.GenderExistsAsync(req.GenderId.Value, ct)) return "The selected gender is not valid.";
             if (req.BloodGroupId.HasValue && !await _repo.BloodGroupExistsAsync(req.BloodGroupId.Value, ct)) return "The selected blood group is not valid.";
             if (req.StudentCategoryId.HasValue && !await _repo.StudentCategoryExistsAsync(req.StudentCategoryId.Value, ct)) return "The selected student category is not valid.";
@@ -87,7 +89,7 @@ namespace smss_api_service_layer.service
         {
             e.AcademicYearId = req.AcademicYearId;
             e.AppliedClassId = req.AppliedClassId;
-            e.AdmissionTypeId = req.AdmissionTypeId;
+            e.AdmissionTypeId = req.AdmissionTypeId!.Value;   // always filled in by Submit / Update before this runs
             e.ApplicantFirstName = req.ApplicantFirstName.Trim();
             e.ApplicantMiddleName = Clean(req.ApplicantMiddleName);
             e.ApplicantLastName = req.ApplicantLastName.Trim();
@@ -118,6 +120,12 @@ namespace smss_api_service_layer.service
         {
             try
             {
+                if (req.AdmissionTypeId == null)
+                {
+                    var (def, defError) = await AdmissionTypeDefaults.ResolveAsync(_repo.GetAdmissionTypeByCodeAsync, AdmissionTypeCodes.NewAdmission, ct);
+                    if (def == null) return Result<AdmissionDetailDto>(400, defError!, null);
+                    req.AdmissionTypeId = def.AdmissionTypeId;
+                }
                 var bad = await ValidateRequestAsync(schoolId, req, ct);
                 if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
 
@@ -168,7 +176,18 @@ namespace smss_api_service_layer.service
         {
             try
             {
-                var bad = await ValidateRequestAsync(schoolId, req, ct);
+                var existing = await _repo.GetByIdAsync(schoolId, admissionId, false, ct);
+                if (req.AdmissionTypeId == null)
+                {
+                    if (existing != null) req.AdmissionTypeId = existing.AdmissionTypeId;   // an edit that does not name a type keeps the current one
+                    else
+                    {
+                        var (def, defError) = await AdmissionTypeDefaults.ResolveAsync(_repo.GetAdmissionTypeByCodeAsync, AdmissionTypeCodes.NewAdmission, ct);
+                        if (def == null) return Result<AdmissionDetailDto>(400, defError!, null);
+                        req.AdmissionTypeId = def.AdmissionTypeId;
+                    }
+                }
+                var bad = await ValidateRequestAsync(schoolId, req, ct, keepTypeId: existing?.AdmissionTypeId);
                 if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
@@ -479,7 +498,7 @@ namespace smss_api_service_layer.service
         {
             var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
             var classes = await _repo.GetClassNamesAsync(a.SchoolId, new[] { a.AppliedClassId }, ct);
-            var types = await _repo.GetAdmissionTypeNamesAsync(a.SchoolId, new[] { a.AdmissionTypeId }, ct);
+            var types = await _repo.GetAdmissionTypeNamesAsync(new[] { a.AdmissionTypeId }, ct);
             var years = await _repo.GetAcademicYearNamesAsync(a.SchoolId, new[] { a.AcademicYearId }, ct);
 
             var dto = Fill(new AdmissionDetailDto(), a, statuses, classes, types, years);

@@ -107,6 +107,29 @@ namespace smss_api_service_layer.helper
             return (subject, html);
         }
 
+        /// <summary>Driver login credentials. Names are HTML-encoded (they come from a form).</summary>
+        public static (string Subject, string Html) DriverCredentials(
+            string driverName, string schoolName, string loginId, string temporaryPassword, string? loginUrl)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(driverName);
+            var school = System.Net.WebUtility.HtmlEncode(schoolName);
+            var subject = $"Your SMSS login for {schoolName}";
+            var loginLine = string.IsNullOrEmpty(loginUrl) ? "" : $"<p>Login here: <a href=\"{System.Net.WebUtility.HtmlEncode(loginUrl)}\">{System.Net.WebUtility.HtmlEncode(loginUrl)}</a></p>";
+
+            var html = $@"
+                <p>Hello {name},</p>
+                <p>A driver login has been created for you at <strong>{school}</strong> on SMSS.</p>
+                <p>Login details:</p>
+                <ul>
+                    <li><strong>Login ID:</strong> {loginId}</li>
+                    <li><strong>Temporary Password:</strong> {temporaryPassword}</li>
+                </ul>
+                <p>The password must be changed the first time you log in. Please do not share this email.</p>
+                {loginLine}";
+
+            return (subject, html);
+        }
+
         public static (string Subject, string Html) SuperAdminWelcome(string displayName, string orgUserId, string? loginUrl)
         {
             var subject = "Your SMSS Super Admin account is ready";

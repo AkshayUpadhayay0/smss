@@ -6,8 +6,9 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { IdCardSettings } from '../../models/id-card-settings.model';
 import { IdCardSettingsComponent } from './id-card-settings.component';
+import { environment } from '../../../../../environments/environment';
 
-const API = 'https://localhost:7037';
+const API = environment.apiUrl;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 const TEMPLATES = [
@@ -122,6 +123,20 @@ describe('IdCardSettingsComponent', () => {
     expect(burst).toHaveLength(6);
     for (const r of burst) expect(r.request.body.primaryColor).toBe('#333333');
     answerPreviews(burst);
+  });
+
+  it('coming back to the tab re-renders all six previews (a logo uploaded on another screen shows without a reload); a hidden tab does not', () => {
+    open();
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    settle();
+    expect(previewRequests()).toHaveLength(0);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    settle();
+    const again = previewRequests();
+    expect(again).toHaveLength(6);
+    answerPreviews(again);
   });
 
   it('a failed preview shows a placeholder for that design only and the screen keeps working', () => {

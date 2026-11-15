@@ -24,7 +24,6 @@ namespace smss_api_service_layer.dto
         public List<MasterImportItemDto> Subjects { get; set; } = new();
         public List<MasterImportItemDto> Designations { get; set; } = new();
         public List<MasterImportItemDto> Departments { get; set; } = new();
-        public List<MasterImportItemDto> AdmissionTypes { get; set; } = new();
         public List<MasterImportItemDto> DocumentTypes { get; set; } = new();
     }
 
@@ -35,7 +34,6 @@ namespace smss_api_service_layer.dto
         [MaxLength(100)] public List<string> Subjects { get; set; } = new();
         [MaxLength(100)] public List<string> Designations { get; set; } = new();
         [MaxLength(100)] public List<string> Departments { get; set; } = new();
-        [MaxLength(100)] public List<string> AdmissionTypes { get; set; } = new();
         [MaxLength(100)] public List<string> DocumentTypes { get; set; } = new();
     }
 
@@ -53,9 +51,8 @@ namespace smss_api_service_layer.dto
         public ImportCountDto Subjects { get; set; } = new();
         public ImportCountDto Designations { get; set; } = new();
         public ImportCountDto Departments { get; set; } = new();
-        public ImportCountDto AdmissionTypes { get; set; } = new();
         public ImportCountDto DocumentTypes { get; set; } = new();
         public int TotalCreated =>
-            Classes.Created + Sections.Created + Subjects.Created + Designations.Created + Departments.Created + AdmissionTypes.Created + DocumentTypes.Created;
+            Classes.Created + Sections.Created + Subjects.Created + Designations.Created + Departments.Created + DocumentTypes.Created;
     }
 }

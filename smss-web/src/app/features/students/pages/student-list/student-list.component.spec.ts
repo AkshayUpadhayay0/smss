@@ -4,8 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { StudentListComponent } from './student-list.component';
+import { environment } from '../../../../../environments/environment';
 
-const API = 'https://localhost:7037';
+const API = environment.apiUrl;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 const YEARS = [

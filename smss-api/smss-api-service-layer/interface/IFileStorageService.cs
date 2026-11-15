@@ -15,6 +15,9 @@ namespace smss_api_service_layer.@interface
         // Saves an employee's photo to the PRIVATE store under {schoolCode}/employees/{employeeId}/ and returns its storage KEY (never a public URL)
         Task<string> SaveEmployeePhotoAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct);
 
+        // Saves a driver's photo to the PRIVATE store under {schoolCode}/drivers/{driverId}/ and returns its storage KEY (never a public URL)
+        Task<string> SaveDriverPhotoAsync(string schoolCode, string driverId, Stream content, string extension, CancellationToken ct);
+
         // Employee DOCUMENTS go to a PRIVATE store outside the public uploads folder (never reachable by URL). The returned storage
         // key ({schoolCode}/employees/{employeeId}/documents/<random file>) is what the database keeps; files are served only via OpenPrivate.
         Task<string> SaveEmployeeDocumentAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct);

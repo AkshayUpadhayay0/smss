@@ -1,16 +1,32 @@
 #!/bin/sh
-# SMSS pre-commit: refuses secrets and database dumps. Enable once per clone:  git config core.hooksPath .githooks
+# SMSS pre-commit. Refuses secrets, database dumps, build output and uploads. Enable once per clone:  git config core.hooksPath .githooks
 # Needs gitleaks (MIT) on PATH or in $GITLEAKS_BIN. See Docs/configuration.md.
 
-# 1. files that must never be committed, by name
-bad=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)smss-db[^/]*\.sql$|\.dump$|\.bak$|(^|/)uploads(-private)?/|demo-credentials' || true)
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# 1. files that must never be committed, by PATH (build output, IDE state, uploads, dumps, backups, credentials)
+bad=$(printf '%s\n' "$staged" | grep -E '(^|/)(bin|obj|\.vs)/|(^|/)smss-db[^/]*\.sql$|\.(dump|bak|backup|pgdump|dmp)$|(^|/)uploads(-private)?/|demo-credentials' || true)
 if [ -n "$bad" ]; then
-  echo "pre-commit: refusing to commit database dumps, uploaded files or credential files:" >&2
-  echo "$bad" | sed 's/^/  /' >&2
+  echo "pre-commit: refusing to commit database dumps, build output, IDE state, uploaded files or credential files:" >&2
+  printf '%s\n' "$bad" | sed 's/^/  /' >&2
   exit 1
 fi
 
-# 2. secrets in the staged changes
+# 2. a database dump by CONTENT, whatever the file is called (a pg_dump custom archive starts with PGDMP; a plain dump says so in its header)
+dumps=""
+for f in $staged; do
+  head=$(git show ":$f" 2>/dev/null | head -c 300 | tr -d '\000')
+  case "$head" in
+    PGDMP*|*"PostgreSQL database dump"*) dumps="$dumps $f" ;;
+  esac
+done
+if [ -n "$dumps" ]; then
+  echo "pre-commit: these files are PostgreSQL dumps (they hold personal data and password hashes):" >&2
+  for f in $dumps; do echo "  $f" >&2; done
+  exit 1
+fi
+
+# 3. secrets in the staged changes
 GL="${GITLEAKS_BIN:-$(command -v gitleaks || true)}"
 if [ -z "$GL" ]; then
   echo "pre-commit: gitleaks is not installed, so the secret scan cannot run." >&2

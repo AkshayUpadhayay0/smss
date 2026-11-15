@@ -244,3 +244,43 @@ Then stop and wait.
 - There is no reset-password or forgot-password feature, and no Super Admin reset for a school login; SQL is the only way. This is a product gap to build properly (see queue), not a script.
 
 **Queue:** password reset (Super Admin resets a school login; School Admin resets employee and student logins; temporary password plus `is_first_login`; later a forgot-password flow); untrack `smss-api/.vs/` and `*.csproj.user`; bulk fee assignment; bulk Create Login; the remaining five report card templates, settings gallery, signature file keys, cover and rules pages, bulk PDFs (start with the spike re-run, numbers written into a committed doc).
+
+---
+
+## 18. Stage 5a status (7 Nov 2026)
+
+**Built, local, not pushed (branch 07_nov, 8 commits):** `7d3b1c8` spike re-run and `Docs/report-card-performance.md`; `3cfbf3c` per-subject remarks; `724ce03` settings, signature and preview; `2f18cf1` Term Spread driven by settings; `86b77b5` Classic Card and Minimal; `44388d6` cover and rules pages; `54cd027` bulk PDF; `ea5c1e7` frontend. Migrations applied on the real DB.
+
+**Performance:** about 15 to 17 ms and 1.2 MB per student, linear. Bulk cap 100 students per request (2.5x headroom over a 40-student section); over the cap the API returns 409 with roll ranges to download instead; at most two bulk renders at once, a third waits 15 s then gets 503; bulk uses 4 DB commands regardless of class size.
+
+**Verified:** 234 xUnit tests; 982 frontend specs, build clean; remarks 32/32, settings 52/52, bulk 19/19; Stage 2 and 3 suites pass; no new legacy failures; real DB 19/19 with throwaway accounts, fingerprint 0 changed.
+
+**Decisions confirmed**
+- Cap of 100 stands (make it a configuration value if it is not already).
+- A subject with no typed remark prints its grade-band label; portrait designs show the latest term's remark per subject.
+- Minimal is MARKS-only for now; GRADES support is restored in Stage 5b.
+- Principal previews sample data only (real cards via published downloads).
+- Signature files are deleted only when no publication references them (per-school advisory lock).
+- gitleaks: set `GITLEAKS_BIN` or add it to PATH permanently.
+
+**Stage 5b scope:** skill-grid (GRADES with skills), playful-report (descriptive; adds an optional `improvement_text` next to the subject remark, shown only by this design), board-style (MARKS and GRADES), Minimal GRADES variant, an optional photo toggle for designs with a photo slot (through the private read path, downscaled), a GRADES-mode pre-primary demo seed for the demo schools, and exercising the GRADES flow on real data, which has only been unit and smoke tested so far.
+
+---
+
+## 19. Stage 5b status (7 Nov 2026)
+
+**Built, local, not pushed (branch 07_nov):** `98f78fc` "To improve" text and cap as config value `ReportCards:BulkMaxConcurrent`-style settings (cap is `ReportCards:BulkMaxStudents`, default 100); `b123e12` GRADES demo seed; `b73a56f` skill-grid, playful-report, board-style, Minimal GRADES variant, compatibility rule, "not available yet" block removed; `d48a8fc` optional student photo and bulk built in 20-student pieces; `9cd8823` Report Card Settings screen; `bc1744a` live preview shows the real photo before the toggle is saved; `3cb54c3` spec fix. Migrations applied on the real DB.
+
+**Verified:** 690 xUnit tests, 986 frontend specs, build clean, no new legacy failures, real-DB throwaway smoke 38/38 with cleanup. Bulk with photos on, 100 cards (200 pages): 3.3 s with about 340 KB photos, 8.2 s with about 2.6 MB photos. A memory problem was found and fixed: building one document peaked at 870 MB; bulk PDFs are now built 20 students at a time and merged, peak about 390 MB regardless of class size.
+
+**Bug that only real data exposed:** demo GRADES schemes have "include in total" off and the first designs silently dropped those subjects; all designs now print every subject, with a regression test.
+
+**Decisions:** photos are not versioned (a published card draws the student's current photo at render time, as the ID card does) accepted; a remark row may hold only an improvement note (check: at least one of remark and improvement is non-blank); Principal previews sample data only; Little Angels Nursery keeps its hand-made term-wise scheme (the descriptive demo covers LKG there).
+
+**Review findings from the board-style renders (Green Hills, Class 9 A), to fix in Stage 5c:**
+1. The DRAFT watermark is opaque and drawn over content, hiding marks and names; previews must stay legible (translucent and behind the content).
+2. board-style spills onto a second page that holds only the result block, which wastes a sheet; the card must fit one A4 page for typical data (7 to 10 subjects, 2 terms), with Part 2 and Part 3 side by side, one merged result block instead of the duplicated "Whole year" bar and Result block, and conduct, remarks and attendance above the signatures. Photo-on must not push content to a second page.
+3. The default footer "Valid without a seal." makes a claim a school may not want; default to blank and let the school set it.
+4. The cover page's student block looks clipped at the right (Class, Mother, Admission No.); verify without the watermark and fix.
+5. Demo seed: the UKG demo scheme reused a school scale that has a "D Fail" band; create its own clean three-level rating scale.
+6. Make the maximum number of concurrent bulk renders a config value and document the recommended server memory (peak about 390 MB per render, two at once).

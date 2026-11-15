@@ -28,3 +28,13 @@ Docs/smss-db*.sql
 .vs/
 **/.vs/
 *.csproj.user
+
+# Environment files and extra dump/backup extensions (never commit)
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+*.pgdump
+*.dmp
+*.backup

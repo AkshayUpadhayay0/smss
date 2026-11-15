@@ -5,6 +5,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { API, envelope, setupHttp } from '../../schools/testing/school-test-utils';
 import { MasterConfig, MasterItem } from '../models/master.model';
 import { MasterListComponent } from '../pages/master-list/master-list.component';
+import { ADMISSION_TYPE_CONFIG } from './admission-type.config';
 import { BLOOD_GROUP_CONFIG } from './blood-group.config';
 import { BOARD_TYPE_CONFIG } from './board-type.config';
 import { GENDER_CONFIG } from './gender.config';
@@ -25,6 +26,7 @@ const ALL: [string, MasterConfig][] = [
   ['Blood Group', BLOOD_GROUP_CONFIG],
   ['Gender', GENDER_CONFIG],
   ['Student Category', STUDENT_CATEGORY_CONFIG],
+  ['Admission Type', ADMISSION_TYPE_CONFIG],
 ];
 
 /** A plausible API record for any config, built from its own field list. */

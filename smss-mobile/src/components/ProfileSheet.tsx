@@ -27,26 +27,37 @@ export interface ProfileSheetProps {
   onClose: () => void;
   /** Students: "Class 5 · A". Shown only when given. */
   classText?: string | null;
+  /** When set, Sign out first warns with this text (the driver app: signing out ends an open duty). */
+  signOutWarning?: string | null;
+  /** Runs after the driver confirms Sign out and before the session ends (the driver app ends duty here). Never blocks sign-out when it fails. */
+  beforeSignOut?: () => Promise<void>;
 }
 
 /**
  * The ONE profile sheet (both Homes open it from the avatar): name, role, school, class/section (students), app version, and Sign out behind a
  * confirmation. A Change password entry is intentionally not here yet.
  */
-export function ProfileSheet({ visible, onClose, classText }: ProfileSheetProps) {
+export function ProfileSheet({ visible, onClose, classText, signOutWarning, beforeSignOut }: ProfileSheetProps) {
   const { user, role, signOut } = useSession();
   const insets = useSafeAreaInsets();
   const version = Constants.expoConfig?.version ?? '';
 
   function confirmSignOut() {
-    Alert.alert('Sign out?', 'You will need to sign in again to use the app.', [
+    Alert.alert('Sign out?', signOutWarning ?? 'You will need to sign in again to use the app.', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign out',
+        text: signOutWarning ? 'End duty and sign out' : 'Sign out',
         style: 'destructive',
         onPress: () => {
           onClose();
-          void signOut();
+          void (async () => {
+            try {
+              await beforeSignOut?.();
+            } catch {
+              // ending duty is best effort: the driver can always sign out
+            }
+            await signOut();
+          })();
         },
       },
     ]);
@@ -64,7 +75,7 @@ export function ProfileSheet({ visible, onClose, classText }: ProfileSheetProps)
               <Text variant="title" accessibilityRole="header">
                 {user?.displayName}
               </Text>
-              <Text variant="small">{role === 'STUDENT' ? 'Student' : role === 'TEACHER' ? 'Teacher' : ''}</Text>
+              <Text variant="small">{role === 'STUDENT' ? 'Student' : role === 'TEACHER' ? 'Teacher' : role === 'DRIVER' ? 'Driver' : ''}</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
               <Icon name="x" size={22} color={colors.inkSoft} />

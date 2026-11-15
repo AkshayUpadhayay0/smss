@@ -1,0 +1,65 @@
+<app-page-header title="Live map" subtitle="Drivers on duty right now, updated every 20 seconds while this tab is open" icon="map-pin" [breadcrumbs]="breadcrumbs" />
+
+@if (loadFailed()) {
+  <div class="banner" role="alert">
+    <app-icon name="triangle-alert" [size]="18" />
+    <span>{{ board() ? 'Could not refresh. Showing the last known positions.' : 'Could not load the live map.' }}</span>
+    <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button>
+  </div>
+}
+
+<div class="layout">
+  <app-card [noPadding]="true" class="map-card">
+    <div class="map-wrap">
+      <div #map class="map" role="application" aria-label="Map of drivers on duty"></div>
+      @if (mapFailed()) {
+        <div class="overlay" role="status">The map could not be loaded. The list on the side still works.</div>
+      } @else if (!loading() && items().length === 0 && !loadFailed()) {
+        <div class="overlay" role="status">
+          <strong>No drivers on duty</strong>
+          <span>A driver appears here after tapping "Mark today's attendance" in the driver app.</span>
+        </div>
+      } @else if (waitingForFix()) {
+        <div class="overlay overlay--note" role="status">Waiting for the first location from the drivers on duty.</div>
+      }
+    </div>
+  </app-card>
+
+  <app-card [noPadding]="true" class="list-card">
+    <div class="summary" aria-live="polite">
+      <span class="chip chip--live"><span class="dot"></span>Live {{ counts().live }}</span>
+      <span class="chip chip--stale"><span class="dot"></span>Stale {{ counts().stale }}</span>
+      <span class="chip chip--offline"><span class="dot"></span>Offline {{ counts().offline }}</span>
+    </div>
+
+    @if (loading()) {
+      <p class="muted pad">Loading…</p>
+    } @else if (!board()) {
+      <p class="muted pad">The drivers could not be loaded.</p>
+    } @else if (items().length === 0) {
+      <p class="muted pad">No drivers on duty.</p>
+    } @else {
+      <ul class="list">
+        @for (d of items(); track d.driverId) {
+          <li>
+            <button type="button" class="row" [class.row--selected]="selectedId() === d.driverId" [disabled]="!d.hasFix" (click)="select(d.driverId)" [attr.aria-label]="'Show ' + label(d) + ' on the map'">
+              <span class="row__main">
+                <span class="row__name">{{ d.driverName }}</span>
+                <span class="row__vehicle">{{ d.vehicleLabel }} · {{ d.vehiclePlate }}</span>
+                @if (d.areas.length) {
+                  <span class="row__areas">{{ d.areas.join(', ') }}</span>
+                }
+              </span>
+              <span class="row__side">
+                <span class="chip" [class.chip--live]="d.status === 'LIVE'" [class.chip--stale]="d.status === 'STALE'" [class.chip--offline]="d.status === 'OFFLINE'">
+                  <span class="dot"></span>{{ statusText(d.status) }}
+                </span>
+                <span class="row__age">{{ updated(d) }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </app-card>
+</div>

@@ -12,5 +12,6 @@ export default function Index() {
   if (needsPasswordChange) return <Redirect href="/change-password" />;
   if (role === 'STUDENT') return <Redirect href="/(student)/(tabs)" />;
   if (role === 'TEACHER') return <Redirect href="/(teacher)/(tabs)" />;
+  if (role === 'DRIVER') return <Redirect href="/(driver)" />;
   return <Redirect href="/unsupported" />;
 }

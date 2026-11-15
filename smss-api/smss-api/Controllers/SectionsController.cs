@@ -35,6 +35,7 @@ namespace smss_api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateSectionRequest request)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change sections.");
             var response = await _service.CreateAsync(User.GetSchoolId(), request);
             return StatusCode(response.StatusCode, response);
         }
@@ -43,6 +44,7 @@ namespace smss_api.Controllers
         [HttpPut("{id:long}")]
         public async Task<IActionResult> Update(long id, [FromBody] UpdateSectionRequest request)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change sections.");
             var response = await _service.UpdateAsync(User.GetSchoolId(), id, request);
             return StatusCode(response.StatusCode, response);
         }
@@ -51,6 +53,7 @@ namespace smss_api.Controllers
         [HttpPost("{id:long}/toggle-status")]
         public async Task<IActionResult> ToggleStatus(long id)
         {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change sections.");
             var response = await _service.ToggleStatusAsync(User.GetSchoolId(), id);
             return StatusCode(response.StatusCode, response);
         }

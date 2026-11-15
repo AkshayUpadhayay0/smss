@@ -202,9 +202,9 @@ Build these as the foundation BEFORE any feature screens:
   same name works under different classes. The DB does NOT tie class_id to school_id, so the service verifies the class belongs
   to the caller's school (400 otherwise). Responses carry joined className + classSequenceOrder; the list's Class column sorts in
   class display order. The form's class dropdown lists active classes only (plus the section's own class when editing).
-- Four simple school-owned masters built (Subject, Employee Designation, Employee Department, Admission Type; routes
-  `/school-setup/{subjects|employee-designations|employee-departments|admission-types}`, API
-  `/api/{Subjects|EmployeeDesignations|EmployeeDepartments|AdmissionTypes}`; Student Category was originally a fifth but was
+- Four simple school-owned masters built (Subject, Employee Designation, Employee Department; Admission Type moved to a global Super Admin master at /masters/admission-type; routes
+  `/school-setup/{subjects|employee-designations|employee-departments}`, API
+  `/api/{Subjects|EmployeeDesignations|EmployeeDepartments}` (`GET /api/AdmissionTypes` is the read-only active-types list for school roles); Student Category was originally a fifth but was
   reclassified as GLOBAL and removed from here — see below). Backend: four independent
   entity/repo/service/controller sets in the Class style (generated from one template, no shared base, so per-master rules can
   be added freely). Frontend: ONE config-driven pair in `features/school-setup/` (`SchoolLookupListComponent` +
@@ -239,8 +239,8 @@ Build these as the foundation BEFORE any feature screens:
   The shared table's `type: 'badge'` column accepts a `tone(value)` function (gray|blue|green|red|violet|gray-strike).
 - Existing Student Onboarding (`features/student-onboarding/`, route `/students/onboard-existing`, nav "Add Existing Student", School Admin only; API
   `POST /api/StudentOnboarding/{schoolId}/existing-student`). Direct entry into tb_students + tb_student_enrollments + tb_guardians (+ link), NO tb_admissions
-  row and no review stage. The student's admission type is the school's own Admission Type NAMED "Existing Student" (tb_admission_types has no code
-  column, so it is found by name, case-insensitive; never auto-created — the page shows a banner linking to /school-setup/admission-types when it is
+  row and no review stage. The student's admission type is the global Admission Type NAMED "Existing Student" (lut_admission_type; managed by the Super Admin; found by name)  (was: tb_admission_types had no code
+  column, so it is found by name, case-insensitive; never auto-created — the page shows a "contact support" banner when it is
   missing or inactive). Admission number: the school's own if supplied, else ADMNO{admission year}{4-digit seq} per school (same running number as
   Confirm Admission). Admission/enrollment dates are the historical admission date, not today. Needs Docs/smss-students-aadhar-number.sql
   (tb_students.aadhar_number + a per-school partial unique index) — the TbStudent entity maps that column, so RUN THE MIGRATION BEFORE DEPLOYING the API

@@ -66,6 +66,7 @@ namespace smss_api.Controllers
 
         // POST api/IdCardSettings/preview   (renders a template front + back to PNG with the screen's current, possibly unsaved, choices; changes nothing)
         [HttpPost("preview")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]   // a render shows the logo on file NOW; never reuse an older one
         public async Task<IActionResult> Preview([FromBody] IdCardPreviewRequest request, CancellationToken ct) =>
             Refuse() ?? Reply(await _cards.PreviewAsync(User.GetSchoolId(), request, ct));
     }

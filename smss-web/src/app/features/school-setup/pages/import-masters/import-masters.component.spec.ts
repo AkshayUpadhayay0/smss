@@ -18,7 +18,6 @@ const CATALOG: MasterImportCatalog = {
   subjects: [item('English'), item('Hindi')],
   designations: [item('Principal')],
   departments: [item('Administration')],
-  admissionTypes: [item('Existing Student')],
   documentTypes: [item('BIRTH_CERT', false, { name: 'Birth Certificate', appliesTo: 'STUDENT', isRequired: true })],
 };
 
@@ -48,7 +47,7 @@ describe('ImportMastersComponent', () => {
 
   it('shows every group and marks what the school already has', () => {
     const text = el().textContent ?? '';
-    for (const t of ['Classes', 'Subjects', 'Employee Designations', 'Employee Departments', 'Admission Types', 'Document Types']) expect(text).toContain(t);
+    for (const t of ['Classes', 'Subjects', 'Employee Designations', 'Employee Departments', 'Document Types']) expect(text).toContain(t);
     expect(choice('UKG').textContent).toContain('Already added');
     expect(box('UKG').disabled).toBe(true);
     expect(choice('Birth Certificate').textContent).toContain('Students · Required');
@@ -78,11 +77,11 @@ describe('ImportMastersComponent', () => {
     await cmp()['runImport']();
     const req = http.expectOne(`${API}/api/MasterImport/import`);
     expect(req.request.body).toEqual({
-      classes: ['LKG', 'Class 1'], subjects: ['English'], designations: [], departments: [], admissionTypes: [], documentTypes: [],
+      classes: ['LKG', 'Class 1'], subjects: ['English'], designations: [], departments: [], documentTypes: [],
     });
     const zero = { created: 0, skipped: 0 };
     req.flush(env({ classes: { created: 2, skipped: 0 }, sections: { created: 2, skipped: 0 }, subjects: { created: 1, skipped: 0 },
-      designations: zero, departments: zero, admissionTypes: zero, documentTypes: zero, totalCreated: 5 }));
+      designations: zero, departments: zero, documentTypes: zero, totalCreated: 5 }));
     http.expectOne(`${API}/api/MasterImport/catalog`).flush(env({ ...CATALOG, classes: CATALOG.classes.map((c) => ({ ...c, alreadyAdded: c.alreadyAdded || ['LKG', 'Class 1'].includes(c.name) })) }));
     fixture.detectChanges();
 

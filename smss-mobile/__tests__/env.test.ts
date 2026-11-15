@@ -16,3 +16,24 @@ describe('resolveApiBaseUrl', () => {
     expect(() => resolveApiBaseUrl('not a url', true)).toThrow(/valid URL/);
   });
 });
+
+import { parseDutyIntervalOverride } from '../src/config/env';
+
+describe('parseDutyIntervalOverride (dev builds only)', () => {
+  it('accepts whole seconds from 1 to 600', () => {
+    expect(parseDutyIntervalOverride('15')).toBe(15);
+    expect(parseDutyIntervalOverride(' 60 ')).toBe(60);
+    expect(parseDutyIntervalOverride(600)).toBe(600);
+  });
+  it.each(['', '0', '-5', '601', 'abc', '1.5', undefined, null])('ignores %j', (v) => expect(parseDutyIntervalOverride(v)).toBeNull());
+});
+
+import { parseDutyAccuracyOverride } from '../src/config/env';
+
+describe('parseDutyAccuracyOverride (dev builds only)', () => {
+  it('accepts only "high"', () => {
+    expect(parseDutyAccuracyOverride('high')).toBe('high');
+    expect(parseDutyAccuracyOverride(' HIGH ')).toBe('high');
+  });
+  it.each(['', 'balanced', 'low', 'true', undefined, null, 1])('ignores %j', (v) => expect(parseDutyAccuracyOverride(v)).toBeNull());
+});

@@ -11,6 +11,7 @@ import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
+import { StudentTransportCardComponent } from '../../components/student-transport-card/student-transport-card.component';
 import { StudentPhotoDialogComponent } from '../../components/student-photo-dialog/student-photo-dialog.component';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { GuardianRow, StudentLoginCreated, StudentPhoto, StudentProfile } from '../../models/student.model';
@@ -31,7 +32,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, TableComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, StudentTransportCardComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',

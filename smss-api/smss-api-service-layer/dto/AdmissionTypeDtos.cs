@@ -2,34 +2,27 @@ using System.ComponentModel.DataAnnotations;
 
 namespace smss_api_service_layer.dto
 {
-    // No school_id or status: the first comes from the token, the second from toggle-status.
-    public abstract class AdmissionTypeRequestBase : IValidatableObject
+    // Admission Type: a global lookup managed by the Super Admin, in the Student Category style.
+    public class CreateAdmissionTypeRequestDto
     {
-        [Required(ErrorMessage = "Type name is required."), StringLength(100, ErrorMessage = "Type name can be at most 100 characters.")]
-        public string TypeName { get; set; } = null!;
+        [Required, StringLength(30, MinimumLength = 2)]
+        [RegularExpression(@"^[A-Za-z0-9_]+$", ErrorMessage = "Code may contain only letters, numbers and underscore.")]
+        public string TypeCode { get; set; } = string.Empty;
 
-        [StringLength(250, ErrorMessage = "Description can be at most 250 characters.")]
+        [Required, StringLength(100, MinimumLength = 2)]
+        public string TypeName { get; set; } = string.Empty;
+
+        [StringLength(250)]
         public string? Description { get; set; }
-
-        public IEnumerable<ValidationResult> Validate(ValidationContext context)
-        {
-            if (TypeName != null && string.IsNullOrWhiteSpace(TypeName))
-                yield return new ValidationResult("Type name is required.", new[] { nameof(TypeName) });
-        }
     }
 
-    public class CreateAdmissionTypeRequest : AdmissionTypeRequestBase { }
-    public class UpdateAdmissionTypeRequest : AdmissionTypeRequestBase { }
-
-    public class AdmissionTypeResponse
+    // TypeCode is deliberately absent: the code is immutable after creation.
+    public class UpdateAdmissionTypeRequestDto
     {
-        public long AdmissionTypeId { get; set; }
-        public string SchoolId { get; set; } = null!;
-        public string TypeName { get; set; } = null!;
+        [Required, StringLength(100, MinimumLength = 2)]
+        public string TypeName { get; set; } = string.Empty;
+
+        [StringLength(250)]
         public string? Description { get; set; }
-        public int? StatusId { get; set; }
-        public string? StatusName { get; set; }   // "Active" / "Inactive"
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
     }
 }

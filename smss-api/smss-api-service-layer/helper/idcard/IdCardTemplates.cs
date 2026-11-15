@@ -258,8 +258,8 @@ namespace smss_api_service_layer.helper.idcard
                 Backdrop(l, x, Photo);
                 l.PrimaryLayer().Svg(Art(Photo, art, ring));
                 InitialsOver(l, x, Photo);
-                if (HasLogo(x)) Logo(l.At(22.5f, 3.6f, 9, 9), x, p.PrimaryTint);
-                Fit(l.At(6, HasLogo(x) ? 12.6f : 5, 42, HasLogo(x) ? 5.2f : 10), x.School.Name, 8.4f, p.PrimaryText, bold: true);
+                if (HasLogo(x)) Logo(l.At(22, 3.8f, 10, 10), x, p.PrimaryTint);   // 10 mm (was 9); the plate has an edge now, so the pale tint cannot vanish on the white body
+                Fit(l.At(6, HasLogo(x) ? 13.9f : 5, 42, HasLogo(x) ? 4f : 10), x.School.Name, 8.4f, p.PrimaryText, bold: true);
                 l.At(9, 45.9f, 36, 6).Background(p.Secondary).CornerRadius(100).AlignMiddle().AlignCenter().ScaleToFit()
                     .Text($"ID  {x.Card.AdmissionNumber}").FontFamily(Sans).FontSize(10).Bold().FontColor(p.OnSecondary).AlignCenter();
                 Fit(l.At(5, 53f, 44, 6.2f), x.Card.FullName, 13, p.PrimaryText, bold: true);
@@ -277,8 +277,8 @@ namespace smss_api_service_layer.helper.idcard
             c.Layers(l =>
             {
                 l.PrimaryLayer().Svg(Plain(art));
-                if (HasLogo(x)) Logo(l.At(22.5f, 4, 9, 9), x, p.PrimaryTint);
-                Fit(l.At(6, HasLogo(x) ? 13.2f : 6, 42, HasLogo(x) ? 5.6f : 10), x.School.Name, 9, p.PrimaryText, bold: true);
+                if (HasLogo(x)) Logo(l.At(22, 4, 10, 10), x, p.PrimaryTint);
+                Fit(l.At(6, HasLogo(x) ? 14.3f : 6, 42, HasLogo(x) ? 5.2f : 10), x.School.Name, 9, p.PrimaryText, bold: true);
                 l.At(14, 22.2f, 26, 0.5f).Background(p.Secondary);
                 Fit(l.At(6, 23.2f, 42, 3.2f), "For more information, scan this", 5.8f, p.Ink, semi: true);
                 Qr(l, x, 27, 27.6f, 21f, p.Muted, p.PrimaryTint);
@@ -422,7 +422,7 @@ namespace smss_api_service_layer.helper.idcard
 
                 Fit(l.At(30, 24.2f, 21, 3.4f), "IDENTITY CARD", 6.4f, p.PrimaryText, Align.Left, bold: true, serif: true, spacing: 0.08f);
                 l.At(30, 27.8f, 9, 0.5f).Background(p.Secondary);
-                if (HasLogo(x)) Logo(l.At(32, 30.4f, 15, 15), x, "#FFFFFF");
+                if (HasLogo(x)) Logo(l.At(32, 28.9f, 17, 17), x, "#FFFFFF");   // 17 mm (was 15): centred in the column right of the photo, clear of the rule above and the admission number below
                 Fit(l.At(30, HasLogo(x) ? 46.4f : 31f, 21, 2.8f), "Admission No.", 5f, p.Muted, Align.Left, serif: true);
                 Fit(l.At(30, HasLogo(x) ? 49f : 33.8f, 21, 4.2f), x.Card.AdmissionNumber, 7.8f, p.PrimaryText, Align.Left, bold: true, serif: true);
 

@@ -22,7 +22,24 @@ export function resolveApiBaseUrl(raw: unknown, isDev: boolean): string {
   return value;
 }
 
+/** DEV builds only: a shorter duty interval in seconds (1..600), or null. Anything else (empty, not a number, out of range) is ignored. */
+export function parseDutyIntervalOverride(raw: unknown): number | null {
+  const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : typeof raw === 'number' ? raw : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 600 ? n : null;
+}
+
+/** DEV builds only: 'high' (GPS) instead of the production Balanced accuracy, because the Android emulator has no network location. Anything else is ignored. */
+export function parseDutyAccuracyOverride(raw: unknown): 'high' | null {
+  return typeof raw === 'string' && raw.trim().toLowerCase() === 'high' ? 'high' : null;
+}
+
 export const env = {
+  get dutyAccuracyOverride(): 'high' | null {
+    return parseDutyAccuracyOverride(Constants.expoConfig?.extra?.dutyAccuracy);
+  },
+  get dutyIntervalOverrideSeconds(): number | null {
+    return parseDutyIntervalOverride(Constants.expoConfig?.extra?.dutyIntervalSeconds);
+  },
   get apiBaseUrl(): string {
     return resolveApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl, __DEV__);
   },

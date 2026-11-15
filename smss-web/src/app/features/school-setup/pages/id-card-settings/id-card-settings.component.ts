@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { EMPTY, Subject, catchError, debounceTime, finalize, forkJoin, map, merge, of, switchMap, tap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, filter, finalize, forkJoin, fromEvent, map, merge, of, switchMap, tap } from 'rxjs';
 import { extractErrorMessage } from '../../../../core/interceptors/error.interceptor';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, TextareaComponent } from '../../../../shared/components';
@@ -133,7 +133,9 @@ export class IdCardSettingsComponent implements OnInit {
   ngOnInit(): void {
     // Re-render on every edit, once the school stops typing / dragging; an older render in flight is dropped.
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncForm());
-    merge(this.form.valueChanges, this.refresh$)
+    // The school logo is changed on another screen (School Profile): coming back to this tab re-renders, so a new logo shows without a page reload.
+    const returned$ = typeof document === 'undefined' ? EMPTY : fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible'));
+    merge(this.form.valueChanges, this.refresh$, returned$)
       .pipe(
         debounceTime(350),
         switchMap(() => this.renderAll()),

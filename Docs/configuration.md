@@ -7,6 +7,8 @@ The committed `smss-api/smss-api/appsettings.json` holds **no secrets**. Every s
 
 If a required setting is missing, empty, or still a placeholder (`CHANGE_ME…`, `<…>`), the API **refuses to start** and the error names the setting (never its value). Secrets are never logged.
 
+> **Upgrading from an older checkout:** earlier versions of `appsettings.json` carried a real database password and JWT key. Both are now empty in the file, so the API will not start until you provide them (user-secrets in Development, environment variables in Production, see below). Anything that was ever committed must be treated as exposed: rotate it (see *Rotating a secret*).
+
 ## Settings
 
 | Setting | Secret? | Required | What it does |
@@ -82,9 +84,11 @@ The scanner is [gitleaks](https://github.com/gitleaks/gitleaks) (MIT licence). `
 git config core.hooksPath .githooks
 ```
 
-The hook (`.githooks/pre-commit`) refuses a commit that stages a database dump, an uploaded file or a credentials file (by name), or any change gitleaks flags. It refuses to run without gitleaks installed, so the check cannot be skipped by accident.
+The hook (`.githooks/pre-commit`) refuses a commit that stages build output (`bin/`, `obj/`), IDE state (`.vs/`), a database dump or backup (by name, or by content: a `PGDMP` archive or a "PostgreSQL database dump" header under any name), an uploaded file or a credentials file, or any change gitleaks flags. It refuses to run without gitleaks installed, so the check cannot be skipped by accident.
 
-**Scan the working tree** (one line, from the repository root; prints nothing secret):
+The same scan runs on GitHub for every push and pull request once you enable it: `.github/workflows/secret-scan.yml` (it only reads the repository; nothing needs to be configured beyond leaving Actions on).
+
+**Scan the working tree** (one line, from the repository root; prints nothing secret; it also reports ignored build folders such as `bin/` that exist on your disk, which is expected and harmless):
 
 ```
 gitleaks dir . --config .gitleaks.toml --redact

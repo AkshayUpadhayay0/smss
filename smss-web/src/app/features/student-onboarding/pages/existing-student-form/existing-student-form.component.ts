@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -12,13 +11,12 @@ import { FeeItemSelection } from '../../../students/models/student-billing.model
 import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
-import { SchoolLookupService } from '../../../school-setup/services/school-lookup.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { DirectStudentEntryRequest, StudentOnboardingResult, StudentOnboardingService } from '../../services/student-onboarding.service';
 
 /** The school's own Admission Type used for these students (must match the API's StudentOnboardingService). */
-const EXISTING_STUDENT_TYPE = 'existing student';
+const EXISTING_STUDENT_CODE = 'EXISTING_STUDENT';
 const AADHAAR_RE = /^[0-9]{12}$/;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -49,9 +47,7 @@ export class ExistingStudentFormComponent implements OnInit {
   private readonly master = inject(MasterDataService);
   private readonly years = inject(AcademicYearService);
   private readonly sections = inject(SectionService);
-  private readonly lookups = inject(SchoolLookupService);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -122,6 +118,8 @@ export class ExistingStudentFormComponent implements OnInit {
   }
 
   /** null = still checking; false = the school has no active "Existing Student" admission type yet. */
+  /** Shown, never editable: every student added here is an Existing Student (the server sets it by code and ignores anything else). */
+  protected readonly admissionTypeShown = new FormControl({ value: 'Existing Student', disabled: true }, { nonNullable: true });
   protected readonly typeReady = signal<boolean | null>(null);
   protected readonly typeMissing = computed(() => this.typeReady() === false);
   /** Set when the server itself reports the missing type (e.g. it was deactivated after this page loaded). */
@@ -154,9 +152,12 @@ export class ExistingStudentFormComponent implements OnInit {
       this.syncFeePlacement();
     });
 
-    this.lookups.list('AdmissionTypes').pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
+    // Admission types are a global master now; the school endpoint returns the ACTIVE ones only.
+    this.master.getAdmissionTypes().pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
       if (list === null) return; // couldn't check: let the server decide on submit
-      this.typeReady.set(list.some((t) => String(t['typeName'] ?? '').trim().toLowerCase() === EXISTING_STUDENT_TYPE && t.statusName === 'Active'));
+      const type = list.find((t) => t.typeCode === EXISTING_STUDENT_CODE);
+      this.typeReady.set(!!type);
+      if (type) this.admissionTypeShown.setValue(type.typeName);
     });
   }
 
@@ -170,10 +171,6 @@ export class ExistingStudentFormComponent implements OnInit {
 
   protected onPhotoChanged(change: LogoChange): void {
     this.photo = change.file;
-  }
-
-  protected goToAdmissionTypes(): void {
-    void this.router.navigate(['/school-setup/admission-types']);
   }
 
   protected addAnother(): void {

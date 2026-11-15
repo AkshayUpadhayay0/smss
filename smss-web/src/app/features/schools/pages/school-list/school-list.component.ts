@@ -41,6 +41,7 @@ export class SchoolListComponent {
   private readonly router = inject(Router);
 
   protected readonly columns: TableColumn<SchoolRow>[] = [
+    { key: 'logoUrl', label: '', type: 'avatar', width: '64px', avatarLabel: (r) => r.schoolName },
     { key: 'schoolCode', label: 'UDISE Code', sortable: true, width: '150px' },
     { key: 'schoolName', label: 'School Name', sortable: true },
     { key: 'email', label: 'Email', sortable: true },
@@ -70,7 +71,7 @@ export class SchoolListComponent {
     const dir = this.sortDirection() === 'asc' ? 1 : -1;
 
     const rows = q
-      ? this.rows().filter((r) => this.columns.some((c) => String(r[c.key] ?? '').toLowerCase().includes(q)))
+      ? this.rows().filter((r) => this.columns.filter((c) => c.type !== 'avatar').some((c) => String(r[c.key] ?? '').toLowerCase().includes(q)))
       : this.rows();
     if (!key) return rows;
 

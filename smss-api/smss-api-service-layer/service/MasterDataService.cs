@@ -1137,5 +1137,110 @@ namespace smss_api_service_layer.service
                 return Result(false, 500, "Unable to change student category status.", null);
             }
         }
+
+        // =========================================================
+        // ADMISSION TYPES (global)
+        // =========================================================
+
+        // An empty list is a normal 200 here (unlike the older dropdown endpoints): the school form just shows no options.
+        public async Task<ApiResponse<object>> GetAdmissionTypesAsync(bool includeInactive = false)
+        {
+            try
+            {
+                List<LutAdmissionType> items = await _masterDataRepository.GetAdmissionTypesAsync(includeInactive);
+                return Result(true, 200, "Successfully fetched", items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch admission types.");
+                return Result(false, 500, "Unable to fetch admission types.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> CreateAdmissionTypeAsync(CreateAdmissionTypeRequestDto request)
+        {
+            try
+            {
+                string code = request.TypeCode.Trim().ToUpperInvariant();
+                string name = request.TypeName.Trim();
+
+                if (await _masterDataRepository.AdmissionTypeExistsAsync(code, name))
+                    return Result(false, 409, "An admission type with the same code or name already exists.", null);
+
+                var entity = new LutAdmissionType
+                {
+                    TypeCode = code,
+                    TypeName = name,
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (!await _masterDataRepository.AddAdmissionTypeAsync(entity))
+                    return Result(false, 409, "An admission type with the same code or name already exists.", null);
+
+                _logger.LogInformation("Admission type {Code} created.", code);
+                return Result(true, 201, "Admission type created successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create admission type.");
+                return Result(false, 500, "Unable to create admission type.", null);
+            }
+        }
+
+        public async Task<ApiResponse<object>> UpdateAdmissionTypeAsync(long id, UpdateAdmissionTypeRequestDto request)
+        {
+            try
+            {
+                LutAdmissionType? entity = await _masterDataRepository.GetAdmissionTypeByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Admission type not found.", null);
+
+                string name = request.TypeName.Trim();
+
+                if (await _masterDataRepository.AdmissionTypeExistsAsync(entity.TypeCode, name, excludeId: id))
+                    return Result(false, 409, "Another admission type with the same name already exists.", null);
+
+                entity.TypeName = name;
+                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                if (!await _masterDataRepository.UpdateAdmissionTypeAsync(entity))
+                    return Result(false, 409, "Another admission type with the same name already exists.", null);
+
+                _logger.LogInformation("Admission type {Id} updated.", id);
+                return Result(true, 200, "Admission type updated successfully.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update admission type {Id}.", id);
+                return Result(false, 500, "Unable to update admission type.", null);
+            }
+        }
+
+        // Deactivating never touches the applications or students that already use the type: they keep their type id and still read its name.
+        public async Task<ApiResponse<object>> ToggleAdmissionTypeStatusAsync(long id)
+        {
+            try
+            {
+                LutAdmissionType? entity = await _masterDataRepository.GetAdmissionTypeByIdAsync(id);
+                if (entity == null)
+                    return Result(false, 404, "Admission type not found.", null);
+
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _masterDataRepository.UpdateAdmissionTypeAsync(entity);
+
+                _logger.LogInformation("Admission type {Id} set to {State}.", id, entity.IsActive ? "active" : "inactive");
+                return Result(true, 200, entity.IsActive ? "Admission type activated." : "Admission type deactivated.", entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle admission type {Id}.", id);
+                return Result(false, 500, "Unable to change admission type status.", null);
+            }
+        }
     }
 }

@@ -220,14 +220,23 @@ namespace smss_api_service_layer.helper.idcard
             });
         }
 
-        /// <summary>The school logo in a small round / rounded tile, or nothing when the school has none.</summary>
+        /// <summary>
+        /// The school logo on a light plate (white, or the template's own tint), or nothing when the school has none. The plate is a rounded square whose corner radius is smaller
+        /// than its padding allows to clip, so the logo is never cropped; the image keeps its aspect ratio and is centred inside the box (FitArea), never stretched.
+        /// </summary>
         public static void Logo(IContainer box, CardCtx x, string tile = "#FFFFFF", bool round = true)
         {
             var logo = x.School.Logo;
             if (logo == null) return;
-            var tileBox = box.Background(tile);
-            (round ? tileBox.CornerRadius(100) : tileBox.CornerRadius(1.2f)).Padding(0.7f, Mm).Image(logo.Image).FitArea();
+            // a white / near-white logo would vanish on a light plate: it gets the template's dark colour instead; a thin edge keeps a pale plate visible on a white card body
+            var plate = logo.IsLight ? DarkPlate(x.Pal) : tile;
+            var edge = IdCardPalette.Luminance(plate) > 0.45 ? IdCardPalette.Mix(plate, "#000000", 0.32) : IdCardPalette.Mix(plate, "#FFFFFF", 0.5);
+            // padding (0.9 mm) is more than the 0.29 x radius a corner can cut into a square image, so even a full-bleed logo keeps its corners
+            box.Background(plate).Border(0.25f, Mm).BorderColor(edge).CornerRadius(round ? 1.5f : 1.0f).Padding(0.9f, Mm).Image(logo.Image).FitArea();
         }
+
+        /// <summary>The template's own dark colour for a white logo to sit on; a near-black when the brand colour is not dark enough.</summary>
+        public static string DarkPlate(IdCardPalette pal) => IdCardPalette.Luminance(pal.PrimaryDark) < 0.18 ? pal.PrimaryDark : "#1F2430";
 
         public static bool HasLogo(CardCtx x) => x.School.Logo != null;
 

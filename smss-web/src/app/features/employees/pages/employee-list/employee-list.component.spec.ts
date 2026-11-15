@@ -84,7 +84,8 @@ describe('EmployeeListComponent', () => {
     const last = reqs[reqs.length - 1];
     expect(last.request.params.get('employmentStatusId')).toBe('3');
     expect(last.request.params.get('status')).toBe('Inactive');
-    reqs.forEach((r) => r.flush(env({ items: [], total: 0, page: 1, pageSize: 10 })));
+    expect(reqs.slice(0, -1).every((r) => r.cancelled)).toBe(true); // the superseded request is cancelled, only the last one is answered
+    last.flush(env({ items: [], total: 0, page: 1, pageSize: 10 }));
 
     cmp()['clearFilters']();
     [req] = listReqs();

@@ -3,11 +3,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { canAccess } from '../../../core/config/route-roles';
+import { searchNav } from '../nav.config';
 import { AuthService } from '../../../core/services/auth.service';
 import { Notice } from '../../../features/notices/models/notice.model';
 import { NoticeService } from '../../../features/notices/services/notice.service';
 import { publishedLabel, snippet } from '../../../features/notices/utils/notice-format';
+import { SchoolService } from '../../../features/schools/services/school.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { SecureImageComponent } from '../../../shared/components/secure-image/secure-image.component';
 
 type MenuName = 'org' | 'notifications' | 'user';
 
@@ -16,7 +19,7 @@ const BELL_LIMIT = 5;
 
 @Component({
   selector: 'app-topbar',
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './topbar.component.scss',
   templateUrl: './topbar.component.html',
@@ -26,6 +29,7 @@ export class TopbarComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notices = inject(NoticeService);
+  private readonly schoolApi = inject(SchoolService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly menuToggle = output<void>();
@@ -33,7 +37,7 @@ export class TopbarComponent implements OnInit {
   /** Signed-in user's organization (their school) and identity, from the login session. */
   protected readonly org = computed(() => {
     const u = this.auth.user();
-    return { name: u?.schoolName ?? u?.displayName ?? '', code: u?.schoolCode ?? u?.orgUserId ?? '' };
+    return { name: u?.schoolName ?? u?.displayName ?? '', code: u?.schoolCode ?? u?.orgUserId ?? '', logoUrl: u?.logoUrl ?? null };
   });
   protected readonly user = computed(() => {
     const u = this.auth.user();
@@ -57,9 +61,35 @@ export class TopbarComponent implements OnInit {
 
   protected readonly openMenu = signal<MenuName | null>(null);
   protected readonly searchOpen = signal(false);
+  protected readonly searchTerm = signal('');
+  /** Pages this role can open that match what was typed (the same set the sidebar offers). */
+  protected readonly searchHits = computed(() => searchNav(this.searchTerm(), this.auth.currentUserRoles(), this.auth.hasEmployeeRecord()));
+
+  protected onSearchInput(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
+  }
+
+  protected closeSearch(): void {
+    this.searchOpen.set(false);
+    this.searchTerm.set('');
+  }
+
+  /** Enter opens the best match. */
+  protected openFirstHit(): void {
+    const first = this.searchHits()[0];
+    if (!first) return;
+    this.closeSearch();
+    void this.router.navigateByUrl(first.route);
+  }
 
   ngOnInit(): void {
     if (!this.auth.user()?.schoolId) return;
+    // The session holds the logo as it was at sign-in. Read the school's current name + logo (any role; the school comes from the token) so a logo
+    // uploaded since, by the School Admin, shows for everyone of the school without signing in again. A failure keeps what the session has.
+    this.schoolApi.getMyBrand().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (b) => this.auth.patchUser({ schoolName: b.schoolName, logoUrl: b.logoUrl ?? null }),
+      error: () => undefined,
+    });
     this.notices.refreshUnread();
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.notices.refreshUnread());
   }
@@ -97,6 +127,6 @@ export class TopbarComponent implements OnInit {
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.openMenu.set(null);
-    this.searchOpen.set(false);
+    this.closeSearch();
   }
 }

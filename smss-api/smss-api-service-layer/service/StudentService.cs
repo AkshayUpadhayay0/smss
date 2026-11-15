@@ -132,7 +132,7 @@ namespace smss_api_service_layer.service
                     GenderName = s.GenderId.HasValue ? genders.GetValueOrDefault(s.GenderId.Value) : null,
                     BloodGroupName = s.BloodGroupId.HasValue ? await _repo.GetBloodGroupNameAsync(s.BloodGroupId.Value, ct) : null,
                     StudentCategoryName = s.StudentCategoryId.HasValue ? await _repo.GetStudentCategoryNameAsync(s.StudentCategoryId.Value, ct) : null,
-                    AdmissionTypeName = await _repo.GetAdmissionTypeNameAsync(schoolId, s.AdmissionTypeId, ct),
+                    AdmissionTypeName = await _repo.GetAdmissionTypeNameAsync(s.AdmissionTypeId, ct),
                     AdmissionDate = s.AdmissionDate,
                     Email = s.Email,
                     MobileNumber = s.MobileNumber,

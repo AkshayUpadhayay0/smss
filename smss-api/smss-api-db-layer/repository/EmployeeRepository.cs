@@ -46,9 +46,14 @@ namespace smss_api_db_layer.repository
             if (statusId != null) q = q.Where(e => e.StatusId == statusId);
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var like = "%" + search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
-                q = q.Where(e => EF.Functions.ILike(e.EmployeeId, like) || EF.Functions.ILike(e.FirstName + " " + (e.MiddleName ?? "") + " " + e.LastName, like)
-                                 || EF.Functions.ILike(e.MobileNumber, like) || (e.Email != null && EF.Functions.ILike(e.Email, like)));
+                // Every typed word must match the id, a name part, the mobile or the e-mail. (Matching the whole text against
+                // "first + middle + last" missed "Anil Kumar" for a person with no middle name: the joined name had two spaces.)
+                foreach (var like in SearchWords.LikePatterns(search))
+                {
+                    var w = like;
+                    q = q.Where(e => EF.Functions.ILike(e.EmployeeId, w) || EF.Functions.ILike(e.FirstName, w) || (e.MiddleName != null && EF.Functions.ILike(e.MiddleName, w))
+                                     || EF.Functions.ILike(e.LastName, w) || EF.Functions.ILike(e.MobileNumber, w) || (e.Email != null && EF.Functions.ILike(e.Email, w)));
+                }
             }
 
             var total = await q.CountAsync(ct);

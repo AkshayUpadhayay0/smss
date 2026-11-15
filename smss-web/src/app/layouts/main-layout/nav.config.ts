@@ -17,36 +17,30 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
-  { label: 'Calendar', icon: 'calendar', route: '/calendar' },
-  { label: 'Timetable', icon: 'calendar', route: '/timetable' },
-  { label: 'My Timetable', icon: 'calendar', route: '/timetable/my' },
-  { label: 'Mark Attendance', icon: 'circle-check', route: '/attendance/mark' },
-  { label: 'Attendance Report', icon: 'file-text', route: '/attendance/report' },
-  { label: 'Notices', icon: 'bell', route: '/notices' },
-  { label: 'My Notices', icon: 'bell', route: '/notices/my' },
-  { label: 'Homework', icon: 'file-text', route: '/homework' },
-  { label: 'My Homework', icon: 'file-text', route: '/homework/my' },
-  { label: 'Assessments', icon: 'file-text', route: '/assessments' },
-  { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
-  { label: 'My Leave', icon: 'file-text', route: '/leave/my', needsEmployeeRecord: true },
-  { label: 'My Leave', icon: 'file-text', route: '/leave/mine' },
-  { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
-  { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
-  { label: 'My Fees', icon: 'file-text', route: '/my-fees' },
-  { label: 'My Report Cards', icon: 'file-text', route: '/my-report-cards' },
-  { label: 'School Profile', icon: 'home', route: '/school-profile' },
   {
-    label: 'Students',
+    label: 'School Setup',
     icon: 'graduation-cap',
-    flatWhenSingle: true,
     children: [
-      { label: 'Students', route: '/students' },
-      { label: 'My Students', route: '/my-students' },
-      { label: 'Admissions', route: '/admissions' },
-      { label: 'Add Existing Student', route: '/students/onboard-existing' },
-      { label: 'Import Students', route: '/students/import' },
-      { label: 'Student Leave', route: '/leave/students' },
-      { label: 'Fee Status', route: '/fee-status' },
+      { label: 'Import Masters', route: '/school-setup/import-masters' },
+      { label: 'Academic Year', route: '/school-setup/academic-year' },
+      { label: 'Class', route: '/school-setup/classes' },
+      { label: 'Section', route: '/school-setup/sections' },
+      { label: 'Periods', route: '/school-setup/periods' },
+      { label: 'Subject', route: '/school-setup/subjects' },
+      { label: 'Class-Subject Mapping', route: '/school-setup/class-subjects' },
+      { label: 'Employee Designation', route: '/school-setup/employee-designations' },
+      { label: 'Employee Department', route: '/school-setup/employee-departments' },
+      { label: 'Document Types', route: '/school-setup/document-types' },
+      { label: 'ID Card Settings', route: '/school-setup/id-card' },
+    ],
+  },
+  {
+    label: 'Fee Setup',
+    icon: 'file-text',
+    children: [
+      { label: 'Fee Types', route: '/fee-setup/fee-types' },
+      { label: 'Fee Structures', route: '/fee-setup/fee-structures' },
+      { label: 'Fee Concessions', route: '/fee-setup/fee-concessions' },
     ],
   },
   {
@@ -66,21 +60,13 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'School Setup',
-    icon: 'graduation-cap',
+    label: 'Transport',
+    icon: 'truck',
     children: [
-      { label: 'Import Masters', route: '/school-setup/import-masters' },
-      { label: 'Academic Year', route: '/school-setup/academic-year' },
-      { label: 'Class', route: '/school-setup/classes' },
-      { label: 'Section', route: '/school-setup/sections' },
-      { label: 'Periods', route: '/school-setup/periods' },
-      { label: 'Subject', route: '/school-setup/subjects' },
-      { label: 'Class-Subject Mapping', route: '/school-setup/class-subjects' },
-      { label: 'Employee Designation', route: '/school-setup/employee-designations' },
-      { label: 'Employee Department', route: '/school-setup/employee-departments' },
-      { label: 'Admission Type', route: '/school-setup/admission-types' },
-      { label: 'Document Types', route: '/school-setup/document-types' },
-      { label: 'ID Card Settings', route: '/school-setup/id-card' },
+      { label: 'Live map', route: '/transport/live' },
+      { label: 'Areas', route: '/transport/areas' },
+      { label: 'Vehicles', route: '/transport/vehicles' },
+      { label: 'Drivers', route: '/transport/drivers' },
     ],
   },
   {
@@ -92,22 +78,51 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Fee Setup',
-    icon: 'file-text',
-    children: [
-      { label: 'Fee Types', route: '/fee-setup/fee-types' },
-      { label: 'Fee Structures', route: '/fee-setup/fee-structures' },
-      { label: 'Fee Concessions', route: '/fee-setup/fee-concessions' },
-    ],
-  },
-  {
     label: 'Fees',
     icon: 'layout-dashboard',
     children: [
       { label: 'Fee Dashboard', route: '/fee-dashboard' },
       { label: 'Class-wise Report', route: '/fee-reports/class' },
     ],
+  },{
+    label: 'Students',
+    icon: 'graduation-cap',
+    flatWhenSingle: true,
+    children: [
+      { label: 'Students', route: '/students' },
+      { label: 'My Students', route: '/my-students' },
+      { label: 'Admissions', route: '/admissions' },
+      { label: 'Add Existing Student', route: '/students/onboard-existing' },
+      { label: 'Import Students', route: '/students/import' },
+      { label: 'Student Leave', route: '/leave/students' },
+      { label: 'Fee Status', route: '/fee-status' },
+    ],
   },
+  { label: 'School Profile', icon: 'home', route: '/school-profile' },
+  { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
+
+
+  { label: 'Calendar', icon: 'calendar', route: '/calendar' },
+  { label: 'Timetable', icon: 'calendar', route: '/timetable' },
+  { label: 'My Timetable', icon: 'calendar', route: '/timetable/my' },
+  { label: 'Mark Attendance', icon: 'circle-check', route: '/attendance/mark' },
+  { label: 'Attendance Report', icon: 'file-text', route: '/attendance/report' },
+  { label: 'Notices', icon: 'bell', route: '/notices' },
+  { label: 'My Notices', icon: 'bell', route: '/notices/my' },
+  { label: 'Homework', icon: 'file-text', route: '/homework' },
+  { label: 'My Homework', icon: 'file-text', route: '/homework/my' },
+  { label: 'Assessments', icon: 'file-text', route: '/assessments' },
+  { label: 'My Results', icon: 'file-text', route: '/assessments/my' },
+  { label: 'My Leave', icon: 'file-text', route: '/leave/my', needsEmployeeRecord: true },
+  { label: 'My Leave', icon: 'file-text', route: '/leave/mine' },
+  { label: 'Leave Requests', icon: 'inbox', route: '/leave/requests' },
+  { label: 'My Fees', icon: 'file-text', route: '/my-fees' },
+  { label: 'My Report Cards', icon: 'file-text', route: '/my-report-cards' },
+  
+
+
+
+
   { label: 'Registered Schools', icon: 'building-2', route: '/schools' },
   { label: 'Enquiries', icon: 'inbox', route: '/enquiries', badge: 'newEnquiries' },
   { label: 'Subscriptions', icon: 'star', route: '/subscriptions' },
@@ -134,9 +149,37 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Blood Group', route: '/masters/blood-group' },
       { label: 'Gender', route: '/masters/gender' },
       { label: 'Student Category', route: '/masters/student-category' },
+      { label: 'Admission Type', route: '/masters/admission-type' },
     ],
   },
 ];
+
+export interface NavSearchHit {
+  label: string;
+  /** The menu group it sits under (e.g. "Masters"), shown as context; absent for a top-level item. */
+  group?: string;
+  route: string;
+}
+
+/**
+ * The top bar's search: the pages in `visibleNav(roles)` whose label (or group name) contains every word typed, case-insensitively, label matches first.
+ * It only ever offers what the menu already offers this role, so it can never reveal a page the role cannot open.
+ */
+export function searchNav(query: string, roles: readonly string[], hasEmployeeRecord = true, limit = 8): NavSearchHit[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const hits: (NavSearchHit & { rank: number })[] = [];
+  for (const item of visibleNav(roles, hasEmployeeRecord)) {
+    const leaves = item.children ? item.children.map((c) => ({ label: c.label, group: item.label, route: c.route })) : item.route ? [{ label: item.label, group: undefined, route: item.route }] : [];
+    for (const leaf of leaves) {
+      const label = leaf.label.toLowerCase();
+      const both = `${label} ${(leaf.group ?? '').toLowerCase()}`;
+      if (!words.every((w) => both.includes(w))) continue;
+      hits.push({ ...leaf, rank: words.every((w) => label.includes(w)) ? (label.startsWith(words[0]) ? 0 : 1) : 2 });
+    }
+  }
+  return hits.sort((a, b) => a.rank - b.rank).slice(0, limit).map(({ rank: _rank, ...hit }) => hit);
+}
 
 /**
  * What the sidebar shows for `roles`: leaves the role may open, groups cut down to the children it may open (a group

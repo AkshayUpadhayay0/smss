@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { debounceTime, finalize } from 'rxjs';
+import { Subscription, debounceTime, finalize } from 'rxjs';
 import {
   ButtonComponent,
   CardComponent,
@@ -113,10 +113,14 @@ export class EmployeeListComponent implements OnInit {
     this.load();
   }
 
+  /** The request on screen: a new search / filter / page cancels it, so a slower OLDER answer can never overwrite the newer one. */
+  private request?: Subscription;
+
   protected load(): void {
+    this.request?.unsubscribe();
     this.loading.set(true);
     this.loadFailed.set(false);
-    this.service
+    this.request = this.service
       .list(
         {
           search: this.searchControl.value.trim(),

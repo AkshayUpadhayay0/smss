@@ -79,6 +79,19 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/employees/{employeeId}/{fileName}";
         }
 
+        public async Task<string> SaveDriverPhotoAsync(string schoolCode, string driverId, Stream content, string extension, CancellationToken ct)
+        {
+            EnsureSafeIds(schoolCode, driverId);
+            var folder = Path.Combine(_privateRootPath, schoolCode, "drivers", driverId);
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"photo_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{schoolCode}/drivers/{driverId}/{fileName}";
+        }
+
         public async Task<string> SaveEmployeeDocumentAsync(string schoolCode, string employeeId, Stream content, string extension, CancellationToken ct)
         {
             EnsureSafeIds(schoolCode, employeeId);
@@ -146,13 +159,24 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/report-card/{fileName}";
         }
 
+        /// <summary>True when the stored value points into the public uploads folder (in any of the spellings <see cref="UploadPathReader"/> understands); otherwise it is a private key.</summary>
+        private bool IsPublicUpload(string stored)
+        {
+            // a private key ("{schoolCode}/students/...") never starts with a slash, a backslash, a URL scheme or the uploads folder's own absolute path, so a school coded "uploads" cannot be mistaken for the public folder
+            var t = stored.TrimStart();
+            const char Bs = (char)92;   // backslash
+            var looksPublic = t.StartsWith('/') || t.StartsWith(Bs) || t.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || t.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                              || t.Replace(Bs, '/').StartsWith(_rootPath.Replace(Bs, '/').TrimEnd('/') + "/", OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+            return looksPublic && UploadPathReader.RelativeTo(stored, _requestPath, _rootPath) != null;
+        }
+
         public Stream? OpenPhoto(string stored) =>
-            string.IsNullOrEmpty(stored) ? null : stored.StartsWith(_requestPath + "/", StringComparison.Ordinal) ? OpenUpload(stored) : OpenPrivate(stored);
+            string.IsNullOrEmpty(stored) ? null : IsPublicUpload(stored) ? OpenUpload(stored) : OpenPrivate(stored);
 
         public void DeletePhoto(string stored)
         {
             if (string.IsNullOrEmpty(stored)) return;
-            if (stored.StartsWith(_requestPath + "/", StringComparison.Ordinal)) Delete(stored); else DeletePrivate(stored);
+            if (IsPublicUpload(stored)) Delete(stored); else DeletePrivate(stored);
         }
 
         public Stream? OpenPrivate(string storageKey)
@@ -189,8 +213,9 @@ namespace smss_api_service_layer.service
         {
             try
             {
-                if (string.IsNullOrEmpty(relativeUrl) || !relativeUrl.StartsWith(_requestPath + "/", StringComparison.Ordinal)) return null;
-                var relative = relativeUrl[(_requestPath.Length + 1)..].Replace('/', Path.DirectorySeparatorChar);
+                var rel = UploadPathReader.RelativeTo(relativeUrl, _requestPath, _rootPath);
+                if (rel == null) return null;
+                var relative = rel.Replace('/', Path.DirectorySeparatorChar);
                 var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relative));
                 // Never open anything outside the uploads root
                 if (!fullPath.StartsWith(_rootPath + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(fullPath)) return null;
@@ -207,9 +232,10 @@ namespace smss_api_service_layer.service
         {
             try
             {
-                if (!relativeUrl.StartsWith(_requestPath + "/", StringComparison.Ordinal)) return;
+                var rel = UploadPathReader.RelativeTo(relativeUrl, _requestPath, _rootPath);
+                if (rel == null) return;
 
-                var relative = relativeUrl[(_requestPath.Length + 1)..].Replace('/', Path.DirectorySeparatorChar);
+                var relative = rel.Replace('/', Path.DirectorySeparatorChar);
                 var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relative));
 
                 // Never delete anything outside the uploads root
