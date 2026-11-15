@@ -17,6 +17,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
+  { label: 'Live Dashboard', icon: 'map-pin', route: '/transport/live' },
   {
     label: 'School Setup',
     icon: 'graduation-cap',
@@ -63,7 +64,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Transport',
     icon: 'truck',
     children: [
-      { label: 'Live map', route: '/transport/live' },
       { label: 'Areas', route: '/transport/areas' },
       { label: 'Vehicles', route: '/transport/vehicles' },
       { label: 'Drivers', route: '/transport/drivers' },

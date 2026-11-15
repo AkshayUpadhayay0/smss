@@ -48,7 +48,7 @@ export class LiveMapComponent {
   private readonly loadLeaflet = inject(LEAFLET_LOADER);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  protected readonly breadcrumbs = [{ label: 'Transport' }, { label: 'Live map' }];
+  protected readonly breadcrumbs = [{ label: 'Live Dashboard' }];
   protected readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('map');
 
   protected readonly board = signal<LiveBoard | null>(null);

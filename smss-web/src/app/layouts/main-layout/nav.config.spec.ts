@@ -110,10 +110,24 @@ describe('visibleNav: Examinations group', () => {
 describe('visibleNav: Transport group', () => {
   const transport = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Transport');
 
-  it('School Admin and Principal get Live map, Areas, Vehicles and Drivers', () => {
+  it('School Admin and Principal get Areas, Vehicles and Drivers (Live Dashboard is its own item)', () => {
     for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) {
-      expect(transport([role])?.children?.map((c) => c.route)).toEqual(['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers']);
+      expect(transport([role])?.children?.map((c) => c.route)).toEqual(['/transport/areas', '/transport/vehicles', '/transport/drivers']);
     }
+  });
+
+  it('Live Dashboard is the second top-level item, for exactly School Admin and Principal, on the unchanged /transport/live URL', () => {
+    for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) {
+      const items = visibleNav([role]);
+      expect(items[1]).toEqual({ label: 'Live Dashboard', icon: 'map-pin', route: '/transport/live' });
+    }
+    for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.SUPER_ADMIN, ROLES.DRIVER]) {
+      expect(visibleNav([role]).some((i) => i.label === 'Live Dashboard')).toBe(false);
+    }
+  });
+
+  it('the top-bar search finds it as a plain item, not under Transport', () => {
+    expect(searchNav('live', [ROLES.SCHOOL_ADMIN])).toEqual([{ label: 'Live Dashboard', group: undefined, route: '/transport/live' }]);
   });
 
   it('no other role, including a Driver, sees it', () => {
