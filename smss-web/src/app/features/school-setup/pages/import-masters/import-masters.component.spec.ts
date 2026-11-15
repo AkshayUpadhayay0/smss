@@ -26,8 +26,10 @@ describe('ImportMastersComponent', () => {
   let http: HttpTestingController;
   const cmp = () => fixture.componentInstance as unknown as Record<string, any>; // protected members
   const el = () => fixture.nativeElement as HTMLElement;
-  const choice = (name: string) => [...el().querySelectorAll<HTMLLabelElement>('label.choice')].find((l) => l.textContent?.includes(name))!;
-  const box = (name: string) => choice(name).querySelector<HTMLInputElement>('input')!;
+  const choice = (name: string) => [...el().querySelectorAll<HTMLElement>('.choice[role="checkbox"]')].find((l) => l.querySelector('.choice-name')?.textContent === name)!;
+  const box = (name: string) => choice(name);
+  const checked = (name: string) => choice(name).getAttribute('aria-checked') === 'true';
+  const groupCard = (title: string) => el().querySelector<HTMLElement>(`section[aria-label="${title}"]`)!;
   const importButton = () => [...el().querySelectorAll('button')].find((b) => b.textContent?.includes('Import selected')) as HTMLButtonElement;
 
   beforeEach(() => {
@@ -49,7 +51,8 @@ describe('ImportMastersComponent', () => {
     const text = el().textContent ?? '';
     for (const t of ['Classes', 'Subjects', 'Employee Designations', 'Employee Departments', 'Document Types']) expect(text).toContain(t);
     expect(choice('UKG').textContent).toContain('Already added');
-    expect(box('UKG').disabled).toBe(true);
+    expect(box('UKG').getAttribute('aria-disabled')).toBe('true');
+    expect(box('UKG').getAttribute('aria-label')).toBe('UKG, already added');
     expect(choice('Birth Certificate').textContent).toContain('Students · Required');
   });
 
@@ -61,9 +64,9 @@ describe('ImportMastersComponent', () => {
   });
 
   it('"Select all" picks only what can still be added', () => {
-    cmp()['toggleAll'](cmp()['groups'][0]);
+    cmp()['selectAll'](cmp()['groups'][0]);
     fixture.detectChanges();
-    expect(box('Nursery').checked && box('LKG').checked && box('Class 1').checked).toBe(true);
+    expect(checked('Nursery') && checked('LKG') && checked('Class 1')).toBe(true);
     expect(cmp()['totalSelected']()).toBe(3); // UKG is already there
   });
 
@@ -98,5 +101,91 @@ describe('ImportMastersComponent', () => {
     await cmp()['runImport']();
     http.expectNone(`${API}/api/MasterImport/import`);
     expect(cmp()['totalSelected']()).toBe(1);
+  });
+
+  it('reads "N selected · M available · K already added" per section and updates as tiles are picked', () => {
+    expect(groupCard('Classes').querySelector('.count')?.textContent).toBe('0 selected · 3 available · 1 already added');
+    box('LKG').click();
+    fixture.detectChanges();
+    expect(groupCard('Classes').querySelector('.count')?.textContent).toBe('1 selected · 3 available · 1 already added');
+  });
+
+  it('Select all and Clear work per section and leave other sections alone', () => {
+    const buttons = (t: string) => [...groupCard(t).querySelectorAll('button')] as HTMLButtonElement[];
+    const label = (t: string, text: string) => buttons(t).find((b) => b.textContent?.trim() === text)!;
+    expect(label('Classes', 'Clear').disabled).toBe(true);
+    box('English').click();
+    label('Classes', 'Select all').click();
+    fixture.detectChanges();
+    expect(cmp()['selectedIn'](cmp()['groups'][0])).toBe(3);
+    expect(checked('UKG')).toBe(true); // shown ticked, but only because it is already added
+    expect(cmp()['selection']()['classes']).not.toContain('UKG');
+    label('Classes', 'Clear').click();
+    fixture.detectChanges();
+    expect(cmp()['selection']()['classes']).toEqual([]);
+    expect(cmp()['selection']()['subjects']).toEqual(['English']);
+  });
+
+  it('already-added tiles cannot be selected, by click or keyboard', () => {
+    box('UKG').click();
+    box('UKG').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    fixture.detectChanges();
+    expect(cmp()['totalSelected']()).toBe(0);
+    expect(choice('UKG').classList).toContain('disabled');
+    expect(choice('UKG').querySelector('.added')?.textContent).toContain('Already added');
+  });
+
+  it('a tile is focusable and Space toggles it', () => {
+    const tile = box('LKG');
+    expect(tile.tabIndex).toBe(0);
+    const ev = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    tile.dispatchEvent(ev);
+    fixture.detectChanges();
+    expect(ev.defaultPrevented).toBe(true);
+    expect(checked('LKG')).toBe(true);
+    tile.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    fixture.detectChanges();
+    expect(checked('LKG')).toBe(false);
+  });
+
+  it('reserves room under the tiles equal to the action bar height', () => {
+    const groups = el().querySelector<HTMLElement>('.groups')!;
+    expect(groups.style.paddingBottom).toBe(`${cmp()['barHeight']()}px`);
+    cmp()['barHeight'].set(140);
+    fixture.detectChanges();
+    expect(groups.style.paddingBottom).toBe('140px');
+  });
+
+  it('the bar counts the total across sections and Import is off with nothing picked', () => {
+    box('LKG').click();
+    box('English').click();
+    box('Principal').click();
+    fixture.detectChanges();
+    expect(el().querySelector('.bar-text')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('3 items selected');
+  });
+
+  it('collapses a section that is entirely added into one row, and expands it', () => {
+    http.expectNone(() => true);
+    cmp()['catalog'].set({ ...CATALOG, subjects: [item('English', true), item('Hindi', true)] });
+    fixture.detectChanges();
+    expect(groupCard('Subjects').querySelector('.summary-text')?.textContent).toContain('All 2 subjects already added');
+    expect(groupCard('Subjects').querySelectorAll('.choice').length).toBe(0);
+    expect(([...groupCard('Subjects').querySelectorAll('button')] as HTMLButtonElement[]).find((b) => b.textContent?.trim() === 'All added')!.disabled).toBe(true);
+    ([...groupCard('Subjects').querySelectorAll('button')] as HTMLButtonElement[]).find((b) => b.textContent?.trim() === 'Show')!.click();
+    fixture.detectChanges();
+    expect(groupCard('Subjects').querySelectorAll('.choice').length).toBe(2);
+  });
+
+  it('shows an empty message for a section with nothing, not a false zero', () => {
+    cmp()['catalog'].set({ ...CATALOG, departments: [] });
+    fixture.detectChanges();
+    expect(groupCard('Employee Departments').textContent).toContain('Nothing is available');
+  });
+
+  it('shows a retry in each section when the catalog fails to load', () => {
+    cmp()['catalog'].set(null);
+    cmp()['loadFailed'].set(true);
+    fixture.detectChanges();
+    expect(el().querySelectorAll('[role="alert"]').length).toBe(5);
   });
 });

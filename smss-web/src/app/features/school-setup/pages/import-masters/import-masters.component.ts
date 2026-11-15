@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
@@ -45,9 +45,37 @@ export class ImportMastersComponent implements OnInit {
   protected readonly importing = signal(false);
   protected readonly result = signal<MasterImportResult | null>(null);
 
+  /** Groups whose "all added" summary row the user expanded. */
+  protected readonly expanded = signal<ReadonlySet<MasterImportGroupKey>>(new Set());
+  /** Height of the sticky action bar; the tile list reserves this much room under itself so nothing is covered. */
+  protected readonly barHeight = signal(72);
+  /** Phone width: the action bar's buttons stack and fill the row. */
+  protected readonly narrow = signal(false);
+  private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
+
   protected readonly breadcrumbs = [{ label: 'School Setup' }, { label: 'Import Masters' }];
 
   protected readonly totalSelected = computed(() => this.groups.reduce((n, g) => n + this.selection()[g.key].length, 0));
+
+  constructor() {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      const mq = window.matchMedia('(max-width: 640px)');
+      this.narrow.set(mq.matches);
+      const on = (e: MediaQueryListEvent) => this.narrow.set(e.matches);
+      mq.addEventListener('change', on);
+      this.destroyRef.onDestroy(() => mq.removeEventListener('change', on));
+    }
+    effect((onCleanup) => {
+      const el = this.bar()?.nativeElement;
+      if (!el || typeof ResizeObserver === 'undefined') return;
+      const ro = new ResizeObserver(() => {
+        const h = Math.ceil(el.getBoundingClientRect().height);
+        if (h > 0) this.barHeight.set(h);
+      });
+      ro.observe(el);
+      onCleanup(() => ro.disconnect());
+    });
+  }
 
   ngOnInit(): void {
     this.load();
@@ -74,7 +102,7 @@ export class ImportMastersComponent implements OnInit {
   }
 
   protected toggle(group: MasterImportGroup, item: MasterImportItem): void {
-    if (item.alreadyAdded) return;
+    if (item.alreadyAdded || this.importing()) return;
     this.selection.update((s) => {
       const current = s[group.key];
       const next = current.includes(item.key) ? current.filter((k) => k !== item.key) : [...current, item.key];
@@ -91,14 +119,50 @@ export class ImportMastersComponent implements OnInit {
     return this.selectable(group).length;
   }
 
-  protected allSelected(group: MasterImportGroup): boolean {
-    const n = this.selectableCount(group);
-    return n > 0 && this.selection()[group.key].length === n;
+  protected addedCount(group: MasterImportGroup): number {
+    return this.items(group).length - this.selectableCount(group);
   }
 
-  protected toggleAll(group: MasterImportGroup): void {
-    const next = this.allSelected(group) ? [] : this.selectable(group).map((i) => i.key);
-    this.selection.update((s) => ({ ...s, [group.key]: next }));
+  /** Selects every item that can still be added (already-added ones are never selectable). */
+  protected selectAll(group: MasterImportGroup): void {
+    if (this.importing()) return;
+    this.selection.update((s) => ({ ...s, [group.key]: this.selectable(group).map((i) => i.key) }));
+  }
+
+  protected clearGroup(group: MasterImportGroup): void {
+    this.selection.update((s) => ({ ...s, [group.key]: [] }));
+  }
+
+  /** "N selected · M available · K already added" */
+  protected countText(group: MasterImportGroup): string {
+    return `${this.selectedIn(group)} selected · ${this.selectableCount(group)} available · ${this.addedCount(group)} already added`;
+  }
+
+  /** Every item of the group is already in the school: shown as one summary row until expanded. */
+  protected isCollapsed(group: MasterImportGroup): boolean {
+    const n = this.items(group).length;
+    return n > 0 && this.selectableCount(group) === 0 && !this.expanded().has(group.key);
+  }
+
+  protected toggleExpanded(group: MasterImportGroup): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(group.key)) next.add(group.key);
+      return next;
+    });
+  }
+
+  protected summaryText(group: MasterImportGroup): string {
+    return `All ${this.items(group).length} ${group.title.toLowerCase()} already added`;
+  }
+
+  protected onKey(event: Event, group: MasterImportGroup, item: MasterImportItem): void {
+    event.preventDefault(); // Space must not scroll the page
+    this.toggle(group, item);
+  }
+
+  protected tileLabel(item: MasterImportItem): string {
+    return item.alreadyAdded ? `${item.name}, already added` : item.name;
   }
 
   protected selectedIn(group: MasterImportGroup): number {
