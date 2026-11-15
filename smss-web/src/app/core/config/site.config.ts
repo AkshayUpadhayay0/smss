@@ -14,7 +14,7 @@ export const SITE_CONFIG = {
   url: environment.siteUrl.replace(/\/+$/, ''),
   /** Path under the site root of the social-sharing picture (1200x630). */
   ogImagePath: '/og-image.png',
-  email: 'smss.info@gmail.com',
+  email: 'smsserp.info@gmail.com',
   phone: '+91 9149241421',
   phoneHref: '+919149241421',
   address: 'Dehradun, Uttarakhand, India',
