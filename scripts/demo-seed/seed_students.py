@@ -71,7 +71,7 @@ def students(key):
                 stid = r['studentId']; fee = r.get('feeStructureName'); warn = r.get('warnings')
             rec = dict(studentId=stid, name=f'{p["fn"]} {p["ln"]}', **{'class': c}, section=sn, ord=k, via=via, fee=fee, warnings=warn,
                        guardian=g['guardianName'], guardianRel=g['guardianRelationship'], guardianMobile=g['guardianMobileNumber'], sibling=sibling, login=None)
-            if sibling: s('POST', f'/StudentFee/{stid}/concessions', {'concessionId': st['concessions']['SIBLING'], 'remarks': 'Sibling studying in the same school'})
+            # (assigning a concession to a student is retired: concessions are chosen, with a reason, when a payment is collected)
             st['students'].append(rec); done.add((c, sn, k))
             if len(st['students']) % 20 == 0: save()
     save(); print('students', len(st['students']))
@@ -90,8 +90,9 @@ def students(key):
 
     # concessions beyond sibling: staff ward + merit on one student each
     if not st.get('extraConcessions'):
-        pick = [x for x in st['students'] if x['class'] == 'Class 2'][3]; s('POST', f'/StudentFee/{pick["studentId"]}/concessions', {'concessionId': st['concessions']['STAFFWARD'], 'remarks': 'Ward of a staff member'})
-        pick2 = [x for x in st['students'] if x['class'] == 'Class 8'][4]; s('POST', f'/StudentFee/{pick2["studentId"]}/concessions', {'concessionId': st['concessions']['MERIT'], 'remarks': 'Topper of previous session'})
+        # (concession assignment is retired: StudentFee/{id}/concessions now answers 409; pick the same students only so the saved state stays the same)
+        pick = [x for x in st['students'] if x['class'] == 'Class 2'][3]
+        pick2 = [x for x in st['students'] if x['class'] == 'Class 8'][4]
         st['extraConcessions'] = [pick['studentId'], pick2['studentId']]; save()
 
     # student logins: 3 per class (2 from A + 1 from B for the two-section classes), prefer the admission-pipeline student

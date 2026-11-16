@@ -45,15 +45,20 @@ namespace smss_api_service_layer.service
                 var totals = await _repo.GetDashboardTotalsAsync(schoolId, academicYearId, classId, sectionId, today, today.AddDays(days), ct);
                 var months = await _repo.GetCollectionByMonthAsync(schoolId, academicYearId, classId, sectionId, ct);
                 var taxRows = await _repo.GetTaxCollectedAsync(schoolId, academicYearId, classId, sectionId, ct);
+                var concessionRows = await _repo.GetConcessionGivenAsync(schoolId, academicYearId, classId, sectionId, ct);
+                var concessionGiven = concessionRows.Sum(c => c.Amount);
 
                 return Result(200, "Successfully fetched", new FeeDashboardDto
                 {
                     AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, SectionId = sectionId,
                     UpcomingDays = days, AsOf = today,
-                    TotalDue = totals.TotalDue, TotalCollected = totals.TotalCollected,
+                    // cash collected = what the installments count as paid minus the discounted part; outstanding is driven by what is PAID (a discounted installment is cleared)
+                    TotalDue = totals.TotalDue, TotalCollected = totals.TotalPaid - concessionGiven,
+                    ConcessionGiven = concessionGiven,
+                    ConcessionByType = concessionRows.Select(c => new FeeConcessionBreakdownDto { ConcessionId = c.ConcessionId, ConcessionName = c.ConcessionName, ConcessionCode = c.ConcessionCode, ConcessionAmount = c.Amount, PaymentCount = c.PaymentCount }).ToList(),
                     TaxCollected = taxRows.Sum(t => t.Amount),
                     TaxByType = taxRows.Select(t => new FeeTaxBreakdownDto { TaxTypeId = t.TaxTypeId, TaxName = t.TaxName, TaxCode = t.TaxCode, TaxAmount = t.Amount, PaymentCount = t.PaymentCount }).ToList(),
-                    TotalOutstanding = Math.Max(totals.TotalDue - totals.TotalCollected, 0),
+                    TotalOutstanding = Math.Max(totals.TotalDue - totals.TotalPaid, 0),
                     OverdueAmount = totals.OverdueAmount, OverdueCount = totals.OverdueCount,
                     UpcomingAmount = totals.UpcomingAmount, UpcomingCount = totals.UpcomingCount,
                     CollectionByMonth = FillMonths(year.StartDate, year.EndDate, months),
@@ -91,17 +96,19 @@ namespace smss_api_service_layer.service
                 var students = await _repo.GetClassStudentsAsync(schoolId, academicYearId, classId, sectionId, ct);
                 // the same one grouped query the student list uses, for the whole class at once
                 var fees = await _students.GetFeeAggregatesAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), SchoolClock.Today(), ct);
+                var concessions = await _repo.GetConcessionGivenByStudentAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), ct);
 
                 var rows = students.Select(s =>
                 {
                     fees.TryGetValue(s.StudentId, out var f);
-                    var due = f?.TotalDue ?? 0; var paid = f?.TotalPaid ?? 0;
+                    var due = f?.TotalDue ?? 0; var paid = f?.TotalPaid ?? 0;   // paid = what the installments count as paid (cash + discounted part)
+                    var concession = concessions.GetValueOrDefault(s.StudentId);
                     return new ClassFeeRowDto
                     {
                         StudentId = s.StudentId,
                         FullName = string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))),
                         RollNumber = s.RollNumber, SectionName = s.SectionName,
-                        TotalDue = due, TotalCollected = paid, Outstanding = Math.Max(due - paid, 0),
+                        TotalDue = due, TotalCollected = paid - concession, Concession = concession, Outstanding = Math.Max(due - paid, 0),
                         Status = FeeSchedule.Overall(f != null, due, paid, f?.OverdueCount ?? 0)
                     };
                 }).OrderBy(r => r.SectionName, StringComparer.OrdinalIgnoreCase).ThenBy(r => int.TryParse(r.RollNumber, out var n) ? n : int.MaxValue).ThenBy(r => r.RollNumber, StringComparer.OrdinalIgnoreCase)
@@ -111,12 +118,39 @@ namespace smss_api_service_layer.service
                 {
                     AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, ClassName = className, SectionId = sectionId,
                     Students = rows,
-                    TotalDue = rows.Sum(r => r.TotalDue), TotalCollected = rows.Sum(r => r.TotalCollected), TotalOutstanding = rows.Sum(r => r.Outstanding),
+                    TotalDue = rows.Sum(r => r.TotalDue), TotalCollected = rows.Sum(r => r.TotalCollected), TotalConcession = rows.Sum(r => r.Concession), TotalOutstanding = rows.Sum(r => r.Outstanding),
                     StatusCounts = FeeSchedule.OverallStatuses.ToDictionary(s => s, s => rows.Count(r => r.Status == s)),
                     CanManage = canManage
                 });
             }
             catch (Exception ex) { return Error<ClassFeeReportDto>(ex, "building the class fee report"); }
+        }
+
+        public async Task<ApiResponse<ConcessionsGivenDto>> GetConcessionsGivenAsync(string? schoolId, DateOnly? from, DateOnly? to, int page, int pageSize, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<ConcessionsGivenDto>(400, TenantMessages.NoSchool, null);
+            if (from != null && to != null && to < from) return Result<ConcessionsGivenDto>(400, "The end date can't be before the start date.", null);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 25;
+            if (pageSize > 100) pageSize = 100;
+            try
+            {
+                // the dates are India calendar days, like every other date on the fee screens
+                DateTime? fromUtc = from == null ? null : SchoolClock.StartOfDayUtc(from.Value);
+                DateTime? toExclusiveUtc = to == null ? null : SchoolClock.StartOfDayUtc(to.Value.AddDays(1));
+                var result = await _repo.GetConcessionLogAsync(schoolId, fromUtc, toExclusiveUtc, page, pageSize, ct);
+                return Result(200, "Successfully fetched", new ConcessionsGivenDto
+                {
+                    Page = page, PageSize = pageSize, TotalItems = result.TotalRows, TotalAmount = result.ActiveTotal,
+                    Items = result.Rows.Select(r => new ConcessionGivenRowDto
+                    {
+                        PaymentId = r.PaymentId, ReceiptNumber = r.ReceiptNumber, PaymentDate = r.PaymentDate, StudentId = r.StudentId, StudentName = r.StudentName,
+                        ConcessionName = r.ConcessionName, ConcessionCode = r.ConcessionCode, ConcessionType = r.ConcessionType, ConcessionValue = r.ConcessionValue,
+                        ConcessionAmount = r.ConcessionAmount, Reason = r.Reason, AppliedByName = r.AppliedByName, Status = r.Status
+                    }).ToList()
+                });
+            }
+            catch (Exception ex) { return Error<ConcessionsGivenDto>(ex, "listing the concessions given"); }
         }
 
         private static ApiResponse<T> Result<T>(int code, string message, T? data) =>

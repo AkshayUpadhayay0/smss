@@ -79,51 +79,10 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error(ex, "assigning fee structure"); }
         }
 
-        public async Task<ApiResponse<StudentFeesDto>> ApplyConcessionAsync(string? schoolId, string studentId, long approvedByUserId, ApplyConcessionRequest req, CancellationToken ct)
-        {
-            if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
-            try
-            {
-                var student = await _repo.GetStudentAsync(schoolId, studentId, ct);
-                if (student == null) return Result(404, "Student not found.", null);
-
-                var enrollment = await CurrentEnrollmentAsync(schoolId, studentId, ct);
-                var assignment = enrollment == null ? null : await _repo.GetAssignmentAsync(schoolId, studentId, enrollment.AcademicYearId, track: false, ct);
-                if (assignment == null) return Result(400, "Assign a fee structure to the student before adding concessions.", null);
-
-                var concession = await _repo.GetConcessionAsync(schoolId, req.ConcessionId!.Value, ct);
-                if (concession == null) return Result(400, "The selected concession was not found for your school.", null);
-                if (!concession.IsActive) return Result(400, "That concession is inactive. Activate it first.", null);
-
-                // A concession on one fee head only makes sense when the student's structure has that fee head
-                if (concession.ApplicableFeeTypeId is long ft)
-                {
-                    var lines = await _repo.GetStructureLinesAsync(assignment.FeeStructureId, ct);
-                    if (lines.All(l => l.FeeTypeId != ft))
-                        return Result(400, "That concession is for a fee head that is not in this student's fee structure.", null);
-                }
-
-                if (await _repo.GetAppliedConcessionAsync(studentId, concession.ConcessionId, track: false, ct) != null)
-                    return Result(409, "This concession is already applied to the student.", null);
-
-                var now = DateTime.UtcNow;
-                await _repo.AddAppliedConcessionAsync(new TbStudentFeeConcession
-                {
-                    StudentId = studentId,
-                    ConcessionId = concession.ConcessionId,
-                    ApprovedBy = approvedByUserId,
-                    Remarks = string.IsNullOrWhiteSpace(req.Remarks) ? null : req.Remarks.Trim(),
-                    CreatedAt = now,
-                    UpdatedAt = now
-                }, ct);
-                await _repo.SaveChangesAsync(ct);
-                await _billing.SyncAsync(schoolId, studentId, enrollment!.AcademicYearId, null, ct);   // net amounts and unpaid installments follow the concession
-
-                return Result(201, "Concession applied.", await BuildAsync(schoolId, student, ct));
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Result(409, "This concession is already applied to the student.", null); }
-            catch (Exception ex) { return Error(ex, "applying fee concession"); }
-        }
+        // Retired: a concession is no longer ASSIGNED to a student. It is chosen, with a written reason, by whoever collects a payment (POST api/FeePayment/students/{id} with concessionId).
+        // Assignments that already exist keep reducing the installments exactly as before and can still be removed (by a School Admin); nothing new can be added here.
+        public Task<ApiResponse<StudentFeesDto>> ApplyConcessionAsync(string? schoolId, string studentId, long approvedByUserId, ApplyConcessionRequest req, CancellationToken ct) =>
+            Task.FromResult(string.IsNullOrWhiteSpace(schoolId) ? Result(400, TenantMessages.NoSchool, null) : Result(409, "Concessions are now chosen when collecting a payment.", null));
 
         public async Task<ApiResponse<StudentFeesDto>> RemoveConcessionAsync(string? schoolId, string studentId, long concessionId, CancellationToken ct)
         {
@@ -221,14 +180,8 @@ namespace smss_api_service_layer.service
                 Remarks = c.Remarks, ApprovedByName = c.ApprovedByName, AppliedAt = c.AppliedAt, IsApplicable = Applicable(c)
             }).ToList();
 
-            var appliedIds = applied.Select(c => c.ConcessionId).ToHashSet();
-            dto.AvailableConcessions = (await _repo.GetActiveConcessionsAsync(schoolId, ct))
-                .Where(c => !appliedIds.Contains(c.ConcessionId) && (c.ApplicableFeeTypeId == null || feeTypesInStructure.Contains(c.ApplicableFeeTypeId.Value)))
-                .Select(c => new StudentFeeConcessionOptionDto
-                {
-                    ConcessionId = c.ConcessionId, ConcessionName = c.ConcessionName, ConcessionCode = c.ConcessionCode,
-                    ConcessionType = c.ConcessionType, Value = c.Value, ApplicableFeeTypeId = c.ApplicableFeeTypeId, ApplicableFeeTypeName = c.ApplicableFeeTypeName
-                }).ToList();
+            // nothing can be assigned any more, so there is nothing to offer (the field stays, empty, for older clients)
+            dto.AvailableConcessions = new List<StudentFeeConcessionOptionDto>();
 
             return dto;
         }

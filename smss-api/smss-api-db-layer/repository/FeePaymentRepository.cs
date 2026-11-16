@@ -17,6 +17,35 @@ namespace smss_api_db_layer.repository
         public Task<TbTaxType?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct) =>
             _db.TaxTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && t.TaxTypeId == taxTypeId).FirstOrDefaultAsync(ct);
 
+        public Task<TbFeeConcessions?> GetConcessionAsync(string schoolId, long concessionId, CancellationToken ct) =>
+            _db.FeeConcessions.AsNoTracking().Where(c => c.SchoolId == schoolId && c.ConcessionId == concessionId).FirstOrDefaultAsync(ct);
+
+        public async Task<List<ConcessionOptionRow>> GetActiveConcessionsAsync(string schoolId, CancellationToken ct)
+        {
+            var rows = await _db.FeeConcessions.AsNoTracking().Where(c => c.SchoolId == schoolId && c.IsActive).OrderBy(c => c.ConcessionName).ToListAsync(ct);
+            var feeTypeNames = await _db.FeeTypes.AsNoTracking().Where(t => t.SchoolId == schoolId).ToDictionaryAsync(t => t.FeeTypeId, t => t.FeeTypeName, ct);
+            return rows.Select(c => new ConcessionOptionRow
+            {
+                ConcessionId = c.ConcessionId, ConcessionName = c.ConcessionName, ConcessionCode = c.ConcessionCode,
+                ConcessionType = c.ConcessionType, Value = c.Value, ApplicableFeeTypeId = c.ApplicableFeeTypeId,
+                ApplicableFeeTypeName = c.ApplicableFeeTypeId is long ft && feeTypeNames.TryGetValue(ft, out var n) ? n : null
+            }).ToList();
+        }
+
+        public Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, CancellationToken ct) =>
+            _db.StudentFeeConcessions.AsNoTracking().AnyAsync(a => a.StudentId == studentId && a.ConcessionId == concessionId
+                && _db.Students.Any(s => s.SchoolId == schoolId && s.StudentId == a.StudentId), ct);
+
+        public async Task<Dictionary<long, long>> GetDueFeeTypeIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct)
+        {
+            var ids = dueIds.ToArray();
+            var rows = await (from d in _db.StudentFeeDues.AsNoTracking()
+                              join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                              where ids.Contains(d.FeeDueId)
+                              select new { d.FeeDueId, i.FeeTypeId }).ToListAsync(ct);
+            return rows.ToDictionary(r => r.FeeDueId, r => r.FeeTypeId);
+        }
+
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
         public Task<List<TbStudentFeeDue>> LockDuesAsync(string schoolId, string studentId, IReadOnlyCollection<long> dueIds, CancellationToken ct)
@@ -74,7 +103,7 @@ namespace smss_api_db_layer.repository
             var ids = payments.Select(p => p.PaymentId).ToList();
             var counts = await _db.FeePaymentAllocations.AsNoTracking().Where(a => ids.Contains(a.PaymentId))
                 .GroupBy(a => a.PaymentId).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
-            var userIds = payments.SelectMany(p => new[] { p.CollectedBy, p.VoidedBy }).Where(u => u != null).Select(u => u!.Value).Distinct().ToList();
+            var userIds = payments.SelectMany(p => new[] { p.CollectedBy, p.VoidedBy, p.ConcessionAppliedBy }).Where(u => u != null).Select(u => u!.Value).Distinct().ToList();
             var names = userIds.Count == 0 ? new Dictionary<long, string>()
                 : await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.UserId)).ToDictionaryAsync(u => u.UserId, u => u.DisplayName ?? u.OrgUserId ?? string.Empty, ct);
 
@@ -83,6 +112,7 @@ namespace smss_api_db_layer.repository
                 Payment = p,
                 CollectedByName = p.CollectedBy is long u && names.TryGetValue(u, out var n) ? n : null,
                 VoidedByName = p.VoidedBy is long v && names.TryGetValue(v, out var vn) ? vn : null,
+                ConcessionAppliedByName = p.ConcessionAppliedBy is long cb && names.TryGetValue(cb, out var cn) ? cn : null,
                 DueCount = counts.GetValueOrDefault(p.PaymentId)
             }).ToList();
         }

@@ -124,7 +124,7 @@ namespace smss_api_tests
             // there is no GET {id} and no PDF endpoint: the receipt route is the only read of a payment by id, and print / PDF are drawn in the browser from that same response
             var gets = typeof(FeePaymentController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .SelectMany(m => m.GetCustomAttributes<HttpGetAttribute>()).Select(a => a.Template).OrderBy(t => t, StringComparer.Ordinal).ToList();
-            Assert.Equal(new[] { "students/{studentId:length(1,20)}", "{paymentId:long}/receipt" }, gets);
+            Assert.Equal(new[] { "concessions", "students/{studentId:length(1,20)}", "{paymentId:long}/receipt" }, gets);   // "concessions" = the active concessions for the payment form (School Admin / Accountant)
         }
 
         // ============================================================== receipt: who may see which payment (scratch PostgreSQL)

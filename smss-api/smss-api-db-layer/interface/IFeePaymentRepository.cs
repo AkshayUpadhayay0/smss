@@ -19,6 +19,7 @@ namespace smss_api_db_layer.@interface
         public TbFeePayment Payment { get; set; } = null!;
         public string? CollectedByName { get; set; }
         public string? VoidedByName { get; set; }
+        public string? ConcessionAppliedByName { get; set; }
         public int DueCount { get; set; }
     }
 
@@ -38,6 +39,14 @@ namespace smss_api_db_layer.@interface
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>One tax type of THIS school (active or not), or null: another school's id answers null too.</summary>
         Task<TbTaxType?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct);
+        /// <summary>One concession of THIS school (active or not), or null: another school's id answers null too.</summary>
+        Task<TbFeeConcessions?> GetConcessionAsync(string schoolId, long concessionId, CancellationToken ct);
+        /// <summary>The school's active concessions, by name (for the payment form).</summary>
+        Task<List<ConcessionOptionRow>> GetActiveConcessionsAsync(string schoolId, CancellationToken ct);
+        /// <summary>True when this student already has this concession assigned in tb_student_fee_concessions (it is already reducing their installments).</summary>
+        Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, CancellationToken ct);
+        /// <summary>Installment id -> the fee type it belongs to, for the installments asked about.</summary>
+        Task<Dictionary<long, long>> GetDueFeeTypeIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct);
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
 
         /// <summary>

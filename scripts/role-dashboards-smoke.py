@@ -123,9 +123,11 @@ for school in a.schools:
         m, pr = byday.get(pt['date'][:10], (0, 0))
         ok = ok and (pt['marked'], pt['present']) == (m, pr) and pt['presentPercent'] == (None if m == 0 else round(pr * 100 / m + 1e-9, 1))
     check('principal: 14-day trend, every day', ok)
-    fee = one(f"""select coalesce(sum(d.amount_due),0), coalesce(sum(d.amount_paid),0) from tb_student_fee_dues d join tb_student_fee_items i on i.student_fee_item_id=d.student_fee_item_id
+    # collected = CASH (what the installments count as paid minus the concession given at payment time); outstanding is driven by what is PAID
+    fee = one(f"""select coalesce(sum(d.amount_due),0), coalesce(sum(d.amount_paid),0) - coalesce(sum((select sum(al.concession_amount) from tb_fee_payment_allocations al join tb_fee_payments p on p.payment_id=al.payment_id
+            where al.fee_due_id=d.fee_due_id and p.status='Active')),0), coalesce(sum(d.amount_paid),0) from tb_student_fee_dues d join tb_student_fee_items i on i.student_fee_item_id=d.student_fee_item_id
         where d.school_id='{school}' and i.school_id='{school}' and i.academic_year_id={Y[0]}""")
-    check('principal: fee due / collected / outstanding', (num(st['feeTotalDue']), num(st['feeCollected']), num(st['feeOutstanding'])) == (num(fee[0]), num(fee[1]), max(num(fee[0]) - num(fee[1]), 0)), f"{st['feeTotalDue']},{st['feeCollected']},{st['feeOutstanding']} vs {fee}")
+    check('principal: fee due / collected / outstanding', (num(st['feeTotalDue']), num(st['feeCollected']), num(st['feeOutstanding'])) == (num(fee[0]), num(fee[1]), max(num(fee[0]) - num(fee[2]), 0)), f"{st['feeTotalDue']},{st['feeCollected']},{st['feeOutstanding']} vs {fee}")
     leave = int(sql(f"select count(*) from tb_employee_leave_requests where school_id='{school}' and status='Pending'"))
     check('principal: pending employee leave', d['alerts']['pendingEmployeeLeaves'] == leave, f"{d['alerts']['pendingEmployeeLeaves']} vs {leave}")
     for key, name in (('admissionsToDecide', 'UNDER_REVIEW'), ('admissionsAwaitingReview', 'APPLICATION_SUBMITTED')):
@@ -148,7 +150,7 @@ for school in a.schools:
     ys = ','.join(map(str, spans)) or '0'
 
     def month_amount(offset):
-        return num(sql(f"""select coalesce(sum(al.allocated_amount),0) from tb_fee_payment_allocations al join tb_fee_payments p on p.payment_id=al.payment_id
+        return num(sql(f"""select coalesce(sum(al.allocated_amount - al.concession_amount),0) from tb_fee_payment_allocations al join tb_fee_payments p on p.payment_id=al.payment_id
             join tb_student_fee_dues d on d.fee_due_id=al.fee_due_id join tb_student_fee_items i on i.student_fee_item_id=d.student_fee_item_id
             where p.school_id='{school}' and p.status='Active' and i.academic_year_id in ({ys})
               and date_trunc('month', p.payment_date at time zone 'Asia/Kolkata') = date_trunc('month','{T}'::date) - interval '{offset} months'"""))

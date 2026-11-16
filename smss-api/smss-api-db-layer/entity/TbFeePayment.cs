@@ -17,7 +17,7 @@ namespace smss_api_db_layer.entity
         [Column("payment_date")] public DateTime PaymentDate { get; set; }
         /// <summary>The TOTAL paid: <see cref="FeeAmount"/> + <see cref="TaxAmount"/> (a CHECK enforces it).</summary>
         [Column("amount", TypeName = "numeric(12,2)")] public decimal Amount { get; set; }
-        /// <summary>The part that went against the installments (the allocations add up to exactly this). Fee reports read this, never <see cref="Amount"/>.</summary>
+        /// <summary>The CASH fee: the gross applied to installments minus <see cref="ConcessionAmount"/>. The allocations add up to FeeAmount + ConcessionAmount. Cash reports read this, never <see cref="Amount"/>.</summary>
         [Column("fee_amount", TypeName = "numeric(12,2)")] public decimal FeeAmount { get; set; }
         /// <summary>Tax added on top of the fee, computed by the server (never sent by the client). 0 when no tax type was chosen.</summary>
         [Column("tax_amount", TypeName = "numeric(12,2)")] public decimal TaxAmount { get; set; }
@@ -26,6 +26,18 @@ namespace smss_api_db_layer.entity
         [Column("tax_name_snapshot")][StringLength(100)] public string? TaxNameSnapshot { get; set; }
         [Column("tax_code_snapshot")][StringLength(30)] public string? TaxCodeSnapshot { get; set; }
         [Column("tax_rate_snapshot", TypeName = "numeric(5,2)")] public decimal? TaxRateSnapshot { get; set; }
+        /// <summary>The discount given on this payment, computed by the server (never sent by the client). 0 when no concession was chosen. Tax is on FeeAmount, i.e. AFTER this discount.</summary>
+        [Column("concession_amount", TypeName = "numeric(12,2)")] public decimal ConcessionAmount { get; set; }
+        [Column("concession_id")] public long? ConcessionId { get; set; }
+        /// <summary>Name, code, type and value of the concession AT THE TIME of the payment: later edits never change an old receipt.</summary>
+        [Column("concession_name_snapshot")][StringLength(100)] public string? ConcessionNameSnapshot { get; set; }
+        [Column("concession_code_snapshot")][StringLength(30)] public string? ConcessionCodeSnapshot { get; set; }
+        [Column("concession_type_snapshot")][StringLength(20)] public string? ConcessionTypeSnapshot { get; set; }
+        [Column("concession_value_snapshot", TypeName = "numeric(10,2)")] public decimal? ConcessionValueSnapshot { get; set; }
+        /// <summary>Why the concession was given (required whenever one is chosen).</summary>
+        [Column("concession_reason")] public string? ConcessionReason { get; set; }
+        /// <summary>The user (tb_users.user_id) who applied it, from the token.</summary>
+        [Column("concession_applied_by")] public long? ConcessionAppliedBy { get; set; }
         /// <summary>Cash, Cheque, UPI, Card, Bank Transfer or Online.</summary>
         [Column("payment_mode")][StringLength(30)] public string PaymentMode { get; set; } = null!;
         [Column("receipt_number")][StringLength(50)] public string ReceiptNumber { get; set; } = null!;

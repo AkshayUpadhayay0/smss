@@ -13,7 +13,7 @@ namespace smss_api_db_layer.repository
         public async Task<decimal> GetCollectedBetweenAsync(string schoolId, DateTime fromUtc, DateTime toExclusiveUtc, CancellationToken ct) =>
             await _db.FeePayments.AsNoTracking()
                 .Where(p => p.SchoolId == schoolId && p.Status == Active && p.PaymentDate >= fromUtc && p.PaymentDate < toExclusiveUtc)
-                .SumAsync(p => (decimal?)p.FeeAmount, ct) ?? 0m;   // fee collected: tax is not fee income, same as the Fee Dashboard
+                .SumAsync(p => (decimal?)p.FeeAmount, ct) ?? 0m;   // CASH fee collected: after any concession, and tax is not fee income; same as the Fee Dashboard
 
         public async Task<AccountantYearRow?> GetYearContainingAsync(string schoolId, DateOnly date, CancellationToken ct)
         {

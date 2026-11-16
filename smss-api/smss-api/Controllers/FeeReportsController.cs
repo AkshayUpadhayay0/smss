@@ -16,6 +16,17 @@ namespace smss_api.Controllers
         private readonly IFeeReportService _service;
         public FeeReportsController(IFeeReportService service) => _service = service;
 
+        // GET api/FeeReports/concessions-given?from=2026-11-01&to=2026-11-30&page=1&pageSize=25
+        // The audit list of concessions given at payment time. School Admin, Accountant and Principal (read-only); the school comes from the token.
+        [HttpGet("concessions-given")]
+        public async Task<IActionResult> GetConcessionsGiven([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default)
+        {
+            if (!User.CanViewFees())
+                return StatusCode(403, new ApiResponse<object> { Status = false, StatusCode = 403, Message = "You do not have access to the fee reports.", Data = null });
+            var response = await _service.GetConcessionsGivenAsync(User.GetSchoolId(), from, to, page, pageSize, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
         // GET api/FeeReports/class/{classId}?academicYearId=1&sectionId=
         [HttpGet("class/{classId:long}")]
         public async Task<IActionResult> GetClassReport(long classId, [FromQuery] long? academicYearId, [FromQuery] long? sectionId, CancellationToken ct)

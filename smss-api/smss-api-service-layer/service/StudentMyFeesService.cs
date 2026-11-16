@@ -56,7 +56,9 @@ namespace smss_api_service_layer.service
                     }).ToList(),
                     // a voided payment no longer counts for anything, and who voided it and why is internal: only Active payments are listed
                     Payments = pays.Data.Where(p => p.Status == "Active").OrderByDescending(p => p.PaymentDate)
-                        .Select(p => new MyFeePaymentDto { PaymentDate = p.PaymentDate, Amount = p.Amount, FeeAmount = p.FeeAmount, TaxName = p.TaxName, TaxCode = p.TaxCode, TaxRatePercent = p.TaxRatePercent, TaxAmount = p.TaxAmount, TotalAmount = p.TotalAmount, ReceiptNumber = p.ReceiptNumber, PaymentMode = p.PaymentMode }).ToList()
+                        .Select(p => new MyFeePaymentDto { PaymentDate = p.PaymentDate, Amount = p.Amount, FeeAmount = p.FeeAmount, GrossAmount = p.GrossAmount, NetFeeAmount = p.NetFeeAmount,
+                            ConcessionName = p.ConcessionName, ConcessionCode = p.ConcessionCode, ConcessionType = p.ConcessionType, ConcessionValue = p.ConcessionValue, ConcessionAmount = p.ConcessionAmount,   // never the reason: that is for staff
+                            TaxName = p.TaxName, TaxCode = p.TaxCode, TaxRatePercent = p.TaxRatePercent, TaxAmount = p.TaxAmount, TotalAmount = p.TotalAmount, ReceiptNumber = p.ReceiptNumber, PaymentMode = p.PaymentMode }).ToList()
                 });
             }
             catch (Exception ex)

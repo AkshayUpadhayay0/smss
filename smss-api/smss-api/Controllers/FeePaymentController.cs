@@ -19,6 +19,14 @@ namespace smss_api.Controllers
 
         private IActionResult Reply<T>(ApiResponse<T> response) => StatusCode(response.StatusCode, response);
 
+        // GET api/FeePayment/concessions   (the school's ACTIVE concessions, for the Collect Payment form: School Admin and Accountant, who can collect)
+        [HttpGet("concessions")]
+        public async Task<IActionResult> GetConcessions(CancellationToken ct)
+        {
+            if (!User.CanManageFees()) return this.Forbidden("Only a School Admin or an Accountant can choose a concession for a payment.");
+            return Reply(await _service.GetConcessionChoicesAsync(User.GetSchoolId(), ct));
+        }
+
         // POST api/FeePayment/students/{studentId}
         // Body: { amount, paymentMode, allocations?: [{ feeDueId, amount }], remarks }. No allocations = oldest installment first.
         [HttpPost("students/{studentId:length(1,20)}")]

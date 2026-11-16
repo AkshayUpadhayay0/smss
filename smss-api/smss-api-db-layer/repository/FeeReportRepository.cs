@@ -58,8 +58,64 @@ namespace smss_api_db_layer.repository
                 join i in ItemsInScope(schoolId, academicYearId, classId, sectionId) on d.StudentFeeItemId equals i.StudentFeeItemId
                 where p.SchoolId == schoolId && p.Status == "Active"
                 group a by new { p.PaymentDate.AddMinutes(330).Year, p.PaymentDate.AddMinutes(330).Month } into g
-                select new { g.Key.Year, g.Key.Month, Amount = g.Sum(x => x.AllocatedAmount) }).ToListAsync(ct);
+                // CASH collected: what went against the installments minus the part that was discounted
+                select new { g.Key.Year, g.Key.Month, Amount = g.Sum(x => x.AllocatedAmount - x.ConcessionAmount) }).ToListAsync(ct);
             return rows.Select(r => new CollectionMonth(r.Year, r.Month, r.Amount)).ToList();
+        }
+
+        public async Task<List<ConcessionGivenRow>> GetConcessionGivenAsync(string schoolId, long academicYearId, long? classId, long? sectionId, CancellationToken ct)
+        {
+            var rows = await (
+                from a in _db.FeePaymentAllocations.AsNoTracking()
+                join p in _db.FeePayments.AsNoTracking() on a.PaymentId equals p.PaymentId
+                join d in _db.StudentFeeDues.AsNoTracking() on a.FeeDueId equals d.FeeDueId
+                join i in ItemsInScope(schoolId, academicYearId, classId, sectionId) on d.StudentFeeItemId equals i.StudentFeeItemId
+                where p.SchoolId == schoolId && p.Status == "Active" && p.ConcessionId != null && a.ConcessionAmount > 0
+                group new { a, p } by p.ConcessionId into g
+                select new { ConcessionId = g.Key!.Value, Amount = g.Sum(x => x.a.ConcessionAmount), Count = g.Select(x => x.p.PaymentId).Distinct().Count() }).ToListAsync(ct);
+            if (rows.Count == 0) return new List<ConcessionGivenRow>();
+            var ids = rows.Select(r => r.ConcessionId).ToList();
+            var masters = await _db.FeeConcessions.AsNoTracking().Where(c => c.SchoolId == schoolId && ids.Contains(c.ConcessionId)).ToDictionaryAsync(c => c.ConcessionId, ct);
+            return rows.Where(r => masters.ContainsKey(r.ConcessionId))
+                .Select(r => new ConcessionGivenRow(r.ConcessionId, masters[r.ConcessionId].ConcessionName, masters[r.ConcessionId].ConcessionCode, r.Amount, r.Count))
+                .OrderBy(r => r.ConcessionName).ToList();
+        }
+
+        public async Task<Dictionary<string, decimal>> GetConcessionGivenByStudentAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        {
+            if (studentIds.Count == 0) return new Dictionary<string, decimal>();
+            var ids = studentIds.ToArray();
+            return await (
+                from a in _db.FeePaymentAllocations.AsNoTracking()
+                join p in _db.FeePayments.AsNoTracking() on a.PaymentId equals p.PaymentId
+                join d in _db.StudentFeeDues.AsNoTracking() on a.FeeDueId equals d.FeeDueId
+                join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                where p.SchoolId == schoolId && p.Status == "Active" && a.ConcessionAmount > 0 && i.SchoolId == schoolId && i.AcademicYearId == academicYearId && ids.Contains(i.StudentId)
+                group a by i.StudentId into g
+                select new { g.Key, Amount = g.Sum(x => x.ConcessionAmount) }).ToDictionaryAsync(x => x.Key, x => x.Amount, ct);
+        }
+
+        public async Task<ConcessionLogPage> GetConcessionLogAsync(string schoolId, DateTime? fromUtc, DateTime? toExclusiveUtc, int page, int pageSize, CancellationToken ct)
+        {
+            var q = _db.FeePayments.AsNoTracking().Where(p => p.SchoolId == schoolId && p.ConcessionId != null
+                && (fromUtc == null || p.PaymentDate >= fromUtc) && (toExclusiveUtc == null || p.PaymentDate < toExclusiveUtc));
+            var total = await q.CountAsync(ct);
+            var activeTotal = await q.Where(p => p.Status == "Active").SumAsync(p => (decimal?)p.ConcessionAmount, ct) ?? 0m;
+            var rows = await q.OrderByDescending(p => p.PaymentDate).ThenByDescending(p => p.PaymentId).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+            var studentIds = rows.Select(r => r.StudentId).Distinct().ToList();
+            var students = await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+                .Select(s => new { s.StudentId, s.FirstName, s.MiddleName, s.LastName }).ToListAsync(ct);
+            var nameOf = students.ToDictionary(s => s.StudentId, s => string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(x => !string.IsNullOrWhiteSpace(x))));
+            var userIds = rows.Where(r => r.ConcessionAppliedBy != null).Select(r => r.ConcessionAppliedBy!.Value).Distinct().ToList();
+            var users = userIds.Count == 0 ? new Dictionary<long, string>()
+                : await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.UserId)).ToDictionaryAsync(u => u.UserId, u => u.DisplayName ?? u.OrgUserId ?? string.Empty, ct);
+
+            return new ConcessionLogPage(rows.Select(p => new ConcessionLogRow(
+                p.PaymentId, p.ReceiptNumber, p.PaymentDate, p.StudentId, nameOf.GetValueOrDefault(p.StudentId, p.StudentId),
+                p.ConcessionId!.Value, p.ConcessionNameSnapshot ?? string.Empty, p.ConcessionCodeSnapshot ?? string.Empty, p.ConcessionTypeSnapshot ?? string.Empty,
+                p.ConcessionValueSnapshot ?? 0m, p.ConcessionAmount, p.ConcessionReason,
+                p.ConcessionAppliedBy is long u && users.TryGetValue(u, out var n) ? n : null, p.Status)).ToList(), total, activeTotal);
         }
 
         public async Task<List<TaxCollectedRow>> GetTaxCollectedAsync(string schoolId, long academicYearId, long? classId, long? sectionId, CancellationToken ct)
