@@ -51,6 +51,14 @@ export interface UpdateSchoolRequest extends SchoolBase {
   contacts: SchoolContact[]; // no schoolCode field
 }
 
+/** Head counts of Active records, shown on the School Profile header. */
+export interface SchoolStats {
+  totalStudents: number;
+  totalEmployees: number;
+  totalClasses: number;
+  totalSections: number;
+}
+
 /** A School Admin editing their own school: no subscription, status, code, logo or contacts. */
 export type UpdateMySchoolProfileRequest = SchoolBase;
 

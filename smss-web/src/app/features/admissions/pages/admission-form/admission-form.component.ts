@@ -202,7 +202,11 @@ export class AdmissionFormComponent implements OnInit {
       this.activeTypeOptions.set(list.map((t) => ({ label: t.typeName, value: String(t.admissionTypeId) })));
       // a NEW application starts as "New Admission" (by code); an edit keeps its own type, and the server applies the same default if none is sent
       const def = list.find((t) => t.typeCode === 'NEW_ADMISSION');
-      if (def && !this.editing() && !this.form.controls.admissionTypeId.value) this.form.controls.admissionTypeId.setValue(String(def.admissionTypeId));
+      if (def && !this.editing()) {
+        if (!this.form.controls.admissionTypeId.value) this.form.controls.admissionTypeId.setValue(String(def.admissionTypeId));
+        // a new application is always a New Admission: shown, but locked (submit reads getRawValue, so the value is still sent)
+        this.form.controls.admissionTypeId.disable({ emitEvent: false });
+      }
     });
   }
 

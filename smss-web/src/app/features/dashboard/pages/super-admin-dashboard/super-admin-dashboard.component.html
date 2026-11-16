@@ -1,4 +1,4 @@
-<app-page-header title="Dashboard" subtitle="Schools, subscriptions, payments and company finances across the platform" icon="layout-dashboard" [breadcrumbs]="[{ label: 'Dashboard' }]" />
+<app-welcome-banner title="Welcome Back, Super Admin!" subtitle="Here's what's happening across all schools on SMSS" [badge]="today" badgeIcon="calendar" />
 
 <app-enquiry-widgets />
 
@@ -21,6 +21,8 @@
   <section class="cards" [class.loading]="loading()" aria-label="Headline numbers">
     @for (c of cards(); track c.id) {
       <a class="stat" [class]="c.tone" [routerLink]="c.link" [queryParams]="c.query">
+        <span class="ico"><app-icon [name]="cardIcons[c.id] ?? 'bar-chart'" [size]="30" /></span>
+        <span class="txt">
         <span class="label">{{ c.label }}</span>
         <strong>{{ c.value }}</strong>
         <span class="foot">
@@ -32,18 +34,19 @@
           }
           <small>{{ c.note }}</small>
         </span>
+        </span>
       </a>
     }
   </section>
 
   <!-- ============================================================ revenue vs expenses + subscription status -->
   <div class="grid wide-narrow">
-    <app-card title="Revenue vs expenses (last 12 months)">
+    <section class="dx-panel"><header class="dx-bar violet"><app-icon name="bar-chart" [size]="20" /><h3>Revenue vs expenses (last 12 months)</h3></header><div class="dx-body">
       <app-chart [options]="revenueChart()" label="Revenue and expenses by month for the last 12 months" />
       <p class="muted">Revenue is subscription payments received. Expenses are company expenses plus salary payouts.</p>
-    </app-card>
+    </div></section>
 
-    <app-card title="Subscription status">
+    <section class="dx-panel"><header class="dx-bar blue"><app-icon name="star" [size]="20" /><h3>Subscription status</h3></header><div class="dx-body">
       <app-chart [options]="statusChart()" label="Schools by subscription status" />
       <ul class="legend">
         @for (sl of statusSlices; track sl.key) {
@@ -55,16 +58,16 @@
           <li><a [routerLink]="'/subscriptions'" [queryParams]="{ status: 'NOT_SET' }"><span class="swatch notset"></span>Not set up<strong>{{ s.notSetCount }}</strong></a></li>
         }
       </ul>
-    </app-card>
+    </div></section>
   </div>
 
   <!-- ============================================================ registrations + payment collection -->
   <div class="grid halves">
-    <app-card title="School registrations (last 12 months)">
+    <section class="dx-panel"><header class="dx-bar green"><app-icon name="building-2" [size]="20" /><h3>School registrations (last 12 months)</h3></header><div class="dx-body">
       <app-chart [options]="registrationChart()" label="Schools registered per month for the last 12 months" />
-    </app-card>
+    </div></section>
 
-    <app-card title="Payment collection">
+    <section class="dx-panel"><header class="dx-bar orange"><app-icon name="wallet" [size]="20" /><h3>Payment collection</h3></header><div class="dx-body">
       <p class="muted top">Invoices generated {{ date(s.from) }} to {{ date(s.to) }}, by what has been paid on them.</p>
       @if (invoiceCount() === 0) {
         <p class="muted">No invoices were generated in this period.</p>
@@ -88,20 +91,20 @@
           }
         </tbody>
       </table>
-    </app-card>
+    </div></section>
   </div>
 
   <!-- ============================================================ quick actions + alerts -->
   <div class="grid halves">
-    <app-card title="Quick actions">
+    <section class="dx-panel"><header class="dx-bar violet"><app-icon name="star" [size]="20" /><h3>Quick actions</h3></header><div class="dx-body">
       <div class="actions">
         <app-button (click)="addSchool()"><app-icon name="plus" [size]="16" />Add school</app-button>
         <a class="action" routerLink="/invoices"><app-icon name="file-text" [size]="16" />View payments</a>
         <a class="action" routerLink="/subscriptions"><app-icon name="star" [size]="16" />Manage subscriptions</a>
       </div>
-    </app-card>
+    </div></section>
 
-    <app-card title="Alerts &amp; reminders">
+    <section class="dx-panel"><header class="dx-bar pink"><app-icon name="bell" [size]="20" /><h3>Alerts &amp; reminders</h3></header><div class="dx-body">
       <ul class="alerts">
         <li [class.clear]="s.overdueCount === 0">
           <a routerLink="/invoices" [queryParams]="{ status: 'Overdue' }">
@@ -131,12 +134,12 @@
           </a>
         </li>
       </ul>
-    </app-card>
+    </div></section>
   </div>
 
   <!-- ============================================================ upcoming renewals + current pricing (unchanged) -->
   <div class="grid halves">
-    <app-card title="Upcoming renewals">
+    <section class="dx-panel"><header class="dx-bar blue"><app-icon name="calendar" [size]="20" /><h3>Upcoming renewals</h3></header><div class="dx-body">
       @if (s.upcomingRenewals.length === 0) {
         <p class="muted">No renewals in the next {{ s.upcomingRenewalDays }} days.</p>
       } @else {
@@ -152,9 +155,9 @@
           <p class="muted more">and {{ s.upcomingRenewalCount - s.upcomingRenewals.length }} more</p>
         }
       }
-    </app-card>
+    </div></section>
 
-    <app-card title="Current pricing">
+    <section class="dx-panel"><header class="dx-bar green"><app-icon name="indian-rupee" [size]="20" /><h3>Current pricing</h3></header><div class="dx-body">
       @if (s.pricing; as p) {
         <dl class="pricing">
           <div><dt>Rate</dt><dd>{{ inr(p.ratePerStudentMonthly) }} <small>per student per month</small></dd></div>
@@ -165,17 +168,15 @@
       } @else {
         <p class="muted">No pricing is configured.</p>
       }
-    </app-card>
+    </div></section>
   </div>
 
   <!-- ============================================================ recent activity -->
-  <app-card [noPadding]="true">
-    <div class="table-head"><h3>Recent school registrations</h3><a routerLink="/schools">View all</a></div>
+  <section class="dx-panel"><header class="dx-bar violet"><app-icon name="building-2" [size]="20" /><h3>Recent school registrations</h3><a routerLink="/schools">View all</a></header><div class="dx-body flush">
     <app-table [columns]="schoolColumns" [rows]="schoolRows()" emptyMessage="No schools registered yet." />
-  </app-card>
+  </div></section>
 
-  <app-card [noPadding]="true">
-    <div class="table-head"><h3>Recent transactions</h3><a routerLink="/invoices">View all</a></div>
+  <section class="dx-panel"><header class="dx-bar blue"><app-icon name="wallet" [size]="20" /><h3>Recent transactions</h3><a routerLink="/invoices">View all</a></header><div class="dx-body flush">
     <app-table [columns]="transactionColumns" [rows]="transactionRows()" emptyMessage="No payments were received in this period." />
-  </app-card>
+  </div></section>
 }

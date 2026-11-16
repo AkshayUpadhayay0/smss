@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
+import { ButtonComponent, CardComponent, IconComponent } from '../../../../shared/components';
+import { AuthService } from '../../../../core/services/auth.service';
 import { STATUS_META, AdmissionStatus, formatDate } from '../../../admissions/models/admission.model';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { audienceLabel, publishedLabel } from '../../../notices/utils/notice-format';
 import { SchoolDashboard } from '../../models/school-dashboard.model';
+import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { SchoolDashboardService } from '../../services/school-dashboard.service';
 import { attendanceTrendOptions, feeCollectionOptions } from '../../utils/school-dashboard-charts';
@@ -20,17 +22,17 @@ import { readChartColors } from '../../utils/super-admin-charts';
  */
 @Component({
   selector: 'app-school-dashboard',
-  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ChartHostComponent],
+  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, ChartHostComponent, WelcomeBannerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-dashboard.component.scss',
   templateUrl: './school-dashboard.component.html',
 })
 export class SchoolDashboardComponent implements OnInit {
   private readonly service = inject(SchoolDashboardService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly colors = readChartColors();
 
-  protected readonly breadcrumbs = [{ label: 'Dashboard' }];
   protected readonly audience = audienceLabel;
   protected readonly published = publishedLabel;
   protected readonly date = formatDate;
@@ -61,9 +63,18 @@ export class SchoolDashboardComponent implements OnInit {
   protected readonly noticesDown = computed(() => this.data()?.partsUnavailable.includes('notices') ?? false);
   protected readonly admissionsDown = computed(() => this.data()?.partsUnavailable.includes('admissions') ?? false);
 
-  protected readonly subtitle = computed(() => {
-    const year = this.data()?.academicYearName;
-    return year ? `Your school at a glance · academic year ${year}` : 'Your school at a glance';
+  protected readonly welcomeTitle = computed(() => `Welcome Back, ${this.roleLabel()}!`);
+  protected readonly welcomeSub = computed(() => `Here's what's happening at ${this.schoolName()}`);
+  protected readonly yearBadge = computed(() => {
+    const y = this.data()?.academicYearName;
+    return y ? `Academic Year: ${y}` : null;
+  });
+  protected readonly roleLabel = computed(() => this.auth.user()?.roles?.[0] ?? 'School Admin');
+  protected readonly schoolName = computed(() => this.auth.user()?.schoolName || 'your school');
+  /** Mean of the days that were actually marked (a day nothing was marked is not a 0%); null when no day was marked. */
+  protected readonly avgAttendance = computed(() => {
+    const v = (this.data()?.attendanceTrend ?? []).map((p) => p.presentPercent).filter((x): x is number => x != null);
+    return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
   });
 
   protected statusLabel(status: string): string {

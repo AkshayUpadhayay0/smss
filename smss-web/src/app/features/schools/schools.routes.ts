@@ -11,4 +11,9 @@ export const SCHOOLS_ROUTES: Routes = [
   { path: 'schools/add', loadComponent: form, data: { mode: 'add' } },
   { path: 'schools/:schoolId/edit', loadComponent: form, data: { mode: 'edit' } },
   { path: 'schools/:schoolId/view', loadComponent: form, data: { mode: 'view' } },
+  // Super Admin: the school's own profile page, read-only (the same component a School Admin edits at /school-profile)
+  {
+    path: 'schools/:schoolId/profile',
+    loadComponent: () => import('../school-profile/pages/school-profile/school-profile.component').then((m) => m.SchoolProfileComponent),
+  },
 ];

@@ -316,3 +316,17 @@
   &.red { background: var(--color-danger-soft); color: var(--color-danger); }
   &.gray { background: var(--color-status-inactive-bg); color: var(--color-status-inactive-fg); }
 }
+
+// ---- redesign: soft cards, pastel stat tiles
+.card { border-radius: 16px; box-shadow: 0 4px 14px rgba(58, 38, 131, 0.06); }
+
+.card.stat {
+  background: var(--tone-bg, var(--color-surface));
+  border-color: color-mix(in srgb, var(--tone-fg, var(--color-border)) 14%, transparent);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(58, 38, 131, 0.14); }
+  .stat-icon { background: rgba(255, 255, 255, 0.75); color: var(--tone-fg, var(--color-primary-700)); }
+}
+
+.profile .avatar { box-shadow: 0 0 0 4px #ece6ff; background: linear-gradient(135deg, #ece6ff, #dfeefe); }

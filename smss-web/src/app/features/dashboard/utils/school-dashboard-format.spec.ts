@@ -88,7 +88,7 @@ describe('school dashboard chart options', () => {
 
   it('attendance: a line of present %, 0-100, with an unmarked day left as a gap (null), not 0', () => {
     const o = attendanceTrendOptions(points);
-    expect(o.chart?.type).toBe('line');
+    expect(o.chart?.type).toBe('area');
     expect((o.series as { data: (number | null)[] }[])[0].data).toEqual([90, null, 75]);
     expect(o.xaxis?.categories).toEqual(['21 Oct', '22 Oct', '23 Oct']);
     expect(o.yaxis).toMatchObject({ min: 0, max: 100 });

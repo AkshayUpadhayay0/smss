@@ -74,7 +74,7 @@ describe('StudentDashboardComponent', () => {
 
   it('greets the student by first name, not with the teacher copy from the reference design', () => {
     openWith(dashboard());
-    expect(text()).toContain('Welcome back, Asha');
+    expect(text()).toContain('Welcome Back, Asha');
     expect(text()).not.toContain('Manage courses');
   });
 

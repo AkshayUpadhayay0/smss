@@ -1,4 +1,4 @@
-<app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+<app-welcome-banner [title]="welcomeTitle()" [subtitle]="subtitle()" [badge]="badge()" badgeIcon="graduation-cap" />
 
 @if (loading()) {
   <app-card><p class="note" role="status">Loading your dashboard…</p></app-card>
@@ -26,21 +26,21 @@
       </div>
     </section>
 
-    <a class="card stat s2" routerLink="/calendar" aria-label="Events: {{ d.eventsCount }}">
+    <a class="card stat s2 dx-tone-violet" routerLink="/calendar" aria-label="Events: {{ d.eventsCount }}">
       <span class="stat-icon violet"><app-icon name="calendar" [size]="22" /></span>
       <span class="stat-body"><span class="stat-value">{{ d.eventsCount }}</span><span class="stat-label">Events this year</span></span>
     </a>
-    <a class="card stat s2" routerLink="/notices/my" aria-label="Unread notices: {{ d.unreadNoticesCount }}">
+    <a class="card stat s2 dx-tone-amber" routerLink="/notices/my" aria-label="Unread notices: {{ d.unreadNoticesCount }}">
       <span class="stat-icon amber"><app-icon name="bell" [size]="22" /></span>
       <span class="stat-body"><span class="stat-value">{{ d.unreadNoticesCount }}</span><span class="stat-label">Unread notices</span></span>
     </a>
-    <div class="card stat s2" role="group" [attr.aria-label]="'Attendance: ' + percentText()">
+    <div class="card stat s2 dx-tone-green" role="group" [attr.aria-label]="'Attendance: ' + percentText()">
       <span class="stat-icon green"><app-icon name="circle-check" [size]="22" /></span>
       <span class="stat-body"><span class="stat-value">{{ percentText() }}</span><span class="stat-label">Attendance</span></span>
     </div>
 
     <!-- attendance donut: Present / Absent only -->
-    <app-card title="Attendance" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar green"><app-icon name="circle-check" [size]="20" /><h3>Attendance</h3></header><div class="dx-body">
       @if (attendance(); as a) {
         <div class="attendance">
           <svg viewBox="0 0 120 120" class="donut" role="img" [attr.aria-label]="'Present ' + a.presentCount + ' days, absent ' + a.absentCount + ' days'">
@@ -68,10 +68,10 @@
       } @else {
         <p class="note">Attendance could not be loaded.</p>
       }
-    </app-card>
+    </div></section>
 
     <!-- today's classes -->
-    <app-card title="Today's Classes" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar blue"><app-icon name="clock" [size]="20" /><h3>Today's Classes</h3></header><div class="dx-body">
       @if (d.todayClasses.length === 0) {
         <p class="note">No classes scheduled for today.</p>
       } @else {
@@ -87,15 +87,15 @@
           }
         </ul>
       }
-    </app-card>
+    </div></section>
 
     <!-- test results: no grade / CGPA / status columns -->
-    <app-card title="My Test Results" [noPadding]="true" class="s8">
+    <section class="dx-panel s8"><header class="dx-bar pink"><app-icon name="clipboard-check" [size]="20" /><h3>My Test Results</h3></header><div class="dx-body flush">
       <app-table [columns]="resultColumns" [rows]="resultRows()" emptyMessage="No test results yet." />
-    </app-card>
+    </div></section>
 
     <!-- leave status: read-only -->
-    <app-card title="Leave Status" class="s4">
+    <section class="dx-panel s4"><header class="dx-bar orange"><app-icon name="calendar" [size]="20" /><h3>Leave Status</h3></header><div class="dx-body">
       @if (d.recentLeave.length === 0) {
         <p class="note">No leave requests.</p>
       } @else {
@@ -111,10 +111,10 @@
           }
         </ul>
       }
-    </app-card>
+    </div></section>
 
     <!-- notice board -->
-    <app-card title="Notice Board" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar orange"><app-icon name="megaphone" [size]="20" /><h3>Notice Board</h3></header><div class="dx-body">
       @if (d.recentNotices.length === 0) {
         <p class="note">No notices for you.</p>
       } @else {
@@ -131,10 +131,10 @@
         </ul>
       }
       <a class="more" routerLink="/notices/my">View all notices</a>
-    </app-card>
+    </div></section>
 
     <!-- upcoming events: the calendar month view lives inside the Calendar page and is not reusable, so this is a list that links there -->
-    <app-card title="Upcoming Events" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar violet"><app-icon name="calendar" [size]="20" /><h3>Upcoming Events</h3></header><div class="dx-body">
       @if (d.upcomingEvents.length === 0) {
         <p class="note">No upcoming events.</p>
       } @else {
@@ -151,7 +151,7 @@
         </ul>
       }
       <a class="more" routerLink="/calendar">Open calendar</a>
-    </app-card>
+    </div></section>
 
     <!-- the student's own ID card (front / back switch + download): its own request, so a card that cannot be issued never breaks the dashboard -->
     <app-student-my-id-card class="s6" />

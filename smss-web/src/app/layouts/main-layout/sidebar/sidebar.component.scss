@@ -41,7 +41,7 @@
   height: 44px;
   padding: 0 var(--space-3);
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   background: transparent;
   color: var(--sidebar-text);
   font-size: var(--text-base);
@@ -58,9 +58,9 @@
   }
 
   &.active {
-    background: var(--color-primary);
+    background: linear-gradient(95deg, #7c5cfc 0%, #9a6bff 100%);
     color: var(--color-on-primary);
-    box-shadow: 0 4px 14px rgba(124, 92, 252, 0.35);
+    box-shadow: 0 6px 16px rgba(124, 92, 252, 0.4);
 
     // left accent bar
     &::before {

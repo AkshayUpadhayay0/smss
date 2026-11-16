@@ -3,9 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf } from '../../../../core/utils/upload-url';
-import { CardComponent, IconComponent, IconName, PageHeaderComponent, SecureImageComponent } from '../../../../shared/components';
+import { CardComponent, IconComponent, IconName, SecureImageComponent } from '../../../../shared/components';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
+import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
 import { TeacherDashboard } from '../../models/teacher-dashboard.model';
 import { TeacherDashboardService } from '../../services/teacher-dashboard.service';
 import { TeacherStat, buildTeacherStats, sectionLabel } from '../../utils/teacher-dashboard-format';
@@ -23,7 +24,7 @@ const STAT_ICONS: Record<TeacherStat['key'], IconName> = {
  */
 @Component({
   selector: 'app-teacher-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, SecureImageComponent],
+  imports: [CardComponent, IconComponent, RouterLink, WelcomeBannerComponent, SecureImageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './teacher-dashboard.component.scss',
   templateUrl: './teacher-dashboard.component.html',
@@ -32,7 +33,6 @@ export class TeacherDashboardComponent implements OnInit {
   private readonly service = inject(TeacherDashboardService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly breadcrumbs = [{ label: 'Dashboard' }];
   protected readonly initials = initialsOf;
   protected readonly sectionLabel = sectionLabel;
   protected readonly icons = STAT_ICONS;
@@ -44,10 +44,12 @@ export class TeacherDashboardComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
 
-  protected readonly subtitle = computed(() => {
+  protected readonly welcomeTitle = computed(() => {
     const name = this.data()?.profile.fullName.split(' ')[0];
-    return name ? `Welcome back, ${name}. Here is your classroom at a glance.` : 'Your classroom at a glance.';
+    return name ? `Welcome Back, ${name}!` : 'Welcome Back!';
   });
+  protected readonly subtitle = computed(() => 'Here is your classroom at a glance.');
+  protected readonly badge = computed(() => this.data()?.profile.designationName ?? null);
 
   protected readonly stats = computed(() => {
     const d = this.data();

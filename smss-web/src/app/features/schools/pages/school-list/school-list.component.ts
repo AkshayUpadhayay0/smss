@@ -137,6 +137,9 @@ export class SchoolListComponent {
   protected view(row: SchoolRow): void {
     void this.router.navigate(['/schools', row.schoolId, 'view']);
   }
+  protected viewProfile(row: SchoolRow): void {
+    void this.router.navigate(['/schools', row.schoolId, 'profile']);
+  }
   protected edit(row: SchoolRow): void {
     void this.router.navigate(['/schools', row.schoolId, 'edit']);
   }

@@ -3,11 +3,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { initialsOf } from '../../../../core/utils/upload-url';
-import { CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent, SecureImageComponent } from '../../../../shared/components';
+import { CardComponent, IconComponent, TableColumn, TableComponent, SecureImageComponent } from '../../../../shared/components';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { day } from '../../../homework/utils/homework-format';
 import { publishedLabel, snippet } from '../../../notices/utils/notice-format';
 import { StudentMyIdCardComponent } from '../../../students/components/student-my-id-card/student-my-id-card.component';
+import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
 import { StudentDashboard } from '../../models/student-dashboard.model';
 import { StudentDashboardService } from '../../services/student-dashboard.service';
 import {
@@ -46,7 +47,7 @@ const RESULT_COLUMNS: TableColumn<ResultRow>[] = [
  */
 @Component({
   selector: 'app-student-dashboard',
-  imports: [CardComponent, IconComponent, PageHeaderComponent, RouterLink, SecureImageComponent, StudentMyIdCardComponent, TableComponent],
+  imports: [CardComponent, IconComponent, RouterLink, WelcomeBannerComponent, SecureImageComponent, StudentMyIdCardComponent, TableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-dashboard.component.scss',
   templateUrl: './student-dashboard.component.html',
@@ -55,7 +56,6 @@ export class StudentDashboardComponent implements OnInit {
   private readonly service = inject(StudentDashboardService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly breadcrumbs = [{ label: 'Dashboard' }];
   protected readonly resultColumns = RESULT_COLUMNS;
   protected readonly classLabels = CLASS_STATUS_LABELS;
   protected readonly classTones = CLASS_STATUS_TONES;
@@ -74,10 +74,12 @@ export class StudentDashboardComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
 
-  protected readonly subtitle = computed(() => {
+  protected readonly welcomeTitle = computed(() => {
     const name = this.data()?.profile.fullName.split(' ')[0];
-    return name ? `Welcome back, ${name}. Here is your school day at a glance.` : 'Your school day at a glance.';
+    return name ? `Welcome Back, ${name}!` : 'Welcome Back!';
   });
+  protected readonly subtitle = computed(() => 'Here is your school day at a glance.');
+  protected readonly badge = computed(() => (this.data()?.profile.className ? this.classLine() : null));
 
   protected readonly classLine = computed(() => {
     const p = this.data()?.profile;

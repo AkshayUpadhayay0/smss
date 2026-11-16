@@ -49,8 +49,17 @@ describe('route-roles', () => {
   describe('student record for the Accountant', () => {
     it('may open /students/:id (Fees tab only, enforced by the page) but not the student list, onboarding or admissions', () => {
       expect(canAccess('/students/DPS001ST001', [ROLES.ACCOUNTANT])).toBe(true);
-      for (const url of ['/students', '/students/onboard-existing', '/admissions', '/school-profile', '/fee-setup/fee-types']) expect(canAccess(url, [ROLES.ACCOUNTANT])).toBe(false);
+      for (const url of ['/students', '/students/onboard-existing', '/admissions', '/fee-setup/fee-types']) expect(canAccess(url, [ROLES.ACCOUNTANT])).toBe(false);
       for (const role of [ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT]) expect(canAccess('/students/DPS001ST001', [role])).toBe(false);
+    });
+  });
+
+  describe('school profile', () => {
+    it('/school-profile: every role of a school may open it; the Super Admin (no school) and a custom role may not. /schools/:id/profile is Super Admin only', () => {
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF]) expect(canAccess('/school-profile', [role])).toBe(true);
+      for (const role of [ROLES.SUPER_ADMIN, 'Test Role']) expect(canAccess('/school-profile', [role])).toBe(false);
+      expect(canAccess('/schools/sch1/profile', [ROLES.SUPER_ADMIN])).toBe(true);
+      expect(canAccess('/schools/sch1/profile', [ROLES.SCHOOL_ADMIN])).toBe(false);
     });
   });
 

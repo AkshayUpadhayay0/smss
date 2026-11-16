@@ -70,6 +70,23 @@ namespace smss_api.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
+        // GET api/SchoolRegistration/me/stats   (head counts for the profile header; every signed-in role of the school, school from the token)
+        [HttpGet("me/stats")]
+        public async Task<IActionResult> GetMyStats(CancellationToken ct)
+        {
+            var response = await _schoolRegistrationService.GetSchoolStatsAsync(TokenSchoolId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/SchoolRegistration/schools/sch2026001/stats
+        [HttpGet("schools/{schoolId}/stats")]
+        [SuperAdminOnly]
+        public async Task<IActionResult> GetSchoolStats(string schoolId, CancellationToken ct)
+        {
+            var response = await _schoolRegistrationService.GetSchoolStatsAsync(schoolId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
         // GET api/SchoolRegistration/me/brand   (every signed-in role of the school: name + public logo path only; school from the token)
         [HttpGet("me/brand")]
         public async Task<IActionResult> GetMyBrand()

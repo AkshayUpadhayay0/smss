@@ -1,4 +1,4 @@
-<app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+<app-welcome-banner [title]="welcomeTitle()" [subtitle]="subtitle()" [badge]="badge()" badgeIcon="user" />
 
 @if (loading()) {
   <app-card><p class="note" role="status">Loading your dashboard…</p></app-card>
@@ -24,7 +24,7 @@
       </div>
     </section>
 
-    <app-card title="Class Teacher Of" class="s4">
+    <section class="dx-panel s4"><header class="dx-bar violet"><app-icon name="users" [size]="20" /><h3>Class Teacher Of</h3></header><div class="dx-body">
       @if (classTeacherDown()) {
         <p class="note">This could not be loaded.</p>
       } @else if (d.classTeacherOf.length === 0) {
@@ -36,9 +36,9 @@
           }
         </ul>
       }
-    </app-card>
+    </div></section>
 
-    <app-card title="Subjects Taught" class="s4">
+    <section class="dx-panel s4"><header class="dx-bar blue"><app-icon name="book-open" [size]="20" /><h3>Subjects Taught</h3></header><div class="dx-body">
       @if (subjectsDown()) {
         <p class="note">This could not be loaded.</p>
       } @else if (d.subjectsTaught.length === 0) {
@@ -50,10 +50,10 @@
           }
         </ul>
       }
-    </app-card>
+    </div></section>
 
     @for (s of stats(); track s.key) {
-      <div class="card stat s3" role="group" [attr.aria-label]="s.label + ': ' + s.value">
+      <div class="card stat s3" [class]="'card stat s3 dx-tone-' + s.tone" role="group" [attr.aria-label]="s.label + ': ' + s.value">
         <span class="stat-icon" [class]="'stat-icon ' + s.tone"><app-icon [name]="icons[s.key]" [size]="22" /></span>
         <span class="stat-body">
           <span class="stat-value" [class.text]="s.isText">{{ s.value }}</span>
@@ -65,7 +65,7 @@
       </div>
     }
     <!-- the same two reads the student dashboard shows: the next calendar events and the latest notices for the teacher's own audience -->
-    <app-card title="Notice Board" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar orange"><app-icon name="megaphone" [size]="20" /><h3>Notice Board</h3></header><div class="dx-body">
       @if (noticesDown()) {
         <p class="note">This could not be loaded.</p>
       } @else if (d.recentNotices.length === 0) {
@@ -84,9 +84,9 @@
         </ul>
       }
       <a class="more" routerLink="/notices/my">View all notices</a>
-    </app-card>
+    </div></section>
 
-    <app-card title="Upcoming Events" class="s6">
+    <section class="dx-panel s6"><header class="dx-bar violet"><app-icon name="calendar" [size]="20" /><h3>Upcoming Events</h3></header><div class="dx-body">
       @if (eventsDown()) {
         <p class="note">This could not be loaded.</p>
       } @else if (d.upcomingEvents.length === 0) {
@@ -105,6 +105,6 @@
         </ul>
       }
       <a class="more" routerLink="/calendar">Open calendar</a>
-    </app-card>
+    </div></section>
   </div>
 }

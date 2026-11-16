@@ -77,7 +77,7 @@ describe('SchoolDashboardComponent', () => {
     http.expectOne(URL).flush(env(full()));
     fixture.detectChanges();
     expect(text()).not.toContain('Loading your dashboard');
-    expect(text()).toContain('academic year 2026-27');
+    expect(text()).toContain('Academic Year: 2026-27');
   });
 
   it('shows an error with a Try again button that asks again', () => {
@@ -203,7 +203,7 @@ describe('SchoolDashboardComponent', () => {
 
     it('each panel links to its module', () => {
       openWith(full());
-      const hrefs = [...el().querySelectorAll('.panel-head a')].map((a) => a.getAttribute('href'));
+      const hrefs = [...el().querySelectorAll('.panel-bar a')].map((a) => a.getAttribute('href'));
       expect(hrefs).toEqual(['/calendar', '/notices', '/admissions']);
     });
   });

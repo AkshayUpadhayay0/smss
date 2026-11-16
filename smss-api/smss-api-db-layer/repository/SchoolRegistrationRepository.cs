@@ -109,6 +109,19 @@ namespace smss_api_db_layer.repository
         }
 
         // Matches lut_status by name + stype, e.g. ("Active", "general status") -> sid 1
+        public async Task<SchoolCounts> GetSchoolCountsAsync(string schoolId, CancellationToken ct)
+        {
+            var active = await _dbContext.LutStatus.AsNoTracking()
+                .Where(x => x.Sname == "Active" && x.Stype == "general status").Select(x => (int?)x.Sid).FirstOrDefaultAsync(ct);
+            if (active == null) return new SchoolCounts(0, 0, 0, 0);
+            var a = active.Value;
+            var students = await _dbContext.Students.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
+            var employees = await _dbContext.Employees.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
+            var classes = await _dbContext.Classes.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
+            var sections = await _dbContext.Sections.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
+            return new SchoolCounts(students, employees, classes, sections);
+        }
+
         public async Task<int?> GetStatusIdByNameAsync(string statusName, string statusType)
         {
             return await _dbContext.LutStatus

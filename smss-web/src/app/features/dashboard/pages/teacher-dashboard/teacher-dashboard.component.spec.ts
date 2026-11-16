@@ -54,7 +54,7 @@ describe('TeacherDashboardComponent', () => {
 
   it('makes exactly one request and greets the teacher by first name with its own subtitle', () => {
     openWith(dashboard());
-    expect(text()).toContain('Welcome back, Anita');
+    expect(text()).toContain('Welcome Back, Anita');
     expect(text()).toContain('Here is your classroom at a glance');
     expect(text()).not.toContain('Manage courses');
   });

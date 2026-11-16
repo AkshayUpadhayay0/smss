@@ -12,11 +12,12 @@ const BASE_CHART = { fontFamily: 'inherit', toolbar: { show: false }, zoom: { en
  */
 export function attendanceTrendOptions(points: AttendanceTrendPoint[], c: ChartColors = FALLBACK_COLORS): ApexOptions {
   return {
-    chart: { ...BASE_CHART, type: 'line', height: 280 },
+    chart: { ...BASE_CHART, type: 'area', height: 280 },
     series: [{ name: 'Present', data: points.map((p) => p.presentPercent) }],
     colors: [c.success],
     stroke: { curve: 'smooth', width: 3 },
-    markers: { size: 4 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 95, 100] } },
+    markers: { size: 5, strokeWidth: 2, strokeColors: '#fff', hover: { size: 7 } },
     dataLabels: { enabled: false },
     xaxis: { categories: points.map((p) => shortDay(p.date)), axisBorder: { show: false }, axisTicks: { show: false }, labels: { rotate: -45, hideOverlappingLabels: true } },
     yaxis: { min: 0, max: 100, tickAmount: 5, labels: { formatter: (v: number) => `${Math.round(v)}%` } },
@@ -38,8 +39,9 @@ export function feeCollectionOptions(months: FeeCollectionMonth[], c: ChartColor
   return {
     chart: { ...BASE_CHART, type: 'bar', height: 280 },
     series: [{ name: 'Collected', data: months.map((m) => m.amount) }],
-    colors: [c.primary],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+    // every month a soft violet, the latest one (this month) the deep brand colour
+    colors: months.map((_, i) => (i === months.length - 1 ? '#6d28d9' : '#c4b5fd')),
+    plotOptions: { bar: { borderRadius: 8, borderRadiusApplication: 'end', columnWidth: '48%', distributed: true } },
     dataLabels: { enabled: false },
     xaxis: { categories: months.map((m) => shortMonth(m.label)), axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { min: 0, labels: { formatter: (v: number) => compactInr(v) } },

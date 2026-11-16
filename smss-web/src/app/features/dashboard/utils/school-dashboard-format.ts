@@ -8,6 +8,7 @@ export interface SchoolStatCard {
   /** The line under the value. */
   note: string;
   link: string;
+  icon: 'users' | 'user' | 'calendar-check' | 'indian-rupee' | 'coins' | 'user-plus';
   tone: 'primary' | 'success' | 'info' | 'warning' | 'danger';
   /** The number could not be loaded: shown as "Unavailable", never as 0. */
   unavailable: boolean;
@@ -52,11 +53,12 @@ export function buildSchoolStats(d: SchoolDashboard): SchoolStatCard[] {
       : `${s.sectionsMarkedToday ?? 0} of ${plural(s.sectionsTotal, 'section')} marked · ${s.attendancePresentToday ?? 0} present of ${s.attendanceMarkedToday ?? 0}`;
 
   return [
-    card({ id: 'students', label: 'Total students', value: String(s.totalStudents ?? 0), note: d.academicYearName ? `Active in ${d.academicYearName}` : 'Active students', link: '/students', tone: 'primary' }, down(d, 'students') || s.totalStudents == null),
-    card({ id: 'employees', label: 'Total employees', value: String(s.totalEmployees ?? 0), note: 'Active staff', link: '/employees', tone: 'info' }, down(d, 'employees') || s.totalEmployees == null),
+    card({ id: 'students', icon: 'users', label: 'Total students', value: String(s.totalStudents ?? 0), note: d.academicYearName ? `Active in ${d.academicYearName}` : 'Active students', link: '/students', tone: 'primary' }, down(d, 'students') || s.totalStudents == null),
+    card({ id: 'employees', icon: 'user', label: 'Total employees', value: String(s.totalEmployees ?? 0), note: 'Active staff', link: '/employees', tone: 'info' }, down(d, 'employees') || s.totalEmployees == null),
     card(
       {
         id: 'attendance',
+        icon: 'calendar-check',
         label: "Today's attendance",
         value: s.attendancePercentToday == null ? 'Not marked yet' : `${s.attendancePercentToday}%`,
         note: attendanceNote,
@@ -65,9 +67,9 @@ export function buildSchoolStats(d: SchoolDashboard): SchoolStatCard[] {
       },
       down(d, 'attendance'),
     ),
-    card({ id: 'collected', label: 'Fee collected this month', value: formatInr(s.feeCollectedThisMonth ?? 0), note: `In ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.feeCollectedThisMonth == null),
-    card({ id: 'outstanding', label: 'Fee outstanding', value: formatInr(s.feeOutstanding ?? 0), note: d.academicYearName ? `Still to collect for ${d.academicYearName}` : 'Still to collect', link: '/fee-dashboard', tone: 'warning' }, down(d, 'fees') || s.feeOutstanding == null),
-    card({ id: 'admissions', label: 'Pending admissions', value: String(s.pendingAdmissions ?? 0), note: 'Submitted or under review', link: '/admissions', tone: 'danger' }, down(d, 'admissions') || s.pendingAdmissions == null),
+    card({ id: 'collected', icon: 'indian-rupee', label: 'Fee collected this month', value: formatInr(s.feeCollectedThisMonth ?? 0), note: `In ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.feeCollectedThisMonth == null),
+    card({ id: 'outstanding', icon: 'coins', label: 'Fee outstanding', value: formatInr(s.feeOutstanding ?? 0), note: d.academicYearName ? `Still to collect for ${d.academicYearName}` : 'Still to collect', link: '/fee-dashboard', tone: 'warning' }, down(d, 'fees') || s.feeOutstanding == null),
+    card({ id: 'admissions', icon: 'user-plus', label: 'Pending admissions', value: String(s.pendingAdmissions ?? 0), note: 'Submitted or under review', link: '/admissions', tone: 'danger' }, down(d, 'admissions') || s.pendingAdmissions == null),
   ];
 }
 

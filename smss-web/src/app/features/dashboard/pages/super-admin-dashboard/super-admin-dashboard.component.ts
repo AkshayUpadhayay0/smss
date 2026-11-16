@@ -4,11 +4,12 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Subscription, debounceTime, finalize, merge } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
-import { ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { ButtonComponent, CardComponent, IconComponent, IconName, InputComponent, TableColumn, TableComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { DashboardStat, SuperAdminSummary } from '../../../subscriptions/models/super-admin-dashboard.model';
 import { SuperAdminDashboardService } from '../../../subscriptions/services/super-admin-dashboard.service';
 import { EnquiryWidgetsComponent } from '../../../enquiries/components/enquiry-widgets/enquiry-widgets.component';
+import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import {
   STATUS_SLICES,
@@ -63,7 +64,7 @@ interface StatCard {
  */
 @Component({
   selector: 'app-super-admin-dashboard',
-  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, TableComponent, ChartHostComponent, EnquiryWidgetsComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, CardComponent, IconComponent, InputComponent, TableComponent, ChartHostComponent, EnquiryWidgetsComponent, WelcomeBannerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './super-admin-dashboard.component.scss',
   templateUrl: './super-admin-dashboard.component.html',
@@ -83,6 +84,11 @@ export class SuperAdminDashboardComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly invalidRange = signal(false);
   private request?: Subscription;
+
+  protected readonly today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  protected readonly cardIcons: Record<string, IconName> = {
+    schools: 'building-2', active: 'star', collected: 'indian-rupee', outstanding: 'coins', expenses: 'file-text', surplus: 'bar-chart',
+  };
 
   protected readonly fromControl = new FormControl('', { nonNullable: true });
   protected readonly toControl = new FormControl('', { nonNullable: true });

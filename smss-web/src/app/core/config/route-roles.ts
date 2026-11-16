@@ -36,7 +36,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/change-password': AUTHENTICATED,
 
   // School-side page: the API resolves the school from the token (400 for accounts without one, e.g. Super Admin).
-  '/school-profile': [ROLES.SCHOOL_ADMIN],
+  // Every school role may OPEN it (the API hands non-admins a limited, read-only profile); only the School Admin sees Edit (the API enforces it too).
+  '/school-profile': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
   '/students': [ROLES.SCHOOL_ADMIN],
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
   '/students/import': [ROLES.SCHOOL_ADMIN],
@@ -139,6 +140,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/schools/add': [ROLES.SUPER_ADMIN],
   '/schools/:schoolId/edit': [ROLES.SUPER_ADMIN],
   '/schools/:schoolId/view': [ROLES.SUPER_ADMIN],
+  '/schools/:schoolId/profile': [ROLES.SUPER_ADMIN],
 
   // Enquiries from the public website (Contact Us / Request a Demo): Super Admin only; the API re-checks every call
   '/enquiries': [ROLES.SUPER_ADMIN],

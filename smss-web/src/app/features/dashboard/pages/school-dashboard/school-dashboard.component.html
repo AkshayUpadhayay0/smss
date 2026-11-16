@@ -1,4 +1,4 @@
-<app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+<app-welcome-banner [title]="welcomeTitle()" [subtitle]="welcomeSub()" [badge]="yearBadge()" />
 
 @if (loading() && !data()) {
   <app-card><p class="muted center" role="status">Loading your dashboard…</p></app-card>
@@ -13,16 +13,23 @@
   <section class="cards" [class.loading]="loading()" aria-label="Headline numbers">
     @for (c of cards(); track c.id) {
       <a class="stat" [class]="c.tone" [class.unavailable]="c.unavailable" [routerLink]="c.link" [attr.data-card]="c.id">
-        <span class="label">{{ c.label }}</span>
-        <strong>{{ c.value }}</strong>
-        <span class="foot"><small>{{ c.note }}</small></span>
+        <span class="ico"><app-icon [name]="c.icon" [size]="30" /></span>
+        <span class="txt">
+          <span class="label">{{ c.label }}</span>
+          <strong>{{ c.value }}</strong>
+          <span class="foot"><small>{{ c.note }}</small></span>
+        </span>
       </a>
     }
   </section>
 
   <!-- ============================================================ trends -->
   <div class="grid halves">
-    <app-card title="Attendance — last 14 days">
+    <section class="panel">
+      <header class="panel-bar green"><app-icon name="calendar" [size]="20" /><h3>Attendance — last 14 days</h3>
+        @if (avgAttendance() !== null) {<span class="avg">Avg. {{ avgAttendance() }}%</span>}
+      </header>
+      <div class="panel-body">
       @if (attendanceDown()) {
         <p class="muted">This could not be loaded.</p>
       } @else if (!anyAttendance()) {
@@ -31,9 +38,12 @@
         <app-chart [options]="attendanceChart()" label="Percentage of students present each day for the last 14 days" />
         <p class="muted">Present as a share of students marked. A day nothing was marked is left blank.</p>
       }
-    </app-card>
+      </div>
+    </section>
 
-    <app-card title="Fee collection — last 6 months">
+    <section class="panel">
+      <header class="panel-bar violet"><app-icon name="bar-chart" [size]="20" /><h3>Fee collection — last 6 months</h3></header>
+      <div class="panel-body">
       @if (feesDown()) {
         <p class="muted">This could not be loaded.</p>
       } @else if (!anyFees()) {
@@ -42,11 +52,14 @@
         <app-chart [options]="feeChart()" label="Fees collected per month for the last 6 months" />
         <p class="muted">Payments received per month, voided payments excluded.</p>
       }
-    </app-card>
+      </div>
+    </section>
   </div>
 
   <!-- ============================================================ alerts & reminders -->
-  <app-card title="Alerts &amp; reminders">
+  <section class="panel alerts-panel">
+    <header class="panel-bar pink"><app-icon name="bell" [size]="20" /><h3>Alerts &amp; reminders</h3></header>
+    <div class="panel-body">
     <ul class="alerts">
       @for (a of alerts(); track a.id) {
         <li [class.clear]="a.clear" [class.unavailable]="a.unavailable" [attr.data-alert]="a.id">
@@ -64,12 +77,14 @@
         </li>
       }
     </ul>
-  </app-card>
+    </div>
+  </section>
 
   <!-- ============================================================ upcoming events / recent notices / recent admissions -->
   <div class="grid thirds">
-    <app-card>
-      <div class="panel-head"><h3>Upcoming events</h3><a routerLink="/calendar">View all</a></div>
+    <section class="panel">
+      <header class="panel-bar violet"><app-icon name="calendar" [size]="20" /><h3>Upcoming events</h3><a routerLink="/calendar">View All</a></header>
+      <div class="panel-body">
       @if (eventsDown()) {
         <p class="muted">This could not be loaded.</p>
       } @else if (d.upcomingEvents.length === 0) {
@@ -87,10 +102,12 @@
           }
         </ul>
       }
-    </app-card>
+      </div>
+    </section>
 
-    <app-card>
-      <div class="panel-head"><h3>Recent notices</h3><a routerLink="/notices">View all</a></div>
+    <section class="panel">
+      <header class="panel-bar blue"><app-icon name="megaphone" [size]="20" /><h3>Recent notices</h3><a routerLink="/notices">View All</a></header>
+      <div class="panel-body">
       @if (noticesDown()) {
         <p class="muted">This could not be loaded.</p>
       } @else if (d.recentNotices.length === 0) {
@@ -107,10 +124,12 @@
           }
         </ul>
       }
-    </app-card>
+      </div>
+    </section>
 
-    <app-card>
-      <div class="panel-head"><h3>Recent admissions</h3><a routerLink="/admissions">View all</a></div>
+    <section class="panel">
+      <header class="panel-bar violet"><app-icon name="user" [size]="20" /><h3>Recent admissions</h3><a routerLink="/admissions">View All</a></header>
+      <div class="panel-body">
       @if (admissionsDown()) {
         <p class="muted">This could not be loaded.</p>
       } @else if (d.recentAdmissions.length === 0) {
@@ -128,6 +147,7 @@
           }
         </ul>
       }
-    </app-card>
+      </div>
+    </section>
   </div>
 }

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiService } from '../../../core/services/api.service';
-import { CreateSchoolRequest, SchoolBrand, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest } from '../models/school.model';
+import { CreateSchoolRequest, SchoolBrand, SchoolStats, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest } from '../models/school.model';
 
 const BASE = '/api/SchoolRegistration';
 
@@ -34,6 +34,16 @@ export class SchoolService {
 
   getMySchool(): Observable<SchoolsListModel> {
     return this.api.get<SchoolsListModel>(`${BASE}/me`);
+  }
+
+  /** Head counts for the profile header (any signed-in role of the school). */
+  getMyStats(): Observable<SchoolStats> {
+    return this.api.get<SchoolStats>(`${BASE}/me/stats`);
+  }
+
+  /** Super Admin: the same counts for any school. */
+  getSchoolStats(schoolId: string): Observable<SchoolStats> {
+    return this.api.get<SchoolStats>(`${BASE}/schools/${encodeURIComponent(schoolId)}/stats`);
   }
 
   updateMySchool(request: UpdateMySchoolProfileRequest): Observable<SchoolsListModel> {

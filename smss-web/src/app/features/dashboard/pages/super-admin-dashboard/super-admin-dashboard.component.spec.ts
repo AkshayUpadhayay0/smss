@@ -218,7 +218,7 @@ describe('SuperAdminDashboardComponent', () => {
     expect(t).toContain('CBSE');
     expect(t).toContain('20 Oct 2026');
     expect(t).toContain('Government');
-    expect(el().querySelector('.table-head a[href="/schools"]')?.textContent).toContain('View all');
+    expect(el().querySelector('.dx-bar a[href="/schools"]')?.textContent).toContain('View all');
   });
 
   it('recent transactions show reference, school, date, amount, method and status, with a link to the payments screen', () => {
@@ -231,7 +231,7 @@ describe('SuperAdminDashboardComponent', () => {
     expect(rows).toContain('#8'); // no reference: the payment number
     expect(rows).toContain('₹500.00');
     expect(rows).toContain('Voided');
-    expect(el().querySelector('.table-head a[href="/invoices"]')?.textContent).toContain('View all');
+    expect(el().querySelector('.dx-bar a[href="/invoices"]')?.textContent).toContain('View all');
   });
 
   it('changing a date reloads once with both dates; "This month" goes back to the default', () => {

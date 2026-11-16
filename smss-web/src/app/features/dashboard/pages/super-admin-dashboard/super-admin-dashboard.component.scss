@@ -409,3 +409,33 @@ app-card {
     }
   }
 }
+
+
+// ================================================================== redesign
+.dx-panel { margin-bottom: var(--space-6); }
+.grid .dx-panel { margin-bottom: 0; }
+
+.stat:has(> .ico) {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--tone-fg) 14%, transparent);
+  border-left-width: 1px;
+  border-radius: 16px;
+  background: var(--tone-bg);
+  box-shadow: 0 4px 14px rgba(58, 38, 131, 0.06);
+
+  &:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(58, 38, 131, 0.14); }
+
+  .ico { flex: none; display: grid; place-items: center; color: var(--tone-fg); }
+  .txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .label { text-transform: none; letter-spacing: 0; font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
+  strong { font-size: 1.55rem; line-height: 1.2; color: var(--color-text); font-variant-numeric: tabular-nums; }
+
+  &.primary { --tone-bg: #efeaff; --tone-fg: #6a46f0; }
+  &.success { --tone-bg: #e1f6ea; --tone-fg: #16a34a; }
+  &.info { --tone-bg: #dfeefe; --tone-fg: #2563eb; }
+  &.warning { --tone-bg: #fdeedd; --tone-fg: #e0771a; }
+  &.danger { --tone-bg: #fde4f0; --tone-fg: #db2777; }
+}

@@ -5,6 +5,8 @@ using System.Text;
 
 namespace smss_api_db_layer.@interface
 {
+    public record SchoolCounts(int Students, int Employees, int Classes, int Sections);
+
     public interface ISchoolRegistrationRepository
     {
         Task<List<TbSchools>> GetSchoolsAsync();
@@ -23,6 +25,8 @@ namespace smss_api_db_layer.@interface
         /// <summary>The school's own admin login (not its students' logins).</summary>
         Task<TbUsers?> GetUserBySchoolIdAsync(string schoolId, bool track = false);
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType);
+        /// <summary>Head counts of the school's Active students, employees, classes and sections (read-only; Active = lut_status 'Active' of the general status type).</summary>
+        Task<SchoolCounts> GetSchoolCountsAsync(string schoolId, CancellationToken ct);
         Task<int> SaveChangesAsync();
     }
 }

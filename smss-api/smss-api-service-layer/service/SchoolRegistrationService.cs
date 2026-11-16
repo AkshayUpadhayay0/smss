@@ -274,6 +274,18 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error(ex, "fetching school profile"); }
         }
 
+        public async Task<ApiResponse<object>> GetSchoolStatsAsync(string? schoolId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);
+            try
+            {
+                if (await _repo.GetSchoolByIdAsync(schoolId) == null) return Fail(404, "School not found");
+                var c = await _repo.GetSchoolCountsAsync(schoolId, ct);
+                return Ok(200, "Successfully fetched", new SchoolStatsResponse { TotalStudents = c.Students, TotalEmployees = c.Employees, TotalClasses = c.Classes, TotalSections = c.Sections });
+            }
+            catch (Exception ex) { return Error(ex, "fetching school statistics"); }
+        }
+
         public async Task<ApiResponse<object>> GetMyBrandAsync(string? schoolId)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, NoSchoolMessage);

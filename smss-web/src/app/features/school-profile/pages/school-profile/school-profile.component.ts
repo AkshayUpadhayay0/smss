@@ -1,32 +1,31 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Observable, catchError, finalize, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import {
-  Breadcrumb,
-  ButtonComponent,
-  CardComponent,
-  IconComponent,
-  InputComponent,
-  PageHeaderComponent,
-  SelectComponent,
-  SelectOption,
-} from '../../../../shared/components';
+import { ButtonComponent, IconComponent, InputComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
-import { SchoolsListModel } from '../../../schools/models/school.model';
+import { SchoolStats, SchoolsListModel } from '../../../schools/models/school.model';
 import { SchoolService } from '../../../schools/services/school.service';
 import { firstErrorMessage } from '../../../schools/utils/school-validators';
 import { ProfileForm, createProfileForm, profileToFormValue, toProfileRequest } from '../../utils/profile-form';
 
 const NO_LOGO_CHANGE: LogoChange = { file: null, remove: false };
 
-/** A School Admin's own school. The school is resolved server-side from the token; no id is ever in the URL or request. */
+/**
+ * The school profile page, in two contexts:
+ *  - `/school-profile`: the signed-in user's own school (resolved server-side from the token). Every school role may open it; only a
+ *    School Admin gets Edit (the API refuses the write for anyone else). Roles other than School Admin receive a limited profile
+ *    (no school type / level / board / tax numbers / status), so those fields are hidden for them.
+ *  - `/schools/:schoolId/profile`: a Super Admin looking at any school, always read-only.
+ */
 @Component({
   selector: 'app-school-profile',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, LogoUploadComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent, SelectComponent, LogoUploadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-profile.component.scss',
   templateUrl: './school-profile.component.html',
@@ -39,7 +38,14 @@ export class SchoolProfileComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  protected readonly breadcrumbs: Breadcrumb[] = [{ label: 'School Profile' }];
+  /** Set only on the Super Admin route (/schools/:schoolId/profile). */
+  readonly schoolId = input<string>();
+  protected readonly isAdminView = computed(() => !!this.schoolId());
+  private readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
+  /** Only a School Admin editing their own school; never the Super Admin view. */
+  protected readonly canEdit = computed(() => !this.isAdminView() && this.isSchoolAdmin());
+  /** The full record (type / level / board / tax / status) comes back only for the School Admin and the Super Admin. */
+  protected readonly showFull = computed(() => this.canEdit() || this.isAdminView());
   protected readonly form = createProfileForm();
 
   protected readonly loading = signal(false);
@@ -49,11 +55,27 @@ export class SchoolProfileComponent implements OnInit {
   protected readonly editing = signal(false);
   protected readonly submitted = signal(false);
   protected readonly school = signal<SchoolsListModel | null>(null);
+  /** null = not loaded (or failed): the cards show "—", never a made-up number. */
+  protected readonly stats = signal<SchoolStats | null>(null);
+  protected readonly statusName = signal('');
+  protected readonly locationText = signal('');
   /** Bumped after each save to re-create the logo picker (clears its pending file). */
   protected readonly logoVersion = signal(0);
   private logoChange: LogoChange = NO_LOGO_CHANGE;
 
   protected readonly logoUrl = computed(() => this.schools.toLogoUrl(this.school()?.logoUrl));
+  protected readonly typeName = computed(() => this.schoolTypeOptions().find((o) => o.value === String(this.school()?.schoolTypeId ?? ''))?.label ?? '');
+  protected readonly isActive = computed(() => this.statusName().toLowerCase() === 'active');
+  protected readonly statCards = computed(() => {
+    const s = this.stats();
+    const fmt = (n: number | undefined) => (n === undefined ? '—' : n.toLocaleString('en-IN'));
+    return [
+      { key: 'students', label: 'Total Students', icon: 'graduation-cap' as const, value: fmt(s?.totalStudents) },
+      { key: 'employees', label: 'Total Employees', icon: 'users' as const, value: fmt(s?.totalEmployees) },
+      { key: 'classes', label: 'Total Classes', icon: 'book-open' as const, value: fmt(s?.totalClasses) },
+      { key: 'sections', label: 'Total Sections', icon: 'layers' as const, value: fmt(s?.totalSections) },
+    ];
+  });
 
   // ── Lookup options ──────────────────────────────────────────────────
   protected readonly schoolTypeOptions = toSignal(this.safe(this.master.getSchoolTypeOptions()), { initialValue: [] });
@@ -65,6 +87,13 @@ export class SchoolProfileComponent implements OnInit {
   protected readonly cityOptions = signal<SelectOption[]>([]);
 
   ngOnInit(): void {
+    // GSTIN and PAN are stored upper-case: show them that way as the user types
+    for (const ctrl of [this.form.controls.schoolGstin, this.form.controls.schoolPan]) {
+      ctrl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
+        const up = v.toUpperCase();
+        if (up !== v) ctrl.setValue(up, { emitEvent: false });
+      });
+    }
     this.setupLocationCascade();
     this.setChildrenEnabled({ state: false, district: false, city: false });
     this.load();
@@ -74,20 +103,27 @@ export class SchoolProfileComponent implements OnInit {
     this.editing.set(false);
     this.loading.set(true);
     this.loadFailed.set(false);
-    this.schools
-      .getMySchool()
+    const id = this.schoolId();
+    const stats$ = (id ? this.schools.getSchoolStats(id) : this.schools.getMyStats()).pipe(catchError(() => of(null)));
+    const statuses$ = this.safe(this.master.getGeneralStatusOptions());
+    (id ? this.schools.getSchool(id) : this.schools.getMySchool())
       .pipe(
-        switchMap((school) => this.loadSavedLocationChain(school).pipe(map((chain) => ({ school, chain })))),
+        switchMap((school) =>
+          forkJoin({ chain: this.loadSavedLocationChain(school), stats: stats$, statuses: statuses$ }).pipe(map((x) => ({ school, ...x }))),
+        ),
         finalize(() => this.loading.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ school, chain }) => {
+        next: ({ school, chain, stats, statuses }) => {
           this.school.set(school);
+          this.stats.set(stats);
+          this.statusName.set(statuses.find((o) => o.value === String(school.schoolStatusId ?? ''))?.label ?? '');
           // The saved chain is loaded first so the cascading selects pre-select correctly.
           this.stateOptions.set(chain.states);
           this.districtOptions.set(chain.districts);
           this.cityOptions.set(chain.cities);
+          this.locationText.set(this.locationOf(school));
 
           this.form.patchValue(profileToFormValue(school), { emitEvent: false });
           this.setChildrenEnabled({ state: !!school.countryId, district: !!school.stateId, city: !!school.districtId });
@@ -171,6 +207,7 @@ export class SchoolProfileComponent implements OnInit {
   }
 
   protected startEdit(): void {
+    if (!this.canEdit()) return;
     const c = this.form.controls;
     this.editing.set(true);
     this.form.enable({ emitEvent: false });
@@ -205,7 +242,7 @@ export class SchoolProfileComponent implements OnInit {
 
   // ── Submit ──────────────────────────────────────────────────────────
   protected submit(): void {
-    if (this.saving() || !this.editing()) return;
+    if (this.saving() || !this.editing() || !this.canEdit()) return;
 
     this.submitted.set(true);
     this.form.markAllAsTouched();
@@ -236,6 +273,7 @@ export class SchoolProfileComponent implements OnInit {
       }),
       tap((school) => {
         this.school.set(school);
+        this.locationText.set(this.locationOf(school));
         this.logoChange = NO_LOGO_CHANGE;
         this.logoVersion.update((v) => v + 1);
         this.submitted.set(false);
@@ -248,6 +286,12 @@ export class SchoolProfileComponent implements OnInit {
       }),
       catchError(() => of(null)), // the error interceptor already toasted; keep the form for another try
     );
+  }
+
+  /** "City, State" from the loaded option lists (they match the saved ids at the moments this is called). */
+  private locationOf(s: SchoolsListModel): string {
+    const label = (opts: SelectOption[], id?: number | null) => opts.find((o) => o.value === String(id ?? ''))?.label;
+    return [label(this.cityOptions(), s.cityId), label(this.stateOptions(), s.stateId)].filter(Boolean).join(', ');
   }
 
   private messageOf(e: unknown): string {

@@ -1,0 +1,45 @@
+// Shared look of the role dashboards (Teacher, Student, Super Admin). Global on purpose: three pages use the same panels.
+// Prefixed dx- so nothing else in the app picks it up by accident.
+
+.dx-panel {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(58, 38, 131, 0.07);
+
+  > .dx-body { flex: 1; padding: var(--space-4) var(--space-5) var(--space-5); }
+  > .dx-body.flush { padding: 0; }
+}
+
+.dx-bar {
+  --bar-fg: #6a46f0;
+  --bar-bg: linear-gradient(100deg, #ece6ff, #f7f4ff 70%, #fff);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  color: var(--bar-fg);
+  background: var(--bar-bg);
+
+  h2,
+  h3 { margin: 0; flex: 1; font-size: 1.02rem; font-weight: 700; color: var(--bar-fg); }
+  a { font-size: var(--text-sm); font-weight: 600; color: var(--bar-fg); text-decoration: none; &:hover { text-decoration: underline; } }
+
+  &.green { --bar-fg: #15803d; --bar-bg: linear-gradient(100deg, #dcf5e7, #f0faf4 70%, #fff); }
+  &.pink { --bar-fg: #a21caf; --bar-bg: linear-gradient(100deg, #fbe3f6, #fdf1fa 70%, #fff); }
+  &.blue { --bar-fg: #1d5fd1; --bar-bg: linear-gradient(100deg, #dbeafe, #eef5ff 70%, #fff); }
+  &.orange { --bar-fg: #b45309; --bar-bg: linear-gradient(100deg, #fde6d5, #fff3ea 70%, #fff); }
+}
+
+// pastel tint for stat cards: set --tone-bg / --tone-fg by modifier
+.dx-tone-violet { --tone-bg: #efeaff; --tone-fg: #6a46f0; }
+.dx-tone-amber,
+.dx-tone-orange { --tone-bg: #fdeedd; --tone-fg: #e0771a; }
+.dx-tone-green { --tone-bg: #e1f6ea; --tone-fg: #16a34a; }
+.dx-tone-blue { --tone-bg: #dfeefe; --tone-fg: #2563eb; }
+.dx-tone-pink,
+.dx-tone-red { --tone-bg: #fde4f0; --tone-fg: #db2777; }
