@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, from, map, switchMap, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
+import { ConcessionChoice, FeeReceipt, PaymentSummary, RecordPaymentRequest } from '../models/fee-payment.model';
 import { StudentFees } from '../models/student-fees.model';
 import { FeePreview, StudentFeeDues, StudentFeeItems, UpdateFeeItemRequest } from '../models/student-billing.model';
 import { IdCardBulkResult, MyClass, StudentListItem, StudentLoginCreated, MyIdCardPreview, StudentMyFees, StudentMyProfile, StudentPhoto, StudentProfile } from '../models/student.model';
@@ -139,8 +139,9 @@ export class StudentService {
     return this.api.put<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/structure`, { feeStructureId });
   }
 
-  applyConcession(studentId: string, concessionId: number, remarks: string | null): Observable<StudentFees> {
-    return this.api.post<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/concessions`, { concessionId, remarks });
+  /** The school's ACTIVE concessions for the Collect Payment form (School Admin / Accountant). */
+  getConcessionChoices(): Observable<ConcessionChoice[]> {
+    return this.api.get<ConcessionChoice[]>('/api/FeePayment/concessions');
   }
 
   removeConcession(studentId: string, concessionId: number): Observable<StudentFees> {

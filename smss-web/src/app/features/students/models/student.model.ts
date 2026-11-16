@@ -231,6 +231,13 @@ export interface MyFeePayment {
   amount: number;
   /** The part that went against the installments (older servers omit the tax fields; a payment without tax has no taxName). */
   feeAmount?: number;
+  /** Applied to installments before any concession; the concession; the net fee. Never the reason: that is for staff. */
+  grossAmount?: number;
+  netFeeAmount?: number;
+  concessionName?: string | null;
+  concessionType?: 'PERCENTAGE' | 'FIXED' | null;
+  concessionValue?: number | null;
+  concessionAmount?: number;
   taxName?: string | null;
   taxCode?: string | null;
   taxRatePercent?: number | null;

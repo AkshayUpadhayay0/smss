@@ -76,10 +76,11 @@ describe('StudentMyFeesComponent', () => {
     })));
     const items = [...el().querySelectorAll('.payments li')].map((li) => (li.textContent ?? '').replace(/\s+/g, ' ').trim());
     expect(items[0]).toContain('Receipt RCP-2026-0002 · Cash');
-    expect(items[0]).toContain('Fee ₹1,000.00 + GST (5%) ₹50.00');
+    expect(items[0]).toContain('Fee amount ₹1,000.00');
+    expect(items[0]).toContain('Tax: GST (5%) ₹50.00');
     expect(items[0]).toContain('₹1,050.00');
     expect(items[1]).not.toContain('GST');
-    expect(items[1]).not.toContain('Fee ₹');
+    expect(items[1]).not.toContain('Fee amount');
     expect(items[1]).toContain('₹3,250.00');
   });
 
@@ -88,7 +89,8 @@ describe('StudentMyFeesComponent', () => {
       { paymentDate: '2026-05-09T10:00:00Z', amount: 1180, feeAmount: 1000, taxName: 'GST 18%', taxCode: 'GST18', taxRatePercent: 18, taxAmount: 180, totalAmount: 1180, receiptNumber: 'RCP-2026-0002', paymentMode: 'Cash' },
     ] })));
     const row = (el().querySelector('.payments li')?.textContent ?? '').replace(/\s+/g, ' ');
-    expect(row).toContain('Fee ₹1,000.00 + GST 18% ₹180.00');
+    expect(row).toContain('Fee amount ₹1,000.00');
+    expect(row).toContain('Tax: GST 18% ₹180.00');
     expect(row).not.toContain('GST 18% (18%)');
   });
 
@@ -117,5 +119,15 @@ describe('StudentMyFeesComponent', () => {
     http.expectOne(URL).flush(env(FEES));
     fixture.detectChanges();
     expect(el().querySelector('.dues')).not.toBeNull();
+  });
+
+  it('a payment with a concession shows fee amount, concession (−), net fee, tax and total, and never the reason', () => {
+    open((r) => r.flush(env({ ...FEES, payments: [
+      { paymentDate: '2026-05-09T10:00:00Z', amount: 1062, feeAmount: 900, grossAmount: 1000, netFeeAmount: 900, concessionName: 'Sibling 10%', concessionType: 'PERCENTAGE', concessionValue: 10, concessionAmount: 100,
+        taxName: 'GST 18%', taxCode: 'GST18', taxRatePercent: 18, taxAmount: 162, totalAmount: 1062, receiptNumber: 'RCP-2026-0003', paymentMode: 'Cash' },
+    ] })));
+    const row = (el().querySelector('.payments li')?.textContent ?? '').replace(/\s+/g, ' ');
+    for (const t of ['Fee amount ₹1,000.00', 'Concession: Sibling 10% − ₹100.00', 'Net fee ₹900.00', 'Tax: GST 18% ₹162.00', '₹1,062.00']) expect(row).toContain(t);
+    expect(text()).not.toContain('reason');
   });
 });

@@ -151,19 +151,15 @@ describe('StudentFeesTabComponent', () => {
     expect(text()).toContain('not added together');
   });
 
-  it('adds a concession with remarks, offering only the fitting ones', () => {
+  it('existing concessions are shown read-only: no Add Concession, a Remove for the School Admin, and a pointer to the payment form', () => {
     open(assigned);
-    expect(cmp()['concessionOptions']().map((o: { label: string }) => o.label)).toEqual(['Merit — ₹500.00 on Tuition']);
-    cmp()['openConcession']();
-    cmp()['concessionControl'].setValue('11');
-    cmp()['remarksControl'].setValue('  scholarship  ');
-    cmp()['submitConcession']();
-    const req = http.expectOne(`${URL}/concessions`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ concessionId: 11, remarks: 'scholarship' });
-    req.flush(env({ ...assigned, availableConcessions: [] }, 201));
-    flushBilling();
-    expect(cmp()['concessionOpen']()).toBe(false);
+    const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].map((b) => b.textContent?.trim() ?? '');
+    expect(buttons.some((b) => b.includes('Add Concession'))).toBe(false);
+    expect(buttons.some((b) => b.includes('Remove'))).toBe(true);
+    expect(text()).toContain('Sibling 10%');
+    expect(text()).toContain('New concessions are chosen when collecting a payment');
+    expect(cmp()['openConcession']).toBeUndefined();
+    expect(cmp()['submitConcession']).toBeUndefined();
   });
 
   it('removing a concession asks first, then DELETEs it', async () => {
@@ -174,7 +170,7 @@ describe('StudentFeesTabComponent', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(env({ ...assigned, concessions: [] }));
     flushBilling();
-    expect(text()).toContain('No concessions applied');
+    expect(text()).toContain('No concessions assigned to this student');
   });
 
   it('a student with no enrollment gets an explanation, not an assign button', () => {
@@ -276,7 +272,8 @@ describe('StudentFeesTabComponent', () => {
       cmp()['openCollect']();
       fixture.detectChanges();
       expect((fixture.nativeElement as HTMLElement).querySelector('app-collect-payment-dialog')).not.toBeNull();
-      http.expectOne(`${API}/api/TaxType`).flush(env([]));   // the dialog asks for the school's tax types when it opens
+      http.expectOne(`${API}/api/TaxType`).flush(env([]));   // the dialog asks for the school's tax types and concessions when it opens
+      http.expectOne(`${API}/api/FeePayment/concessions`).flush(env([]));
 
       cmp()['onRecorded'](RECEIPT);
       http.expectOne(URL).flush(env(assigned));
@@ -319,7 +316,7 @@ describe('StudentFeesTabComponent', () => {
       const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].map((b) => b.textContent?.trim() ?? '');
       expect(buttons.some((b) => b.includes('Collect Payment'))).toBe(true);
       expect(voidButton()).toBeDefined();
-      for (const hidden of ['Change Fee Structure', 'Assign Fee Structure', 'Add Concession', 'Edit']) expect(buttons.some((b) => b.includes(hidden))).toBe(false);
+      for (const hidden of ['Change Fee Structure', 'Assign Fee Structure', 'Add Concession', 'Remove', 'Edit']) expect(buttons.some((b) => b.includes(hidden))).toBe(false);
     });
 
     it('the Void Payment button is hidden from roles that may not void (the API refuses them too)', () => {

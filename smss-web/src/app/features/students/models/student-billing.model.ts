@@ -83,6 +83,8 @@ export type FeeDueStatus = 'Paid' | 'Partially Paid' | 'Pending' | 'Overdue';
 export interface StudentFeeDue {
   feeDueId: number;
   studentFeeItemId: number;
+  /** Optional: an older server does not send it (then a concession for one fee type cannot be matched in the form; the server still checks). */
+  feeTypeId?: number;
   feeTypeName: string;
   frequencyName: string;
   dueDate: string;

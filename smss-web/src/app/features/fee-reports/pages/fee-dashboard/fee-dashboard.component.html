@@ -66,6 +66,28 @@
     }
   </app-card>
 
+  <app-card title="Concessions given">
+    <p class="asof">Discounts given when collecting payments in this view (voided payments excluded). Not part of "Collected" above: what is due = collected + concessions + outstanding.</p>
+    <p class="tax-total"><strong>{{ inr(d.concessionGiven ?? 0) }}</strong></p>
+    @if ((d.concessionByType ?? []).length > 0) {
+      <table class="months" aria-label="Concessions given by concession">
+        <thead><tr><th>Concession</th><th class="num">Payments</th><th class="num">Given</th></tr></thead>
+        <tbody>
+          @for (c of d.concessionByType; track c.concessionId) {
+            <tr>
+              <td>{{ c.concessionName }} <small class="code">{{ c.concessionCode }}</small></td>
+              <td class="num">{{ c.paymentCount }}</td>
+              <td class="num">{{ inr(c.concessionAmount) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="asof">No concessions given here yet.</p>
+    }
+    <p class="asof"><a routerLink="/fee-reports/concessions-given">See every concession given</a></p>
+  </app-card>
+
   <app-card title="Collection by month">
     <p class="asof">{{ d.academicYearName }} · as of {{ date(d.asOf) }} · money received, by payment date (voided payments excluded)</p>
     <table class="months" aria-label="Collection by month">

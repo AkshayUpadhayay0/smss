@@ -3,7 +3,7 @@
     <div class="top">
       <app-select label="Payment mode" [required]="true" [options]="modeOptions" [formControl]="modeControl" />
       <app-input
-        label="Fee amount (₹)"
+        label="Amount applied to installments (₹)"
         type="number"
         [required]="true"
         placeholder="0.00"
@@ -12,16 +12,45 @@
       />
     </div>
 
+    @if (concessions().length > 0) {
+      <app-select label="Concession" placeholder="None" [options]="concessionOptions()" [formControl]="concessionControl" />
+      <p class="hint">Optional, one per payment. It comes off the installments it applies to; tax is then worked out on what is left.</p>
+      @if (selectedConcession()) {
+        <app-textarea
+          label="Reason for the concession"
+          [required]="true"
+          placeholder="Why is this concession being given?"
+          [maxLength]="500"
+          [formControl]="reasonControl"
+          [errorText]="reasonError()"
+        />
+        @if (concessionNotApplicable()) {
+          <p class="notice" role="alert">
+            This concession doesn't apply to the selected installments@if (selectedConcession()?.applicableFeeTypeName) { : it is for {{ selectedConcession()!.applicableFeeTypeName }} only}.
+            Select an installment it applies to, or choose another concession or none.
+          </p>
+        } @else if (concessionBasePaise() > 0 && netFeePaise() <= 0) {
+          <p class="notice" role="alert">With this concession nothing would be left to collect. Choose a smaller amount or a different concession.</p>
+        }
+      }
+    }
+
     @if (taxTypes().length > 0) {
       <app-select label="Tax type" placeholder="None" [options]="taxOptions()" [formControl]="taxControl" />
       <p class="hint">Optional. Tax is added on top of the fee amount.</p>
     } @else if (taxLoaded() && isSchoolAdmin()) {
       <p class="hint">No tax types yet. <a routerLink="/fee-setup/tax-types">Add one in Fee Setup</a> to charge tax on payments.</p>
     }
-    @if (selectedTax()) {
+    @if (selectedTax() || (selectedConcession() && concessionAmountPaise() > 0)) {
       <dl class="tax-summary" aria-live="polite" aria-label="Payment total">
         <div><dt>Fee amount</dt><dd>{{ inr(amountPaise() / 100) }}</dd></div>
-        <div><dt>Tax: {{ taxSummaryLabel() }}</dt><dd>{{ inr(taxAmountPaise() / 100) }}</dd></div>
+        @if (selectedConcession() && concessionAmountPaise() > 0) {
+          <div class="deduct"><dt>Concession: {{ concessionLabelText() }}</dt><dd>− {{ inr(concessionAmountPaise() / 100) }}</dd></div>
+          <div><dt>Net fee</dt><dd>{{ inr(netFeePaise() / 100) }}</dd></div>
+        }
+        @if (selectedTax()) {
+          <div><dt>Tax: {{ taxSummaryLabel() }}</dt><dd>{{ inr(taxAmountPaise() / 100) }}</dd></div>
+        }
         <div class="total"><dt>Total to collect</dt><dd>{{ inr(totalToCollectPaise() / 100) }}</dd></div>
       </dl>
     }

@@ -70,4 +70,38 @@ describe('receiptHtml', () => {
     expect(html).toContain('cheque &lt;b&gt;no. 5&lt;/b&gt;');
     expect(html).toContain('Library &amp; Lab');
   });
+
+  describe('concession lines', () => {
+    const discounted: FeeReceipt = {
+      ...receipt, amount: 1062, feeAmount: 900, grossAmount: 1000, netFeeAmount: 900, concessionName: 'Sibling 10%', concessionCode: 'SIB10', concessionType: 'PERCENTAGE', concessionValue: 10,
+      concessionAmount: 100, concessionReason: 'second child <b>in</b> school', concessionAppliedByName: 'Priya',
+      taxName: 'GST 18%', taxCode: 'GST18', taxRatePercent: 18, taxAmount: 162, totalAmount: 1062,
+    };
+
+    it('prints fee amount, concession (minus), net fee, tax and total paid, in that order', () => {
+      const h = receiptHtml(discounted);
+      const at = (s: string) => h.indexOf(s);
+      expect(at('Fee amount')).toBeGreaterThan(0);
+      expect(at('Concession: Sibling 10%')).toBeGreaterThan(at('Fee amount'));
+      expect(at('Net fee')).toBeGreaterThan(at('Concession: Sibling 10%'));
+      expect(at('Tax: GST 18%')).toBeGreaterThan(at('Net fee'));
+      expect(at('Total paid')).toBeGreaterThan(at('Tax: GST 18%'));
+      expect(h).toContain('&minus; ');                                   // the discount reads as a deduction
+      expect(h).not.toContain('GST 18% (18%)');
+    });
+
+    it('prints the reason (escaped) and who applied it; a student-side receipt without a reason prints none', () => {
+      expect(receiptHtml(discounted)).toContain('Concession reason: second child &lt;b&gt;in&lt;/b&gt; school (applied by Priya)');
+      expect(receiptHtml({ ...discounted, concessionReason: null, concessionAppliedByName: null })).not.toContain('Concession reason');
+    });
+
+    it('a receipt without concession or tax looks as before; a voided one keeps its concession lines and the VOID marking', () => {
+      expect(receiptHtml(receipt)).toContain('Total received');
+      expect(receiptHtml(receipt)).not.toContain('Concession');
+      expect(receiptHtml(receipt)).not.toContain('Net fee');
+      const v = receiptHtml({ ...discounted, status: 'Voided', voidedAt: '2026-10-17T09:00:00Z', voidReason: 'wrong student' });
+      expect(v).toContain('Concession: Sibling 10%');
+      expect(v).toContain('<div class="watermark">VOID</div>');
+    });
+  });
 });

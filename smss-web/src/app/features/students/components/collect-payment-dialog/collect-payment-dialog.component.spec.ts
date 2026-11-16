@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { TaxType } from '../../../fee-setup/models/tax-type.model';
-import { FeeReceipt } from '../../models/fee-payment.model';
+import { ConcessionChoice, FeeReceipt } from '../../models/fee-payment.model';
 import { StudentFeeDue } from '../../models/student-billing.model';
 import { CollectPaymentDialogComponent } from './collect-payment-dialog.component';
 
@@ -14,7 +14,7 @@ const URL = `${API}/api/FeePayment/students/DPS001ST001`;
 const env = <T>(data: T, statusCode = 201) => ({ status: true, statusCode, message: 'ok', data });
 
 const due = (id: number, dueDate: string, amountDue: number, amountPaid = 0, status: StudentFeeDue['status'] = 'Overdue'): StudentFeeDue => ({
-  feeDueId: id, studentFeeItemId: 1, feeTypeName: 'Tuition', frequencyName: 'Monthly', dueDate, amountDue, amountPaid, outstanding: amountDue - amountPaid, status,
+  feeDueId: id, studentFeeItemId: 1, feeTypeId: 1, feeTypeName: 'Tuition', frequencyName: 'Monthly', dueDate, amountDue, amountPaid, outstanding: amountDue - amountPaid, status,
 });
 // deliberately NOT in date order: the dialog must list oldest first by itself
 const DUES: StudentFeeDue[] = [
@@ -34,8 +34,9 @@ describe('CollectPaymentDialogComponent', () => {
   const rows = () => cmp()['rows']() as { dueId: number; checked: boolean; amount: string; outstanding: number }[];
   const submitButton = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) => b.textContent?.includes('Record payment')) as HTMLButtonElement;
 
-  function flushTaxTypes(list: TaxType[]) {
+  function flushTaxTypes(list: TaxType[], concessions: ConcessionChoice[] = []) {
     http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/TaxType`).flush(env(list, 200));
+    http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/FeePayment/concessions`).flush(env(concessions, 200));   // the school's active concessions
     fixture.detectChanges();
   }
 
@@ -55,7 +56,7 @@ describe('CollectPaymentDialogComponent', () => {
     recorded = [];
     fixture.componentInstance.recorded.subscribe((r) => recorded.push(r));
     fixture.detectChanges();
-    flushTaxTypes([]);   // the dialog asks for the school's tax types when it opens; none by default
+    flushTaxTypes([]);   // the dialog asks for the school's tax types and concessions when it opens; none by default
   });
   afterEach(() => {
     http.verify();
@@ -168,7 +169,7 @@ describe('CollectPaymentDialogComponent', () => {
     const field = (label: string) => [...(fixture.nativeElement as HTMLElement).querySelectorAll('.tax-summary div')].find((d) => d.textContent?.includes(label))?.textContent ?? '';
 
     /** Rebuild the dialog with a school that has tax types (the outer beforeEach already opened one without). */
-    function openWith(list: TaxType[], roles: string[] = ['School Admin']) {
+    function openWith(list: TaxType[], roles: string[] = ['School Admin'], concessions: ConcessionChoice[] = []) {
       http.verify();
       TestBed.resetTestingModule();   // AuthService caches the roles it was built with
       clearSessions();
@@ -179,11 +180,11 @@ describe('CollectPaymentDialogComponent', () => {
       fixture.componentRef.setInput('studentId', 'DPS001ST001');
       fixture.componentRef.setInput('dues', DUES);
       fixture.detectChanges();
-      flushTaxTypes(list);
+      flushTaxTypes(list, concessions);
     }
 
-    it('the field is labelled "Fee amount"', () => {
-      expect(text()).toContain('Fee amount');
+    it('the amount field says what it is: the amount applied to installments', () => {
+      expect(text()).toContain('Amount applied to installments');
     });
 
     it('no tax types: the Tax type field is hidden and a School Admin gets a hint to add one; an Accountant sees nothing', () => {
@@ -265,6 +266,133 @@ describe('CollectPaymentDialogComponent', () => {
       expect('taxTypeId' in none.request.body).toBe(false);
       none.flush(env(RECEIPT));
     });
+
+    // ------------------------------------------------------------ concessions
+    const con = (id: number, name: string, type: 'PERCENTAGE' | 'FIXED', value: number, applicableFeeTypeId: number | null = null, applicableFeeTypeName: string | null = null): ConcessionChoice =>
+      ({ concessionId: id, concessionName: name, concessionCode: name.slice(0, 4).toUpperCase(), concessionType: type, value, applicableFeeTypeId, applicableFeeTypeName });
+    const reasonBox = () => (fixture.nativeElement as HTMLElement).querySelector('app-textarea[label="Reason for the concession"]');
+    const pick = (id: string) => { cmp()['concessionControl'].setValue(id); fixture.detectChanges(); };
+    const why = (v: string) => { cmp()['reasonControl'].setValue(v); fixture.detectChanges(); };
+
+    it('no concessions: the Concession field is not shown', () => {
+      openWith([], ['School Admin'], []);
+      expect((fixture.nativeElement as HTMLElement).querySelector('app-select[label="Concession"]')).toBeNull();
+    });
+
+    it('offers None by default plus the active concessions, the value shown only when the name does not already state it', () => {
+      openWith([], ['Accountant'], [con(1, 'Sibling 10%', 'PERCENTAGE', 10), con(2, 'Staff ward', 'FIXED', 500), con(3, 'Staff Rs 500', 'FIXED', 500), con(4, 'Merit', 'PERCENTAGE', 5)]);
+      expect(cmp()['concessionOptions']().map((o: { label: string }) => o.label)).toEqual(['None', 'Sibling 10%', 'Staff ward (₹500)', 'Staff Rs 500', 'Merit (5%)']);
+      expect(cmp()['concessionControl'].value).toBe('');
+      expect(reasonBox()).toBeNull();                                  // no reason box until one is chosen
+      expect((fixture.nativeElement as HTMLElement).querySelector('.tax-summary')).toBeNull();
+    });
+
+    it('choosing a concession asks for a reason; Record payment stays disabled until a non-blank reason is written', () => {
+      openWith([], ['School Admin'], [con(1, 'Sibling 10%', 'PERCENTAGE', 10)]);
+      amount('1000');
+      expect(submitButton().disabled).toBe(false);
+      pick('1');
+      expect(reasonBox()).not.toBeNull();
+      expect(submitButton().disabled).toBe(true);
+      why('   ');
+      expect(submitButton().disabled).toBe(true);                      // spaces are not a reason
+      why('second child in the school');
+      expect(submitButton().disabled).toBe(false);
+      pick('');                                                        // back to None: the reason box and the rule go away
+      expect(reasonBox()).toBeNull();
+      expect(submitButton().disabled).toBe(false);
+    });
+
+    it('the worked example: 1000 less a 10% concession is 900, GST 18% on it is 162, so 1062 to collect', () => {
+      openWith([tax(1, 'GST 18%', 18)], ['School Admin'], [con(1, 'Sibling 10%', 'PERCENTAGE', 10)]);
+      amount('1000');
+      pick('1');
+      cmp()['taxControl'].setValue('1');
+      fixture.detectChanges();
+      expect(field('Fee amount')).toContain('1,000.00');
+      expect(field('Concession: Sibling 10%')).toContain('− ₹100.00');
+      expect(field('Net fee')).toContain('900.00');
+      expect(field('Tax: GST 18%')).toContain('162.00');               // tax on the NET fee: discount first, then tax
+      expect(field('Total to collect')).toContain('1,062.00');
+      // the split of the money is still over the installments, by the GROSS amount
+      expect(cmp()['allocatedPaise']()).toBe(100000);
+      expect(cmp()['difference']()).toBe(0);
+    });
+
+    it('rounds half up like the server: 333.33 less 10% is 33.33 off, 300.00 net, 54.00 tax, 354.00 total; a fixed concession is applied once', () => {
+      openWith([tax(1, 'GST 18%', 18)], ['School Admin'], [con(1, 'Sibling 10%', 'PERCENTAGE', 10), con(2, 'Rs 100 off', 'FIXED', 100)]);
+      amount('333.33');
+      pick('1');
+      cmp()['taxControl'].setValue('1');
+      fixture.detectChanges();
+      expect(cmp()['concessionAmountPaise']()).toBe(3333);
+      expect(cmp()['netFeePaise']()).toBe(30000);
+      expect(cmp()['taxAmountPaise']()).toBe(5400);
+      expect(cmp()['totalToCollectPaise']()).toBe(35400);
+      amount('2500');
+      pick('2');
+      expect(cmp()['concessionAmountPaise']()).toBe(10000);            // 100 once, however many installments the amount spans
+    });
+
+    it('a concession for one fee type discounts only the ticked installments of that type; none of that type = inline message and a disabled button', () => {
+      openWith([], ['School Admin'], [con(1, 'Exam 10%', 'PERCENTAGE', 10, 2, 'Exam Fee')]);
+      amount('2000');                                                  // due 2 (1500) + due 3 (500), both fee type 1
+      pick('1');
+      why('exam concession');
+      expect(cmp()['concessionBasePaise']()).toBe(0);
+      expect(text()).toContain("This concession doesn't apply to the selected installments");
+      expect(text()).toContain('Exam Fee');
+      expect(submitButton().disabled).toBe(true);
+      // make due 3 an Exam Fee installment: now only its 500 is the base
+      cmp()['rows'].update((r: { dueId: number; feeTypeId: number | null }[]) => r.map((x) => (x.dueId === 3 ? { ...x, feeTypeId: 2 } : x)));
+      fixture.detectChanges();
+      expect(cmp()['concessionBasePaise']()).toBe(50000);
+      expect(cmp()['concessionAmountPaise']()).toBe(5000);
+      expect(text()).not.toContain("doesn't apply");
+      expect(submitButton().disabled).toBe(false);
+    });
+
+    it('a concession that would leave nothing to collect is refused inline', () => {
+      openWith([], ['School Admin'], [con(1, 'Everything', 'PERCENTAGE', 100)]);
+      amount('1000');
+      pick('1');
+      why('full waiver');
+      expect(cmp()['netFeePaise']()).toBe(0);
+      expect(text()).toContain('nothing would be left to collect');
+      expect(submitButton().disabled).toBe(true);
+    });
+
+    it('sends the concession id and the reason (trimmed) with the GROSS amount and the split, never a discount, tax or total amount', () => {
+      openWith([tax(1, 'GST 18%', 18)], ['School Admin'], [con(7, 'Sibling 10%', 'PERCENTAGE', 10)]);
+      amount('1000');
+      pick('7');
+      why('  second child  ');
+      cmp()['taxControl'].setValue('1');
+      fixture.detectChanges();
+      submitButton().click();
+      const req = http.expectOne(URL);
+      expect(req.request.body.amount).toBe(1000);
+      expect(req.request.body.concessionId).toBe(7);
+      expect(req.request.body.concessionReason).toBe('second child');
+      expect(req.request.body.taxTypeId).toBe(1);
+      expect(req.request.body.allocations.reduce((s: number, a: { amount: number }) => s + a.amount, 0)).toBe(1000);
+      for (const forbidden of ['concessionAmount', 'discountAmount', 'discount', 'taxAmount', 'totalAmount', 'netFeeAmount', 'grossAmount']) expect(req.request.body).not.toHaveProperty(forbidden);
+      req.flush(env(RECEIPT));
+    });
+
+    it('with None the request carries no concession fields at all, and a typed reason is not sent', () => {
+      openWith([], ['School Admin'], [con(7, 'Sibling 10%', 'PERCENTAGE', 10)]);
+      amount('1000');
+      pick('7');
+      why('typed, then changed my mind');
+      pick('');
+      submitButton().click();
+      const req = http.expectOne(URL);
+      expect(req.request.body).not.toHaveProperty('concessionId');
+      expect(req.request.body).not.toHaveProperty('concessionReason');
+      req.flush(env(RECEIPT));
+    });
+
   });
 
   it('shows the server\'s refusal and stays open (nothing emitted)', () => {

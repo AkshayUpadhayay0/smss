@@ -59,8 +59,8 @@
               <span class="fee">{{ paidOn(p.paymentDate) }}</span>
               <span class="muted">
                 Receipt {{ p.receiptNumber }} · {{ p.paymentMode }}
-                @if (p.taxName) {
-                  <br />Fee {{ inr(p.feeAmount ?? p.amount) }} + {{ taxText(p) }} {{ inr(p.taxAmount ?? 0) }}
+                @for (t of breakdown(p); track t.label) {
+                  <br />{{ t.label }} {{ t.deduction ? '− ' : '' }}{{ inr(t.amount) }}
                 }
               </span>
               <span class="num ok">{{ inr(p.totalAmount ?? p.amount) }}</span>

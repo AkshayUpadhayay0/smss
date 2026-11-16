@@ -3,7 +3,7 @@ import { formatInr } from '../../../../core/utils/currency';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeReceipt, hasTax, taxLabel } from '../../models/fee-payment.model';
+import { FeeReceipt, ReceiptTotalLine, hasConcession, hasTax, receiptTotals, taxLabel } from '../../models/fee-payment.model';
 import { printReceipt } from '../../utils/receipt-print';
 
 /** A receipt on screen, with Print / Save as PDF. Used right after collecting a payment and when reopening one from the history. */
@@ -66,16 +66,15 @@ import { printReceipt } from '../../utils/receipt-print';
             }
           </tbody>
           <tfoot>
-            @if (taxed()) {
-              <tr><td colspan="3">Fee amount</td><td class="num">{{ inr(receipt().feeAmount ?? 0) }}</td></tr>
-              <tr><td colspan="3">Tax: {{ taxText() }}</td><td class="num">{{ inr(receipt().taxAmount ?? 0) }}</td></tr>
-              <tr><td colspan="3">Total paid</td><td class="num">{{ inr(receipt().totalAmount ?? receipt().amount) }}</td></tr>
-            } @else {
-              <tr><td colspan="3">Total received</td><td class="num">{{ inr(receipt().amount) }}</td></tr>
+            @for (t of totals(); track t.label) {
+              <tr [class.deduct]="t.deduction"><td colspan="3">{{ t.label }}</td><td class="num">{{ t.deduction ? '− ' : '' }}{{ inr(t.amount) }}</td></tr>
             }
           </tfoot>
         </table>
 
+        @if (concessionReason(); as why) {
+          <p class="muted">Concession reason: {{ why }}@if (receipt().concessionAppliedByName) { (applied by {{ receipt().concessionAppliedByName }}) }</p>
+        }
         @if (receipt().remarks) {
           <p class="muted">Remarks: {{ receipt().remarks }}</p>
         }
@@ -110,6 +109,17 @@ export class FeeReceiptDialogComponent {
   protected gstin(): string | null {
     const g = this.receipt().school.gstin?.trim();
     return g && hasTax(this.receipt()) ? g : null;
+  }
+
+  /** The totals block: Fee amount / Concession / Net fee / Tax / Total paid (only the lines that apply), or just "Total received" as before. */
+  protected totals(): ReceiptTotalLine[] {
+    return receiptTotals(this.receipt());
+  }
+
+  /** Why a concession was given: staff see it, the student's own receipt does not carry it. */
+  protected concessionReason(): string | null {
+    const r = this.receipt();
+    return hasConcession(r) && r.concessionReason?.trim() ? r.concessionReason.trim() : null;
   }
 
   protected taxText(): string {

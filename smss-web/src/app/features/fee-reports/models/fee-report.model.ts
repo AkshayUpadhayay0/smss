@@ -15,6 +15,14 @@ export interface FeeTaxBreakdown {
   paymentCount: number;
 }
 
+export interface FeeConcessionBreakdown {
+  concessionId: number;
+  concessionName: string;
+  concessionCode: string;
+  concessionAmount: number;
+  paymentCount: number;
+}
+
 export interface FeeDashboard {
   academicYearId: number;
   academicYearName: string;
@@ -23,8 +31,11 @@ export interface FeeDashboard {
   upcomingDays: number;
   asOf: string;
   totalDue: number;
-  /** Fee only: tax is NOT included. */
+  /** CASH collected: neither tax nor the concession is in it. */
   totalCollected: number;
+  /** Discount given at payment time on Active payments in the same scope. due = collected + concessionGiven + outstanding. Optional so an older response still reads. */
+  concessionGiven?: number;
+  concessionByType?: FeeConcessionBreakdown[];
   /** Tax collected on Active payments in the same scope (reported on its own). Optional so an older response still reads. */
   taxCollected?: number;
   taxByType?: FeeTaxBreakdown[];
@@ -46,7 +57,10 @@ export interface ClassFeeRow {
   rollNumber?: string | null;
   sectionName: string;
   totalDue: number;
+  /** Cash collected: paid against the installments minus the concession given. */
   totalCollected: number;
+  /** Discount given at payment time (Active payments, this year). Optional so an older response still reads. */
+  concession?: number;
   outstanding: number;
   status: OverallFeeStatus;
 }
@@ -60,6 +74,7 @@ export interface ClassFeeReport {
   students: ClassFeeRow[];
   totalDue: number;
   totalCollected: number;
+  totalConcession?: number;
   totalOutstanding: number;
   statusCounts: Record<string, number>;
   canManage: boolean;
@@ -73,10 +88,12 @@ export interface ClassFeeTableRow extends Record<string, unknown> {
   rollNumber: string;
   totalDue: string;
   totalCollected: string;
+  concession: string;
   outstanding: string;
   status: string;
   totalDueNum: number;
   totalCollectedNum: number;
+  concessionNum: number;
   outstandingNum: number;
 }
 
@@ -88,4 +105,31 @@ export function csvCell(value: unknown): string {
   let s = String(value ?? '');
   if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return '"' + s.replace(/"/g, '""') + '"';
+}
+
+/** One payment that carried a concession (GET /api/FeeReports/concessions-given). */
+export interface ConcessionGivenRow {
+  paymentId: number;
+  receiptNumber: string;
+  paymentDate: string;
+  studentId: string;
+  studentName: string;
+  concessionName: string;
+  concessionCode: string;
+  concessionType: 'PERCENTAGE' | 'FIXED';
+  concessionValue: number;
+  concessionAmount: number;
+  reason?: string | null;
+  appliedByName?: string | null;
+  /** A voided payment stays in the list (it is the audit trail) but is not in the total. */
+  status: 'Active' | 'Voided';
+}
+
+export interface ConcessionsGiven {
+  items: ConcessionGivenRow[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  /** Sum of the Active payments' concession over the whole date range (not only this page). */
+  totalAmount: number;
 }

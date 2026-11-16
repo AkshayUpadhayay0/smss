@@ -17,7 +17,11 @@ import { FeeDashboardComponent } from './fee-dashboard.component';
 
 const DASH = (canManage: boolean) => ({
   academicYearId: 3, academicYearName: '2026-27', classId: null, sectionId: null, upcomingDays: 7, asOf: '2026-10-17',
-  totalDue: 136000, totalCollected: 10200, totalOutstanding: 125800, overdueAmount: 49800, overdueCount: 19, upcomingAmount: 3000, upcomingCount: 2,
+  totalDue: 136000, totalCollected: 10200, concessionGiven: 1500, totalOutstanding: 125800, overdueAmount: 49800, overdueCount: 19, upcomingAmount: 3000, upcomingCount: 2,
+  concessionByType: [
+    { concessionId: 1, concessionName: 'Sibling 10%', concessionCode: 'SIB10', concessionAmount: 1000, paymentCount: 3 },
+    { concessionId: 2, concessionName: 'Staff Rs 500', concessionCode: 'STF', concessionAmount: 500, paymentCount: 1 },
+  ],
   collectionByMonth: [{ month: '2026-09-01', label: 'Sep 2026', amount: 0 }, { month: '2026-10-01', label: 'Oct 2026', amount: 10200 }],
   canManage,
 });
@@ -87,5 +91,18 @@ describe('FeeDashboardComponent', () => {
     expect(el().textContent).toContain('₹49,800.00');
     expect(el().textContent).not.toContain('Class-wise report');
     expect(el().textContent).toContain('view-only access');
+  });
+
+  it('shows a "Concessions given" card with the total and the per-concession breakdown, read-only, with a link to the full list', () => {
+    open(['Principal'], false);
+    const card = [...el().querySelectorAll('app-card')].find((c) => c.textContent?.includes('Concessions given'))!;
+    const text = (card.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('₹1,500.00');
+    expect(text).toContain('Sibling 10%');
+    expect(text).toContain('₹1,000.00');
+    expect(text).toContain('Staff Rs 500');
+    expect(card.querySelector('a[href="/fee-reports/concessions-given"]')).not.toBeNull();
+    expect(card.querySelector('button')).toBeNull();                       // nothing to click: read-only
+    expect(text).toContain('not part of "Collected"'.replace('not', 'Not'));
   });
 });

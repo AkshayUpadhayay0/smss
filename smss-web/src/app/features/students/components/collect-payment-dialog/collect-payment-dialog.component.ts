@@ -5,16 +5,19 @@ import { finalize } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { formatInr } from '../../../../core/utils/currency';
+import { concessionNameWithValue, concessionPaise } from '../../../fee-setup/models/fee-concession.model';
 import { TaxType, taxOptionLabel, taxPaise } from '../../../fee-setup/models/tax-type.model';
 import { TaxTypeService } from '../../../fee-setup/services/tax-type.service';
 import { ButtonComponent, IconComponent, InputComponent, ModalComponent, SelectComponent, SelectOption, TextareaComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeReceipt, PAYMENT_MODES, PaymentMode, toPaise } from '../../models/fee-payment.model';
+import { ConcessionChoice, FeeReceipt, PAYMENT_MODES, PaymentMode, toPaise } from '../../models/fee-payment.model';
 import { StudentFeeDue, dueStatusTone } from '../../models/student-billing.model';
 import { StudentService } from '../../services/student.service';
 
 interface AllocRow {
   dueId: number;
+  /** The installment's fee type, to match a concession that applies to one fee type only (null on an older server). */
+  feeTypeId: number | null;
   label: string;
   dueDate: string;
   status: string;
@@ -65,6 +68,23 @@ export class CollectPaymentDialogComponent implements OnInit {
   protected readonly taxOptions = computed<SelectOption[]>(() => [{ label: 'None', value: '' }, ...this.taxTypes().map((t) => ({ label: taxOptionLabel(t), value: String(t.taxTypeId) }))]);
   protected readonly selectedTax = computed(() => this.taxTypes().find((t) => String(t.taxTypeId) === this.taxId()) ?? null);
 
+  /** '' = no concession (the default); otherwise the chosen concession's id as text. ONE per payment. */
+  protected readonly concessionControl = new FormControl<string>('', { nonNullable: true });
+  protected readonly reasonControl = new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] });
+  /** The school's ACTIVE concessions (the server lists only those). Empty when there are none or the list could not be loaded: the field is then hidden. */
+  protected readonly concessions = signal<ConcessionChoice[]>([]);
+  private readonly concessionId = signal('');
+  private readonly reasonText = signal('');
+  protected readonly concessionOptions = computed<SelectOption[]>(() => [
+    { label: 'None', value: '' },
+    ...this.concessions().map((c) => ({ label: concessionNameWithValue(c.concessionName, c.concessionType, c.value), value: String(c.concessionId) })),
+  ]);
+  protected readonly selectedConcession = computed(() => this.concessions().find((c) => String(c.concessionId) === this.concessionId()) ?? null);
+  protected readonly concessionLabelText = computed(() => {
+    const c = this.selectedConcession();
+    return c ? concessionNameWithValue(c.concessionName, c.concessionType, c.value) : '';
+  });
+
   protected readonly rows = signal<AllocRow[]>([]);
   protected readonly amountText = signal('');
   /** The user changed the split themselves: stop re-splitting automatically when the amount changes. */
@@ -79,12 +99,36 @@ export class CollectPaymentDialogComponent implements OnInit {
     const t = this.amountText().trim();
     return t === '' || !Number.isFinite(Number(t)) ? 0 : toPaise(t);
   });
+  /**
+   * Live preview of the concession, in paise (the server computes the real one with the same rule): the base is the sum of the ticked installments the concession applies to
+   * (all of them when it has no fee type), PERCENTAGE rounds half up, FIXED is applied once, never more than the base.
+   */
+  protected readonly concessionBasePaise = computed(() => {
+    const c = this.selectedConcession();
+    if (!c) return 0;
+    return this.rows()
+      .filter((r) => r.checked && !this.rowError(r) && (c.applicableFeeTypeId == null || r.feeTypeId === c.applicableFeeTypeId))
+      .reduce((s, r) => s + toPaise(r.amount || 0), 0);
+  });
+  protected readonly concessionAmountPaise = computed(() => {
+    const c = this.selectedConcession();
+    return c ? concessionPaise(c.concessionType, c.value, this.concessionBasePaise()) : 0;
+  });
+  /** The cash fee: the amount applied to installments minus the concession. Tax is worked out on THIS (discount first, then tax). */
+  protected readonly netFeePaise = computed(() => this.amountPaise() - this.concessionAmountPaise());
+  /** A concession is chosen but none of the ticked installments is one it applies to (shown as a message; Record payment stays disabled). */
+  protected readonly concessionNotApplicable = computed(() => !!this.selectedConcession() && this.amountPaise() > 0 && this.allocatedPaise() > 0 && this.concessionBasePaise() === 0);
+  protected readonly reasonError = computed(() => {
+    if (!this.selectedConcession()) return undefined;
+    if (this.reasonText().trim().length === 0) return this.submitted() || this.reasonControl.touched ? 'A reason is required when a concession is selected' : undefined;
+    return undefined;
+  });
   /** Live preview of the tax (the server computes the real one with the same rule) and of the total to collect, in paise. */
   protected readonly taxAmountPaise = computed(() => {
     const t = this.selectedTax();
-    return t ? taxPaise(this.amountPaise(), t.ratePercent) : 0;
+    return t ? taxPaise(this.netFeePaise(), t.ratePercent) : 0;
   });
-  protected readonly totalToCollectPaise = computed(() => this.amountPaise() + this.taxAmountPaise());
+  protected readonly totalToCollectPaise = computed(() => this.netFeePaise() + this.taxAmountPaise());
   protected readonly taxSummaryLabel = computed(() => {
     const t = this.selectedTax();
     return t ? taxOptionLabel(t) : '';
@@ -103,8 +147,13 @@ export class CollectPaymentDialogComponent implements OnInit {
   });
 
   protected readonly anyRowError = computed(() => this.rows().some((r) => r.checked && !!this.rowError(r)));
+  /** With a concession: a written reason, at least one installment it applies to, and something left to collect after the discount. */
+  protected readonly concessionOk = computed(() => {
+    if (!this.selectedConcession()) return true;
+    return this.reasonText().trim().length > 0 && this.reasonControl.valid && this.concessionBasePaise() > 0 && this.netFeePaise() > 0 && this.concessionAmountPaise() > 0;
+  });
   protected readonly canSubmit = computed(
-    () => !this.saving() && this.amountPaise() > 0 && !this.amountError() && this.difference() === 0 && !this.anyRowError() && this.rows().some((r) => r.checked) && this.modeControl.valid,
+    () => !this.saving() && this.amountPaise() > 0 && !this.amountError() && this.difference() === 0 && !this.anyRowError() && this.rows().some((r) => r.checked) && this.modeControl.valid && this.concessionOk(),
   );
 
   ngOnInit(): void {
@@ -114,6 +163,7 @@ export class CollectPaymentDialogComponent implements OnInit {
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.feeDueId - b.feeDueId)
         .map((d) => ({
           dueId: d.feeDueId,
+          feeTypeId: d.feeTypeId ?? null,
           label: d.feeTypeName,
           dueDate: d.dueDate,
           status: d.status,
@@ -134,6 +184,16 @@ export class CollectPaymentDialogComponent implements OnInit {
         },
         // The payment can still be recorded without tax; the interceptor already toasted the reason.
         error: () => this.taxLoaded.set(true),
+      });
+
+    this.concessionControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => this.concessionId.set(v));
+    this.reasonControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => this.reasonText.set(v));
+    this.students
+      .getConcessionChoices()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => this.concessions.set(list),
+        error: () => undefined, // a payment can still be recorded without a concession; the interceptor already toasted the reason
       });
 
     this.amountControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
@@ -199,6 +259,8 @@ export class CollectPaymentDialogComponent implements OnInit {
         amount: this.amountPaise() / 100,
         // only the chosen type's id: the tax amount is always worked out by the server
         ...(this.selectedTax() ? { taxTypeId: this.selectedTax()!.taxTypeId } : {}),
+        // only the chosen concession's id and the written reason: the discount, the tax on the net fee and the total are always worked out by the server
+        ...(this.selectedConcession() ? { concessionId: this.selectedConcession()!.concessionId, concessionReason: this.reasonControl.value.trim() } : {}),
         paymentMode: this.modeControl.value as PaymentMode,
         allocations: this.rows().filter((r) => r.checked).map((r) => ({ feeDueId: r.dueId, amount: toPaise(r.amount) / 100 })),
         remarks: this.remarksControl.value.trim() || null,

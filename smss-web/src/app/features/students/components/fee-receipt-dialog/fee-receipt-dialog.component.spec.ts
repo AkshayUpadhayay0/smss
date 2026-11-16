@@ -42,4 +42,43 @@ describe('FeeReceiptDialogComponent: tax lines and GSTIN', () => {
     open({ ...taxed, school: { ...taxed.school, gstin: null } });
     expect(text()).not.toContain('GSTIN');
   });
+
+describe('FeeReceiptDialogComponent: concession lines', () => {
+  let fixture: ComponentFixture<FeeReceiptDialogComponent>;
+  // the markup with tags turned into spaces, so a label and its amount in neighbouring cells read as "Fee amount ₹1,000.00"
+  const text = () => (fixture.nativeElement as HTMLElement).innerHTML.replace(/<[^>]*>/g, ' ').replace(/&minus;/g, '−').replace(/\s+/g, ' ');
+  const open = (r: FeeReceipt) => {
+    fixture = TestBed.createComponent(FeeReceiptDialogComponent);
+    fixture.componentRef.setInput('receipt', r);
+    fixture.detectChanges();
+  };
+  const discounted: FeeReceipt = {
+    ...base, amount: 1062, feeAmount: 900, grossAmount: 1000, netFeeAmount: 900, concessionName: 'Sibling 10%', concessionCode: 'SIB10', concessionType: 'PERCENTAGE', concessionValue: 10,
+    concessionAmount: 100, concessionReason: 'second child', concessionAppliedByName: 'Priya',
+    taxName: 'GST 18%', taxCode: 'GST18', taxRatePercent: 18, taxAmount: 162, totalAmount: 1062,
+  };
+
+  it('shows Fee amount, Concession (−), Net fee, Tax and Total paid, then the reason and who applied it', () => {
+    open(discounted);
+    for (const t of ['Fee amount ₹1,000.00', 'Concession: Sibling 10% − ₹100.00', 'Net fee ₹900.00', 'Tax: GST 18% ₹162.00', 'Total paid ₹1,062.00', 'Concession reason: second child (applied by Priya)']) {
+      expect(text()).toContain(t);
+    }
+  });
+
+  it('a receipt without the reason (the student side) shows the lines but no reason; one without concession or tax is unchanged', () => {
+    open({ ...discounted, concessionReason: null, concessionAppliedByName: null });
+    expect(text()).toContain('Net fee');
+    expect(text()).not.toContain('Concession reason');
+    open({ ...base, school: { ...base.school, gstin: null } });
+    expect(text()).toContain('Total received');
+    expect(text()).not.toContain('Concession');
+    expect(text()).not.toContain('Net fee');
+  });
+
+  it('a voided receipt keeps its concession lines and says VOID', () => {
+    open({ ...discounted, status: 'Voided', voidedAt: '2026-10-17T09:00:00Z', voidReason: 'wrong student' });
+    expect(text()).toContain('Concession: Sibling 10%');
+    expect(text()).toContain('Voided');
+  });
+});
 });

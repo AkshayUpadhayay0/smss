@@ -33,6 +33,20 @@
   }
 }
 
+.notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg, #fff7e0);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-warning, #e0a100);
+}
+
+.tax-summary .deduct dd {
+  color: var(--color-success, #15803d);
+}
+
 .hint {
   margin: calc(-1 * var(--space-2)) 0 0;
   color: var(--color-text-muted);

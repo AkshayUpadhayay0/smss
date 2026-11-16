@@ -1,4 +1,5 @@
 // Mirrors RecordPaymentRequest / PaymentSummaryDto / FeeReceiptDto.
+import { ConcessionType, concessionNameWithValue } from '../../fee-setup/models/fee-concession.model';
 import { taxNameWithRate } from '../../fee-setup/models/tax-type.model';
 
 /** The payment modes the API accepts (stored exactly as spelled). */
@@ -12,8 +13,17 @@ export interface PaymentAllocation {
 
 /** The fee / tax / total split the API returns on every payment, history row and receipt. Optional so a payment without tax (or older fixtures) reads as before. */
 export interface PaymentTaxFields {
-  /** What went against the installments. */
+  /** The CASH fee: the amount applied to installments minus the concession (equal to `netFeeAmount`). */
   feeAmount?: number;
+  /** What was applied to the installments before any concession (= net fee + concession). */
+  grossAmount?: number;
+  netFeeAmount?: number;
+  /** The concession given on this payment, as it was at the time (a later edit never changes it). */
+  concessionName?: string | null;
+  concessionCode?: string | null;
+  concessionType?: ConcessionType | null;
+  concessionValue?: number | null;
+  concessionAmount?: number;
   /** Name, code and rate as they were when the payment was taken. */
   taxName?: string | null;
   taxCode?: string | null;
@@ -26,12 +36,49 @@ export interface PaymentTaxFields {
 /** True when the payment carried a tax type (a 0% type still counts: it is on the receipt). */
 export const hasTax = (p: PaymentTaxFields): boolean => !!p.taxName;
 
+/** True when the payment carried a concession. */
+export const hasConcession = (p: PaymentTaxFields): boolean => !!p.concessionName && (p.concessionAmount ?? 0) > 0;
+
+/** "Sibling 10%" / "Staff ward (₹500)": the concession's name, with its value only when the name does not already state it. */
+export const concessionLabel = (p: PaymentTaxFields): string => concessionNameWithValue(p.concessionName ?? '', p.concessionType ?? 'FIXED', p.concessionValue ?? 0);
+
+/** One line of the totals block of a receipt (screen and print share it). */
+export interface ReceiptTotalLine {
+  label: string;
+  amount: number;
+  /** Shown as a deduction ("− ₹100.00"). */
+  deduction?: boolean;
+  /** The last, bold line. */
+  total?: boolean;
+}
+
+/**
+ * The totals of a receipt. Without concession or tax it is the single "Total received" line, exactly as before. With either:
+ * Fee amount (gross) / Concession (−) / Net fee / Tax / Total paid, skipping the lines that do not apply (no concession: no Concession and Net fee lines; no tax: no Tax line).
+ */
+export function receiptTotals(r: PaymentTaxFields & { amount: number }): ReceiptTotalLine[] {
+  const taxed = hasTax(r);
+  const discounted = hasConcession(r);
+  if (!taxed && !discounted) return [{ label: 'Total received', amount: r.amount, total: true }];
+  const lines: ReceiptTotalLine[] = [{ label: 'Fee amount', amount: r.grossAmount ?? r.feeAmount ?? 0 }];
+  if (discounted) {
+    lines.push({ label: `Concession: ${concessionLabel(r)}`, amount: r.concessionAmount ?? 0, deduction: true });
+    lines.push({ label: 'Net fee', amount: r.netFeeAmount ?? r.feeAmount ?? 0 });
+  }
+  if (taxed) lines.push({ label: `Tax: ${taxLabel(r)}`, amount: r.taxAmount ?? 0 });
+  lines.push({ label: 'Total paid', amount: r.totalAmount ?? r.amount, total: true });
+  return lines;
+}
+
 /** "GST (18%)" style description of the tax on a payment. */
 export const taxLabel = (p: PaymentTaxFields): string => taxNameWithRate(p.taxName ?? '', p.taxRatePercent ?? 0);
 
 export interface RecordPaymentRequest {
-  /** The FEE amount to put against the dues. Tax is added on top by the server; a tax AMOUNT is never sent. */
+  /** The amount to put against the dues: GROSS, before any concession. The server takes the concession off and adds tax on what is left; no discount, tax or total amount is ever sent. */
   amount: number;
+  /** Optional: ONE of the school's active concessions. A written reason is then required. */
+  concessionId?: number | null;
+  concessionReason?: string | null;
   /** Optional: one of the school's active tax types. */
   taxTypeId?: number | null;
   paymentMode: PaymentMode;
@@ -55,9 +102,14 @@ export interface PaymentSummary extends PaymentTaxFields {
   voidedAt?: string | null;
   voidedByName?: string | null;
   voidReason?: string | null;
+  /** Why the concession was given and who applied it. Staff views only: absent on a student's own views. */
+  concessionReason?: string | null;
+  concessionAppliedByName?: string | null;
 }
 
 export interface ReceiptLine {
+  /** The part of this line's amount that was discounted (0 when the concession did not apply to it). */
+  concessionAmount?: number;
   feeDueId: number;
   feeTypeName: string;
   frequencyName: string;
@@ -82,6 +134,9 @@ export interface FeeReceipt extends PaymentTaxFields {
   voidedAt?: string | null;
   voidedByName?: string | null;
   voidReason?: string | null;
+  /** Why the concession was given and who applied it. Staff views only: absent on a student's own views. */
+  concessionReason?: string | null;
+  concessionAppliedByName?: string | null;
   school: { name: string; address?: string | null; phone?: string | null; email?: string | null; logoUrl?: string | null; gstin?: string | null };
   student: { studentId: string; name: string; className?: string | null; academicYearName?: string | null };
   lines: ReceiptLine[];
@@ -108,3 +163,15 @@ export const paymentStatusTone = (v: unknown): string => (v === 'Voided' ? 'red'
 
 /** Money as whole paise, so sums and comparisons never suffer from floating point (0.1 + 0.2). */
 export const toPaise = (value: string | number): number => Math.round(Number(value) * 100);
+
+/** One active concession the person collecting a payment may choose (GET /api/FeePayment/concessions). */
+export interface ConcessionChoice {
+  concessionId: number;
+  concessionName: string;
+  concessionCode: string;
+  concessionType: ConcessionType;
+  value: number;
+  /** When set, the concession applies only to installments of this fee type. */
+  applicableFeeTypeId?: number | null;
+  applicableFeeTypeName?: string | null;
+}

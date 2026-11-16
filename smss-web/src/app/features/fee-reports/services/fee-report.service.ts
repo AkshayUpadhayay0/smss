@@ -7,7 +7,7 @@ import { Section } from '../../school-setup/models/section.model';
 import { AcademicYearService } from '../../school-setup/services/academic-year.service';
 import { ClassService } from '../../school-setup/services/class.service';
 import { SectionService } from '../../school-setup/services/section.service';
-import { ClassFeeReport, FeeDashboard } from '../models/fee-report.model';
+import { ClassFeeReport, ConcessionsGiven, FeeDashboard } from '../models/fee-report.model';
 import { SectionFeeGrid, SectionFeeStatus } from '../models/section-fee-status.model';
 
 /** Always the caller's own school: the server takes it from the token. */
@@ -39,6 +39,14 @@ export class FeeReportService {
     const params: Record<string, string | number> = { academicYearId };
     if (sectionId) params['sectionId'] = sectionId;
     return this.api.get<ClassFeeReport>(`/api/FeeReports/class/${classId}`, params);
+  }
+
+  /** The audit list of concessions given at payment time; `from` / `to` are India calendar days (yyyy-MM-dd), either may be left out. */
+  concessionsGiven(from: string | null, to: string | null, page: number, pageSize: number): Observable<ConcessionsGiven> {
+    const params: Record<string, string | number> = { page, pageSize };
+    if (from) params['from'] = from;
+    if (to) params['to'] = to;
+    return this.api.get<ConcessionsGiven>('/api/FeeReports/concessions-given', params);
   }
 
   /** The year / class / section choices both screens filter by. */

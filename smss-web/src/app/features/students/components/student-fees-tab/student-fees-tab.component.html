@@ -59,16 +59,11 @@
 
           <app-card title="Concessions">
             <div class="head">
-              <p class="meta">Concessions reduce the amounts above.</p>
-              @if (canConfigure()) {
-                <app-button variant="secondary" [disabled]="busy() || f.availableConcessions.length === 0" (click)="openConcession()">
-                  <app-icon name="plus" [size]="16" />Add Concession
-                </app-button>
-              }
+              <p class="meta">Concessions on record reduce the amounts above. New concessions are chosen when collecting a payment.</p>
             </div>
 
             @if (f.concessions.length === 0) {
-              <p class="empty">No concessions applied.@if (f.availableConcessions.length === 0) { There are no active concessions that fit this fee structure. }</p>
+              <p class="empty">No concessions assigned to this student.</p>
             } @else {
               <ul class="concessions">
                 @for (c of f.concessions; track c.studentFeeConcessionId) {
@@ -267,24 +262,5 @@
       </app-modal>
     }
 
-    @if (concessionOpen()) {
-      <app-modal title="Add concession" [dismissible]="!busy()" (closed)="concessionOpen.set(false)">
-        <div class="dialog">
-          <app-select
-            label="Concession"
-            [required]="true"
-            [options]="concessionOptions()"
-            [formControl]="concessionControl"
-            [errorText]="concessionError()"
-            placeholder="Select a concession…"
-          />
-          <app-textarea label="Remarks" placeholder="Optional, e.g. second child in the school" [maxLength]="500" [formControl]="remarksControl" />
-        </div>
-        <ng-container modal-footer>
-          <app-button variant="secondary" [disabled]="busy()" (click)="concessionOpen.set(false)">Cancel</app-button>
-          <app-button [disabled]="busy()" (click)="submitConcession()">{{ busy() ? 'Saving…' : 'Add Concession' }}</app-button>
-        </ng-container>
-      </app-modal>
-    }
   }
 }

@@ -18,10 +18,11 @@ const COLUMNS: TableColumn<ClassFeeTableRow>[] = [
   { key: 'rollNumber', label: 'Roll', sortable: true, width: '80px' },
   { key: 'totalDue', label: 'Total Due', sortable: true },
   { key: 'totalCollected', label: 'Collected', sortable: true },
+  { key: 'concession', label: 'Concession', sortable: true },
   { key: 'outstanding', label: 'Outstanding', sortable: true },
   { key: 'status', label: 'Status', sortable: true, type: 'badge', tone: dueStatusTone, width: '140px' },
 ];
-const NUMERIC = new Set(['totalDue', 'totalCollected', 'outstanding']);
+const NUMERIC = new Set(['totalDue', 'totalCollected', 'concession', 'outstanding']);
 const byText = (a: unknown, b: unknown) => String(a ?? '').localeCompare(String(b ?? ''), undefined, { sensitivity: 'base', numeric: true });
 
 /** Class-wise collection report: per student total due / collected / outstanding / status, with a class total. */
@@ -74,10 +75,12 @@ export class ClassFeeReportComponent implements OnInit {
       rollNumber: s.rollNumber ?? '',
       totalDue: s.status === 'Not Set' ? '—' : formatInr(s.totalDue),
       totalCollected: s.status === 'Not Set' ? '—' : formatInr(s.totalCollected),
+      concession: s.status === 'Not Set' || !s.concession ? '—' : formatInr(s.concession),
       outstanding: s.status === 'Not Set' ? '—' : formatInr(s.outstanding),
       status: s.status,
       totalDueNum: s.totalDue,
       totalCollectedNum: s.totalCollected,
+      concessionNum: s.concession ?? 0,
       outstandingNum: s.outstanding,
     })),
   );
@@ -163,9 +166,9 @@ export class ClassFeeReportComponent implements OnInit {
   protected exportCsv(): void {
     const r = this.report();
     if (!r) return;
-    const lines = [['Student ID', 'Student', 'Section', 'Roll', 'Total due', 'Collected', 'Outstanding', 'Status']];
-    for (const s of this.sortedRows()) lines.push([s.studentId, s.fullName, s.sectionName, s.rollNumber, String(s.totalDueNum), String(s.totalCollectedNum), String(s.outstandingNum), s.status]);
-    lines.push(['', 'Class total', '', '', String(r.totalDue), String(r.totalCollected), String(r.totalOutstanding), '']);
+    const lines = [['Student ID', 'Student', 'Section', 'Roll', 'Total due', 'Collected (cash)', 'Concession', 'Outstanding', 'Status']];
+    for (const s of this.sortedRows()) lines.push([s.studentId, s.fullName, s.sectionName, s.rollNumber, String(s.totalDueNum), String(s.totalCollectedNum), String(s.concessionNum), String(s.outstandingNum), s.status]);
+    lines.push(['', 'Class total', '', '', String(r.totalDue), String(r.totalCollected), String(r.totalConcession ?? 0), String(r.totalOutstanding), '']);
     const blob = new Blob(['\ufeff' + lines.map((l) => l.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -84,6 +84,7 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Fee Dashboard', route: '/fee-dashboard' },
       { label: 'Class-wise Report', route: '/fee-reports/class' },
+      { label: 'Concessions given', route: '/fee-reports/concessions-given' },
     ],
   },{
     label: 'Students',

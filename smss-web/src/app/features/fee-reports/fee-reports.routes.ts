@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-// Mounted at the root: /fee-dashboard, /fee-reports/class and /fee-status (a class teacher's own section).
+// Mounted at the root: /fee-dashboard, /fee-reports/class, /fee-reports/concessions-given and /fee-status (a class teacher's own section).
 export const FEE_REPORTS_ROUTES: Routes = [
   {
     path: 'fee-dashboard',
@@ -9,6 +9,10 @@ export const FEE_REPORTS_ROUTES: Routes = [
   {
     path: 'fee-status',
     loadComponent: () => import('./pages/section-fee-status/section-fee-status.component').then((m) => m.SectionFeeStatusComponent),
+  },
+  {
+    path: 'fee-reports/concessions-given',
+    loadComponent: () => import('./pages/concessions-given/concessions-given.component').then((m) => m.ConcessionsGivenComponent),
   },
   {
     path: 'fee-reports/class',

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
@@ -15,7 +15,7 @@ const DAY_OPTIONS: SelectOption[] = [7, 15, 30, 60].map((d) => ({ label: `Next $
 /** Collected / Outstanding / Overdue / Upcoming for an academic year, optionally narrowed to a class and section. */
 @Component({
   selector: 'app-fee-dashboard',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './fee-dashboard.component.scss',
   templateUrl: './fee-dashboard.component.html',

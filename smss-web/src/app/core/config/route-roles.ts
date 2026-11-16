@@ -133,6 +133,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   // Fee Status of a class teacher's own section (read-only; the API checks WHICH teacher). The School Admin has the fee dashboard and reports instead.
   '/fee-status': [ROLES.TEACHER],
   '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
+  '/fee-reports/concessions-given': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
 
   '/schools': [ROLES.SUPER_ADMIN],
   '/schools/add': [ROLES.SUPER_ADMIN],

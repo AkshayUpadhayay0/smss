@@ -15,11 +15,11 @@ const CLASSES = [{ classId: 7, className: 'Class 1', statusName: 'Active' }];
 const SECTIONS = [{ sectionId: 20, classId: 7, className: 'Class 1', sectionName: 'A', statusName: 'Active' }];
 import { ClassFeeReportComponent } from './class-fee-report.component';
 
-const row = (id: string, name: string, due: number, paid: number, status: string) => ({ studentId: id, fullName: name, rollNumber: null, sectionName: 'A', totalDue: due, totalCollected: paid, outstanding: due - paid, status });
+const row = (id: string, name: string, due: number, paid: number, status: string) => ({ studentId: id, fullName: name, rollNumber: null, sectionName: 'A', totalDue: due, totalCollected: paid, concession: 0, outstanding: due - paid, status });
 const REPORT = (canManage: boolean) => ({
   academicYearId: 3, academicYearName: '2026-27', classId: 7, className: 'Class 1', sectionId: null, canManage,
   students: [row('S1', 'Asha', 30000, 30000, 'Paid'), row('S2', 'Bela', 30000, 0, 'Overdue'), row('S3', 'Chitra', 30000, 5000, 'Partially Paid'), row('S4', 'Dev', 0, 0, 'Not Set')],
-  totalDue: 90000, totalCollected: 35000, totalOutstanding: 55000, statusCounts: { Overdue: 1, 'Partially Paid': 1, Pending: 0, Paid: 1, 'Not Set': 1 },
+  totalDue: 90000, totalCollected: 35000, totalConcession: 1500, totalOutstanding: 55000, statusCounts: { Overdue: 1, 'Partially Paid': 1, Pending: 0, Paid: 1, 'Not Set': 1 },
 });
 
 describe('ClassFeeReportComponent', () => {
@@ -57,6 +57,8 @@ describe('ClassFeeReportComponent', () => {
     expect(text).toContain('₹90,000.00');
     expect(text).toContain('₹55,000.00');
     expect(text).toContain('Overdue: 1');
+    expect(text).toContain('Concession');                  // the new column and the class total
+    expect(text).toContain('₹1,500.00');
   });
 
   it('sorts by status (worst first) and by name', () => {

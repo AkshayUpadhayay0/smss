@@ -11,7 +11,7 @@ import { FeeDueRow, FeeItemRow, StudentFeeDues, StudentFeeItem, StudentFeeItems,
 import { StudentFeeConcession, StudentFeeLineRow, StudentFees } from '../../models/student-fees.model';
 import { CollectPaymentDialogComponent } from '../collect-payment-dialog/collect-payment-dialog.component';
 import { FeeReceiptDialogComponent } from '../fee-receipt-dialog/fee-receipt-dialog.component';
-import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, hasTax, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
+import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, concessionLabel, hasConcession, hasTax, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { StudentService } from '../../services/student.service';
 
@@ -47,6 +47,7 @@ const PAYMENT_COLUMNS: TableColumn<PaymentRow>[] = [
   { key: 'receiptNumber', label: 'Receipt No.' },
   { key: 'paymentDate', label: 'Date' },
   { key: 'feeAmount', label: 'Fee' },
+  { key: 'concession', label: 'Concession' },
   { key: 'tax', label: 'Tax' },
   { key: 'amount', label: 'Total paid' },
   { key: 'paymentMode', label: 'Mode' },
@@ -115,7 +116,9 @@ export class StudentFeesTabComponent implements OnInit {
       paymentId: p.paymentId,
       receiptNumber: p.receiptNumber,
       paymentDate: new Date(p.paymentDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      // the cash fee; with a concession the gross, the discount and why are in the Concession column and on the receipt
       feeAmount: formatInr(p.feeAmount ?? p.amount),
+      concession: hasConcession(p) ? `${concessionLabel(p)} · − ${formatInr(p.concessionAmount ?? 0)}` : '—',
       tax: hasTax(p) ? `${taxLabel(p)} · ${formatInr(p.taxAmount ?? 0)}` : '—',
       amount: formatInr(p.amount),
       paymentMode: p.paymentMode,
@@ -180,12 +183,6 @@ export class StudentFeesTabComponent implements OnInit {
   protected readonly structureControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
   protected readonly structureError = signal<string | undefined>(undefined);
 
-  // ---- concession dialog
-  protected readonly concessionOpen = signal(false);
-  protected readonly concessionControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
-  protected readonly remarksControl = new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] });
-  protected readonly concessionError = signal<string | undefined>(undefined);
-
   protected readonly lineRows = computed<StudentFeeLineRow[]>(() =>
     (this.fees()?.lines ?? []).map((l) => ({
       feeTypeName: l.feeTypeName,
@@ -218,13 +215,6 @@ export class StudentFeesTabComponent implements OnInit {
     const f = this.fees();
     return !!f && f.availableStructures.some((s) => s.classId !== f.classId);
   });
-
-  protected readonly concessionOptions = computed<SelectOption[]>(() =>
-    (this.fees()?.availableConcessions ?? []).map((c) => ({
-      label: `${c.concessionName} — ${describeValue(c.concessionType, c.value)}${c.applicableFeeTypeName ? ' on ' + c.applicableFeeTypeName : ''}`,
-      value: String(c.concessionId),
-    })),
-  );
 
   ngOnInit(): void {
     this.load();
@@ -401,28 +391,7 @@ export class StudentFeesTabComponent implements OnInit {
     this.run(this.students.assignFeeStructure(this.studentId(), Number(this.structureControl.value)), 'Fee structure assigned.', () => this.assignOpen.set(false));
   }
 
-  // ---- concessions
-  protected openConcession(): void {
-    this.concessionControl.reset('');
-    this.remarksControl.reset('');
-    this.concessionError.set(undefined);
-    this.concessionOpen.set(true);
-  }
-
-  protected submitConcession(): void {
-    if (this.busy()) return;
-    if (this.concessionControl.invalid) {
-      this.concessionError.set('Select a concession');
-      return;
-    }
-    if (this.remarksControl.invalid) return;
-    this.run(
-      this.students.applyConcession(this.studentId(), Number(this.concessionControl.value), this.remarksControl.value.trim() || null),
-      'Concession added.',
-      () => this.concessionOpen.set(false),
-    );
-  }
-
+  // ---- concessions: existing assignments are shown read-only (a School Admin can remove one); new ones are chosen when collecting a payment
   protected async removeConcession(c: StudentFeeConcession): Promise<void> {
     const ok = await this.confirmDialog.confirm({
       title: 'Remove concession?',

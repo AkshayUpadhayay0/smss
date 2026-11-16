@@ -1,5 +1,5 @@
 import { formatInr } from '../../../core/utils/currency';
-import { FeeReceipt, hasTax, taxLabel } from '../models/fee-payment.model';
+import { FeeReceipt, hasConcession, hasTax, receiptTotals } from '../models/fee-payment.model';
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -20,12 +20,17 @@ export function receiptHtml(r: FeeReceipt): string {
     )
     .join('');
 
-  // A payment without tax prints exactly as before; with tax: fee amount, the tax (name and rate), then the total paid
-  const totals = hasTax(r)
-    ? `<tr class="sub-total"><td colspan="3">Fee amount</td><td class="num">${escapeHtml(formatInr(r.feeAmount ?? 0))}</td></tr>
-      <tr class="sub-total"><td colspan="3">Tax: ${escapeHtml(taxLabel(r))}</td><td class="num">${escapeHtml(formatInr(r.taxAmount ?? 0))}</td></tr>
-      <tr class="total"><td colspan="3">Total paid</td><td class="num">${escapeHtml(formatInr(r.totalAmount ?? r.amount))}</td></tr>`
-    : `<tr class="total"><td colspan="3">Total received</td><td class="num">${escapeHtml(formatInr(r.amount))}</td></tr>`;
+  // A payment without concession or tax prints exactly as before ("Total received"); otherwise: fee amount, concession (-), net fee, tax, total paid, only the lines that apply
+  const totals = receiptTotals(r)
+    .map(
+      (t) =>
+        `<tr class="${t.total ? 'total' : 'sub-total'}"><td colspan="3">${escapeHtml(t.label)}</td><td class="num">${t.deduction ? '&minus; ' : ''}${escapeHtml(formatInr(t.amount))}</td></tr>`,
+    )
+    .join('\n      ');
+  const concessionNote =
+    hasConcession(r) && r.concessionReason?.trim()
+      ? `<div class="muted">Concession reason: ${escapeHtml(r.concessionReason.trim())}${r.concessionAppliedByName ? ' (applied by ' + escapeHtml(r.concessionAppliedByName) + ')' : ''}</div>`
+      : '';
 
   const voided = r.status === 'Voided';
   const voidedBlock = voided
@@ -83,6 +88,7 @@ export function receiptHtml(r: FeeReceipt): string {
     <thead><tr><th>Fee</th><th>Due date</th><th class="num">Installment</th><th class="num">Paid now</th></tr></thead>
     <tbody>${rows}${totals}</tbody>
   </table>
+  ${concessionNote}
   ${r.remarks ? `<p class="muted">Remarks: ${escapeHtml(r.remarks)}</p>` : ''}
   <div class="foot"><span>This is a computer generated receipt.</span><span>Thank you.</span></div>
 </body></html>`;
