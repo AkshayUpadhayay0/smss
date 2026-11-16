@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
-    // A student's fees. Reading a student's fees and fee dues: School Admin, Accountant, Principal (CanViewFees); `preview` and `fee-items` are still open to any signed-in user. Changing how the student is billed: School Admin only (CanConfigureFees);
+    // A student's fees. Reading a student's fees and fee dues: School Admin, Accountant, Principal (CanViewFees); `fee-items` is also readable by the student themselves (their own only); `preview` (a class's fee structure for the admission forms, no student data) is still open to any signed-in user. Changing how the student is billed: School Admin only (CanConfigureFees);
     // collecting / voiding payments is the FeePayment controller (School Admin + Accountant). The school comes from the token only (no school id in the route), and the acting user for a
     // concession comes from the token too.
     [ApiController]
@@ -37,9 +37,19 @@ namespace smss_api.Controllers
         }
 
         // GET api/StudentFee/{studentId}/fee-items
+        // School Admin / Accountant / Principal (CanViewFees): any student of their school. A Student: only their OWN (student id from the token; another student = 404, not 403, so the id is not confirmed).
+        // Every other role 403; another school's student 404.
         [HttpGet("{studentId:length(1,20)}/fee-items")]
-        public async Task<IActionResult> GetFeeItems(string studentId, CancellationToken ct) =>
-            Reply(await _billing.GetItemsAsync(User.GetSchoolId(), studentId, ct));
+        public async Task<IActionResult> GetFeeItems(string studentId, CancellationToken ct)
+        {
+            if (User.CanViewFees()) return Reply(await _billing.GetItemsAsync(User.GetSchoolId(), studentId, ct));
+            if (User.IsStudent())
+            {
+                if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+                return Reply(await _billing.GetOwnItemsAsync(User.GetSchoolId(), userId, studentId, ct));
+            }
+            return this.Forbidden("Only a School Admin, Accountant, Principal or the student themselves can view a student's fee items.");
+        }
 
         // PUT api/StudentFee/{studentId}/fee-items/{itemId}   (change the frequency and/or whether the fee head applies)
         [HttpPut("{studentId:length(1,20)}/fee-items/{itemId:long}")]

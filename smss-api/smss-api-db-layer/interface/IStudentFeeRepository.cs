@@ -63,6 +63,8 @@ namespace smss_api_db_layer.@interface
     public interface IStudentFeeRepository
     {
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
+        /// <summary>The login id (org_user_id) of a user of this school; for a Student login it IS the student id. Null when the user is not in this school.</summary>
+        Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
         Task<List<StudentFeeEnrollmentRow>> GetEnrollmentsAsync(string schoolId, string studentId, CancellationToken ct);
 
         Task<TbStudentFeeStructure?> GetAssignmentAsync(string schoolId, string studentId, long academicYearId, bool track, CancellationToken ct);

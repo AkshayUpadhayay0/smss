@@ -19,6 +19,8 @@ namespace smss_api_service_layer.@interface
         Task SyncStructureAsync(string schoolId, long feeStructureId, CancellationToken ct);
 
         Task<ApiResponse<StudentFeeItemsDto>> GetItemsAsync(string? schoolId, string studentId, CancellationToken ct);
+        /// <summary>A Student reading fee items: only their OWN (the student id comes from the signed-in user). Asking about anyone else answers 404, exactly like an unknown student.</summary>
+        Task<ApiResponse<StudentFeeItemsDto>> GetOwnItemsAsync(string? schoolId, long userId, string requestedStudentId, CancellationToken ct);
         Task<ApiResponse<StudentFeeItemsDto>> UpdateItemAsync(string? schoolId, string studentId, long itemId, UpdateFeeItemRequest req, CancellationToken ct);
         Task<ApiResponse<StudentFeeDuesDto>> GetDuesAsync(string? schoolId, string studentId, CancellationToken ct);
         /// <param name="startDate">The date the student starts (admission date); fee installments before its month are not generated.</param>

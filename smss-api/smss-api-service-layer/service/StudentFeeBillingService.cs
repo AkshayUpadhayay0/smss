@@ -246,6 +246,19 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<StudentFeeItemsDto>(ex, "fetching student fee items"); }
         }
 
+        public async Task<ApiResponse<StudentFeeItemsDto>> GetOwnItemsAsync(string? schoolId, long userId, string requestedStudentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentFeeItemsDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                // 404, not 403, for another student: a 403 would confirm the id is real
+                var own = await _fees.GetUserLoginIdAsync(schoolId, userId, ct);
+                if (string.IsNullOrEmpty(own) || !string.Equals(own, requestedStudentId, StringComparison.Ordinal)) return Result<StudentFeeItemsDto>(404, "Student not found.", null);
+                return await GetItemsAsync(schoolId, own, ct);
+            }
+            catch (Exception ex) { return Error<StudentFeeItemsDto>(ex, "fetching a student's own fee items"); }
+        }
+
         public async Task<ApiResponse<StudentFeeDuesDto>> GetDuesAsync(string? schoolId, string studentId, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentFeeDuesDto>(400, TenantMessages.NoSchool, null);
