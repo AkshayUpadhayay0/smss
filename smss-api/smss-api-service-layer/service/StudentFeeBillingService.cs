@@ -282,7 +282,7 @@ namespace smss_api_service_layer.service
                         var status = FeeSchedule.Status(d.AmountDue, d.AmountPaid, d.DueDate, today);
                         dto.Dues.Add(new StudentFeeDueDto
                         {
-                            FeeDueId = d.FeeDueId, StudentFeeItemId = item.StudentFeeItemId,
+                            FeeDueId = d.FeeDueId, StudentFeeItemId = item.StudentFeeItemId, FeeTypeId = item.FeeTypeId,
                             FeeTypeName = names.GetValueOrDefault(item.FeeTypeId, string.Empty),
                             FrequencyName = freqNames.TryGetValue(item.FrequencyId, out var f) ? f.FrequencyName : string.Empty,
                             DueDate = d.DueDate, AmountDue = d.AmountDue, AmountPaid = d.AmountPaid,

@@ -78,6 +78,8 @@ namespace smss_api_service_layer.dto
     {
         public long FeeDueId { get; set; }
         public long StudentFeeItemId { get; set; }
+        /// <summary>The fee type of the installment (the Collect Payment form matches a concession's applicable fee type against it).</summary>
+        public long FeeTypeId { get; set; }
         public string FeeTypeName { get; set; } = null!;
         public string FrequencyName { get; set; } = null!;
         public DateOnly DueDate { get; set; }
