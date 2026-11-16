@@ -14,6 +14,30 @@ const receipt: FeeReceipt = {
 describe('receiptHtml', () => {
   const html = receiptHtml(receipt);
 
+  describe('tax lines and the school GSTIN', () => {
+    const taxed: FeeReceipt = { ...receipt, feeAmount: 3500, taxName: 'Service Tax', taxCode: 'SVC', taxRatePercent: 5, taxAmount: 175, totalAmount: 3675, amount: 3675, school: { ...receipt.school, gstin: '09ABCDE1234F1Z5' } };
+
+    it('a tax receipt prints the GSTIN (escaped) and the tax line with its rate in brackets', () => {
+      const h = receiptHtml(taxed);
+      expect(h).toContain('GSTIN: 09ABCDE1234F1Z5');
+      expect(h).toContain('Tax: Service Tax (5%)');
+      expect(receiptHtml({ ...taxed, school: { ...taxed.school, gstin: '<b>X</b>' } })).toContain('GSTIN: &lt;b&gt;X&lt;/b&gt;');
+    });
+
+    it('a name that already states the rate is not repeated: "Tax: GST 18%"', () => {
+      const h = receiptHtml({ ...taxed, taxName: 'GST 18%', taxRatePercent: 18 });
+      expect(h).toContain('Tax: GST 18%<');
+      expect(h).not.toContain('GST 18% (18%)');
+    });
+
+    it('no GSTIN without tax, even if the school has one; none when it is empty', () => {
+      expect(receiptHtml({ ...receipt, school: { ...receipt.school, gstin: '09ABCDE1234F1Z5' } })).not.toContain('GSTIN');
+      expect(receiptHtml({ ...taxed, school: { ...taxed.school, gstin: '' } })).not.toContain('GSTIN');
+      expect(receiptHtml({ ...taxed, school: { ...taxed.school, gstin: '   ' } })).not.toContain('GSTIN');
+      expect(receiptHtml({ ...taxed, school: { ...taxed.school, gstin: null } })).not.toContain('GSTIN');
+    });
+  });
+
   it('an active receipt has no VOID marking', () => {
     expect(html).not.toContain('watermark">VOID');
     expect(html).not.toContain('void-banner"><strong>');

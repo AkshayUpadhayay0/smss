@@ -83,6 +83,15 @@ describe('StudentMyFeesComponent', () => {
     expect(items[1]).toContain('₹3,250.00');
   });
 
+  it('My Fees does not repeat a rate the tax name already states', () => {
+    open((r) => r.flush(env({ ...FEES, payments: [
+      { paymentDate: '2026-05-09T10:00:00Z', amount: 1180, feeAmount: 1000, taxName: 'GST 18%', taxCode: 'GST18', taxRatePercent: 18, taxAmount: 180, totalAmount: 1180, receiptNumber: 'RCP-2026-0002', paymentMode: 'Cash' },
+    ] })));
+    const row = (el().querySelector('.payments li')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(row).toContain('Fee ₹1,000.00 + GST 18% ₹180.00');
+    expect(row).not.toContain('GST 18% (18%)');
+  });
+
   it('is read-only: no pay button, no inputs, no edit controls', () => {
     open((r) => r.flush(env(FEES)));
     expect(el().querySelectorAll('input, select, textarea').length).toBe(0);

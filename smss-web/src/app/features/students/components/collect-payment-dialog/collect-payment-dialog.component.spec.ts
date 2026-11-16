@@ -201,6 +201,18 @@ describe('CollectPaymentDialogComponent', () => {
       expect((fixture.nativeElement as HTMLElement).querySelector('.tax-summary')).toBeNull();
     });
 
+    it('the rate is not repeated when the name already carries it: "GST 18%" alone, "Service Tax (5%)" with its rate', () => {
+      openWith([tax(1, 'GST 18%', 18), tax(2, 'Service Tax', 5)]);
+      expect(cmp()['taxOptions']().map((o: { label: string }) => o.label)).toEqual(['None', 'GST 18%', 'Service Tax (5%)']);
+      cmp()['taxControl'].setValue('1');
+      amount('1000');
+      expect(field('Tax: GST 18%')).toContain('180.00');
+      expect((fixture.nativeElement as HTMLElement).querySelector('.tax-summary')?.textContent).not.toContain('GST 18% (18%)');
+      cmp()['taxControl'].setValue('2');
+      fixture.detectChanges();
+      expect(field('Tax: Service Tax (5%)')).toContain('50.00');
+    });
+
     it('the live summary shows fee, tax (name and rate) and total, and follows the amount', () => {
       openWith([tax(1, 'GST', 18)]);
       cmp()['taxControl'].setValue('1');

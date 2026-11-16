@@ -34,7 +34,16 @@ export interface TaxTypeRow extends Record<string, unknown> {
 export const formatRate = (rate: number): string => `${rate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
 
 /** "GST (5%)" for dropdowns and summaries. */
-export const taxOptionLabel = (t: Pick<TaxType, 'taxName' | 'ratePercent'>): string => `${t.taxName} (${formatRate(t.ratePercent)})`;
+/**
+ * A tax's name with its rate: "Service Tax (5%)". When the NAME already states the rate ("GST 18%") the rate is not repeated, so it reads "GST 18%".
+ * A name counts as stating the rate when it holds a percentage equal to it ("GST 18%", "GST 18 %", "IGST 12.5%"); "GST 18% (5%)" with a rate of 5 still gets the bracket.
+ */
+export function taxNameWithRate(name: string, ratePercent: number): string {
+  const stated = [...name.matchAll(/(\d+(?:\.\d+)?)\s*%/g)].some((m) => Number(m[1]) === ratePercent);
+  return stated ? name : `${name} (${formatRate(ratePercent)})`;
+}
+
+export const taxOptionLabel = (t: Pick<TaxType, 'taxName' | 'ratePercent'>): string => taxNameWithRate(t.taxName, t.ratePercent);
 
 /**
  * Tax on a fee, in paise: ROUND_HALF_UP(fee x rate / 100, 2 decimals) - the same rule as the server (which is the authority; this only previews it).

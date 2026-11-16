@@ -1,4 +1,5 @@
 // Mirrors RecordPaymentRequest / PaymentSummaryDto / FeeReceiptDto.
+import { taxNameWithRate } from '../../fee-setup/models/tax-type.model';
 
 /** The payment modes the API accepts (stored exactly as spelled). */
 export const PAYMENT_MODES = ['Cash', 'Cheque', 'UPI', 'Card', 'Bank Transfer', 'Online'] as const;
@@ -26,7 +27,7 @@ export interface PaymentTaxFields {
 export const hasTax = (p: PaymentTaxFields): boolean => !!p.taxName;
 
 /** "GST (18%)" style description of the tax on a payment. */
-export const taxLabel = (p: PaymentTaxFields): string => `${p.taxName ?? ''} (${p.taxRatePercent ?? 0}%)`;
+export const taxLabel = (p: PaymentTaxFields): string => taxNameWithRate(p.taxName ?? '', p.taxRatePercent ?? 0);
 
 export interface RecordPaymentRequest {
   /** The FEE amount to put against the dues. Tax is added on top by the server; a tax AMOUNT is never sent. */
@@ -81,7 +82,7 @@ export interface FeeReceipt extends PaymentTaxFields {
   voidedAt?: string | null;
   voidedByName?: string | null;
   voidReason?: string | null;
-  school: { name: string; address?: string | null; phone?: string | null; email?: string | null; logoUrl?: string | null };
+  school: { name: string; address?: string | null; phone?: string | null; email?: string | null; logoUrl?: string | null; gstin?: string | null };
   student: { studentId: string; name: string; className?: string | null; academicYearName?: string | null };
   lines: ReceiptLine[];
 }

@@ -99,6 +99,8 @@ namespace smss_api_service_layer.dto
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? LogoUrl { get; set; }
+        /// <summary>The school's GSTIN. Filled ONLY on a receipt that carries tax, and only when the school has one; null otherwise.</summary>
+        public string? Gstin { get; set; }
     }
 
     public class ReceiptStudentDto

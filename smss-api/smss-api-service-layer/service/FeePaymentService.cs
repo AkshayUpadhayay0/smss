@@ -297,7 +297,9 @@ namespace smss_api_service_layer.service
                 VoidedByName = payment.VoidedBy is long vb ? await _repo.GetUserNameAsync(vb, ct) : null,
                 School = new ReceiptSchoolDto
                 {
-                    Name = school?.SchoolName ?? string.Empty, Address = school?.Address, Phone = school?.Phone, Email = school?.Email, LogoUrl = school?.LogoUrl
+                    Name = school?.SchoolName ?? string.Empty, Address = school?.Address, Phone = school?.Phone, Email = school?.Email, LogoUrl = school?.LogoUrl,
+                    // the GSTIN belongs on a tax receipt only; a receipt without tax never carries it, and an empty one is not sent
+                    Gstin = !string.IsNullOrWhiteSpace(payment.TaxNameSnapshot) && !string.IsNullOrWhiteSpace(school?.Gstin) ? school!.Gstin!.Trim() : null
                 },
                 Student = new ReceiptStudentDto
                 {

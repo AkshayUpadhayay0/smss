@@ -62,6 +62,7 @@ export function receiptHtml(r: FeeReceipt): string {
     <div>
       <h1>${escapeHtml(r.school.name)}</h1>
       ${r.school.address ? `<div class="muted">${escapeHtml(r.school.address)}</div>` : ''}
+      ${hasTax(r) && r.school.gstin?.trim() ? `<div class="muted">GSTIN: ${escapeHtml(r.school.gstin.trim())}</div>` : ''}
       ${r.school.phone || r.school.email ? `<div class="muted">${escapeHtml([r.school.phone, r.school.email].filter(Boolean).join(' · '))}</div>` : ''}
     </div>
     <div style="text-align:right">

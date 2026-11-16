@@ -34,6 +34,9 @@ import { printReceipt } from '../../utils/receipt-print';
             @if (receipt().school.address) {
               <p class="muted">{{ receipt().school.address }}</p>
             }
+            @if (gstin(); as g) {
+              <p class="muted">GSTIN: {{ g }}</p>
+            }
           </div>
           <div class="no">
             <strong>{{ receipt().receiptNumber }}</strong>
@@ -101,6 +104,12 @@ export class FeeReceiptDialogComponent {
 
   protected taxed(): boolean {
     return hasTax(this.receipt());
+  }
+
+  /** The school's GSTIN, only on a receipt that carries tax (the API already sends it that way; this keeps the rule in one more place). */
+  protected gstin(): string | null {
+    const g = this.receipt().school.gstin?.trim();
+    return g && hasTax(this.receipt()) ? g : null;
   }
 
   protected taxText(): string {

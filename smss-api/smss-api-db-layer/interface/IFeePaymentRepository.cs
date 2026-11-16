@@ -25,6 +25,7 @@ namespace smss_api_db_layer.@interface
     public class ReceiptSchoolRow
     {
         public string SchoolName { get; set; } = null!;
+        public string? Gstin { get; set; }
         public string? Address { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }

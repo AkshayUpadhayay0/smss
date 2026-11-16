@@ -116,7 +116,7 @@ namespace smss_api_db_layer.repository
             return new ReceiptSchoolRow
             {
                 SchoolName = s.SchoolName, Address = address.Length == 0 ? null : address,
-                Phone = s.MobileNumber, Email = s.Email, LogoUrl = s.LogoUrl
+                Phone = s.MobileNumber, Email = s.Email, LogoUrl = s.LogoUrl, Gstin = s.SchoolGstin
             };
         }
 

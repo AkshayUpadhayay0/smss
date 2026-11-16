@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
 import { ButtonComponent, CardComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
+import { taxNameWithRate } from '../../../fee-setup/models/tax-type.model';
 import { StudentMyFees } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
@@ -28,6 +29,7 @@ export class StudentMyFeesComponent implements OnInit {
 
   protected readonly inr = formatInr;
   protected readonly fmt = formatDate;
+  protected readonly taxText = (p: { taxName?: string | null; taxRatePercent?: number | null }) => taxNameWithRate(p.taxName ?? '', p.taxRatePercent ?? 0);
   protected readonly paidOn = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   /** The status pill colour, same words as the staff screens. */
   protected readonly tone = (status: string) => ({ Paid: 'green', 'Partially Paid': 'yellow', Pending: 'gray', Overdue: 'red' } as Record<string, string>)[status] ?? 'gray';
