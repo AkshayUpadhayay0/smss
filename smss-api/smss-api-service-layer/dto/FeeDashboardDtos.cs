@@ -8,6 +8,15 @@ namespace smss_api_service_layer.dto
         public decimal Amount { get; set; }
     }
 
+    public class FeeTaxBreakdownDto
+    {
+        public long TaxTypeId { get; set; }
+        public string TaxName { get; set; } = null!;
+        public string TaxCode { get; set; } = null!;
+        public decimal TaxAmount { get; set; }
+        public int PaymentCount { get; set; }
+    }
+
     public class FeeDashboardDto
     {
         public long AcademicYearId { get; set; }
@@ -22,6 +31,9 @@ namespace smss_api_service_layer.dto
         public decimal TotalDue { get; set; }
         /// <summary>Money received against those installments (Active payments only; voided ones are already taken back off).</summary>
         public decimal TotalCollected { get; set; }
+        /// <summary>Tax collected on Active payments in the same scope. Reported on its own: it is NOT part of <see cref="TotalCollected"/> (which is fee only).</summary>
+        public decimal TaxCollected { get; set; }
+        public List<FeeTaxBreakdownDto> TaxByType { get; set; } = new();
         public decimal TotalOutstanding { get; set; }
         public decimal OverdueAmount { get; set; }
         public int OverdueCount { get; set; }

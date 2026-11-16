@@ -15,7 +15,17 @@ namespace smss_api_db_layer.entity
         [Column("student_id")][StringLength(20)] public string StudentId { get; set; } = null!;
         [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
         [Column("payment_date")] public DateTime PaymentDate { get; set; }
+        /// <summary>The TOTAL paid: <see cref="FeeAmount"/> + <see cref="TaxAmount"/> (a CHECK enforces it).</summary>
         [Column("amount", TypeName = "numeric(12,2)")] public decimal Amount { get; set; }
+        /// <summary>The part that went against the installments (the allocations add up to exactly this). Fee reports read this, never <see cref="Amount"/>.</summary>
+        [Column("fee_amount", TypeName = "numeric(12,2)")] public decimal FeeAmount { get; set; }
+        /// <summary>Tax added on top of the fee, computed by the server (never sent by the client). 0 when no tax type was chosen.</summary>
+        [Column("tax_amount", TypeName = "numeric(12,2)")] public decimal TaxAmount { get; set; }
+        [Column("tax_type_id")] public long? TaxTypeId { get; set; }
+        /// <summary>Name, code and rate of the tax type AT THE TIME of the payment: later edits or deactivation never change an old receipt.</summary>
+        [Column("tax_name_snapshot")][StringLength(100)] public string? TaxNameSnapshot { get; set; }
+        [Column("tax_code_snapshot")][StringLength(30)] public string? TaxCodeSnapshot { get; set; }
+        [Column("tax_rate_snapshot", TypeName = "numeric(5,2)")] public decimal? TaxRateSnapshot { get; set; }
         /// <summary>Cash, Cheque, UPI, Card, Bank Transfer or Online.</summary>
         [Column("payment_mode")][StringLength(30)] public string PaymentMode { get; set; } = null!;
         [Column("receipt_number")][StringLength(50)] public string ReceiptNumber { get; set; } = null!;

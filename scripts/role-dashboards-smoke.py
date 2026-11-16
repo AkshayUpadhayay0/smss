@@ -142,7 +142,7 @@ for school in a.schools:
     s, r = call('/AccountantDashboard/summary', toks['Accountant'])
     d = r['data']; st = d['stats']
     check('accountant: no part unavailable on a healthy database', d['partsUnavailable'] == [], str(d['partsUnavailable']))
-    today_amt = num(sql(f"select coalesce(sum(amount),0) from tb_fee_payments where school_id='{school}' and status='Active' and (payment_date at time zone 'Asia/Kolkata')::date='{T}'"))
+    today_amt = num(sql(f"select coalesce(sum(fee_amount),0) from tb_fee_payments where school_id='{school}' and status='Active' and (payment_date at time zone 'Asia/Kolkata')::date='{T}'"))
     check('accountant: collected today', num(st['collectedToday']) == today_amt, f"{st['collectedToday']} vs {today_amt}")
     spans = [int(x[0]) for x in rows(f"select academic_year_id from tb_academic_years where school_id='{school}' and start_date <= (date_trunc('month','{T}'::date)+interval '1 month - 1 day')::date and end_date >= (date_trunc('month','{T}'::date)-interval '5 months')::date")]
     ys = ','.join(map(str, spans)) or '0'

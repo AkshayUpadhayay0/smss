@@ -35,6 +35,8 @@ namespace smss_api_db_layer.@interface
     public interface IFeePaymentRepository
     {
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
+        /// <summary>One tax type of THIS school (active or not), or null: another school's id answers null too.</summary>
+        Task<TbTaxType?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct);
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
 
         /// <summary>

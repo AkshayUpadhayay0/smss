@@ -32,12 +32,23 @@ namespace smss_api_service_layer.service
                 var mode = PaymentModes.Canonical(req.PaymentMode);
                 if (mode == null) return Result<FeeReceiptDto>(400, $"Payment mode must be one of: {string.Join(", ", PaymentModes.All)}.", null);
 
+                // `amount` in the request is the FEE amount (what goes against the dues); tax is added on top below
                 var amount = req.Amount!.Value;
                 if (decimal.Round(amount, 2) != amount) return Result<FeeReceiptDto>(400, "Amount can have at most 2 decimal places.", null);
 
                 // 404 for another school's student too, so ids from other schools can't be probed
                 var student = await _repo.GetStudentAsync(schoolId, studentId, ct);
                 if (student == null) return Result<FeeReceiptDto>(404, "Student not found.", null);
+
+                // the tax type: this school's own, and active (404 for another school's id so ids can't be probed; 400 for a deactivated one)
+                TbTaxType? taxType = null;
+                if (req.TaxTypeId is long taxTypeId)
+                {
+                    taxType = await _repo.GetTaxTypeAsync(schoolId, taxTypeId, ct);
+                    if (taxType == null) return Result<FeeReceiptDto>(404, "Tax type not found.", null);
+                    if (!taxType.IsActive) return Result<FeeReceiptDto>(400, $"The tax type \"{taxType.TaxName}\" is deactivated and can't be used for a new payment. Choose another or none.", null);
+                }
+                var taxAmount = taxType == null ? 0m : TaxMath.TaxOn(amount, taxType.RatePercent);
 
                 var explicitAllocations = req.Allocations is { Count: > 0 };
                 if (explicitAllocations)
@@ -47,7 +58,7 @@ namespace smss_api_service_layer.service
                     if (req.Allocations!.Select(a => a.FeeDueId).Distinct().Count() != req.Allocations!.Count)
                         return Result<FeeReceiptDto>(400, "An installment can appear only once in a payment.", null);
                     if (req.Allocations!.Sum(a => a.Amount!.Value) != amount)
-                        return Result<FeeReceiptDto>(400, $"The allocations add up to {req.Allocations!.Sum(a => a.Amount!.Value):0.00}, but the payment is {amount:0.00}. They must be equal.", null);
+                        return Result<FeeReceiptDto>(400, $"The allocations add up to {req.Allocations!.Sum(a => a.Amount!.Value):0.00}, but the fee amount is {amount:0.00}. They must be equal (tax is not part of the allocations).", null);
                 }
 
                 // Two receipts can be numbered at the same moment: the unique index lets only one through and the other simply retries
@@ -86,7 +97,7 @@ namespace smss_api_service_layer.service
                             if (amount > totalOutstanding)
                                 return Result<FeeReceiptDto>(400, totalOutstanding == 0
                                     ? "This student has nothing outstanding to pay."
-                                    : $"The payment of {amount:0.00} is more than the {totalOutstanding:0.00} outstanding. Nothing was recorded.", null);
+                                    : $"The fee amount of {amount:0.00} is more than the {totalOutstanding:0.00} outstanding. Nothing was recorded.", null);
 
                             var left = amount;
                             foreach (var due in dues)   // already ordered oldest first
@@ -109,7 +120,13 @@ namespace smss_api_service_layer.service
                             StudentId = studentId,
                             SchoolId = schoolId,
                             PaymentDate = now,
-                            Amount = amount,
+                            Amount = amount + taxAmount,
+                            FeeAmount = amount,
+                            TaxAmount = taxAmount,
+                            TaxTypeId = taxType?.TaxTypeId,
+                            TaxNameSnapshot = taxType?.TaxName,
+                            TaxCodeSnapshot = taxType?.TaxCode,
+                            TaxRateSnapshot = taxType?.RatePercent,
                             PaymentMode = mode,
                             Status = PaymentStatuses.Active,
                             ReceiptNumber = $"{prefix}{next:D4}",
@@ -147,7 +164,7 @@ namespace smss_api_service_layer.service
         /// Soft void: the payment stays (Voided, with who / when / why), its allocations stay as the audit trail, and what it had put against
         /// each installment is taken back off that installment's amount_paid, all in one transaction. Installment status is computed from
         /// amount_paid on every read, so the installment simply reads Overdue / Pending again: nothing else needs to be touched.
-        /// This reverses the fee bookkeeping only; it does not move or track any cash.
+        /// This reverses the fee bookkeeping only; it does not move or track any cash. The tax of the payment is not reversed separately: the whole payment (fee and tax) is marked Voided and keeps its tax lines, so the voided receipt still prints them.
         /// </summary>
         public async Task<ApiResponse<PaymentSummaryDto>> VoidPaymentAsync(string? schoolId, long paymentId, long voidedByUserId, VoidPaymentRequest req, CancellationToken ct)
         {
@@ -201,6 +218,8 @@ namespace smss_api_service_layer.service
                 return Result(200, $"Payment {payment.ReceiptNumber} voided.", new PaymentSummaryDto
                 {
                     PaymentId = payment.PaymentId, ReceiptNumber = payment.ReceiptNumber, PaymentDate = payment.PaymentDate, Amount = payment.Amount,
+                    FeeAmount = payment.FeeAmount, TaxName = payment.TaxNameSnapshot, TaxCode = payment.TaxCodeSnapshot, TaxRatePercent = payment.TaxRateSnapshot,
+                    TaxAmount = payment.TaxAmount, TotalAmount = payment.Amount,
                     PaymentMode = payment.PaymentMode, CollectedByName = collectedBy, Remarks = payment.Remarks, DueCount = allocations.Count,
                     Status = payment.Status, VoidedAt = payment.VoidedAt, VoidedByName = voidedByName, VoidReason = payment.VoidReason
                 });
@@ -218,7 +237,8 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully fetched", rows.Select(r => new PaymentSummaryDto
                 {
                     PaymentId = r.Payment.PaymentId, ReceiptNumber = r.Payment.ReceiptNumber, PaymentDate = r.Payment.PaymentDate,
-                    Amount = r.Payment.Amount, PaymentMode = r.Payment.PaymentMode, CollectedByName = r.CollectedByName,
+                    Amount = r.Payment.Amount, FeeAmount = r.Payment.FeeAmount, TaxName = r.Payment.TaxNameSnapshot, TaxCode = r.Payment.TaxCodeSnapshot,
+                    TaxRatePercent = r.Payment.TaxRateSnapshot, TaxAmount = r.Payment.TaxAmount, TotalAmount = r.Payment.Amount, PaymentMode = r.Payment.PaymentMode, CollectedByName = r.CollectedByName,
                     Remarks = r.Payment.Remarks, DueCount = r.DueCount,
                     Status = r.Payment.Status, VoidedAt = r.Payment.VoidedAt, VoidedByName = r.VoidedByName, VoidReason = r.Payment.VoidReason
                 }).ToList());
@@ -253,6 +273,8 @@ namespace smss_api_service_layer.service
             return new FeeReceiptDto
             {
                 PaymentId = payment.PaymentId, ReceiptNumber = payment.ReceiptNumber, PaymentDate = payment.PaymentDate, Amount = payment.Amount,
+                FeeAmount = payment.FeeAmount, TaxName = payment.TaxNameSnapshot, TaxCode = payment.TaxCodeSnapshot, TaxRatePercent = payment.TaxRateSnapshot,
+                TaxAmount = payment.TaxAmount, TotalAmount = payment.Amount,
                 PaymentMode = payment.PaymentMode, Remarks = payment.Remarks, CollectedByName = collectedBy,
                 Status = payment.Status, VoidedAt = payment.VoidedAt, VoidReason = payment.VoidReason,
                 VoidedByName = payment.VoidedBy is long vb ? await _repo.GetUserNameAsync(vb, ct) : null,

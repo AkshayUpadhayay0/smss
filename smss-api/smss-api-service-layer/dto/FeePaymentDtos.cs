@@ -16,9 +16,14 @@ namespace smss_api_service_layer.dto
 
     public class RecordPaymentRequest
     {
+        /// <summary>The FEE amount to put against the dues. Tax is added on top by the server when a <see cref="TaxTypeId"/> is given; without one the payment is exactly this amount.</summary>
         [Required(ErrorMessage = "Amount is required.")]
         [Range(typeof(decimal), "0.01", "9999999999.99", ErrorMessage = "Amount must be greater than 0.")]
         public decimal? Amount { get; set; }
+
+        /// <summary>Optional. One of the school's ACTIVE tax types. There is deliberately no tax amount in this request: a client-sent one is never read.</summary>
+        [Range(1, long.MaxValue, ErrorMessage = "Tax type is not valid.")]
+        public long? TaxTypeId { get; set; }
 
         [Required(ErrorMessage = "Payment mode is required."), StringLength(30)]
         public string PaymentMode { get; set; } = null!;
@@ -40,11 +45,26 @@ namespace smss_api_service_layer.dto
         public string VoidReason { get; set; } = null!;
     }
 
-    public class PaymentSummaryDto
+    /// <summary>The fee / tax / total split of one payment, on the history row, the receipt and the "payment recorded" answer. For a payment without tax: TaxAmount 0, tax fields null, TotalAmount = FeeAmount = Amount.</summary>
+    public class PaymentTaxFields
+    {
+        /// <summary>What went against the installments.</summary>
+        public decimal FeeAmount { get; set; }
+        /// <summary>Name, code and rate as they were when the payment was taken (a later edit never changes them).</summary>
+        public string? TaxName { get; set; }
+        public string? TaxCode { get; set; }
+        public decimal? TaxRatePercent { get; set; }
+        public decimal TaxAmount { get; set; }
+        /// <summary>Fee + tax: what the payer handed over.</summary>
+        public decimal TotalAmount { get; set; }
+    }
+
+    public class PaymentSummaryDto : PaymentTaxFields
     {
         public long PaymentId { get; set; }
         public string ReceiptNumber { get; set; } = null!;
         public DateTime PaymentDate { get; set; }
+        /// <summary>The TOTAL paid (= TotalAmount). Kept under its old name so existing readers still show what was handed over.</summary>
         public decimal Amount { get; set; }
         public string PaymentMode { get; set; } = null!;
         public string? CollectedByName { get; set; }
@@ -90,7 +110,7 @@ namespace smss_api_service_layer.dto
     }
 
     /// <summary>Everything needed to show or print a receipt.</summary>
-    public class FeeReceiptDto
+    public class FeeReceiptDto : PaymentTaxFields
     {
         public long PaymentId { get; set; }
         public string ReceiptNumber { get; set; } = null!;

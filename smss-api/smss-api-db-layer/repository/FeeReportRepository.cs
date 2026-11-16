@@ -62,6 +62,26 @@ namespace smss_api_db_layer.repository
             return rows.Select(r => new CollectionMonth(r.Year, r.Month, r.Amount)).ToList();
         }
 
+        public async Task<List<TaxCollectedRow>> GetTaxCollectedAsync(string schoolId, long academicYearId, long? classId, long? sectionId, CancellationToken ct)
+        {
+            var inScope = ItemsInScope(schoolId, academicYearId, classId, sectionId);
+            var rows = await (
+                from p in _db.FeePayments.AsNoTracking()
+                where p.SchoolId == schoolId && p.Status == "Active" && p.TaxTypeId != null
+                      && (from a in _db.FeePaymentAllocations
+                          join d in _db.StudentFeeDues on a.FeeDueId equals d.FeeDueId
+                          join i in inScope on d.StudentFeeItemId equals i.StudentFeeItemId
+                          where a.PaymentId == p.PaymentId select a.AllocationId).Any()
+                group p by p.TaxTypeId into g
+                select new { TaxTypeId = g.Key!.Value, Amount = g.Sum(x => x.TaxAmount), Count = g.Count() }).ToListAsync(ct);
+            if (rows.Count == 0) return new List<TaxCollectedRow>();
+            var ids = rows.Select(r => r.TaxTypeId).ToList();
+            var types = await _db.TaxTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && ids.Contains(t.TaxTypeId)).ToDictionaryAsync(t => t.TaxTypeId, ct);
+            return rows.Where(r => types.ContainsKey(r.TaxTypeId))
+                .Select(r => new TaxCollectedRow(r.TaxTypeId, types[r.TaxTypeId].TaxName, types[r.TaxTypeId].TaxCode, r.Amount, r.Count))
+                .OrderBy(r => r.TaxName).ToList();
+        }
+
         public async Task<List<ClassStudentRow>> GetClassStudentsAsync(string schoolId, long academicYearId, long classId, long? sectionId, CancellationToken ct)
         {
             var rows = await (

@@ -14,6 +14,9 @@ namespace smss_api_db_layer.repository
         public Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct) =>
             _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == studentId).FirstOrDefaultAsync(ct);
 
+        public Task<TbTaxType?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct) =>
+            _db.TaxTypes.AsNoTracking().Where(t => t.SchoolId == schoolId && t.TaxTypeId == taxTypeId).FirstOrDefaultAsync(ct);
+
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
         public Task<List<TbStudentFeeDue>> LockDuesAsync(string schoolId, string studentId, IReadOnlyCollection<long> dueIds, CancellationToken ct)

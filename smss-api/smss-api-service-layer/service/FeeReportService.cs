@@ -44,12 +44,15 @@ namespace smss_api_service_layer.service
                 // two queries for the whole dashboard, whatever the number of students
                 var totals = await _repo.GetDashboardTotalsAsync(schoolId, academicYearId, classId, sectionId, today, today.AddDays(days), ct);
                 var months = await _repo.GetCollectionByMonthAsync(schoolId, academicYearId, classId, sectionId, ct);
+                var taxRows = await _repo.GetTaxCollectedAsync(schoolId, academicYearId, classId, sectionId, ct);
 
                 return Result(200, "Successfully fetched", new FeeDashboardDto
                 {
                     AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, SectionId = sectionId,
                     UpcomingDays = days, AsOf = today,
                     TotalDue = totals.TotalDue, TotalCollected = totals.TotalCollected,
+                    TaxCollected = taxRows.Sum(t => t.Amount),
+                    TaxByType = taxRows.Select(t => new FeeTaxBreakdownDto { TaxTypeId = t.TaxTypeId, TaxName = t.TaxName, TaxCode = t.TaxCode, TaxAmount = t.Amount, PaymentCount = t.PaymentCount }).ToList(),
                     TotalOutstanding = Math.Max(totals.TotalDue - totals.TotalCollected, 0),
                     OverdueAmount = totals.OverdueAmount, OverdueCount = totals.OverdueCount,
                     UpcomingAmount = totals.UpcomingAmount, UpcomingCount = totals.UpcomingCount,

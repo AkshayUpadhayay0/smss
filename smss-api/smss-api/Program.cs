@@ -107,6 +107,8 @@ builder.Services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
 builder.Services.AddScoped<IFeeStructureService, FeeStructureService>();
 builder.Services.AddScoped<IFeeConcessionRepository, FeeConcessionRepository>();
 builder.Services.AddScoped<IFeeConcessionService, FeeConcessionService>();
+builder.Services.AddScoped<ITaxTypeRepository, TaxTypeRepository>();
+builder.Services.AddScoped<ITaxTypeService, TaxTypeService>();
 builder.Services.AddScoped<IStudentFeeRepository, StudentFeeRepository>();
 builder.Services.AddScoped<IStudentFeeService, StudentFeeService>();
 builder.Services.AddScoped<IStudentFeeBillingRepository, StudentFeeBillingRepository>();
