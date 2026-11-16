@@ -31,13 +31,17 @@ describe('app routes', () => {
     return { harness, url: TestBed.inject(Router).url };
   }
   const heading = (h: RouterTestingHarness) => h.routeNativeElement?.querySelector('h1, h2')?.textContent?.trim();
+  // Every role with its own dashboard (Super Admin, School Admin, Teacher, Student, ...) opens it with a "Welcome Back..." banner as the first heading;
+  // only the placeholder shown to a custom-role or role-less user is headed "Dashboard".
+  const WELCOME = /^Welcome Back/;
+  const DASHBOARD = 'a role dashboard';
 
   describe('signed in', () => {
     beforeEach(() => seedSession());
 
     const cases: [string, string, string][] = [
-      ['/', '/dashboard', 'Dashboard'],
-      ['/dashboard', '/dashboard', 'Dashboard'],
+      ['/', '/dashboard', DASHBOARD],
+      ['/dashboard', '/dashboard', DASHBOARD],
       ['/schools', '/schools', 'Registered Schools'],
       ['/subscriptions', '/subscriptions', 'Subscriptions'],
       ['/invoices', '/invoices', 'Invoices'],
@@ -51,14 +55,14 @@ describe('app routes', () => {
       ['/masters/status', '/masters/status', 'Status'],
       ['/masters/role', '/masters/role', 'Role'],
       ['/change-password', '/change-password', 'Change Password'],
-      ['/nope', '/dashboard', 'Dashboard'],
+      ['/nope', '/dashboard', DASHBOARD],
     ];
 
     // 15s: the first case cold-loads several lazy chunks (public layout, then the dashboard), which can pass 5s when the whole suite runs in parallel
     it.each(cases)('%s -> %s shows "%s"', async (from, url, expected) => {
       const result = await go(from);
       expect(result.url).toBe(url);
-      expect(heading(result.harness)).toBe(expected);
+      expected === DASHBOARD ? expect(heading(result.harness)).toMatch(WELCOME) : expect(heading(result.harness)).toBe(expected);
     }, 15_000);
 
     it('keeps signed-in users off the login page', async () => {
@@ -177,7 +181,7 @@ describe('app routes', () => {
           const http = TestBed.inject(HttpTestingController);
           const { harness, url } = await go(path);
           expect(url).toBe('/dashboard');
-          expect(heading(harness)).toBe('Dashboard');
+          expect(heading(harness)).toMatch(WELCOME);   // the School Admin dashboard's own banner
           const text = harness.routeNativeElement?.textContent ?? '';
           expect(text).not.toContain('Registered Schools');
           expect(text).not.toContain('Board Type');
@@ -234,15 +238,15 @@ describe('app routes', () => {
     });
 
     describe.each([
-      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Examinations | Students | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave', 'Your classroom at a glance'],
-      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | My Profile | Calendar | My Notices | My Homework | My Results | My Leave | My Fees | My Report Cards', 'Your school day at a glance'],
+      ['Teacher', { orgUserId: 'DPS001EM001', userType: 'Employee', displayName: 'Anita Verma' }, 'Dashboard | Examinations | Students | School Profile | Calendar | My Timetable | Mark Attendance | Attendance Report | My Notices | Homework | Assessments | My Leave', 'your classroom at a glance'],
+      ['Student', { orgUserId: 'DPS001ST001', userType: 'Student', displayName: 'Kiran Kid' }, 'Dashboard | School Profile | My Profile | Calendar | My Notices | My Homework | My Results | My Leave | My Fees | My Report Cards', 'your school day at a glance'],
     ])('%s login', (role, who, menu, dashboardText) => {
       beforeEach(() => seedSession({ user: makeUser({ ...who, roles: [role], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
 
       it('lands on the Dashboard (a Student and a Teacher each get their own dashboard) and sees only its own menu', async () => {
         const { harness, url } = await go('/dashboard');
         expect(url).toBe('/dashboard');
-        expect(heading(harness)).toBe('Dashboard');
+        expect(heading(harness)).toMatch(WELCOME);   // their own dashboard's banner (the name arrives with their data, so only the prefix is stable)
         expect(nav(harness)).toBe(menu);
         expect(harness.routeNativeElement?.textContent).toContain(dashboardText);
       });
@@ -259,9 +263,9 @@ describe('app routes', () => {
     describe('Admission Staff login', () => {
       beforeEach(() => seedSession({ user: makeUser({ orgUserId: 'DPS001EM009', userType: 'Employee', displayName: 'Asha Staff', roles: ['Admission Staff'], schoolId: 'DPS261013001', schoolName: 'Delhi Public School' }) }));
 
-      it('the menu is Dashboard, Admissions, Calendar and My Notices - nothing else', async () => {
+      it('the menu is Dashboard, Admissions, School Profile, Calendar and My Notices - nothing else', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Admissions | Calendar | My Notices');
+        expect(nav(harness)).toBe('Dashboard | Admissions | School Profile | Calendar | My Notices');
       });
 
       it.each(['/admissions', '/admissions/new', '/admissions/7', '/admissions/7/edit'])('%s opens', async (path) => {
