@@ -1,0 +1,170 @@
+<app-modal title="Collect payment" [dismissible]="!saving()" (closed)="closed.emit()">
+  <div class="form">
+    <!-- 1. the installments -->
+    <section class="block" aria-labelledby="cp-installments">
+      <div class="list-head">
+        <h4 id="cp-installments">Installments being paid</h4>
+        <span class="shortcuts">
+          <button type="button" class="link" (click)="selectAll()">Select all outstanding</button>
+          <button type="button" class="link" (click)="clear()">Clear</button>
+        </span>
+      </div>
+
+      <ul class="dues" aria-label="Installments with something outstanding">
+        @for (r of rows(); track r.dueId) {
+          <li [class.on]="r.checked">
+            <label class="pick">
+              <input type="checkbox" [checked]="r.checked" (change)="toggle(r, $event)" />
+              <span class="what">
+                <strong>{{ r.feeTypeName }}</strong>
+                <small>Due {{ dueDate(r) }} · <span class="pill" [class]="'pill tone-' + tone(status(r))">{{ status(r) }}</span> · {{ paise(r.outstanding) }} outstanding</small>
+              </span>
+            </label>
+            <div class="amt">
+              <input
+                type="number"
+                inputmode="decimal"
+                min="0.01"
+                step="0.01"
+                [value]="r.amount"
+                [attr.aria-label]="'Amount for ' + r.feeTypeName + ' due ' + dueDate(r)"
+                [attr.aria-invalid]="!!err(r)"
+                [class.bad]="!!err(r)"
+                (input)="setAmount(r, $event)"
+              />
+              @if (err(r); as e) {
+                <span class="err" role="alert">{{ e }}</span>
+              }
+            </div>
+          </li>
+        } @empty {
+          <li class="none">Nothing is outstanding for this student.</li>
+        }
+      </ul>
+
+      <div class="fee-total">
+        <span id="cp-fee-label">Fee amount</span>
+        <output aria-labelledby="cp-fee-label">{{ paise(preview().grossPaise) }}</output>
+      </div>
+
+      <div class="oldest">
+        <button type="button" class="link" [attr.aria-expanded]="oldestOpen()" (click)="toggleOldest()">Enter an amount to allocate oldest first</button>
+        @if (oldestOpen()) {
+          <div class="oldest-row">
+            <label for="cp-oldest">Amount to allocate (₹)</label>
+            <input id="cp-oldest" type="number" inputmode="decimal" min="0.01" step="0.01" [value]="oldestText()" [attr.aria-invalid]="!!oldestError()" (input)="onOldestInput($event)" />
+            <app-button variant="secondary" size="sm" (click)="applyOldest()">Fill selection</app-button>
+          </div>
+          @if (oldestError(); as e) {
+            <span class="err" role="alert">{{ e }}</span>
+          }
+        }
+      </div>
+    </section>
+
+    <!-- 2. concession -->
+    <section class="block" aria-labelledby="cp-concession">
+      <h4 id="cp-concession">Concession</h4>
+      @if (concessions().length === 0) {
+        <p class="hint">No concessions are available.</p>
+      } @else {
+        <app-select label="Concession" placeholder="None" [options]="concessionOptions()" [formControl]="concessionControl" />
+        @if (!hasSelection()) {
+          <p class="hint">Select an installment first.</p>
+        } @else {
+          <p class="hint">Optional, one per payment. It comes off the installments it applies to; tax is then worked out on what is left.</p>
+        }
+        @if (concessionNotice(); as n) {
+          <p class="notice" role="status">{{ n }}</p>
+        }
+        @if (selectedConcession()) {
+          <app-textarea
+            label="Reason for the concession"
+            [required]="true"
+            placeholder="Why is this concession being given?"
+            [maxLength]="500"
+            [formControl]="reasonControl"
+            [errorText]="reasonError()"
+            (focusout)="touchedReason.set(true)"
+          />
+          @if (waived()) {
+            <p class="hint" role="status"><strong>Fully waived:</strong> nothing will be collected. The payment is still recorded, with a total of ₹0.00, and the installments are cleared.</p>
+          }
+        }
+      }
+    </section>
+
+    <!-- 3. tax -->
+    <section class="block" aria-labelledby="cp-tax">
+      <h4 id="cp-tax">Tax type</h4>
+      @if (taxTypes().length > 0) {
+        <app-select label="Tax type" placeholder="None" [options]="taxOptions()" [formControl]="taxControl" />
+        <p class="hint">{{ hasSelection() ? 'Optional. Tax is added on top of the net fee, after any concession.' : 'Select an installment first.' }}</p>
+      } @else if (taxLoaded() && isSchoolAdmin()) {
+        <p class="hint">No tax types yet. <a routerLink="/fee-setup/tax-types">Add one in Fee Setup</a> to charge tax on payments.</p>
+      } @else {
+        <p class="hint">No tax types are set up.</p>
+      }
+    </section>
+
+    <app-textarea label="Remarks" placeholder="Optional, e.g. cheque number" [maxLength]="500" [formControl]="remarksControl" />
+  </div>
+
+  <!-- pinned: the summary, how it is paid, and the buttons never scroll away -->
+  <ng-container modal-footer>
+    <div class="pinned">
+      <dl class="summary" aria-live="polite" aria-label="Payment summary">
+        <div><dt>Fee amount</dt><dd>{{ paise(preview().grossPaise) }}</dd></div>
+        @if (selectedConcession() && preview().concessionPaise > 0) {
+          <div class="deduct"><dt>Concession: {{ concessionLabelText() }}</dt><dd>− {{ paise(preview().concessionPaise) }}</dd></div>
+          <div><dt>Net fee</dt><dd>{{ paise(preview().netPaise) }}</dd></div>
+        }
+        @if (selectedTax()) {
+          <div><dt>Tax: {{ taxLabelText() }}</dt><dd>{{ paise(preview().taxPaise) }}</dd></div>
+        }
+        <div class="total">
+          <dt>Total to collect</dt>
+          <dd>{{ paise(preview().totalPaise) }}@if (waived()) { <span class="waived">Fully waived</span> }</dd>
+        </div>
+      </dl>
+
+      @if (!waived()) {
+        <div class="pay">
+          <app-select label="Payment mode" [required]="true" [options]="modeOptions" [formControl]="modeControl" />
+          <div class="received">
+            <label for="cp-received">Amount received from the student (₹)<span class="required">*</span></label>
+            <input
+              id="cp-received"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              [value]="receivedText()"
+              [class.bad]="showReceivedError()"
+              [attr.aria-invalid]="showReceivedError()"
+              [attr.aria-describedby]="'cp-received-note'"
+              (input)="onReceived($event)"
+            />
+            <span id="cp-received-note" class="note" aria-live="polite">
+              @if (showReceivedError()) {
+                <span class="err" role="alert">{{ received().error }}</span>
+                <button type="button" class="link" (click)="useTotal()">Use the total</button>
+              } @else if (modeControl.value === 'Cash' && received().changePaise > 0) {
+                <strong class="change">Change to return {{ paise(received().changePaise) }}</strong>
+              }
+            </span>
+          </div>
+        </div>
+      }
+
+      @if (serverError(); as e) {
+        <p class="server-error" role="alert"><app-icon name="circle-alert" [size]="16" /> {{ e }}</p>
+      }
+
+      <div class="actions">
+        <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+        <app-button [disabled]="!canSubmit()" (click)="submit()">{{ saving() ? 'Recording…' : 'Record payment' }}</app-button>
+      </div>
+    </div>
+  </ng-container>
+</app-modal>

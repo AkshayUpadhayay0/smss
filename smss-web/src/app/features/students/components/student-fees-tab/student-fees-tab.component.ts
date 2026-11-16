@@ -9,7 +9,7 @@ import { ButtonComponent, CardComponent, IconComponent, ModalComponent, SelectCo
 import { formatDate } from '../../../admissions/models/admission.model';
 import { FeeDueRow, FeeItemRow, StudentFeeDues, StudentFeeItem, StudentFeeItems, dueStatusTone } from '../../models/student-billing.model';
 import { StudentFeeConcession, StudentFeeLineRow, StudentFees } from '../../models/student-fees.model';
-import { CollectPaymentDialogComponent } from '../collect-payment-dialog/collect-payment-dialog.component';
+import { CollectPaymentDialogComponent } from '../collect-payment/collect-payment.component';
 import { FeeReceiptDialogComponent } from '../fee-receipt-dialog/fee-receipt-dialog.component';
 import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, concessionLabel, hasConcession, hasTax, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
 import { AuthService } from '../../../../core/services/auth.service';
