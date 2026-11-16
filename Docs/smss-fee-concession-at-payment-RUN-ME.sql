@@ -14,10 +14,16 @@
 --        amount      = what was paid in cash (fee_amount + tax_amount)               - unchanged
 --        fee_amount  = the cash fee, i.e. the gross applied to installments MINUS the concession - for old rows: equal to the gross
 --      From now on:  sum(allocations) = fee_amount + concession_amount.
---   5. Verifies (the whole file is ONE transaction; any failed check RAISES and rolls EVERYTHING back):
+--   5. FULL WAIVER (added in a later revision of this file): relaxes the existing check chk_tb_fee_payments_amount from  amount > 0  to
+--        amount >= 0 AND (amount > 0 OR concession_amount > 0)
+--      so a payment whose whole amount is discounted (cash total 0) can be recorded WHEN it carries a concession. A payment with amount 0 and no concession,
+--      and a negative amount, stay refused. The check is dropped and re-added in the same transaction (only when its definition is not already the new one),
+--      so running this file again on a database that already ran the first revision applies just this step and leaves everything else as it is.
+--   6. Verifies (the whole file is ONE transaction; any failed check RAISES and rolls EVERYTHING back):
 --        - per-school counts and sums of payments (amount) and of allocations (allocated_amount) are exactly what they were before
 --        - every payment that existed before this run has concession_amount = 0, and so does every allocation
 --        - per payment, the sum of its allocations' concession_amount = the payment's concession_amount
+--        - the amount check has the new definition, and no payment has a negative amount or an amount of 0 without a concession
 --        - per payment, allocations add up to fee_amount + concession_amount. Exceptions are only REPORTED (WARNING in the Messages tab),
 --          never fixed and never hidden: they existed before this script and are not something a migration should silently repair.
 --
@@ -39,6 +45,7 @@
 --
 -- HOW TO ROLL BACK
 --   Simplest and exact: restore the pg_dump taken in step 1. (Or, before any concession has been given:
+--   ALTER TABLE tb_fee_payments DROP CONSTRAINT chk_tb_fee_payments_amount;  ALTER TABLE tb_fee_payments ADD CONSTRAINT chk_tb_fee_payments_amount CHECK (amount > 0);
 --   ALTER TABLE tb_fee_payment_allocations DROP COLUMN concession_amount;
 --   ALTER TABLE tb_fee_payments DROP COLUMN concession_applied_by, DROP COLUMN concession_reason, DROP COLUMN concession_amount,
 --     DROP COLUMN concession_value_snapshot, DROP COLUMN concession_type_snapshot, DROP COLUMN concession_code_snapshot,
@@ -94,7 +101,7 @@ $pre$;
 -- ---------------------------------------------------------------------------------------------------------------------
 -- BEFORE SNAPSHOT. Temp tables vanish at COMMIT.
 -- ---------------------------------------------------------------------------------------------------------------------
-CREATE TEMP TABLE _cn_state    (migrating boolean NOT NULL) ON COMMIT DROP;
+CREATE TEMP TABLE _cn_state    (migrating boolean NOT NULL, amount_rule boolean NOT NULL) ON COMMIT DROP;
 CREATE TEMP TABLE _cn_before_p (school_id text, payments bigint, total numeric) ON COMMIT DROP;
 CREATE TEMP TABLE _cn_before_a (school_id text, allocations bigint, total numeric) ON COMMIT DROP;
 CREATE TEMP TABLE _cn_old_pay  (payment_id bigint) ON COMMIT DROP;
@@ -108,7 +115,10 @@ SELECT EXISTS (
     OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tb_fee_payment_allocations' AND column_name = 'concession_amount')
     OR (SELECT count(*) FROM pg_constraint WHERE conrelid IN ('public.tb_fee_payments'::regclass, 'public.tb_fee_payment_allocations'::regclass)
             AND conname IN ('chk_tb_fee_payments_concession_nonneg', 'chk_tb_fee_payments_concession_snapshot', 'chk_tb_fee_payment_allocations_concession',
-                            'fk_tb_fee_payments_concession', 'fk_tb_fee_payments_concession_user')) < 5;
+                            'fk_tb_fee_payments_concession', 'fk_tb_fee_payments_concession_user')) < 5,
+       -- the full-waiver amount rule still has to be applied (the check is missing or still the old "amount > 0")
+       coalesce((SELECT pg_get_constraintdef(oid) FROM pg_constraint
+                 WHERE conrelid = 'public.tb_fee_payments'::regclass AND conname = 'chk_tb_fee_payments_amount'), '') NOT LIKE '%concession_amount%';
 
 INSERT INTO _cn_before_p SELECT school_id::text, count(*), coalesce(sum(amount), 0) FROM public.tb_fee_payments GROUP BY school_id;
 INSERT INTO _cn_before_a SELECT p.school_id::text, count(*), coalesce(sum(a.allocated_amount), 0)
@@ -120,7 +130,9 @@ DO $snap$
 DECLARE r record;
 BEGIN
     IF (SELECT migrating FROM _cn_state) THEN RAISE NOTICE 'MIGRATING: the concession columns / checks are not all in place yet.';
-    ELSE RAISE NOTICE 'ALREADY MIGRATED: nothing to change (the checks below still run).'; END IF;
+    ELSE RAISE NOTICE 'ALREADY MIGRATED: the concession columns and checks are in place (the checks below still run).'; END IF;
+    IF (SELECT amount_rule FROM _cn_state) THEN RAISE NOTICE 'FULL WAIVER: the amount check will be relaxed to allow amount = 0 when a concession is given.';
+    ELSE RAISE NOTICE 'FULL WAIVER: the amount check already allows it.'; END IF;
     FOR r IN SELECT p.school_id, p.payments, p.total, coalesce(a.allocations, 0) AS allocations, coalesce(a.total, 0) AS alloc_total
              FROM _cn_before_p p LEFT JOIN _cn_before_a a ON a.school_id = p.school_id ORDER BY p.school_id LOOP
         RAISE NOTICE 'before: school % | % payment(s), total % | % allocation(s), total %', r.school_id, r.payments, r.total, r.allocations, r.alloc_total;
@@ -207,6 +219,26 @@ BEGIN
 END
 $chk$;
 
+-- ---------------------------------------------------------------------------------------------------------------------
+-- 4. FULL WAIVER: the amount check. Existing rows were all taken with amount > 0, so they satisfy the new rule too; verified first anyway.
+-- ---------------------------------------------------------------------------------------------------------------------
+DO $amount$
+DECLARE
+    v_bad bigint;
+    v_ids text;
+BEGIN
+    SELECT count(*), string_agg(payment_id::text, ', ' ORDER BY payment_id) INTO v_bad, v_ids
+    FROM public.tb_fee_payments WHERE amount < 0 OR (amount = 0 AND concession_amount = 0);
+    IF v_bad > 0 THEN RAISE EXCEPTION 'VERIFICATION FAILED: % payment(s) have a negative amount, or an amount of 0 without a concession (payment ids: %). Rolled back.', v_bad, v_ids; END IF;
+
+    IF coalesce((SELECT pg_get_constraintdef(oid) FROM pg_constraint
+                 WHERE conrelid = 'public.tb_fee_payments'::regclass AND conname = 'chk_tb_fee_payments_amount'), '') NOT LIKE '%concession_amount%' THEN
+        ALTER TABLE public.tb_fee_payments DROP CONSTRAINT IF EXISTS chk_tb_fee_payments_amount;
+        ALTER TABLE public.tb_fee_payments ADD CONSTRAINT chk_tb_fee_payments_amount CHECK (amount >= 0 AND (amount > 0 OR concession_amount > 0));
+    END IF;
+END
+$amount$;
+
 -- =====================================================================================================================
 -- FINAL VERIFICATION (same transaction). Any failure RAISES, which rolls back EVERYTHING above.
 -- =====================================================================================================================
@@ -224,6 +256,12 @@ BEGIN
                             'fk_tb_fee_payments_concession', 'fk_tb_fee_payments_concession_user')) <> 5 THEN
         RAISE EXCEPTION 'VERIFICATION FAILED: one of the new checks / foreign keys is missing. Rolled back.';
     END IF;
+    IF coalesce((SELECT pg_get_constraintdef(oid) FROM pg_constraint
+                 WHERE conrelid = 'public.tb_fee_payments'::regclass AND conname = 'chk_tb_fee_payments_amount'), '') NOT LIKE '%concession_amount%' THEN
+        RAISE EXCEPTION 'VERIFICATION FAILED: chk_tb_fee_payments_amount does not have the full-waiver definition. Rolled back.';
+    END IF;
+    SELECT count(*) INTO v_bad FROM public.tb_fee_payments WHERE amount < 0 OR (amount = 0 AND concession_amount = 0);
+    IF v_bad > 0 THEN RAISE EXCEPTION 'VERIFICATION FAILED: % payment(s) with a negative amount, or an amount of 0 without a concession. Rolled back.', v_bad; END IF;
     IF EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attname = 'concession_amount' AND NOT a.attnotnull
                AND a.attrelid IN ('public.tb_fee_payments'::regclass, 'public.tb_fee_payment_allocations'::regclass)) THEN
         RAISE EXCEPTION 'VERIFICATION FAILED: a concession_amount column is nullable. Rolled back.';
@@ -282,7 +320,10 @@ BEGIN
     IF v_bad = 0 THEN RAISE NOTICE 'allocations add up to fee_amount + concession_amount for every payment (no exceptions).'; END IF;
 
     IF v_migrating THEN
-        RAISE NOTICE 'VERIFIED: % payment(s) and % allocation(s) unchanged in count and sum, all with concession_amount = 0, checks added.',
+        RAISE NOTICE 'VERIFIED: % payment(s) and % allocation(s) unchanged in count and sum, all with concession_amount = 0, checks added, full-waiver amount rule in place.',
+            (SELECT count(*) FROM public.tb_fee_payments), (SELECT count(*) FROM public.tb_fee_payment_allocations);
+    ELSIF (SELECT amount_rule FROM _cn_state) THEN
+        RAISE NOTICE 'VERIFIED: the full-waiver amount rule was applied; nothing else changed. (% payment(s), % allocation(s) unchanged)',
             (SELECT count(*) FROM public.tb_fee_payments), (SELECT count(*) FROM public.tb_fee_payment_allocations);
     ELSE
         RAISE NOTICE 'ALREADY MIGRATED: nothing changed. (structure and invariants verified)';

@@ -62,6 +62,9 @@
                 @for (t of breakdown(p); track t.label) {
                   <br />{{ t.label }} {{ t.deduction ? '− ' : '' }}{{ inr(t.amount) }}
                 }
+                @if (waived(p)) {
+                  <br /><strong>Fully waived</strong>
+                }
               </span>
               <span class="num ok">{{ inr(p.totalAmount ?? p.amount) }}</span>
             </li>

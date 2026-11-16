@@ -1,4 +1,4 @@
-import { PaymentTaxFields, concessionLabel, hasConcession, receiptTotals } from './fee-payment.model';
+import { PaymentTaxFields, concessionLabel, hasConcession, isFullyWaived, receiptTotals } from './fee-payment.model';
 
 const base: PaymentTaxFields & { amount: number } = { amount: 1000 };
 const taxed: PaymentTaxFields & { amount: number } = { amount: 1180, feeAmount: 1000, grossAmount: 1000, netFeeAmount: 1000, taxName: 'GST 18%', taxRatePercent: 18, taxAmount: 180, totalAmount: 1180 };
@@ -34,4 +34,14 @@ describe('receipt totals', () => {
     expect(hasConcession(base)).toBe(false);
     expect(hasConcession({ ...discounted, concessionAmount: 0 })).toBe(false);
   });
+
+describe('full waiver', () => {
+  it('is a concession that left a total of 0; a discount with something left, or a plain zero, is not', () => {
+    const waived = { ...discounted, amount: 0, totalAmount: 0, netFeeAmount: 0, feeAmount: 0, concessionAmount: 1000 };
+    expect(isFullyWaived(waived)).toBe(true);
+    expect(receiptTotals(waived).map((t) => [t.label, t.amount])).toEqual([['Fee amount', 1000], ['Concession: Sibling 10%', 1000], ['Net fee', 0], ['Total paid', 0]]);
+    expect(isFullyWaived(discounted)).toBe(false);
+    expect(isFullyWaived({ amount: 0 })).toBe(false);
+  });
+});
 });

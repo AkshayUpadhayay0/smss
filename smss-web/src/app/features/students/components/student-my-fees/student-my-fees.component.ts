@@ -4,7 +4,7 @@ import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
 import { ButtonComponent, CardComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { receiptTotals } from '../../models/fee-payment.model';
+import { isFullyWaived, receiptTotals } from '../../models/fee-payment.model';
 import { MyFeePayment, StudentMyFees } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
@@ -30,6 +30,7 @@ export class StudentMyFeesComponent implements OnInit {
   protected readonly inr = formatInr;
   protected readonly fmt = formatDate;
   /** Fee amount / Concession / Net fee / Tax of a payment (nothing for a payment without concession or tax); the total is the figure on the right. Never the reason: staff only. */
+  protected readonly waived = (p: MyFeePayment) => isFullyWaived(p);
   protected readonly breakdown = (p: MyFeePayment) => receiptTotals(p).filter((t) => !t.total);
   protected readonly paidOn = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   /** The status pill colour, same words as the staff screens. */

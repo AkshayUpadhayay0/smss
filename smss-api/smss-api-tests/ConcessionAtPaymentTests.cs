@@ -312,19 +312,7 @@ namespace smss_api_tests
             Assert.Equal(400, tiny.StatusCode);
         }
 
-        [DbFact]
-        public async Task ADiscountThatLeavesNothingToCollect_IsRefused()
-        {
-            using var db = new TaxDb();
-            var full = NewConcession(db, TaxDb.SchoolA, "Full", "FULL", "PERCENTAGE", 100);
-            var big = NewConcession(db, TaxDb.SchoolA, "Big", "BIG", "FIXED", 5000);
-            var before = PaymentCount(db);
-            Assert.Equal(400, (await Pay(db, 500, full, allocations: Allocs((Library, 500)))).StatusCode);
-            Assert.Equal(400, (await Pay(db, 200, big, allocations: Allocs((Library, 200)))).StatusCode);   // a fixed amount is capped at the base (200) and that is everything
-            Assert.Equal(before, PaymentCount(db));
-            var partly = (await Pay(db, 500, big, allocations: Allocs((Library, 500), (Exam, 0.01m)))).StatusCode;   // capped at the base, which here is the whole payment
-            Assert.Equal(400, partly);
-        }
+        // (a discount that covers the whole amount is a FULL WAIVER and is allowed: see FullWaiverTests)
 
         // ============================================================== reason, state of the concession, double discount
         [DbFact]

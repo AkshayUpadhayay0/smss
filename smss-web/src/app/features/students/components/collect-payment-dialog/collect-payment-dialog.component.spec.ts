@@ -352,14 +352,32 @@ describe('CollectPaymentDialogComponent', () => {
       expect(submitButton().disabled).toBe(false);
     });
 
-    it('a concession that would leave nothing to collect is refused inline', () => {
-      openWith([], ['School Admin'], [con(1, 'Everything', 'PERCENTAGE', 100)]);
+    it('a concession that covers the whole amount is a FULL WAIVER: allowed with a reason, total 0, tax 0, and it says so', () => {
+      openWith([tax(1, 'GST 18%', 18)], ['School Admin'], [con(1, 'Everything', 'PERCENTAGE', 100), con(2, 'Rs 5000 off', 'FIXED', 5000)]);
       amount('1000');
       pick('1');
-      why('full waiver');
+      cmp()['taxControl'].setValue('1');
+      fixture.detectChanges();
       expect(cmp()['netFeePaise']()).toBe(0);
-      expect(text()).toContain('nothing would be left to collect');
-      expect(submitButton().disabled).toBe(true);
+      expect(cmp()['taxAmountPaise']()).toBe(0);                       // the tax base is 0
+      expect(cmp()['totalToCollectPaise']()).toBe(0);
+      expect(text()).toContain('Fully waived');
+      expect(field('Total to collect')).toContain('0.00');
+      expect(submitButton().disabled).toBe(true);                      // still needs the reason
+      why('waived by the principal');
+      expect(submitButton().disabled).toBe(false);
+      pick('2');                                                       // a fixed amount larger than the base is capped at it: also a full waiver
+      expect(cmp()['concessionAmountPaise']()).toBe(100000);
+      expect(cmp()['fullyWaived']()).toBe(true);
+      expect(submitButton().disabled).toBe(false);
+    });
+
+    it('a concession that leaves something to collect is not called a waiver', () => {
+      openWith([], ['School Admin'], [con(1, 'Sibling 10%', 'PERCENTAGE', 10)]);
+      amount('1000');
+      pick('1');
+      expect(cmp()['fullyWaived']()).toBe(false);
+      expect(text()).not.toContain('Fully waived');
     });
 
     it('sends the concession id and the reason (trimmed) with the GROSS amount and the split, never a discount, tax or total amount', () => {

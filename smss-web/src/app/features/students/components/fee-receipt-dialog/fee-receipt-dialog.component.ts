@@ -3,7 +3,7 @@ import { formatInr } from '../../../../core/utils/currency';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeReceipt, ReceiptTotalLine, hasConcession, hasTax, receiptTotals, taxLabel } from '../../models/fee-payment.model';
+import { FeeReceipt, ReceiptTotalLine, hasConcession, hasTax, isFullyWaived, receiptTotals, taxLabel } from '../../models/fee-payment.model';
 import { printReceipt } from '../../utils/receipt-print';
 
 /** A receipt on screen, with Print / Save as PDF. Used right after collecting a payment and when reopening one from the history. */
@@ -72,6 +72,9 @@ import { printReceipt } from '../../utils/receipt-print';
           </tfoot>
         </table>
 
+        @if (waived()) {
+          <p class="muted"><strong>Fully waived</strong>: nothing was collected on this receipt.</p>
+        }
         @if (concessionReason(); as why) {
           <p class="muted">Concession reason: {{ why }}@if (receipt().concessionAppliedByName) { (applied by {{ receipt().concessionAppliedByName }}) }</p>
         }
@@ -114,6 +117,10 @@ export class FeeReceiptDialogComponent {
   /** The totals block: Fee amount / Concession / Net fee / Tax / Total paid (only the lines that apply), or just "Total received" as before. */
   protected totals(): ReceiptTotalLine[] {
     return receiptTotals(this.receipt());
+  }
+
+  protected waived(): boolean {
+    return isFullyWaived(this.receipt());
   }
 
   /** Why a concession was given: staff see it, the student's own receipt does not carry it. */

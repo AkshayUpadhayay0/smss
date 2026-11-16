@@ -104,4 +104,15 @@ describe('receiptHtml', () => {
       expect(v).toContain('<div class="watermark">VOID</div>');
     });
   });
+
+  it('a full waiver prints "Total paid ₹0.00" with a Fully waived note, the concession lines and the reason', () => {
+    const waived: FeeReceipt = { ...receipt, amount: 0, feeAmount: 0, grossAmount: 1800, netFeeAmount: 0, concessionName: 'Full waiver', concessionType: 'PERCENTAGE', concessionValue: 100, concessionAmount: 1800, totalAmount: 0, concessionReason: 'waived by the principal' };
+    const h = receiptHtml(waived);
+    expect(h).toContain('Fully waived');
+    expect(h).toContain('Total paid');
+    expect(h).toContain('₹0.00');
+    expect(h).toContain('Concession: Full waiver');
+    expect(h).toContain('Concession reason: waived by the principal');
+    expect(receiptHtml({ ...waived, concessionAmount: 100, totalAmount: 1700, amount: 1700 })).not.toContain('Fully waived');
+  });
 });

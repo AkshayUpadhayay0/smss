@@ -34,6 +34,7 @@ namespace smss_api_service_layer.service
 
                 // `amount` in the request is the GROSS amount applied to the installments. A concession (if chosen) comes off it, and tax is added on top of what is left, below
                 var amount = req.Amount!.Value;
+                if (amount <= 0) return Result<FeeReceiptDto>(400, "Amount must be greater than 0.", null);   // a payment of 0 is only possible as a full waiver, which still starts from a positive amount applied to installments
                 if (decimal.Round(amount, 2) != amount) return Result<FeeReceiptDto>(400, "Amount can have at most 2 decimal places.", null);
 
                 // 404 for another school's student too, so ids from other schools can't be probed
@@ -144,9 +145,9 @@ namespace smss_api_service_layer.service
                             var parts = ConcessionMath.Spread(concessionAmount, matching.Select(i => plan[i].Amount).ToList());
                             for (var k = 0; k < matching.Count; k++) perAllocation[matching[k]] = parts[k];
                         }
+                        // a FULL WAIVER is allowed: the discount can be the whole amount, so the cash fee is 0 (and so is the tax, whose base is 0). Without a concession the amount
+                        // must be > 0 (the request validation) and the discount can never exceed what was allocated, so this is never negative.
                         var feeAmount = amount - concessionAmount;
-                        if (feeAmount <= 0)
-                            return Result<FeeReceiptDto>(400, "With this concession nothing would be left to collect. A payment must collect something: choose a smaller amount or a different concession.", null);
                         var taxAmount = taxType == null ? 0m : TaxMath.TaxOn(feeAmount, taxType.RatePercent);
 
                         // ---- the payment, its allocations and each installment's running total: one SaveChanges, one transaction ----

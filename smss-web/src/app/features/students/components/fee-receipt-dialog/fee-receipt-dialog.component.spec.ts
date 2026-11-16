@@ -80,5 +80,11 @@ describe('FeeReceiptDialogComponent: concession lines', () => {
     expect(text()).toContain('Concession: Sibling 10%');
     expect(text()).toContain('Voided');
   });
+
+  it('a full waiver shows Total paid ₹0.00 and a Fully waived note', () => {
+    open({ ...discounted, amount: 0, feeAmount: 0, netFeeAmount: 0, grossAmount: 1800, concessionAmount: 1800, taxName: null, taxAmount: 0, totalAmount: 0 });
+    expect(text()).toContain('Total paid ₹0.00');
+    expect(text()).toContain('Fully waived');
+  });
 });
 });

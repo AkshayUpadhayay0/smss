@@ -29,8 +29,8 @@
             This concession doesn't apply to the selected installments@if (selectedConcession()?.applicableFeeTypeName) { : it is for {{ selectedConcession()!.applicableFeeTypeName }} only}.
             Select an installment it applies to, or choose another concession or none.
           </p>
-        } @else if (concessionBasePaise() > 0 && netFeePaise() <= 0) {
-          <p class="notice" role="alert">With this concession nothing would be left to collect. Choose a smaller amount or a different concession.</p>
+        } @else if (fullyWaived()) {
+          <p class="hint" role="status"><strong>Fully waived:</strong> nothing will be collected. The payment is still recorded, with a total of ₹0.00, and the installments are cleared.</p>
         }
       }
     }

@@ -39,6 +39,9 @@ export const hasTax = (p: PaymentTaxFields): boolean => !!p.taxName;
 /** True when the payment carried a concession. */
 export const hasConcession = (p: PaymentTaxFields): boolean => !!p.concessionName && (p.concessionAmount ?? 0) > 0;
 
+/** A FULL WAIVER: a concession covered the whole amount, so nothing was collected (the receipt still has its lines and a total of ₹0.00). */
+export const isFullyWaived = (p: PaymentTaxFields & { amount: number }): boolean => hasConcession(p) && (p.totalAmount ?? p.amount) === 0;
+
 /** "Sibling 10%" / "Staff ward (₹500)": the concession's name, with its value only when the name does not already state it. */
 export const concessionLabel = (p: PaymentTaxFields): string => concessionNameWithValue(p.concessionName ?? '', p.concessionType ?? 'FIXED', p.concessionValue ?? 0);
 

@@ -116,6 +116,8 @@ export class CollectPaymentDialogComponent implements OnInit {
   });
   /** The cash fee: the amount applied to installments minus the concession. Tax is worked out on THIS (discount first, then tax). */
   protected readonly netFeePaise = computed(() => this.amountPaise() - this.concessionAmountPaise());
+  /** The discount covers the whole amount: nothing is collected and the payment is recorded as a full waiver (total ₹0.00). */
+  protected readonly fullyWaived = computed(() => !!this.selectedConcession() && this.concessionAmountPaise() > 0 && this.netFeePaise() === 0);
   /** A concession is chosen but none of the ticked installments is one it applies to (shown as a message; Record payment stays disabled). */
   protected readonly concessionNotApplicable = computed(() => !!this.selectedConcession() && this.amountPaise() > 0 && this.allocatedPaise() > 0 && this.concessionBasePaise() === 0);
   protected readonly reasonError = computed(() => {
@@ -147,10 +149,10 @@ export class CollectPaymentDialogComponent implements OnInit {
   });
 
   protected readonly anyRowError = computed(() => this.rows().some((r) => r.checked && !!this.rowError(r)));
-  /** With a concession: a written reason, at least one installment it applies to, and something left to collect after the discount. */
+  /** With a concession: a written reason and at least one installment it applies to. Nothing left to collect after the discount is fine: that is a full waiver. */
   protected readonly concessionOk = computed(() => {
     if (!this.selectedConcession()) return true;
-    return this.reasonText().trim().length > 0 && this.reasonControl.valid && this.concessionBasePaise() > 0 && this.netFeePaise() > 0 && this.concessionAmountPaise() > 0;
+    return this.reasonText().trim().length > 0 && this.reasonControl.valid && this.concessionBasePaise() > 0 && this.concessionAmountPaise() > 0;
   });
   protected readonly canSubmit = computed(
     () => !this.saving() && this.amountPaise() > 0 && !this.amountError() && this.difference() === 0 && !this.anyRowError() && this.rows().some((r) => r.checked) && this.modeControl.valid && this.concessionOk(),

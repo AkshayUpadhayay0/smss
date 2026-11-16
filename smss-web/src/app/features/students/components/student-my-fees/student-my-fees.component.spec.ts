@@ -130,4 +130,15 @@ describe('StudentMyFeesComponent', () => {
     for (const t of ['Fee amount ₹1,000.00', 'Concession: Sibling 10% − ₹100.00', 'Net fee ₹900.00', 'Tax: GST 18% ₹162.00', '₹1,062.00']) expect(row).toContain(t);
     expect(text()).not.toContain('reason');
   });
+
+  it('a fully waived payment shows a total of ₹0.00 and says Fully waived, with no reason', () => {
+    open((r) => r.flush(env({ ...FEES, payments: [
+      { paymentDate: '2026-05-09T10:00:00Z', amount: 0, feeAmount: 0, grossAmount: 1800, netFeeAmount: 0, concessionName: 'Full waiver', concessionType: 'PERCENTAGE', concessionValue: 100, concessionAmount: 1800, totalAmount: 0, receiptNumber: 'RCP-2026-0009', paymentMode: 'Cash' },
+    ] })));
+    const row = (el().querySelector('.payments li')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(row).toContain('Fully waived');
+    expect(row).toContain('Concession: Full waiver (100%) − ₹1,800.00');
+    expect(row).toContain('₹0.00');
+    expect(text()).not.toContain('reason');
+  });
 });
