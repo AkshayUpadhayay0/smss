@@ -9,15 +9,37 @@ export interface PaymentAllocation {
   amount: number;
 }
 
+/** The fee / tax / total split the API returns on every payment, history row and receipt. Optional so a payment without tax (or older fixtures) reads as before. */
+export interface PaymentTaxFields {
+  /** What went against the installments. */
+  feeAmount?: number;
+  /** Name, code and rate as they were when the payment was taken. */
+  taxName?: string | null;
+  taxCode?: string | null;
+  taxRatePercent?: number | null;
+  taxAmount?: number;
+  /** Fee + tax = what was handed over (same value as `amount`). */
+  totalAmount?: number;
+}
+
+/** True when the payment carried a tax type (a 0% type still counts: it is on the receipt). */
+export const hasTax = (p: PaymentTaxFields): boolean => !!p.taxName;
+
+/** "GST (18%)" style description of the tax on a payment. */
+export const taxLabel = (p: PaymentTaxFields): string => `${p.taxName ?? ''} (${p.taxRatePercent ?? 0}%)`;
+
 export interface RecordPaymentRequest {
+  /** The FEE amount to put against the dues. Tax is added on top by the server; a tax AMOUNT is never sent. */
   amount: number;
+  /** Optional: one of the school's active tax types. */
+  taxTypeId?: number | null;
   paymentMode: PaymentMode;
   /** The split over installments. Omit it for oldest-first automatic allocation (the dialog always sends one). */
   allocations?: PaymentAllocation[];
   remarks?: string | null;
 }
 
-export interface PaymentSummary {
+export interface PaymentSummary extends PaymentTaxFields {
   paymentId: number;
   receiptNumber: string;
   paymentDate: string;
@@ -47,7 +69,7 @@ export interface ReceiptLine {
   paidToDate: number;
 }
 
-export interface FeeReceipt {
+export interface FeeReceipt extends PaymentTaxFields {
   paymentId: number;
   receiptNumber: string;
   paymentDate: string;
@@ -68,6 +90,9 @@ export interface PaymentRow extends Record<string, unknown> {
   paymentId: number;
   receiptNumber: string;
   paymentDate: string;
+  /** Fee part, tax text ("GST (18%) · ₹180.00" or "—") and the total paid. */
+  feeAmount: string;
+  tax: string;
   amount: string;
   paymentMode: string;
   collectedByName: string;

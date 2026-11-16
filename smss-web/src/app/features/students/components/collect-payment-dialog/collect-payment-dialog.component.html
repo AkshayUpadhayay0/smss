@@ -3,7 +3,7 @@
     <div class="top">
       <app-select label="Payment mode" [required]="true" [options]="modeOptions" [formControl]="modeControl" />
       <app-input
-        label="Amount (₹)"
+        label="Fee amount (₹)"
         type="number"
         [required]="true"
         placeholder="0.00"
@@ -11,6 +11,20 @@
         [errorText]="amountError()"
       />
     </div>
+
+    @if (taxTypes().length > 0) {
+      <app-select label="Tax type" placeholder="None" [options]="taxOptions()" [formControl]="taxControl" />
+      <p class="hint">Optional. Tax is added on top of the fee amount.</p>
+    } @else if (taxLoaded() && isSchoolAdmin()) {
+      <p class="hint">No tax types yet. <a routerLink="/fee-setup/tax-types">Add one in Fee Setup</a> to charge tax on payments.</p>
+    }
+    @if (selectedTax()) {
+      <dl class="tax-summary" aria-live="polite" aria-label="Payment total">
+        <div><dt>Fee amount</dt><dd>{{ inr(amountPaise() / 100) }}</dd></div>
+        <div><dt>Tax: {{ taxSummaryLabel() }}</dt><dd>{{ inr(taxAmountPaise() / 100) }}</dd></div>
+        <div class="total"><dt>Total to collect</dt><dd>{{ inr(totalToCollectPaise() / 100) }}</dd></div>
+      </dl>
+    }
     <div class="quick">
       <button type="button" class="link" (click)="payEverything()">Pay everything outstanding ({{ inr(totalOutstanding() / 100) }})</button>
     </div>

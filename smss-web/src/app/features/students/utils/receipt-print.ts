@@ -1,5 +1,5 @@
 import { formatInr } from '../../../core/utils/currency';
-import { FeeReceipt } from '../models/fee-payment.model';
+import { FeeReceipt, hasTax, taxLabel } from '../models/fee-payment.model';
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -19,6 +19,13 @@ export function receiptHtml(r: FeeReceipt): string {
       </tr>`,
     )
     .join('');
+
+  // A payment without tax prints exactly as before; with tax: fee amount, the tax (name and rate), then the total paid
+  const totals = hasTax(r)
+    ? `<tr class="sub-total"><td colspan="3">Fee amount</td><td class="num">${escapeHtml(formatInr(r.feeAmount ?? 0))}</td></tr>
+      <tr class="sub-total"><td colspan="3">Tax: ${escapeHtml(taxLabel(r))}</td><td class="num">${escapeHtml(formatInr(r.taxAmount ?? 0))}</td></tr>
+      <tr class="total"><td colspan="3">Total paid</td><td class="num">${escapeHtml(formatInr(r.totalAmount ?? r.amount))}</td></tr>`
+    : `<tr class="total"><td colspan="3">Total received</td><td class="num">${escapeHtml(formatInr(r.amount))}</td></tr>`;
 
   const voided = r.status === 'Voided';
   const voidedBlock = voided
@@ -41,6 +48,7 @@ export function receiptHtml(r: FeeReceipt): string {
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #6b6a7b; border-bottom: 1px solid #d5d8e2; padding: 8px 6px; }
   td { padding: 8px 6px; border-bottom: 1px solid #eceef4; vertical-align: top; }
   .num { text-align: right; } th.num { text-align: right; }
+  .sub-total td { border-bottom: 0; font-size: 13px; }
   .total td { border-top: 2px solid #1c1b29; border-bottom: 0; font-size: 15px; font-weight: 700; }
   .void-banner { margin: 14px 0 0; padding: 10px 14px; border: 2px solid #c0392b; border-radius: 8px; color: #c0392b; font-size: 13px; }
   .void-banner strong { display: block; font-size: 20px; letter-spacing: .14em; }
@@ -72,7 +80,7 @@ export function receiptHtml(r: FeeReceipt): string {
   </div>
   <table>
     <thead><tr><th>Fee</th><th>Due date</th><th class="num">Installment</th><th class="num">Paid now</th></tr></thead>
-    <tbody>${rows}<tr class="total"><td colspan="3">Total received</td><td class="num">${escapeHtml(formatInr(r.amount))}</td></tr></tbody>
+    <tbody>${rows}${totals}</tbody>
   </table>
   ${r.remarks ? `<p class="muted">Remarks: ${escapeHtml(r.remarks)}</p>` : ''}
   <div class="foot"><span>This is a computer generated receipt.</span><span>Thank you.</span></div>

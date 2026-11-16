@@ -42,6 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Fee Types', route: '/fee-setup/fee-types' },
       { label: 'Fee Structures', route: '/fee-setup/fee-structures' },
       { label: 'Fee Concessions', route: '/fee-setup/fee-concessions' },
+      { label: 'Tax Types', route: '/fee-setup/tax-types' },
     ],
   },
   {

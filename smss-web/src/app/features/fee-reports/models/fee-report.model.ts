@@ -7,6 +7,14 @@ export interface FeeCollectionMonth {
   amount: number;
 }
 
+export interface FeeTaxBreakdown {
+  taxTypeId: number;
+  taxName: string;
+  taxCode: string;
+  taxAmount: number;
+  paymentCount: number;
+}
+
 export interface FeeDashboard {
   academicYearId: number;
   academicYearName: string;
@@ -15,7 +23,11 @@ export interface FeeDashboard {
   upcomingDays: number;
   asOf: string;
   totalDue: number;
+  /** Fee only: tax is NOT included. */
   totalCollected: number;
+  /** Tax collected on Active payments in the same scope (reported on its own). Optional so an older response still reads. */
+  taxCollected?: number;
+  taxByType?: FeeTaxBreakdown[];
   totalOutstanding: number;
   overdueAmount: number;
   overdueCount: number;

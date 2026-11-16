@@ -11,7 +11,7 @@ import { FeeDueRow, FeeItemRow, StudentFeeDues, StudentFeeItem, StudentFeeItems,
 import { StudentFeeConcession, StudentFeeLineRow, StudentFees } from '../../models/student-fees.model';
 import { CollectPaymentDialogComponent } from '../collect-payment-dialog/collect-payment-dialog.component';
 import { FeeReceiptDialogComponent } from '../fee-receipt-dialog/fee-receipt-dialog.component';
-import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, paymentStatusTone } from '../../models/fee-payment.model';
+import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, hasTax, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { StudentService } from '../../services/student.service';
 
@@ -46,7 +46,9 @@ const DUE_COLUMNS: TableColumn<FeeDueRow>[] = [
 const PAYMENT_COLUMNS: TableColumn<PaymentRow>[] = [
   { key: 'receiptNumber', label: 'Receipt No.' },
   { key: 'paymentDate', label: 'Date' },
-  { key: 'amount', label: 'Amount' },
+  { key: 'feeAmount', label: 'Fee' },
+  { key: 'tax', label: 'Tax' },
+  { key: 'amount', label: 'Total paid' },
   { key: 'paymentMode', label: 'Mode' },
   { key: 'collectedByName', label: 'Collected By' },
   { key: 'status', label: 'Status', type: 'badge', tone: paymentStatusTone },
@@ -113,6 +115,8 @@ export class StudentFeesTabComponent implements OnInit {
       paymentId: p.paymentId,
       receiptNumber: p.receiptNumber,
       paymentDate: new Date(p.paymentDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      feeAmount: formatInr(p.feeAmount ?? p.amount),
+      tax: hasTax(p) ? `${taxLabel(p)} · ${formatInr(p.taxAmount ?? 0)}` : '—',
       amount: formatInr(p.amount),
       paymentMode: p.paymentMode,
       collectedByName: p.collectedByName ?? '—',

@@ -7,6 +7,10 @@ export const FEE_SETUP_ROUTES: Routes = [
     loadComponent: () => import('./pages/fee-concession-list/fee-concession-list.component').then((m) => m.FeeConcessionListComponent),
   },
   {
+    path: 'fee-setup/tax-types',
+    loadComponent: () => import('./pages/tax-type-list/tax-type-list.component').then((m) => m.TaxTypeListComponent),
+  },
+  {
     path: 'fee-setup/fee-structures',
     loadComponent: () => import('./pages/fee-structure-list/fee-structure-list.component').then((m) => m.FeeStructureListComponent),
   },

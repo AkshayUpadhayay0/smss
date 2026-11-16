@@ -2,7 +2,11 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 import { formatInr } from '../../../../core/utils/currency';
+import { TaxType, taxOptionLabel, taxPaise } from '../../../fee-setup/models/tax-type.model';
+import { TaxTypeService } from '../../../fee-setup/services/tax-type.service';
 import { ButtonComponent, IconComponent, InputComponent, ModalComponent, SelectComponent, SelectOption, TextareaComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { FeeReceipt, PAYMENT_MODES, PaymentMode, toPaise } from '../../models/fee-payment.model';
@@ -28,7 +32,7 @@ interface AllocRow {
  */
 @Component({
   selector: 'app-collect-payment-dialog',
-  imports: [ReactiveFormsModule, ModalComponent, ButtonComponent, IconComponent, InputComponent, SelectComponent, TextareaComponent],
+  imports: [ReactiveFormsModule, RouterLink, ModalComponent, ButtonComponent, IconComponent, InputComponent, SelectComponent, TextareaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './collect-payment-dialog.component.scss',
   templateUrl: './collect-payment-dialog.component.html',
@@ -36,6 +40,8 @@ interface AllocRow {
 export class CollectPaymentDialogComponent implements OnInit {
   private readonly students = inject(StudentService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly taxTypeApi = inject(TaxTypeService);
+  private readonly auth = inject(AuthService);
 
   readonly studentId = input.required<string>();
   /** The student's installments; only those with something outstanding are listed. */
@@ -48,6 +54,16 @@ export class CollectPaymentDialogComponent implements OnInit {
   protected readonly modeControl = new FormControl<string>('Cash', { nonNullable: true, validators: [Validators.required] });
   protected readonly amountControl = new FormControl('', { nonNullable: true });
   protected readonly remarksControl = new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] });
+
+  /** '' = no tax (the default); otherwise the chosen tax type's id as text (the select works with strings). */
+  protected readonly taxControl = new FormControl<string>('', { nonNullable: true });
+  /** The school's ACTIVE tax types (the server lists only those for an Accountant; a School Admin's list is filtered here too). */
+  protected readonly taxTypes = signal<TaxType[]>([]);
+  protected readonly taxLoaded = signal(false);
+  private readonly taxId = signal('');
+  protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().includes('School Admin'));
+  protected readonly taxOptions = computed<SelectOption[]>(() => [{ label: 'None', value: '' }, ...this.taxTypes().map((t) => ({ label: taxOptionLabel(t), value: String(t.taxTypeId) }))]);
+  protected readonly selectedTax = computed(() => this.taxTypes().find((t) => String(t.taxTypeId) === this.taxId()) ?? null);
 
   protected readonly rows = signal<AllocRow[]>([]);
   protected readonly amountText = signal('');
@@ -62,6 +78,16 @@ export class CollectPaymentDialogComponent implements OnInit {
   protected readonly amountPaise = computed(() => {
     const t = this.amountText().trim();
     return t === '' || !Number.isFinite(Number(t)) ? 0 : toPaise(t);
+  });
+  /** Live preview of the tax (the server computes the real one with the same rule) and of the total to collect, in paise. */
+  protected readonly taxAmountPaise = computed(() => {
+    const t = this.selectedTax();
+    return t ? taxPaise(this.amountPaise(), t.ratePercent) : 0;
+  });
+  protected readonly totalToCollectPaise = computed(() => this.amountPaise() + this.taxAmountPaise());
+  protected readonly taxSummaryLabel = computed(() => {
+    const t = this.selectedTax();
+    return t ? taxOptionLabel(t) : '';
   });
   protected readonly totalOutstanding = computed(() => this.rows().reduce((s, r) => s + r.outstanding, 0));
   protected readonly allocatedPaise = computed(() => this.rows().filter((r) => r.checked).reduce((s, r) => s + (this.rowError(r) ? 0 : toPaise(r.amount || 0)), 0));
@@ -96,6 +122,19 @@ export class CollectPaymentDialogComponent implements OnInit {
           amount: (toPaise(d.outstanding) / 100).toFixed(2),
         })),
     );
+
+    this.taxControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => this.taxId.set(v));
+    this.taxTypeApi
+      .list()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.taxTypes.set(list.filter((t) => t.isActive));
+          this.taxLoaded.set(true);
+        },
+        // The payment can still be recorded without tax; the interceptor already toasted the reason.
+        error: () => this.taxLoaded.set(true),
+      });
 
     this.amountControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
       this.amountText.set(v);
@@ -158,6 +197,8 @@ export class CollectPaymentDialogComponent implements OnInit {
     this.students
       .recordPayment(this.studentId(), {
         amount: this.amountPaise() / 100,
+        // only the chosen type's id: the tax amount is always worked out by the server
+        ...(this.selectedTax() ? { taxTypeId: this.selectedTax()!.taxTypeId } : {}),
         paymentMode: this.modeControl.value as PaymentMode,
         allocations: this.rows().filter((r) => r.checked).map((r) => ({ feeDueId: r.dueId, amount: toPaise(r.amount) / 100 })),
         remarks: this.remarksControl.value.trim() || null,

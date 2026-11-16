@@ -276,6 +276,7 @@ describe('StudentFeesTabComponent', () => {
       cmp()['openCollect']();
       fixture.detectChanges();
       expect((fixture.nativeElement as HTMLElement).querySelector('app-collect-payment-dialog')).not.toBeNull();
+      http.expectOne(`${API}/api/TaxType`).flush(env([]));   // the dialog asks for the school's tax types when it opens
 
       cmp()['onRecorded'](RECEIPT);
       http.expectOne(URL).flush(env(assigned));

@@ -1,8 +1,10 @@
+import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
+import { TaxType } from '../../../fee-setup/models/tax-type.model';
 import { FeeReceipt } from '../../models/fee-payment.model';
 import { StudentFeeDue } from '../../models/student-billing.model';
 import { CollectPaymentDialogComponent } from './collect-payment-dialog.component';
@@ -32,6 +34,11 @@ describe('CollectPaymentDialogComponent', () => {
   const rows = () => cmp()['rows']() as { dueId: number; checked: boolean; amount: string; outstanding: number }[];
   const submitButton = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) => b.textContent?.includes('Record payment')) as HTMLButtonElement;
 
+  function flushTaxTypes(list: TaxType[]) {
+    http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/TaxType`).flush(env(list, 200));
+    fixture.detectChanges();
+  }
+
   function amount(value: string) {
     cmp()['amountControl'].setValue(value);
     fixture.detectChanges();
@@ -40,7 +47,7 @@ describe('CollectPaymentDialogComponent', () => {
   beforeEach(() => {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['School Admin'] }) });
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(CollectPaymentDialogComponent);
     fixture.componentRef.setInput('studentId', 'DPS001ST001');
@@ -48,6 +55,7 @@ describe('CollectPaymentDialogComponent', () => {
     recorded = [];
     fixture.componentInstance.recorded.subscribe((r) => recorded.push(r));
     fixture.detectChanges();
+    flushTaxTypes([]);   // the dialog asks for the school's tax types when it opens; none by default
   });
   afterEach(() => {
     http.verify();
@@ -153,6 +161,98 @@ describe('CollectPaymentDialogComponent', () => {
     fixture.detectChanges();
     expect(cmp()['difference']()).toBe(0);
     expect(submitButton().disabled).toBe(false);
+  });
+
+  describe('tax types', () => {
+    const tax = (id: number, name: string, rate: number, isActive = true): TaxType => ({ taxTypeId: id, taxName: name, taxCode: name.toUpperCase(), ratePercent: rate, isActive, createdAt: '', updatedAt: '' });
+    const field = (label: string) => [...(fixture.nativeElement as HTMLElement).querySelectorAll('.tax-summary div')].find((d) => d.textContent?.includes(label))?.textContent ?? '';
+
+    /** Rebuild the dialog with a school that has tax types (the outer beforeEach already opened one without). */
+    function openWith(list: TaxType[], roles: string[] = ['School Admin']) {
+      http.verify();
+      TestBed.resetTestingModule();   // AuthService caches the roles it was built with
+      clearSessions();
+      seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles }) });
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+      http = TestBed.inject(HttpTestingController);
+      fixture = TestBed.createComponent(CollectPaymentDialogComponent);
+      fixture.componentRef.setInput('studentId', 'DPS001ST001');
+      fixture.componentRef.setInput('dues', DUES);
+      fixture.detectChanges();
+      flushTaxTypes(list);
+    }
+
+    it('the field is labelled "Fee amount"', () => {
+      expect(text()).toContain('Fee amount');
+    });
+
+    it('no tax types: the Tax type field is hidden and a School Admin gets a hint to add one; an Accountant sees nothing', () => {
+      expect((fixture.nativeElement as HTMLElement).querySelector('app-select[label="Tax type"]')).toBeNull();
+      expect(text()).toContain('No tax types yet');
+      openWith([], ['Accountant']);
+      expect(text()).not.toContain('No tax types yet');
+      expect(text()).not.toContain('Tax type');
+    });
+
+    it('offers None by default plus only ACTIVE types labelled like "GST (5%)", and shows no summary until one is chosen', () => {
+      openWith([tax(1, 'GST', 5), tax(2, 'Old', 3, false)]);
+      expect(cmp()['taxOptions']().map((o: { label: string }) => o.label)).toEqual(['None', 'GST (5%)']);
+      expect(cmp()['taxControl'].value).toBe('');
+      expect((fixture.nativeElement as HTMLElement).querySelector('.tax-summary')).toBeNull();
+    });
+
+    it('the live summary shows fee, tax (name and rate) and total, and follows the amount', () => {
+      openWith([tax(1, 'GST', 18)]);
+      cmp()['taxControl'].setValue('1');
+      amount('1000');
+      expect(field('Fee amount')).toContain('1,000.00');
+      expect(field('Tax: GST (18%)')).toContain('180.00');
+      expect(field('Total to collect')).toContain('1,180.00');
+      amount('333.33');
+      cmp()['taxControl'].setValue('1');
+      fixture.detectChanges();
+      expect(cmp()['taxAmountPaise']()).toBe(6000);    // 59.9994 -> 60.00
+      expect(cmp()['totalToCollectPaise']()).toBe(39333);
+    });
+
+    it('rounds half up like the server: 333.33 x 5% = 16.67, 0.01 x 5% = 0.00, rate 0 = 0.00', () => {
+      openWith([tax(1, 'Five', 5), tax(2, 'Zero', 0)]);
+      cmp()['taxControl'].setValue('1');
+      amount('333.33');
+      expect(cmp()['taxAmountPaise']()).toBe(1667);
+      amount('0.01');
+      expect(cmp()['taxAmountPaise']()).toBe(0);
+      cmp()['taxControl'].setValue('2');
+      amount('1000');
+      expect(cmp()['taxAmountPaise']()).toBe(0);
+    });
+
+    it('the allocation split still equals the FEE amount, never the total with tax', () => {
+      openWith([tax(1, 'GST', 18)]);
+      cmp()['taxControl'].setValue('1');
+      amount('1000');
+      expect(cmp()['allocatedPaise']()).toBe(100000);
+      expect(cmp()['difference']()).toBe(0);
+    });
+
+    it('sends the chosen taxTypeId and the FEE amount, never a tax amount; with None it sends no taxTypeId at all', () => {
+      openWith([tax(7, 'GST', 18)]);
+      cmp()['taxControl'].setValue('7');
+      amount('1500');
+      cmp()['submit']();
+      const req = http.expectOne(URL);
+      expect(req.request.body.amount).toBe(1500);
+      expect(req.request.body.taxTypeId).toBe(7);
+      expect(Object.keys(req.request.body)).not.toContain('taxAmount');
+      req.flush(env(RECEIPT));
+
+      openWith([tax(7, 'GST', 18)]);
+      amount('1500');
+      cmp()['submit']();
+      const none = http.expectOne(URL);
+      expect('taxTypeId' in none.request.body).toBe(false);
+      none.flush(env(RECEIPT));
+    });
   });
 
   it('shows the server\'s refusal and stays open (nothing emitted)', () => {

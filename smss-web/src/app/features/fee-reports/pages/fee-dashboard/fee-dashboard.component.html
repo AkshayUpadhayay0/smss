@@ -45,6 +45,27 @@
     </article>
   </section>
 
+  <app-card title="Tax collected">
+    <p class="asof">Tax added on top of fees on payments in this view (voided payments excluded). Not part of "Collected" above.</p>
+    <p class="tax-total"><strong>{{ inr(d.taxCollected ?? 0) }}</strong></p>
+    @if ((d.taxByType ?? []).length > 0) {
+      <table class="months" aria-label="Tax collected by tax type">
+        <thead><tr><th>Tax type</th><th class="num">Payments</th><th class="num">Tax collected</th></tr></thead>
+        <tbody>
+          @for (t of d.taxByType; track t.taxTypeId) {
+            <tr>
+              <td>{{ t.taxName }} <small class="code">{{ t.taxCode }}</small></td>
+              <td class="num">{{ t.paymentCount }}</td>
+              <td class="num">{{ inr(t.taxAmount) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="asof">No tax collected here yet.</p>
+    }
+  </app-card>
+
   <app-card title="Collection by month">
     <p class="asof">{{ d.academicYearName }} · as of {{ date(d.asOf) }} · money received, by payment date (voided payments excluded)</p>
     <table class="months" aria-label="Collection by month">

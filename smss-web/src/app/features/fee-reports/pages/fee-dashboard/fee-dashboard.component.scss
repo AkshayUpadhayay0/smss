@@ -82,6 +82,16 @@ app-card {
   color: var(--color-text-muted);
 }
 
+.tax-total {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-2xl, 1.75rem);
+}
+
+.code {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+}
+
 .months {
   width: 100%;
   border-collapse: collapse;

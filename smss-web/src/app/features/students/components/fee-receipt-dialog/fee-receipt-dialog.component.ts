@@ -3,7 +3,7 @@ import { formatInr } from '../../../../core/utils/currency';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeReceipt } from '../../models/fee-payment.model';
+import { FeeReceipt, hasTax, taxLabel } from '../../models/fee-payment.model';
 import { printReceipt } from '../../utils/receipt-print';
 
 /** A receipt on screen, with Print / Save as PDF. Used right after collecting a payment and when reopening one from the history. */
@@ -63,7 +63,13 @@ import { printReceipt } from '../../utils/receipt-print';
             }
           </tbody>
           <tfoot>
-            <tr><td colspan="3">Total received</td><td class="num">{{ inr(receipt().amount) }}</td></tr>
+            @if (taxed()) {
+              <tr><td colspan="3">Fee amount</td><td class="num">{{ inr(receipt().feeAmount ?? 0) }}</td></tr>
+              <tr><td colspan="3">Tax: {{ taxText() }}</td><td class="num">{{ inr(receipt().taxAmount ?? 0) }}</td></tr>
+              <tr><td colspan="3">Total paid</td><td class="num">{{ inr(receipt().totalAmount ?? receipt().amount) }}</td></tr>
+            } @else {
+              <tr><td colspan="3">Total received</td><td class="num">{{ inr(receipt().amount) }}</td></tr>
+            }
           </tfoot>
         </table>
 
@@ -92,6 +98,14 @@ export class FeeReceiptDialogComponent {
 
   protected readonly inr = formatInr;
   protected readonly date = formatDate;
+
+  protected taxed(): boolean {
+    return hasTax(this.receipt());
+  }
+
+  protected taxText(): string {
+    return taxLabel(this.receipt());
+  }
 
   protected isVoided(): boolean {
     return this.receipt().status === 'Voided';
