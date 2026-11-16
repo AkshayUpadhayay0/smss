@@ -6,7 +6,7 @@ using smss_api_service_layer.@interface;
 
 namespace smss_api.Controllers
 {
-    // Reads: any signed-in user of the school. Writes: School Admin only (CanConfigureFees). Everything is scoped to the caller's own school (from the token); no school id is ever accepted.
+    // Reads: School Admin, Accountant, Principal (CanViewFees); every other role 403. Writes: School Admin only (CanConfigureFees). Everything is scoped to the caller's own school (from the token); no school id is ever accepted.
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -19,6 +19,7 @@ namespace smss_api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
+            if (!User.CanViewFees()) return this.Forbidden("Only a School Admin, Accountant or Principal can view fee concessions.");
             var response = await _service.GetAllAsync(User.GetSchoolId());
             return StatusCode(response.StatusCode, response);
         }
@@ -27,6 +28,7 @@ namespace smss_api.Controllers
         [HttpGet("{id:long}")]
         public async Task<IActionResult> GetById(long id)
         {
+            if (!User.CanViewFees()) return this.Forbidden("Only a School Admin, Accountant or Principal can view fee concessions.");
             var response = await _service.GetByIdAsync(User.GetSchoolId(), id);
             return StatusCode(response.StatusCode, response);
         }
