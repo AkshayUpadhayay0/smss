@@ -86,6 +86,35 @@ describe('ConcessionsGivenComponent', () => {
     r.flush(env(page([row(1)], 1, 100)));
   });
 
+  it('clicking the real "Show" button (and pressing Enter in a date field) sends the request: the form submit really fires', () => {
+    open();
+    cmp()['fromControl'].setValue('2026-10-01');
+    cmp()['toControl'].setValue('2026-10-31');
+    fixture.detectChanges();
+    const show = [...el().querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === 'Show')!;
+    expect(show.disabled).toBe(false);
+    show.click();                                   // a real click on the submit button, not a call to apply()
+    fixture.detectChanges();
+    const [r] = reqs();
+    expect(r, 'clicking Show must ask the server').toBeDefined();
+    expect([r.request.params.get('from'), r.request.params.get('to'), r.request.params.get('page')]).toEqual(['2026-10-01', '2026-10-31', '1']);
+    r.flush(env(page([row(1)], 1, 100)));
+
+    // Enter inside a field submits the same form
+    const form = el().querySelector<HTMLFormElement>('form[aria-label="Date range"]')!;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    const again = reqs();                          // (reqs() consumes what it matches: call it once)
+    expect(again.length).toBe(1);
+    again[0].flush(env(page([row(1)], 1, 100)));
+
+    // a bad range disables the button: nothing is sent
+    cmp()['toControl'].setValue('2026-09-01');
+    fixture.detectChanges();
+    expect(show.disabled).toBe(true);
+    show.click();
+    expect(reqs().length).toBe(0);
+  });
+
   it('paging asks the server for that page and size', () => {
     open(['School Admin'], page([row(1)], 60, 100));
     cmp()['onPage'](2);

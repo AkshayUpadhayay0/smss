@@ -1,7 +1,7 @@
 <app-page-header title="Concessions given" subtitle="Every discount given when collecting a payment: who, why and how much" icon="file-text" [breadcrumbs]="breadcrumbs" />
 
 <app-card>
-  <form class="filters" (ngSubmit)="apply()" aria-label="Date range">
+  <form class="filters" (submit)="$event.preventDefault(); apply()" aria-label="Date range">
     <app-input label="From" type="date" [formControl]="fromControl" />
     <app-input label="To" type="date" [formControl]="toControl" [errorText]="rangeError()" />
     <div class="filter-actions">
