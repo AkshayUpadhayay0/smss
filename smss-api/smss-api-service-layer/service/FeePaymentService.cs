@@ -258,6 +258,23 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<FeeReceiptDto>(ex, "fetching a receipt"); }
         }
 
+        public async Task<ApiResponse<FeeReceiptDto>> GetOwnReceiptAsync(string? schoolId, long userId, long paymentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<FeeReceiptDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                // A Student login's org_user_id is the student id. Another student's payment answers 404, exactly like a payment that does not exist
+                // (a 403 would confirm that the id is real, and receipt ids are small sequential numbers that could be walked).
+                var studentId = await _repo.GetUserLoginIdAsync(schoolId, userId, ct);
+                var payment = string.IsNullOrEmpty(studentId) ? null : await _repo.GetPaymentAsync(schoolId, paymentId, ct);
+                // a voided receipt, and who voided it and why, is internal: the student's own fee view hides voided payments too
+                if (payment == null || payment.StudentId != studentId || payment.Status != "Active") return Result<FeeReceiptDto>(404, "Payment not found.", null);
+                var receipt = await BuildReceiptAsync(schoolId, paymentId, ct);
+                return receipt == null ? Result<FeeReceiptDto>(404, "Payment not found.", null) : Result(200, "Successfully fetched", receipt);
+            }
+            catch (Exception ex) { return Error<FeeReceiptDto>(ex, "fetching a student's own receipt"); }
+        }
+
         private async Task<FeeReceiptDto?> BuildReceiptAsync(string schoolId, long paymentId, CancellationToken ct)
         {
             var payment = await _repo.GetPaymentAsync(schoolId, paymentId, ct);

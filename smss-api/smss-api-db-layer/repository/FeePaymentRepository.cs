@@ -120,6 +120,9 @@ namespace smss_api_db_layer.repository
             };
         }
 
+        public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>
+            _db.Users.AsNoTracking().Where(u => u.UserId == userId && u.SchoolId == schoolId).Select(u => u.OrgUserId).FirstOrDefaultAsync(ct);
+
         public Task<string?> GetUserNameAsync(long userId, CancellationToken ct) =>
             _db.Users.AsNoTracking().Where(u => u.UserId == userId).Select(u => u.DisplayName ?? u.OrgUserId).FirstOrDefaultAsync(ct);
     }

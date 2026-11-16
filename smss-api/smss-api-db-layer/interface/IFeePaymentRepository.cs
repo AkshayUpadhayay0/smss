@@ -66,5 +66,7 @@ namespace smss_api_db_layer.@interface
         Task<List<DueDetailRow>> GetDueDetailsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct);
         Task<ReceiptSchoolRow?> GetReceiptSchoolAsync(string schoolId, CancellationToken ct);
         Task<string?> GetUserNameAsync(long userId, CancellationToken ct);
+        /// <summary>The login id (org_user_id) of a user of this school; for a Student login it IS the student id. Null when the user is not in this school.</summary>
+        Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct);
     }
 }

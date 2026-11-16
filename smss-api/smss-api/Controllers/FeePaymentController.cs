@@ -50,8 +50,18 @@ namespace smss_api.Controllers
         }
 
         // GET api/FeePayment/{paymentId}/receipt
+        // School Admin / Accountant / Principal (CanViewFees): any receipt of their own school. A Student: only a receipt of their OWN payment (the student id comes from the
+        // token). Every other role 403; another school's payment 404; another student's payment 404 (not 403: a 403 would confirm that the id exists).
         [HttpGet("{paymentId:long}/receipt")]
-        public async Task<IActionResult> GetReceipt(long paymentId, CancellationToken ct) =>
-            Reply(await _service.GetReceiptAsync(User.GetSchoolId(), paymentId, ct));
+        public async Task<IActionResult> GetReceipt(long paymentId, CancellationToken ct)
+        {
+            if (User.CanViewFees()) return Reply(await _service.GetReceiptAsync(User.GetSchoolId(), paymentId, ct));
+            if (User.IsStudent())
+            {
+                if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+                return Reply(await _service.GetOwnReceiptAsync(User.GetSchoolId(), userId, paymentId, ct));
+            }
+            return this.Forbidden("Only a School Admin, Accountant, Principal or the student who paid can view a receipt.");
+        }
     }
 }
