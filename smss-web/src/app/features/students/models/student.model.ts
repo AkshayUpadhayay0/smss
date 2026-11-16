@@ -227,7 +227,15 @@ export interface MyFeeDue {
 
 export interface MyFeePayment {
   paymentDate: string;
+  /** What was handed over: fee + tax. */
   amount: number;
+  /** The part that went against the installments (older servers omit the tax fields; a payment without tax has no taxName). */
+  feeAmount?: number;
+  taxName?: string | null;
+  taxCode?: string | null;
+  taxRatePercent?: number | null;
+  taxAmount?: number;
+  totalAmount?: number;
   receiptNumber: string;
   paymentMode: string;
 }

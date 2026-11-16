@@ -66,6 +66,23 @@ describe('StudentMyFeesComponent', () => {
     expect(text()).toContain('Receipt RCP-2026-0001 · UPI');
   });
 
+  it('a payment with tax shows fee, tax (name and rate) and the total; one without tax looks as before', () => {
+    open((r) => r.flush(env({
+      ...FEES,
+      payments: [
+        { paymentDate: '2026-05-09T10:00:00Z', amount: 1050, feeAmount: 1000, taxName: 'GST', taxCode: 'GST', taxRatePercent: 5, taxAmount: 50, totalAmount: 1050, receiptNumber: 'RCP-2026-0002', paymentMode: 'Cash' },
+        { paymentDate: '2026-04-09T10:00:00Z', amount: 3250, feeAmount: 3250, taxName: null, taxCode: null, taxRatePercent: null, taxAmount: 0, totalAmount: 3250, receiptNumber: 'RCP-2026-0001', paymentMode: 'UPI' },
+      ],
+    })));
+    const items = [...el().querySelectorAll('.payments li')].map((li) => (li.textContent ?? '').replace(/\s+/g, ' ').trim());
+    expect(items[0]).toContain('Receipt RCP-2026-0002 · Cash');
+    expect(items[0]).toContain('Fee ₹1,000.00 + GST (5%) ₹50.00');
+    expect(items[0]).toContain('₹1,050.00');
+    expect(items[1]).not.toContain('GST');
+    expect(items[1]).not.toContain('Fee ₹');
+    expect(items[1]).toContain('₹3,250.00');
+  });
+
   it('is read-only: no pay button, no inputs, no edit controls', () => {
     open((r) => r.flush(env(FEES)));
     expect(el().querySelectorAll('input, select, textarea').length).toBe(0);

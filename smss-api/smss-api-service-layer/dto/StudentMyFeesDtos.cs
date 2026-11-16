@@ -44,7 +44,7 @@ namespace smss_api_service_layer.dto
         public string Status { get; set; } = null!;
     }
 
-    public class MyFeePaymentDto
+    public class MyFeePaymentDto : PaymentTaxFields
     {
         public DateTime PaymentDate { get; set; }
         public decimal Amount { get; set; }

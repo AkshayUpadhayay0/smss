@@ -57,8 +57,13 @@
           @for (p of f.payments; track p.receiptNumber) {
             <li>
               <span class="fee">{{ paidOn(p.paymentDate) }}</span>
-              <span class="muted">Receipt {{ p.receiptNumber }} · {{ p.paymentMode }}</span>
-              <span class="num ok">{{ inr(p.amount) }}</span>
+              <span class="muted">
+                Receipt {{ p.receiptNumber }} · {{ p.paymentMode }}
+                @if (p.taxName) {
+                  <br />Fee {{ inr(p.feeAmount ?? p.amount) }} + {{ p.taxName }} ({{ p.taxRatePercent }}%) {{ inr(p.taxAmount ?? 0) }}
+                }
+              </span>
+              <span class="num ok">{{ inr(p.totalAmount ?? p.amount) }}</span>
             </li>
           }
         </ul>
