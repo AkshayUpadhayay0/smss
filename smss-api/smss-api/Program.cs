@@ -191,6 +191,15 @@ Directory.CreateDirectory(privateRoot);
 builder.Services.AddSingleton<IFileStorageService>(sp =>
     new LocalFileStorageService(uploadsRoot, uploadsRequestPath, privateRoot, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
 
+// Inventory & Stock (Stage 1): own repository, services and private photo store (same private root; never served by URL)
+builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+builder.Services.AddScoped<IStockLedgerService, StockLedgerService>();
+builder.Services.AddScoped<IInventoryCatalogService, InventoryCatalogService>();
+builder.Services.AddScoped<IInventoryStockService, InventoryStockService>();
+builder.Services.AddScoped<IInventoryIssueService, InventoryIssueService>();
+builder.Services.AddScoped<IInventoryDashboardService, InventoryDashboardService>();
+builder.Services.AddSingleton<IInventoryFileStore>(sp => new InventoryFileStore(privateRoot, sp.GetRequiredService<ILogger<InventoryFileStore>>()));
+
 // JWT authentication
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();

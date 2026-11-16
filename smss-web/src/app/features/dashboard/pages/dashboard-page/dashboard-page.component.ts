@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { Router } from '@angular/router';
 import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Breadcrumb, IconName } from '../../../../shared/components';
@@ -34,6 +35,9 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
       <app-accountant-dashboard />
     } @else if (isAdmissionStaff()) {
       <app-admission-dashboard />
+    } @else if (isStoreKeeperOnly()) {
+      <!-- the Store Keeper's landing is /inventory (see the constructor); this is only seen for the instant before the redirect -->
+      <p class="redirecting" role="status">Opening Inventory…</p>
     } @else {
       <app-placeholder-page [title]="title()" [subtitle]="subtitle()" [icon]="icon()" [breadcrumbs]="breadcrumbs()" />
     }
@@ -41,6 +45,7 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
 })
 export class DashboardPageComponent {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   // route `data`, bound to inputs (withComponentInputBinding), passed straight on to the placeholder
   readonly title = input('Dashboard');
@@ -58,4 +63,17 @@ export class DashboardPageComponent {
   protected readonly isPrincipal = computed(() => this.auth.currentUserRoles().includes(ROLES.PRINCIPAL));
   protected readonly isAccountant = computed(() => this.auth.currentUserRoles().includes(ROLES.ACCOUNTANT));
   protected readonly isAdmissionStaff = computed(() => this.auth.currentUserRoles().includes(ROLES.ADMISSION_STAFF));
+  // The Store Keeper lands on Inventory. Only an account whose ONLY dashboard role is Store Keeper is sent there: one that also holds any role above keeps that
+  // role's dashboard exactly as before, so no other role's landing changes.
+  protected readonly isStoreKeeperOnly = computed(
+    () =>
+      this.auth.currentUserRoles().includes(ROLES.STORE_KEEPER) &&
+      !(this.isStudent() || this.isSuperAdmin() || this.isTeacher() || this.isSchoolAdmin() || this.isPrincipal() || this.isAccountant() || this.isAdmissionStaff()),
+  );
+
+  constructor() {
+    effect(() => {
+      if (this.isStoreKeeperOnly()) void this.router.navigateByUrl('/inventory', { replaceUrl: true });
+    });
+  }
 }

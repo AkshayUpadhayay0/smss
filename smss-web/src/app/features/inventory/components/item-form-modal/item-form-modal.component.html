@@ -1,0 +1,55 @@
+<app-modal [title]="isEdit() ? 'Edit Item' : 'Add Item'" [dismissible]="!saving() && !photoBusy()" (closed)="closed.emit()">
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (isEdit()) {
+      <div class="photo-row">
+        <span class="thumb">
+          @if (photoUrl(); as url) {
+            <app-secure-img [src]="url" [alt]="'Photo of ' + current()?.itemName" fit="contain">No photo</app-secure-img>
+          } @else {
+            No photo
+          }
+        </span>
+        <div class="row-actions">
+          <label class="file-pick">
+            <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="photoBusy()" (change)="onPhotoPicked($event)" />
+            <span>{{ photoBusy() ? 'Working…' : current()?.hasPhoto ? 'Replace photo' : 'Upload photo' }}</span>
+          </label>
+          @if (current()?.hasPhoto) {
+            <app-button variant="danger-ghost" size="sm" [disabled]="photoBusy()" (click)="removePhoto()"><app-icon name="trash-2" [size]="14" />Remove</app-button>
+          }
+        </div>
+        <p class="note">PNG, JPG or WEBP, up to 2 MB. Kept privately; only people who can see Inventory can view it.</p>
+      </div>
+    }
+
+    <div class="grid">
+      <app-input label="Item name" [required]="true" placeholder="e.g. A4 paper ream" formControlName="itemName" [errorText]="error('itemName')" />
+      <app-select label="Category" [required]="true" [options]="categoryOptions()" placeholder="Choose a category" formControlName="categoryId" [errorText]="error('categoryId')" />
+      <app-select label="Unit" [required]="true" [options]="unitOptions()" placeholder="Choose a unit" formControlName="unitId" [errorText]="error('unitId')" />
+      <app-select label="Type" [required]="true" [options]="typeOptions" formControlName="itemType" />
+      <app-input label="Barcode" placeholder="Optional" formControlName="barcode" [errorText]="error('barcode')" />
+      <app-input label="Purchase price (₹)" type="number" placeholder="0.00" helpText="Updated to the last stock-in cost." formControlName="purchasePrice" [errorText]="error('purchasePrice')" />
+      <app-input label="Minimum stock level" type="number" placeholder="0" helpText="0 means no alert." formControlName="minStockLevel" [errorText]="error('minStockLevel')" />
+      <app-input label="Expiry date" type="date" formControlName="expiryDate" helpText="Optional. Adding stock with an expiry updates it." />
+      <app-input label="GST (%)" type="number" placeholder="0" formControlName="gstPercent" [errorText]="error('gstPercent')" />
+    </div>
+
+    <label class="checkline"><input type="checkbox" formControlName="isSaleable" /> This item can be sold</label>
+    @if (form.controls.isSaleable.value) {
+      <app-input label="Selling price (₹)" type="number" [required]="true" placeholder="0.00" formControlName="sellingPrice" [errorText]="sellingError()" />
+    }
+
+    <app-textarea label="Description" placeholder="Optional" [maxLength]="2000" formControlName="description" [errorText]="error('description')" />
+
+    @if (!isEdit()) {
+      <p class="note">A new item starts at 0. To put stock on it, use Adjustments (opening balance) or Add Stock. A photo can be added after saving.</p>
+    }
+
+    <button type="submit" hidden tabindex="-1"></button>
+  </form>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    <app-button [disabled]="saving() || photoBusy()" (click)="submit()">{{ saving() ? 'Saving…' : isEdit() ? 'Update' : 'Create' }}</app-button>
+  </ng-container>
+</app-modal>

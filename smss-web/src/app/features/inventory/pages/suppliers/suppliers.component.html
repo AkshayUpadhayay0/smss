@@ -1,0 +1,40 @@
+<app-page-header title="Suppliers" subtitle="Who the school buys from" icon="truck" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="modal.set({ supplier: null })"><app-icon name="plus" [size]="16" />Add Supplier</app-button>
+  }
+</app-page-header>
+
+<app-inventory-tabs />
+
+<app-card [noPadding]="true">
+  <div class="filters">
+    <app-input label="Search" prefixIcon="search" placeholder="Name, contact, mobile, email or GSTIN…" [formControl]="search" />
+  </div>
+  <div class="toolbar"><span class="count">{{ total() }} {{ total() === 1 ? 'supplier' : 'suppliers' }}</span></div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="pageRows()"
+    [loading]="loading()"
+    [hasActions]="canManage()"
+    [emptyMessage]="failed() ? 'Could not load the suppliers.' : searchText() ? 'Nothing matches your search.' : 'No suppliers yet.'"
+  >
+    <ng-template #rowActions let-row>
+      <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="edit(row)"><app-icon name="pencil" [size]="14" /></app-button>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" [disabled]="busyId() === row.supplierId" (click)="toggle(row)"><app-icon name="toggle-left" [size]="14" />Deactivate</app-button>
+      } @else {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.supplierId" (click)="toggle(row)"><app-icon name="toggle-right" [size]="14" />Activate</app-button>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (failed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
+</app-card>
+
+@if (modal(); as m) {
+  <app-supplier-form-modal [supplier]="m.supplier" (saved)="onSaved()" (closed)="modal.set(null)" />
+}

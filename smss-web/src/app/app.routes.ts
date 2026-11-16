@@ -41,6 +41,7 @@ export const routes: Routes = [
       { path: '', loadChildren: () => import('./features/transport/transport.routes').then((m) => m.TRANSPORT_ROUTES) },
       { path: '', loadChildren: () => import('./features/fee-setup/fee-setup.routes').then((m) => m.FEE_SETUP_ROUTES) },
       { path: '', loadChildren: () => import('./features/fee-reports/fee-reports.routes').then((m) => m.FEE_REPORTS_ROUTES) },
+      { path: '', loadChildren: () => import('./features/inventory/inventory.routes').then((m) => m.INVENTORY_ROUTES) },
       { path: '', loadChildren: () => import('./features/employees/employees.routes').then((m) => m.EMPLOYEES_ROUTES) },
       { path: '', loadChildren: () => import('./features/attendance/attendance.routes').then((m) => m.ATTENDANCE_ROUTES) },
       { path: '', loadChildren: () => import('./features/calendar/calendar.routes').then((m) => m.CALENDAR_ROUTES) },

@@ -28,11 +28,12 @@ namespace smss_api_service_layer.helper
         public const string Student = "STUDENT";
         public const string Guardian = "GUARDIAN";
         public const string AdmissionStaff = "ADMISSION_STAFF";
+        public const string StoreKeeper = "STORE_KEEPER";
         /// <summary>A school transport driver (tb_drivers). Never handed out through the Employee screen: only the driver create-login action assigns it.</summary>
         public const string Driver = "DRIVER";
 
         /// <summary>The roles a school may give an EMPLOYEE's login, by role_code (an allow-list: add e.g. LIBRARIAN here once that role exists in lut_roles).</summary>
-        private static readonly string[] EmployeeAllowList = { SchoolAdmin, Principal, Teacher, Accountant, AdmissionStaff };
+        private static readonly string[] EmployeeAllowList = { SchoolAdmin, Principal, Teacher, Accountant, AdmissionStaff, StoreKeeper };
         /// <summary>Never given to an employee login, even if someone adds them to the allow-list by mistake.</summary>
         private static readonly string[] NeverForEmployees = { SuperAdmin, Student, Guardian, Driver };
 
@@ -59,6 +60,7 @@ namespace smss_api_service_layer.helper
         public const string Principal = "Principal";
         public const string Teacher = "Teacher";
         public const string AdmissionStaff = "Admission Staff";
+        public const string StoreKeeper = "Store Keeper";
         public const string SchoolAdmin = "School Admin";
         public const string SuperAdmin = "Super Admin";
         public const string Student = "Student";

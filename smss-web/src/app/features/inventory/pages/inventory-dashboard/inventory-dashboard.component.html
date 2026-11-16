@@ -1,0 +1,70 @@
+<app-page-header title="Inventory" subtitle="Stock on hand, what needs attention and what moved lately" icon="layers" [breadcrumbs]="breadcrumbs">
+  @if (data()?.canManage) {
+    <app-button variant="secondary" routerLink="/inventory/issues"><app-icon name="send" [size]="16" />Issue items</app-button>
+    <app-button routerLink="/inventory/add-stock"><app-icon name="plus" [size]="16" />Add stock</app-button>
+  }
+</app-page-header>
+
+<app-inventory-tabs />
+
+@if (loading()) {
+  <app-card><p class="empty-note" role="status">Loading the inventory summary…</p></app-card>
+} @else if (failed() || !data()) {
+  <app-card>
+    <p class="empty-note">Could not load the inventory summary.</p>
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  </app-card>
+} @else {
+  @let d = data()!;
+  <section class="stats" aria-label="Inventory figures">
+    <div class="stat"><span class="label">Active items</span><span class="value" [class.unavailable]="d.totalActiveItems == null">{{ count(d.totalActiveItems) }}</span></div>
+    <div class="stat"><span class="label">Stock value</span><span class="value" [class.unavailable]="d.totalStockValue == null">{{ d.totalStockValue == null ? 'Unavailable' : money(d.totalStockValue) }}</span></div>
+    <div class="stat" [class.warn]="(d.lowStockCount ?? 0) > 0"><span class="label">Low stock</span><span class="value" [class.unavailable]="d.lowStockCount == null">{{ count(d.lowStockCount) }}</span></div>
+    <div class="stat" [class.warn]="(d.expiringSoonCount ?? 0) > 0"><span class="label">Expiring in {{ d.expiringSoonDays }} days</span><span class="value" [class.unavailable]="d.expiringSoonCount == null">{{ count(d.expiringSoonCount) }}</span></div>
+    <div class="stat" [class.bad]="(d.expiredCount ?? 0) > 0"><span class="label">Expired (with stock)</span><span class="value" [class.unavailable]="d.expiredCount == null">{{ count(d.expiredCount) }}</span></div>
+    <div class="stat"><span class="label">Issued, not yet returned</span><span class="value" [class.unavailable]="d.issuedNotReturnedCount == null">{{ count(d.issuedNotReturnedCount) }}</span></div>
+    <div class="stat"><span class="label">Stock-ins, last 30 days</span><span class="value" [class.unavailable]="d.stockInsLast30Days == null">{{ count(d.stockInsLast30Days) }}</span></div>
+    <div class="stat"><span class="label">Issues, last 30 days</span><span class="value" [class.unavailable]="d.issuesLast30Days == null">{{ count(d.issuesLast30Days) }}</span></div>
+  </section>
+
+  <div class="two-col">
+    <app-card title="Low stock" [noPadding]="true">
+      @if (d.lowStock == null) {
+        <p class="empty-note">Unavailable right now.</p>
+      } @else {
+        <app-table [columns]="lowColumns" [rows]="lowRows()" emptyMessage="Nothing is below its minimum level." />
+        @if ((d.lowStockCount ?? 0) > lowRows().length) {
+          <p class="note pad">Showing {{ lowRows().length }} of {{ d.lowStockCount }}. <a routerLink="/inventory/items">See all items</a></p>
+        }
+      }
+    </app-card>
+
+    <app-card title="Expiring soon" [noPadding]="true">
+      @if (d.expiringSoon == null) {
+        <p class="empty-note">Unavailable right now.</p>
+      } @else {
+        <app-table [columns]="expiryColumns" [rows]="expiringRows()" [emptyMessage]="'Nothing expires in the next ' + d.expiringSoonDays + ' days.'" />
+      }
+    </app-card>
+
+    <app-card title="Already expired" [noPadding]="true">
+      @if (d.expired == null) {
+        <p class="empty-note">Unavailable right now.</p>
+      } @else {
+        <app-table [columns]="expiryColumns" [rows]="expiredRows()" emptyMessage="No item with stock is past its expiry date." />
+      }
+    </app-card>
+
+    <app-card title="Recent movements" [noPadding]="true">
+      @if (d.recentMovements == null) {
+        <p class="empty-note">Unavailable right now.</p>
+      } @else {
+        <app-table [columns]="movementColumns" [rows]="movementRows()" emptyMessage="No stock has moved yet." />
+      }
+    </app-card>
+  </div>
+
+  @if (d.unavailableParts.length) {
+    <p class="note">Some figures could not be loaded and are marked "Unavailable". They are not zero.</p>
+  }
+}

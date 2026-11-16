@@ -88,6 +88,16 @@ namespace smss_api_db_layer.context
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
         public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;
         public DbSet<TbHomework> Homework { get; set; } = null!;
+        // Inventory & Stock (Stage 1)
+        public DbSet<LutInvUnit> InvUnits { get; set; } = null!;
+        public DbSet<TbInvCategory> InvCategories { get; set; } = null!;
+        public DbSet<TbInvSupplier> InvSuppliers { get; set; } = null!;
+        public DbSet<TbInvItem> InvItems { get; set; } = null!;
+        public DbSet<TbInvStockMovement> InvStockMovements { get; set; } = null!;
+        public DbSet<TbInvStockIn> InvStockIns { get; set; } = null!;
+        public DbSet<TbInvIssue> InvIssues { get; set; } = null!;
+        public DbSet<TbInvIssueLine> InvIssueLines { get; set; } = null!;
+        public DbSet<TbInvIssueReturn> InvIssueReturns { get; set; } = null!;
         public DbSet<TbNotice> Notices { get; set; } = null!;
         public DbSet<TbNoticeRead> NoticeReads { get; set; } = null!;
         public DbSet<LutAssessmentType> AssessmentTypes { get; set; } = null!;

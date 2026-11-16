@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { DashboardPageComponent } from './dashboard-page.component';
@@ -107,5 +107,46 @@ describe('DashboardPageComponent', () => {
     expect(fixture.nativeElement.querySelector('app-teacher-dashboard')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-school-dashboard')).toBeNull();
     http.verify(); // no request was made
+  });
+
+  describe('Store Keeper landing (Inventory)', () => {
+    const spyNavigate = () => vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    it('a Store Keeper is sent to /inventory, without a history entry, and makes no dashboard request', () => {
+      clearSessions();
+      seedSession({ user: makeUser({ schoolId: 'S', roles: ['Store Keeper'] }) });
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+      const navigate = spyNavigate();
+      const http = TestBed.inject(HttpTestingController);
+      const fixture = TestBed.createComponent(DashboardPageComponent);
+      fixture.detectChanges();
+      expect(navigate).toHaveBeenCalledWith('/inventory', { replaceUrl: true });
+      expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
+      http.verify();
+    });
+
+    it.each([
+      ['Student'], ['Super Admin'], ['Teacher'], ['School Admin'], ['Principal'], ['Accountant'], ['Admission Staff'], ['Guardian'],
+    ])('%s still lands exactly where it did: no redirect to /inventory', (role) => {
+      clearSessions();
+      seedSession({ user: makeUser({ schoolId: 'S', roles: [role] }) });
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+      const navigate = spyNavigate();
+      const fixture = TestBed.createComponent(DashboardPageComponent);
+      fixture.detectChanges();
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('an account that is a Store Keeper AND holds another dashboard role keeps the other role dashboard', () => {
+      for (const other of ['Teacher', 'School Admin', 'Principal', 'Accountant', 'Admission Staff', 'Student']) {
+        TestBed.resetTestingModule();
+        clearSessions();
+        seedSession({ user: makeUser({ schoolId: 'S', roles: ['Store Keeper', other] }) });
+        TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+        const navigate = spyNavigate();
+        TestBed.createComponent(DashboardPageComponent).detectChanges();
+        expect([other, navigate.mock.calls.length]).toEqual([other, 0]);
+      }
+    });
   });
 });

@@ -86,7 +86,21 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Class-wise Report', route: '/fee-reports/class' },
       { label: 'Concessions given', route: '/fee-reports/concessions-given' },
     ],
-  },{
+  },
+  {
+    label: 'Inventory',
+    icon: 'layers',
+    children: [
+      { label: 'Dashboard', route: '/inventory' },
+      { label: 'Items / Categories', route: '/inventory/items' },
+      { label: 'Add Stock', route: '/inventory/add-stock' },
+      { label: 'Adjustments', route: '/inventory/adjustments' },
+      { label: 'Issue / Return', route: '/inventory/issues' },
+      { label: 'Suppliers', route: '/inventory/suppliers' },
+      { label: 'Guide', route: '/inventory/guide' },
+    ],
+  },
+  {
     label: 'Students',
     icon: 'graduation-cap',
     flatWhenSingle: true,

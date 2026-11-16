@@ -13,6 +13,8 @@ export const ROLES = {
   SCHOOL_ADMIN: 'School Admin',
   PRINCIPAL: 'Principal',
   ADMISSION_STAFF: 'Admission Staff',
+  /** Runs the school store (Inventory). Lands on /inventory after login. */
+  STORE_KEEPER: 'Store Keeper',
   TEACHER: 'Teacher',
   ACCOUNTANT: 'Accountant',
   STUDENT: 'Student',
@@ -69,7 +71,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
   // Calendar: every role of a school reads it (the page only shows Add / Edit / Delete to School Admin and Principal; the API re-checks)
-  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
+  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
   // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
   '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   // Monthly attendance report: School Admin and Principal (read-only) for any section; a Teacher gets it for the section they are class teacher of (the API enforces which)
@@ -84,10 +86,10 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/assessments/my': [ROLES.STUDENT],
   // Notices: the School Admin and Principal publish / edit / delete them; EVERY school role reads the ones addressed to it (the API decides which).
   '/notices': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
-  '/notices/my': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
+  '/notices/my': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
   // Leave: any staff member with a login applies for their own leave; the School Admin and Principal decide staff leave; the class teacher
   // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
-  '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN],
+  '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
   '/leave/requests': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   // A Student's own leave (apply, follow, cancel while Pending); the class teacher / School Admin still decide it from Student Leave
   '/leave/mine': [ROLES.STUDENT],
@@ -97,7 +99,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/timetable': [ROLES.SCHOOL_ADMIN],
   '/timetable/my': [ROLES.TEACHER],
   // My Profile: an employee login's own record, read-only (Teacher, Principal, Accountant, Admission Staff). A School Admin login is the school itself, not an employee.
-  '/my-profile': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF],
+  '/my-profile': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
   // My Profile for a Student login: their own record, read-only (GET /api/Student/me; every other student read stays closed to Student logins)
   '/my-student-profile': [ROLES.STUDENT],
   // A Student's own fees, read-only (GET /api/Student/me/fees); the staff fee screens stay closed to Student logins
@@ -135,6 +137,15 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-status': [ROLES.TEACHER],
   '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
   '/fee-reports/concessions-given': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
+
+  // Inventory & Stock (Stage 1). The Store Keeper and School Admin work it; the Principal only READS the Dashboard and Items (no write screen at all, and the API sends canManage = false).
+  '/inventory': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER, ROLES.PRINCIPAL],
+  '/inventory/items': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER, ROLES.PRINCIPAL],
+  '/inventory/add-stock': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
+  '/inventory/adjustments': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
+  '/inventory/issues': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
+  '/inventory/suppliers': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
+  '/inventory/guide': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],
 
   '/schools': [ROLES.SUPER_ADMIN],
   '/schools/add': [ROLES.SUPER_ADMIN],

@@ -1,0 +1,47 @@
+<app-modal title="Issue Items" [dismissible]="!saving()" (closed)="closed.emit()">
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="grid">
+      <app-select label="Issue to" [required]="true" [options]="typeOptions" formControlName="recipientType" />
+      <app-input [label]="'Find ' + recipientLabel()" prefixIcon="search" placeholder="Type a name or id…" formControlName="recipientSearch" />
+      <app-select
+        [label]="searching() ? 'Recipient (searching…)' : 'Recipient'"
+        [required]="true"
+        [options]="recipientOptions()"
+        [placeholder]="!searching() && recipients().length === 0 ? 'No active ' + recipientLabel() + ' found' : 'Choose'"
+        formControlName="recipientId"
+        [errorText]="submitted() && form.controls.recipientId.invalid ? 'Choose who the items go to' : undefined"
+      />
+      <app-input label="Issue date" type="date" [required]="true" formControlName="issueDate" [errorText]="dateError()" />
+    </div>
+
+    <fieldset class="lines">
+      <legend>Items</legend>
+      @for (line of lines(); track line.id; let i = $index) {
+        <div class="line">
+          <app-item-picker [label]="'Find item ' + (i + 1)" [disabledIds]="usedItemIds()" (picked)="pick(line, $event)" [errorText]="submitted() && !line.item ? 'Choose an item' : undefined" />
+          <app-input
+            [label]="line.item ? 'Quantity (' + line.item.unitCode + ', ' + qty(line.item.currentQuantity) + ' in stock)' : 'Quantity'"
+            type="number"
+            [required]="true"
+            placeholder="0"
+            [formControl]="line.quantity"
+            [errorText]="lineError(line)"
+          />
+          @if (lines().length > 1) {
+            <app-button variant="danger-ghost" size="sm" aria-label="Remove this item" (click)="removeLine(line.id)"><app-icon name="trash-2" [size]="14" />Remove</app-button>
+          }
+        </div>
+      }
+      <app-button variant="secondary" size="sm" (click)="addLine()"><app-icon name="plus" [size]="14" />Add another item</app-button>
+    </fieldset>
+
+    <app-textarea label="Purpose" placeholder="Optional, e.g. Annual day decoration" [maxLength]="1000" formControlName="purpose" />
+    <p class="note">If any item is short, nothing is issued and you are told which one.</p>
+    <button type="submit" hidden tabindex="-1"></button>
+  </form>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
+    <app-button [disabled]="saving()" (click)="submit()">{{ saving() ? 'Issuing…' : 'Issue' }}</app-button>
+  </ng-container>
+</app-modal>

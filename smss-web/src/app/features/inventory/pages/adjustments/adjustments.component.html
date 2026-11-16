@@ -1,0 +1,29 @@
+<app-page-header title="Adjustments" subtitle="Damage, loss, expiry, count corrections and opening balances" icon="layers" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="adding.set(true)"><app-icon name="plus" [size]="16" />New adjustment</app-button>
+  }
+</app-page-header>
+
+<app-inventory-tabs />
+
+<app-card [noPadding]="true">
+  <form class="filters" (submit)="$event.preventDefault(); apply()" aria-label="Filter adjustments">
+    <app-select label="Reason" [options]="reasonFilter" [formControl]="reason" />
+    <app-input label="From" type="date" [formControl]="from" />
+    <app-input label="To" type="date" [formControl]="to" />
+    <app-button type="submit" variant="secondary" [disabled]="loading()"><app-icon name="search" [size]="16" />Show</app-button>
+  </form>
+  <div class="toolbar"><span class="count">{{ total() }} {{ total() === 1 ? 'adjustment' : 'adjustments' }}</span></div>
+
+  <app-table [columns]="columns" [rows]="rows()" [loading]="loading()" [emptyMessage]="failed() ? 'Could not load the adjustments.' : 'No adjustments yet.'" />
+
+  @if (failed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+  <p class="note pad">Adjustments are permanent records. To undo one, record another that corrects it.</p>
+</app-card>
+
+@if (adding()) {
+  <app-adjustment-form-modal (saved)="onAdded()" (closed)="adding.set(false)" />
+}

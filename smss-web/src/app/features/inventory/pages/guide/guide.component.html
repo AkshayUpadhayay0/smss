@@ -1,0 +1,31 @@
+<app-page-header title="Inventory guide" subtitle="How stock goes in, out and gets corrected" icon="book-open" [breadcrumbs]="breadcrumbs" />
+
+<app-inventory-tabs />
+
+<app-card title="The one rule">
+  <p class="pad-text">
+    An item's quantity is never typed in or edited. It only changes when something <strong>happens</strong>: stock is received, items are issued or returned, or an
+    adjustment is recorded. Every change is written to a permanent history, so the number on screen can always be explained, and it can never go below zero.
+  </p>
+</app-card>
+
+<app-card title="What to do when…">
+  <ul class="guide">
+    <li><strong>You set up a new item.</strong> Add it under <a routerLink="/inventory/items">Items / Categories</a>. It starts at 0. If you already hold some, record an <em>Opening balance</em> adjustment (once per item).</li>
+    <li><strong>Stock arrives.</strong> Use <a routerLink="/inventory/add-stock">Add Stock</a>: item, quantity, cost, supplier and bill number. The cost becomes the item's last purchase price.</li>
+    <li><strong>You gave the wrong quantity or item on a stock-in.</strong> Void that stock-in (with a reason) and add the right one. A stock-in can not be voided if its stock has already been used.</li>
+    <li><strong>Things are damaged, lost or expired.</strong> Record an <a routerLink="/inventory/adjustments">Adjustment</a> with the reason and a note. These take stock out.</li>
+    <li><strong>A count shows a different number.</strong> Use <em>Count correction</em> and say whether the real count is higher or lower.</li>
+    <li><strong>You hand items out.</strong> Use <a routerLink="/inventory/issues">Issue / Return</a>. Choose staff, a student or a department. If any line is short, nothing is issued.</li>
+    <li><strong>Items come back.</strong> Open the issue and record the return. <em>Good</em> items go back into stock; <em>damaged</em> ones are recorded but are not added.</li>
+    <li><strong>An issue was a mistake.</strong> Void it, but only while nothing has been returned.</li>
+  </ul>
+</app-card>
+
+<app-card title="Good to know">
+  <ul class="guide">
+    <li>Nothing is ever deleted. Items, categories and suppliers are deactivated instead, and keep their history.</li>
+    <li>Low stock means the quantity is at or below the item's minimum level (set the minimum to 0 for no alert).</li>
+    <li>The Principal can view the dashboard and items but can not change anything.</li>
+  </ul>
+</app-card>

@@ -1,0 +1,54 @@
+<app-page-header title="Add Stock" subtitle="Record stock received from a supplier or a donation" icon="layers" [breadcrumbs]="breadcrumbs">
+  @if (canManage()) {
+    <app-button (click)="adding.set(true)"><app-icon name="plus" [size]="16" />Add Stock</app-button>
+  }
+</app-page-header>
+
+<app-inventory-tabs />
+
+<app-card [noPadding]="true">
+  <form class="filters" (submit)="$event.preventDefault(); apply()" aria-label="Filter stock-ins">
+    <app-input label="From" type="date" [formControl]="from" />
+    <app-input label="To" type="date" [formControl]="to" />
+    <label class="checkline"><input type="checkbox" [formControl]="includeVoided" /> Show voided entries</label>
+    <app-button type="submit" variant="secondary" [disabled]="loading()"><app-icon name="search" [size]="16" />Show</app-button>
+  </form>
+  <div class="toolbar"><span class="count">{{ total() }} {{ total() === 1 ? 'entry' : 'entries' }}</span></div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [hasActions]="canManage()"
+    [emptyMessage]="failed() ? 'Could not load the stock-in log.' : 'No stock has been added yet.'"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.isActive) {
+        <app-button variant="danger-ghost" size="sm" (click)="startVoid(row)"><app-icon name="x" [size]="14" />Void</app-button>
+      } @else {
+        <span class="muted" [attr.title]="voidedNote(row)">Voided</span>
+      }
+    </ng-template>
+  </app-table>
+
+  @if (failed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+  <p class="note pad">A wrong entry is never edited or deleted: void it (with a reason) and add the correct one.</p>
+</app-card>
+
+@if (adding()) {
+  <app-stock-in-form-modal (saved)="onAdded()" (closed)="adding.set(false)" />
+}
+
+@if (voiding(); as v) {
+  <app-void-reason-modal
+    title="Void stock-in"
+    [message]="'Voiding ' + v.quantity + ' ' + v.unitCode + ' of ' + v.itemName + '. Say why, so the record explains itself later.'"
+    confirmText="Void stock-in"
+    [busy]="voidBusy()"
+    (confirmed)="confirmVoid($event)"
+    (closed)="voiding.set(null)"
+  />
+}

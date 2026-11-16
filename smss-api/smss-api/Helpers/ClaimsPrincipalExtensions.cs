@@ -137,6 +137,12 @@ namespace smss_api.Helpers
         /// </summary>
         public static bool IsDriver(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Driver);
 
+        /// <summary>Inventory & Stock: items, categories, suppliers, stock in, adjustments, issue / return: School Admin or Store Keeper.</summary>
+        public static bool CanManageInventory(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.StoreKeeper);
+
+        /// <summary>Reads Inventory (dashboard and lists): everyone who can manage it, plus the Principal, who is read-only (responses carry canManage = false).</summary>
+        public static bool CanViewInventory(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.StoreKeeper, RoleNames.Principal);
+
         public static bool CanViewFees(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Accountant, RoleNames.Principal);
 
         private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles) =>

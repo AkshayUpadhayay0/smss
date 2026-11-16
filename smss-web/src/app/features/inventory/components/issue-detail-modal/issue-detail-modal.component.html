@@ -1,0 +1,76 @@
+<app-modal [title]="issue() ? 'Issue ' + issue()!.issueNumber : 'Issue'" [dismissible]="!saving()" (closed)="closed.emit()">
+  @if (loading()) {
+    <p class="empty-note" role="status">Loading…</p>
+  } @else if (failed() || !issue()) {
+    <p class="empty-note">Could not load this issue.</p>
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  } @else {
+    @let i = issue()!;
+    <dl class="facts">
+      <div><dt>Status</dt><dd><span class="pill" [class]="'pill tone-' + tone(i.status)">{{ i.status }}</span></dd></div>
+      <div><dt>Issued to</dt><dd>{{ i.recipientName }} <span class="muted">({{ recipientLabels[i.recipientType] }})</span></dd></div>
+      <div><dt>Issue date</dt><dd>{{ date(i.issueDate) }}</dd></div>
+      <div><dt>Issued by</dt><dd>{{ i.issuedByName ?? '—' }}</dd></div>
+      @if (i.purpose) { <div><dt>Purpose</dt><dd>{{ i.purpose }}</dd></div> }
+      @if (i.status === 'Voided') {
+        <div><dt>Voided</dt><dd>{{ dateTime(i.voidedAt) }} by {{ i.voidedByName ?? 'unknown' }}: {{ i.voidReason }}</dd></div>
+      }
+    </dl>
+
+    <div class="table-scroll">
+      <table class="plain">
+        <thead><tr><th>Item</th><th>Issued</th><th>Returned</th><th>Outstanding</th></tr></thead>
+        <tbody>
+          @for (l of i.lines; track l.issueLineId) {
+            <tr>
+              <td>{{ l.itemCode }} · {{ l.itemName }}</td>
+              <td>{{ qty(l.quantity) }} {{ l.unitCode }}</td>
+              <td>{{ qty(l.returnedQuantity) }} {{ l.unitCode }}</td>
+              <td>{{ qty(l.outstandingQuantity) }} {{ l.unitCode }}</td>
+            </tr>
+            @for (r of l.returns; track r.returnId) {
+              <tr class="sub">
+                <td colspan="4">↩ {{ qty(r.quantity) }} {{ l.unitCode }} on {{ date(r.returnDate) }}, {{ r.condition === 'GOOD' ? 'good' : 'damaged (not added to stock)' }}@if (r.remarks) { : {{ r.remarks }} }@if (r.receivedByName) { · by {{ r.receivedByName }} }</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (canReturn() && entries().length) {
+      <form class="form return-form" (submit)="$event.preventDefault(); submitReturn()" novalidate aria-label="Record a return">
+        <h4>Record a return</h4>
+        <app-input label="Returned on" type="date" [required]="true" [formControl]="returnDate" [errorText]="dateError()" />
+        @for (e of entries(); track e.line.issueLineId) {
+          <div class="return-line">
+            <strong>{{ e.line.itemName }}</strong>
+            <app-input [label]="'Quantity back (up to ' + qty(e.line.outstandingQuantity) + ' ' + e.line.unitCode + ')'" type="number" placeholder="0" [formControl]="e.quantity" [errorText]="entryError(e)" />
+            <app-select label="Condition" [options]="conditionOptions" [formControl]="e.condition" />
+            <app-input label="Remarks" placeholder="Optional" [formControl]="e.remarks" />
+          </div>
+        }
+        <p class="note">Leave a line empty if nothing came back for it. A damaged item is recorded as returned but is not added back to stock.</p>
+        <div><app-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Record return' }}</app-button></div>
+      </form>
+    }
+  }
+
+  <ng-container modal-footer>
+    @if (canVoid()) {
+      <app-button variant="danger-ghost" [disabled]="saving()" (click)="startVoid()"><app-icon name="x" [size]="14" />Void issue</app-button>
+    }
+    <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Close</app-button>
+  </ng-container>
+</app-modal>
+
+@if (voiding()) {
+  <app-void-reason-modal
+    title="Void issue"
+    message="Say why this issue is being voided. The items go back into stock."
+    confirmText="Void issue"
+    [busy]="voidBusy()"
+    (confirmed)="confirmVoid($event)"
+    (closed)="voiding.set(false)"
+  />
+}
