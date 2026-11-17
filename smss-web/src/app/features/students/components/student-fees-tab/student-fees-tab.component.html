@@ -100,18 +100,49 @@
             @if (billingFailed()) {
               <p class="empty pad">The fee items could not be loaded. <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></p>
             } @else {
-              <app-table
-                [columns]="itemColumns"
-                [rows]="itemRows()"
-                [hasActions]="canConfigure()"
-                emptyMessage="No fee items yet."
-              >
-                <ng-template #rowActions let-row>
-                  <app-button variant="secondary" size="sm" aria-label="Change installment plan or applicability" title="Edit" [disabled]="busy()" (click)="openEdit(row)">
-                    <app-icon name="pencil" [size]="14" />Edit
-                  </app-button>
-                </ng-template>
-              </app-table>
+              @if (itemRows().length === 0) {
+                <p class="empty pad">No fee items yet.</p>
+              } @else {
+                <div class="items" role="table" aria-label="Fee items">
+                  <div class="item head" role="row">
+                    <span role="columnheader">Fee head</span>
+                    <span role="columnheader">Billing &amp; plan</span>
+                    <span role="columnheader" class="num">Year total</span>
+                    <span role="columnheader" class="num">Paid</span>
+                    <span role="columnheader" class="num">Outstanding</span>
+                    <span role="columnheader">Installments</span>
+                    @if (canConfigure()) {
+                      <span role="columnheader" class="act"><span class="sr-only">Actions</span></span>
+                    }
+                  </div>
+                  @for (row of itemRows(); track row.studentFeeItemId) {
+                    <div class="item" role="row" [class.off]="row.applicable !== 'Yes'">
+                      <span role="cell" class="c-head" data-label="Fee head">
+                        <strong>{{ row.feeTypeName }}</strong>
+                        <small>{{ row.netAmount }}@if (row.applicable !== 'Yes') { · does not apply }</small>
+                      </span>
+                      <span role="cell" data-label="Billing &amp; plan">
+                        {{ row.frequencyName }}
+                        <small>{{ row.planName === 'None' ? 'No installment plan' : row.planName + ' plan' }}</small>
+                      </span>
+                      <span role="cell" class="num" data-label="Year total">{{ row.annualNet }}</span>
+                      <span role="cell" class="num" data-label="Paid">{{ row.paid }}</span>
+                      <span role="cell" class="num" data-label="Outstanding">{{ row.outstanding }}</span>
+                      <span role="cell" data-label="Installments">
+                        {{ row.dues }}
+                        <small>next due {{ row.nextDue }}</small>
+                      </span>
+                      @if (canConfigure()) {
+                        <span role="cell" class="act">
+                          <app-button variant="secondary" size="sm" aria-label="Change installment plan or applicability" title="Edit" [disabled]="busy()" (click)="openEdit(row)">
+                            <app-icon name="pencil" [size]="14" />Edit
+                          </app-button>
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
               @if (itemRows().length) {
                 <div class="card-note total-line">Total for the year: <strong>{{ yearTotal() }}</strong></div>
               }
@@ -242,6 +273,8 @@
           />
           @if (editPlanOptions().length <= 1) {
             <p class="meta">A {{ item.structureFrequencyName }} fee is one payment per cycle, so it can't be split into installments.</p>
+          } @else if (midCycleHint(); as hint) {
+            <p class="meta" role="note">{{ hint }}</p>
           }
           @if (item.isOptional) {
             <label class="check">

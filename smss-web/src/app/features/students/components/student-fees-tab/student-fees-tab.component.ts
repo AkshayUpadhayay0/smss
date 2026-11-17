@@ -7,7 +7,7 @@ import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.s
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, ModalComponent, SelectComponent, SelectOption, TableColumn, TableComponent, TextareaComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeDueRow, FeeItemRow, StudentFeeDues, StudentFeeItem, StudentFeeItems, dueStatusTone } from '../../models/student-billing.model';
+import { FeeDueRow, FeeItemRow, midCycleExample, StudentFeeDues, StudentFeeItem, StudentFeeItems, dueStatusTone } from '../../models/student-billing.model';
 import { StudentFeeConcession, StudentFeeLineRow, StudentFees } from '../../models/student-fees.model';
 import { CollectPaymentDialogComponent } from '../collect-payment/collect-payment.component';
 import { FeeReceiptDialogComponent } from '../fee-receipt-dialog/fee-receipt-dialog.component';
@@ -21,19 +21,6 @@ const LINE_COLUMNS: TableColumn<StudentFeeLineRow>[] = [
   { key: 'amount', label: 'Amount' },
   { key: 'discount', label: 'Concession' },
   { key: 'netAmount', label: 'Net' },
-];
-
-const ITEM_COLUMNS: TableColumn<FeeItemRow>[] = [
-  { key: 'feeTypeName', label: 'Fee Head' },
-  { key: 'frequencyName', label: 'Billed' },
-  { key: 'planName', label: 'Installment plan' },
-  { key: 'applicable', label: 'Applies', type: 'badge' },
-  { key: 'netAmount', label: 'Net / Period' },
-  { key: 'annualNet', label: 'Net / Year' },
-  { key: 'dues', label: 'Installments' },
-  { key: 'paid', label: 'Paid' },
-  { key: 'outstanding', label: 'Outstanding' },
-  { key: 'nextDue', label: 'Next Due' },
 ];
 
 const DUE_COLUMNS: TableColumn<FeeDueRow>[] = [
@@ -83,7 +70,6 @@ export class StudentFeesTabComponent implements OnInit {
   protected readonly busy = signal(false);
 
   protected readonly lineColumns = LINE_COLUMNS;
-  protected readonly itemColumns = ITEM_COLUMNS;
   protected readonly dueColumns = DUE_COLUMNS;
   protected readonly paymentColumns = PAYMENT_COLUMNS;
 
@@ -172,6 +158,15 @@ export class StudentFeesTabComponent implements OnInit {
     const d = this.dues();
     if (!d) return null;
     return { total: formatInr(d.totalDue), paid: formatInr(d.totalPaid), outstanding: formatInr(d.outstanding), overdue: formatInr(d.overdueAmount), overdueCount: d.overdueCount };
+  });
+
+  /** The example under the plan dropdown: what happens when the chosen plan starts part-way through a billing cycle. */
+  protected readonly planValue = toSignal(this.planControl.valueChanges, { initialValue: this.planControl.value });
+  protected readonly midCycleHint = computed(() => {
+    const item = this.editing();
+    if (!item) return null;
+    const option = item.allowedPlans.find((o) => o.code === this.planValue());
+    return option ? midCycleExample(option.code, option.installmentsPerCycle, item.netAmount) : null;
   });
 
   protected readonly editPlanOptions = computed<SelectOption[]>(() =>

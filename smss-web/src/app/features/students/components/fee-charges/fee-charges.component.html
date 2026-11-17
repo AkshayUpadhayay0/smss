@@ -69,6 +69,11 @@
             <span role="cell"><strong>@if (r.applies) { {{ inr(r.payable) }} } @else { — }</strong></span>
           </div>
         }
+        @for (r of rows(); track r.line.feeTypeId) {
+          @if (r.applies && r.midCycle) {
+            <p class="mid-cycle" role="note"><strong>{{ r.line.feeTypeName }}:</strong> {{ r.midCycle }}</p>
+          }
+        }
         <div class="row total" role="row">
           <span role="cell">Total payable from {{ chargeFromLabel() }}</span>
           <span role="cell"></span>

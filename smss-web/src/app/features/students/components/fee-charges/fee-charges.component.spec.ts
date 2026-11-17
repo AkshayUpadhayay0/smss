@@ -186,6 +186,36 @@ describe('FeeConfigurationComponent', () => {
     });
   });
 
+  describe('a plan that starts mid-cycle', () => {
+    it('explains that the full cycle amount is spread over the remaining months, with the numbers', () => {
+      fixture.componentRef.setInput('startDate', '2026-11-17');
+      choose(1, 10);
+      // Half-Yearly 600, Monthly plan, 4 of the cycle's 6 months left
+      http.expectOne(`${URL(1, 10)}&startDate=2026-11-17`).flush(
+        env<FeePreview>({
+          ...PREVIEW,
+          lines: [{ ...PREVIEW.lines[0], allowedPlans: [plan('NONE', 'None (one payment per cycle)', 1, 2, { remainingInstallments: 1, remainingAmount: 600 }), plan('MONTHLY', 'Monthly', 6, 12, { remainingInstallments: 4, remainingAmount: 600 })] }],
+        }),
+      );
+      fixture.detectChanges();
+      expect(text()).not.toContain('mid-cycle');                       // None: one payment, nothing to spread
+      const select = (fixture.nativeElement as HTMLElement).querySelector('select')!;
+      select.value = 'MONTHLY';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(text()).toContain('the full cycle amount is spread over the remaining months of that cycle: ₹600 over 4 months = ₹150 each');
+    });
+
+    it('says nothing when the plan starts at the beginning of a cycle', () => {
+      load();
+      const select = (fixture.nativeElement as HTMLElement).querySelector('select')!;
+      select.value = 'MONTHLY';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(text()).not.toContain('mid-cycle');                       // 12 of 12 installments left
+    });
+  });
+
   describe('an earlier charge-from date (back-dating)', () => {
     const BACK: FeePreview = {
       ...PREVIEW,

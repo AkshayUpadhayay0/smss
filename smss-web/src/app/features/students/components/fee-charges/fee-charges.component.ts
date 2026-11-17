@@ -5,7 +5,7 @@ import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
 import { CardComponent, IconComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeItemSelection, FeePreview, FeePreviewLine, InstallmentPlanOption } from '../../models/student-billing.model';
+import { FeeItemSelection, FeePreview, FeePreviewLine, InstallmentPlanOption, midCycleNote } from '../../models/student-billing.model';
 import { StudentService } from '../../services/student.service';
 
 /** What a back-dated "charge fees from" date would create for the chosen plans: shown to, and confirmed by, the person admitting the student. */
@@ -77,6 +77,7 @@ export class FeeConfigurationComponent {
         remaining,
         perInstallment: remaining > 0 ? payable / remaining : 0,
         payable,
+        midCycle: midCycleNote(option?.code ?? 'NONE', option?.installmentsPerCycle ?? 1, option?.remainingInstallments, l.amount),
         backdatedCount: option?.backdatedInstallments ?? 0,
         backdatedAmount: option?.backdatedAmount ?? 0,
       };

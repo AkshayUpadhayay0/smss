@@ -190,3 +190,93 @@
     padding: 0;
   }
 }
+
+// ---- fee items: a grid on a wide card, stacked "label: value" cards on a narrow one (the card's own width decides, not the screen's)
+:host app-card {
+  container-type: inline-size;
+}
+
+.items {
+  font-size: var(--text-sm);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+
+  small {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .act {
+    justify-self: end;
+  }
+
+  &.head {
+    border-top: 0;
+    background: var(--color-surface-muted, #f8f9fb);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &.off {
+    color: var(--color-text-muted);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@container (max-width: 760px) {
+  .item.head {
+    display: none;
+  }
+
+  .item {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-2);
+
+    .c-head {
+      grid-column: 1 / -1;
+    }
+
+    .num {
+      text-align: left;
+    }
+
+    // every value gets its label back (the header row is hidden)
+    > [data-label]:not(.c-head)::before {
+      content: attr(data-label);
+      display: block;
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .act {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+  }
+}

@@ -214,6 +214,25 @@ describe('StudentFeesTabComponent', () => {
     expect(cmp()['itemRows']()[0].planName).toBe('Quarterly');
   });
 
+  it('the edit dialog explains the mid-cycle spread with an example, only for a plan that splits the cycle', () => {
+    open(assigned);
+    cmp()['openEdit'](cmp()['itemRows']()[0]);
+    cmp()['planControl'].setValue('NONE');
+    expect(cmp()['midCycleHint']()).toBeNull();
+    cmp()['planControl'].setValue('MONTHLY');
+    expect(cmp()['midCycleHint']()).toContain('the full cycle amount is spread over the remaining months of that cycle');
+    expect(cmp()['midCycleHint']()).toContain('₹2,500 over 4 months = ₹625 each');
+  });
+
+  it('fee items are a plain grid (no table with an off-screen actions column): one row per item with its Edit button', () => {
+    open(assigned);
+    const rows = (fixture.nativeElement as HTMLElement).querySelectorAll('.items .item:not(.head)');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('Tuition');
+    expect(rows[0].querySelector('app-button')?.getAttribute('aria-label')).toBe('Change installment plan or applicability');
+    expect(rows[0].querySelectorAll('[data-label]').length).toBeGreaterThanOrEqual(5);   // every value carries its label for the stacked layout
+  });
+
   it('a NON-optional fee head cannot be switched off from the dialog (no checkbox, just an explanation)', () => {
     open(assigned);
     cmp()['openEdit'](cmp()['itemRows']()[0]);

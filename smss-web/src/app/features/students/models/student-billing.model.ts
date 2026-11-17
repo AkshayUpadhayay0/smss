@@ -131,6 +131,34 @@ export interface UpdateFeeItemRequest {
   isApplicable?: boolean;
 }
 
+const inr = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+/** "month" / "quarter" for the installments of a plan. */
+function planUnit(planCode: string, count: number): string {
+  const unit = planCode === 'QUARTERLY' ? 'quarter' : 'month';
+  return count === 1 ? unit : `${unit}s`;
+}
+
+/**
+ * The note shown under an installment plan that starts part-way through a billing cycle: the FULL cycle amount is spread over the months (or quarters) of that cycle that are
+ * left, so the year total never changes. Null when the plan starts at a cycle boundary (or is None).
+ */
+export function midCycleNote(planCode: string, installmentsPerCycle: number, remainingInstallments: number | null | undefined, cycleAmount: number): string | null {
+  if (planCode === 'NONE' || installmentsPerCycle <= 1 || remainingInstallments == null) return null;
+  const left = remainingInstallments % installmentsPerCycle;
+  if (left === 0) return null;
+  const unit = planUnit(planCode, left);
+  return `The plan starts mid-cycle, so the full cycle amount is spread over the remaining ${unit} of that cycle: ${inr(cycleAmount)} over ${left} ${unit} = ${inr(Math.floor((cycleAmount / left) * 100) / 100)} each.`;
+}
+
+/** The general explanation (with an example) for the edit dialog, where the remaining installments are not known in advance. */
+export function midCycleExample(planCode: string, installmentsPerCycle: number, cycleAmount: number): string | null {
+  if (planCode === 'NONE' || installmentsPerCycle < 3) return null;
+  const left = installmentsPerCycle - 2;
+  const unit = planUnit(planCode, left);
+  return `If a plan starts mid-cycle, the full cycle amount is spread over the remaining ${planUnit(planCode, 2)} of that cycle (for example ${inr(cycleAmount)} over ${left} ${unit} = ${inr(Math.floor((cycleAmount / left) * 100) / 100)} each).`;
+}
+
 /** Pill colour per due status, shared by every place that shows one. */
 export function dueStatusTone(status: unknown): string {
   switch (status) {
