@@ -122,7 +122,7 @@ namespace smss_api_service_layer.helper
         }
 
         /// <summary>
-        /// What a student starting on <paramref name="start"/> owes from the full schedule: the installments due ON OR AFTER it (same amounts, just fewer of them); a single charge
+        /// What a student starting on <paramref name="start"/> owes from the full schedule: the installments due ON OR AFTER it (same amounts, just fewer of them; a plan that starts mid-cycle spreads the full cycle amount over the months left of that cycle); a single charge
         /// (One Time / Annual) is dated from the start if that is later; and if no due date is left in the year, ONE installment dated at the start for the normal per-installment amount.
         /// </summary>
         public static List<Scheduled> Owed(IReadOnlyList<Scheduled> full, DateOnly start, bool singleCharge)
@@ -130,9 +130,27 @@ namespace smss_api_service_layer.helper
             if (full.Count == 0) return new();
             if (singleCharge) return new() { full[0] with { Date = full[0].Date < start ? start : full[0].Date } };
             var owed = full.Where(i => i.Date >= start).ToList();
-            if (owed.Count > 0) return owed;
+            if (owed.Count > 0) return SpreadFirstCycle(full, owed);
             var lastCycle = full[^1].Cycle;
             return new() { full.First(i => i.Cycle == lastCycle) with { Date = start } };
+        }
+
+        /// <summary>
+        /// A plan that starts MID-cycle owes the FULL cycle amount, not a part of it: the installments left in that first cycle are re-spread so that together they equal the cycle's amount
+        /// (Half-Yearly 600 on a Monthly plan, 4 months left: 600 over 4 = 150 each, not 4 x 100). Otherwise choosing a plan would quietly waive the months before the start, while the
+        /// same fee with no plan (one payment per cycle) is billed in full. Equal split, rounded down to the paisa, remainder on the last installment. Later cycles are untouched.
+        /// </summary>
+        private static List<Scheduled> SpreadFirstCycle(IReadOnlyList<Scheduled> full, List<Scheduled> owed)
+        {
+            var cycle = owed[0].Cycle;
+            var wholeCycle = full.Where(i => i.Cycle == cycle).ToList();
+            var left = owed.Where(i => i.Cycle == cycle).ToList();
+            if (left.Count == wholeCycle.Count) return owed;                     // the cycle starts in full: nothing to spread
+            var parts = Split(wholeCycle.Sum(i => i.Amount), left.Count);
+            var result = new List<Scheduled>(owed.Count);
+            for (var k = 0; k < left.Count; k++) result.Add(left[k] with { Amount = parts[k] });
+            result.AddRange(owed.Where(i => i.Cycle != cycle));
+            return result;
         }
 
         /// <summary>A month as a number, for comparing installment months regardless of the day.</summary>

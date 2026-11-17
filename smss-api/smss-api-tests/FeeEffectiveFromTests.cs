@@ -46,6 +46,45 @@ namespace smss_api_tests
         }
 
         [Fact]
+        public void APlanThatStartsMidCycle_SpreadsTheFullCycleAmountOverTheMonthsLeft_NotAPartOfIt()
+        {
+            // Half-Yearly 600 on a Monthly plan; the student starts on 1 Jan, so 3 of the cycle's 6 months (Jan, Feb, Mar) are left
+            var monthly = FeeSchedule.FullSchedule(YearStart, FeeSchedule.HalfYearly, 10, FeeSchedule.PlanMonthly, 600m);
+            var owed = FeeSchedule.Owed(monthly, new DateOnly(2027, 1, 1), false);
+            Assert.Equal(new[] { "2027-01-10:200", "2027-02-10:200", "2027-03-10:200" }, owed.Select(D));          // 600 over 3 months = 200 each (not 3 x 100)
+            Assert.Equal(600m, owed.Sum(x => x.Amount));
+
+            // 4 months left (the Oct-Mar cycle, start 1 Dec -> Dec, Jan, Feb, Mar): 600 over 4 = 150 each
+            Assert.Equal(new[] { 150m, 150m, 150m, 150m }, FeeSchedule.Owed(monthly, new DateOnly(2026, 12, 1), false).Select(x => x.Amount));
+
+            // 800 over the 5 months left of the cycle from 17 Nov (due day 20): 160 each
+            var exam = FeeSchedule.FullSchedule(YearStart, FeeSchedule.HalfYearly, 20, FeeSchedule.PlanMonthly, 800m);
+            Assert.Equal(new[] { 160m, 160m, 160m, 160m, 160m }, FeeSchedule.Owed(exam, new DateOnly(2026, 11, 17), false).Select(x => x.Amount));
+
+            // rounded down to the paisa, remainder on the last: 100 over 3 months
+            var hundred = FeeSchedule.FullSchedule(YearStart, FeeSchedule.HalfYearly, 20, FeeSchedule.PlanMonthly, 100m);
+            var thirds = FeeSchedule.Owed(hundred, new DateOnly(2027, 1, 1), false);
+            Assert.Equal(new[] { 33.33m, 33.33m, 33.34m }, thirds.Select(x => x.Amount));
+            Assert.Equal(100m, thirds.Sum(x => x.Amount));
+
+            // a quarterly plan: only the Jan installment of the Oct-Mar cycle is left (start 1 Dec): it carries the whole 600
+            var quarterly = FeeSchedule.FullSchedule(YearStart, FeeSchedule.HalfYearly, 10, FeeSchedule.PlanQuarterly, 600m);
+            Assert.Equal(new[] { "2027-01-10:600" }, FeeSchedule.Owed(quarterly, new DateOnly(2026, 12, 1), false).Select(D));
+
+            // a plan that starts at the BEGINNING of a cycle, and a fee with no plan, are unchanged
+            var fullCycle = FeeSchedule.Owed(monthly, new DateOnly(2026, 10, 1), false);
+            Assert.Equal(6, fullCycle.Count);
+            Assert.All(fullCycle, x => Assert.Equal(100m, x.Amount));
+            var none = FeeSchedule.FullSchedule(YearStart, FeeSchedule.HalfYearly, 10, FeeSchedule.PlanNone, 600m);
+            Assert.Equal(new[] { "2026-12-01:600" }, FeeSchedule.Owed(none, new DateOnly(2026, 12, 1), false).Select(D));   // no date left: one installment at the start
+
+            // later cycles are never touched: start 1 Aug (Aug and Sep are left of Apr-Sep): 600 over 2 = 300 each; the next cycle stays 6 x 100
+            var fromAug = FeeSchedule.Owed(monthly, new DateOnly(2026, 8, 1), false);
+            Assert.Equal(new[] { 300m, 300m }, fromAug.Take(2).Select(x => x.Amount));
+            Assert.All(fromAug.Skip(2), x => Assert.Equal(100m, x.Amount));
+        }
+
+        [Fact]
         public void InstallmentPlans_SplitEachCycleEqually_AndTheYearTotalNeverChanges()
         {
             decimal Total(IEnumerable<FeeSchedule.Scheduled> s) => s.Sum(x => x.Amount);

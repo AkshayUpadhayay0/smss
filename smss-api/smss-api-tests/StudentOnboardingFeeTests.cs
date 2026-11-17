@@ -142,6 +142,41 @@ namespace smss_api_tests
             Assert.Equal(dues, db.Scalar<long>("select count(*) from tb_student_fee_dues"));
         }
 
+        // ============================================================== a plan that starts mid-cycle
+        [DbFact]
+        public async Task AddExistingStudent_OnAMonthlyPlanMidCycle_IsBilledTheFullCycleAmount_AndAResyncChangesNothing()
+        {
+            using var db = new TaxDb(); using var r = new Rig(db);
+            const long exam = 15;   // Exam Fee: Half-Yearly 800, due day 20
+            var req = Req("MidCycle", r.YearStart);
+            req.FeeItems = new() { new FeeItemSelection { FeeTypeId = exam, InstallmentPlan = FeeSchedule.PlanMonthly, IsApplicable = true } };
+            var res = await r.Onboarding.CreateDirectEntryAsync(TaxDb.SchoolA, req, default, UserA);
+            Assert.Equal(201, res.StatusCode);
+            var id = res.Data!.StudentId;
+
+            var dues = DuesOf(db, id).Where(d => d.FeeTypeId == exam).ToList();
+            Assert.NotEmpty(dues);
+            var cycleEnd = r.YearStart.AddMonths(((r.Today.Year * 12 + r.Today.Month - (r.YearStart.Year * 12 + r.YearStart.Month)) / 6 + 1) * 6);   // first month AFTER today's half-year
+            var cycleDues = dues.Where(d => d.Date < cycleEnd).ToList();
+            Assert.All(dues, d => Assert.True(d.Date >= r.Today));
+            // the cycle's FULL amount is billed over the months left, never a part of it
+            if (cycleDues.Count > 0)
+            {
+                Assert.Equal(800m, cycleDues.Sum(d => d.Amount));
+                Assert.True(cycleDues.Max(d => d.Amount) - cycleDues.Min(d => d.Amount) <= 0.05m);
+            }
+
+            // the same fee with NO plan owes the same 800 for the cycle: choosing a plan is not a discount
+            var noPlan = await r.Onboarding.CreateDirectEntryAsync(TaxDb.SchoolA, Req("MidCycleNone", r.YearStart), default, UserA);
+            Assert.Equal(cycleDues.Sum(d => d.Amount), DuesOf(db, noPlan.Data!.StudentId).Where(d => d.FeeTypeId == exam && d.Date < cycleEnd).Sum(d => d.Amount));
+
+            // running the sync again (any structure edit, any read that heals) leaves the dues exactly as they are
+            var before = string.Join(";", DuesOf(db, id).Select(d => $"{d.FeeTypeId}|{d.Date}|{d.Amount}"));
+            using var fresh = new Rig(db);
+            await fresh.Billing.SyncAsync(TaxDb.SchoolA, id, TaxDb.YearA, null, default);
+            Assert.Equal(before, string.Join(";", DuesOf(db, id).Select(d => $"{d.FeeTypeId}|{d.Date}|{d.Amount}")));
+        }
+
         // ============================================================== removing a structure line
         // The behaviour this pins down is unchanged by the effective-date work (the same code ran before): see the report.
         [DbFact]
