@@ -177,6 +177,35 @@ namespace smss_api_tests
             Assert.Equal(before, string.Join(";", DuesOf(db, id).Select(d => $"{d.FeeTypeId}|{d.Date}|{d.Amount}")));
         }
 
+        // ============================================================== the preview shows exactly what saving creates
+        [DbFact]
+        public async Task ThePreview_ForAnEarlierDate_MatchesTheDuesThatSavingCreates_PerFeeHead()
+        {
+            using var db = new TaxDb(); using var r = new Rig(db);
+            var from = r.YearStart.AddMonths(5).AddDays(0);                                  // five months into the year: a start in the middle of a Half-Yearly cycle (or just after it)
+            if (from >= r.Today) from = r.YearStart;                                         // (early in the year, fall back to the year start)
+            var preview = (await r.Billing.PreviewAsync(TaxDb.SchoolA, TaxDb.YearA, 47, from, default)).Data!;   // class 47 = Nursery
+            Assert.True(preview.IsBackdated);
+
+            // pick the Monthly plan wherever one is allowed
+            var chosen = preview.Lines.ToDictionary(l => l.FeeTypeId, l => l.AllowedPlans.FirstOrDefault(p => p.Code == FeeSchedule.PlanMonthly) ?? l.AllowedPlans.First(p => p.Code == FeeSchedule.PlanNone));
+            var req = Req("PreviewMatch", from, from, true, "preview check");
+            req.FeeItems = chosen.Select(c => new FeeItemSelection { FeeTypeId = c.Key, InstallmentPlan = c.Value.Code, IsApplicable = true }).ToList();
+            var res = await r.Onboarding.CreateDirectEntryAsync(TaxDb.SchoolA, req, default, UserA);
+            Assert.Equal(201, res.StatusCode);
+
+            var dues = DuesOf(db, res.Data!.StudentId);
+            foreach (var line in preview.Lines.Where(l => !l.IsOptional))
+            {
+                var mine = dues.Where(d => d.FeeTypeId == line.FeeTypeId).ToList();
+                var option = chosen[line.FeeTypeId];
+                Assert.Equal(option.RemainingInstallments, mine.Count);                                          // how many
+                Assert.Equal(option.RemainingAmount, mine.Sum(d => d.Amount));                                   // how much in all
+                Assert.Equal(option.BackdatedInstallments, mine.Count(d => d.Date < r.Today));                   // how many are already past
+                Assert.Equal(option.BackdatedAmount, mine.Where(d => d.Date < r.Today).Sum(d => d.Amount));      // and their amount
+            }
+        }
+
         // ============================================================== removing a structure line
         // The behaviour this pins down is unchanged by the effective-date work (the same code ran before): see the report.
         [DbFact]

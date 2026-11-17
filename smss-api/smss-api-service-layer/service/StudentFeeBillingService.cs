@@ -538,12 +538,12 @@ namespace smss_api_service_layer.service
                 };
                 if (from is DateOnly f)
                 {
-                    var forward = FeeSchedule.Owed(full, f > today ? f : today, single);
-                    option.RemainingInstallments = forward.Count;
-                    option.RemainingAmount = forward.Sum(x => x.Amount);
-                    var past = f < today ? full.Where(x => x.Date >= f && x.Date < today).ToList() : new List<FeeSchedule.Scheduled>();
-                    if (single && f < today && line.EffectiveFrom <= f) past = full.Where(x => x.Date < today).Select(x => x with { Date = x.Date < f ? f : x.Date }).ToList();
-                    option.BackdatedInstallments = past.Count;
+                    // exactly what the sync would create: from the charge-from date itself when it is an earlier (confirmed) one, otherwise from today on
+                    var created = FeeSchedule.Owed(full, f, single);
+                    var past = created.Where(x => x.Date < today).ToList();
+                    option.RemainingInstallments = created.Count;                       // everything payable from the charge-from date, the already-past part included
+                    option.RemainingAmount = created.Sum(x => x.Amount);
+                    option.BackdatedInstallments = past.Count;                          // ... of which dated before today
                     option.BackdatedAmount = past.Sum(x => x.Amount);
                 }
                 return option;
