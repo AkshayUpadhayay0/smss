@@ -10,13 +10,18 @@ namespace smss_api_service_layer.@interface
         /// creates missing items (applying the admission-time <paramref name="selections"/>), re-resolves concession and net
         /// amounts, and regenerates the unpaid future dues. Never touches a due that has a payment. Idempotent.
         /// </summary>
-        Task SyncAsync(string schoolId, string studentId, long academicYearId, IReadOnlyList<FeeItemSelection>? selections, CancellationToken ct);
+        /// <summary>
+    /// Validates a "Charge fees from" date for a new student: null when it is fine. A date before today needs the explicit confirmation and a reason, the current academic year, and a date
+    /// inside that year; a later date must not be after the year ends.
+    /// </summary>
+    Task<string?> CheckChargeFromAsync(string schoolId, long academicYearId, DateOnly chargeFrom, bool confirmedBackdating, string? reason, CancellationToken ct);
+    Task<FeeSyncResult> SyncAsync(string schoolId, string studentId, long academicYearId, IReadOnlyList<FeeItemSelection>? selections, CancellationToken ct, FeeSyncOptions? options = null);
 
         /// <summary>The fee structure's due day for a fee head changed: move the unpaid future dues sourced from it.</summary>
         Task ApplyDueDayChangeAsync(string schoolId, long feeStructureId, long feeTypeId, int newDueDay, CancellationToken ct);
 
         /// <summary>The structure's lines changed: bring every student assigned to it up to date.</summary>
-        Task SyncStructureAsync(string schoolId, long feeStructureId, CancellationToken ct);
+        Task SyncStructureAsync(string schoolId, long feeStructureId, CancellationToken ct, IReadOnlySet<long>? noNewDuesForFeeTypes = null);
 
         Task<ApiResponse<StudentFeeItemsDto>> GetItemsAsync(string? schoolId, string studentId, CancellationToken ct);
         /// <summary>A Student reading fee items: only their OWN (the student id comes from the signed-in user). Asking about anyone else answers 404, exactly like an unknown student.</summary>

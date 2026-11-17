@@ -74,7 +74,8 @@ namespace smss_api_service_layer.service
                 if (await _repo.StructureExistsAsync(schoolId, req.AcademicYearId.Value, req.ClassId.Value))
                     return Fail(409, DuplicateMessage);
 
-                var error = await ValidateLinesAsync(schoolId, req.Details, existingFeeTypeIds: null);
+                var range = await _repo.GetYearRangeAsync(schoolId, req.AcademicYearId.Value);
+                var error = await ValidateLinesAsync(schoolId, req.Details, existingFeeTypeIds: null, range);
                 if (error != null) return Fail(400, error);
 
                 var now = DateTime.UtcNow;
@@ -88,7 +89,7 @@ namespace smss_api_service_layer.service
                     CreatedAt = now,
                     UpdatedAt = now
                 };
-                foreach (var l in req.Details) entity.Details.Add(NewLine(l, now));
+                foreach (var l in req.Details) entity.Details.Add(NewLine(l, now, range!.Value.Start));   // a brand new structure has no students: lines start with the year
 
                 await _repo.AddAsync(entity);
                 await _repo.SaveChangesAsync();   // header + lines in one transaction
@@ -104,16 +105,55 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             try
             {
+                // One structure save at a time per school: the lock is held until the sync below has finished, so two admins cannot sync the same structure together.
+                await using var tx = await _repo.BeginTransactionAsync();
+                await _repo.LockStructureSavesAsync(schoolId);
+
                 var entity = await _repo.GetWithDetailsForUpdateAsync(schoolId, id);
                 if (entity == null) return Fail(404, "Fee structure not found");
 
+                var range = await _repo.GetYearRangeAsync(schoolId, entity.AcademicYearId);
                 // A line already on the structure may keep an inactive fee type; only NEW lines need an active one
                 var existingIds = entity.Details.Select(d => d.FeeTypeId).ToHashSet();
-                var error = await ValidateLinesAsync(schoolId, req.Details, existingIds);
+                var error = await ValidateLinesAsync(schoolId, req.Details, existingIds, range);
                 if (error != null) return Fail(400, error);
 
                 var now = DateTime.UtcNow;
+                var today = SchoolClock.Today();
                 var wanted = req.Details.ToDictionary(l => l.FeeTypeId!.Value);
+                var hasStudents = await _repo.HasAssignedStudentsAsync(schoolId, entity.FeeStructureId);
+
+                // ---- the rules for lines that students already have dues for (checked BEFORE anything is changed) ----
+                var duesToRemove = new List<TbStudentFeeDue>();
+                var movedEarlier = new HashSet<long>();
+                foreach (var d in entity.Details.Where(d => wanted.ContainsKey(d.FeeTypeId)))
+                {
+                    var l = wanted[d.FeeTypeId];
+                    var frequencyChanged = l.FrequencyId!.Value != d.FrequencyId;
+                    var newEffective = l.EffectiveFrom ?? d.EffectiveFrom;
+                    var movesLater = newEffective > d.EffectiveFrom;
+                    if (newEffective < d.EffectiveFrom) movedEarlier.Add(d.FeeTypeId);   // moving it earlier never creates dues by itself
+                    if (!frequencyChanged && !movesLater) continue;
+
+                    var lineDues = await _repo.GetLineDuesAsync(schoolId, entity.FeeStructureId, d.FeeTypeId);
+                    if (frequencyChanged && lineDues.Count > 0)
+                        return Fail(409, "The frequency of this fee can't be changed because students already have dues for it. Add a new line with its own effective date instead (and remove this one if it should stop).");
+
+                    if (movesLater && lineDues.Count > 0)
+                    {
+                        if (lineDues.Any(x => x.AmountPaid > 0))
+                            return Fail(409, "The effective date of this fee can't move later because payments have already been made against it.");
+                        var before = lineDues.Where(x => x.DueDate < newEffective).ToList();
+                        if (before.Count > 0 && !req.ConfirmDueRemoval)
+                            return new ApiResponse<object>
+                            {
+                                Status = false, StatusCode = 409,
+                                Message = $"Moving the effective date to {newEffective:dd MMM yyyy} removes {before.Count} unpaid due(s) worth {before.Sum(x => x.AmountDue):0.00}. Confirm to continue.",
+                                Data = new { confirmationRequired = true, duesCount = before.Count, totalAmount = before.Sum(x => x.AmountDue) }
+                            };
+                        duesToRemove.AddRange(before);
+                    }
+                }
 
                 // Lines are matched on fee type (unique per structure): update in place, add new ones, remove dropped ones
                 _repo.RemoveDetails(entity.Details.Where(d => !wanted.ContainsKey(d.FeeTypeId)).ToList());
@@ -126,25 +166,34 @@ namespace smss_api_service_layer.service
                     d.FrequencyId = l.FrequencyId!.Value;
                     d.Amount = l.Amount!.Value;
                     d.DueDay = newDueDay;
+                    d.EffectiveFrom = l.EffectiveFrom ?? d.EffectiveFrom;
                     d.UpdatedAt = now;
                 }
-                foreach (var l in req.Details.Where(l => !existingIds.Contains(l.FeeTypeId!.Value))) entity.Details.Add(NewLine(l, now));
+                // a NEW line starts today when students are already on the structure (never billing the months before it was added), else with the year
+                var newLineDefault = range is { } rr ? (hasStudents ? Max(rr.Start, Min(today, rr.End)) : rr.Start) : today;
+                foreach (var l in req.Details.Where(l => !existingIds.Contains(l.FeeTypeId!.Value))) entity.Details.Add(NewLine(l, now, newLineDefault));
 
+                await _repo.RemoveDuesAsync(duesToRemove.Select(d => d.FeeDueId).ToList());   // unpaid dues before a later effective date, confirmed above
                 entity.StructureName = req.StructureName.Trim();
                 entity.UpdatedAt = now;
                 await _repo.SaveChangesAsync();
 
                 // Students already on this structure: first move the unpaid future due dates for a changed due day (payment history is
-                // never rewritten), then bring their fee items and installments in line with the new lines / amounts / frequencies.
+                // never rewritten), then bring their fee items and installments in line with the new lines / amounts / effective dates.
                 foreach (var (feeTypeId, newDueDay) in dueDayChanges)
                     await _billing.ApplyDueDayChangeAsync(schoolId, entity.FeeStructureId, feeTypeId, newDueDay, default);
-                await _billing.SyncStructureAsync(schoolId, entity.FeeStructureId, default);
+                await _billing.SyncStructureAsync(schoolId, entity.FeeStructureId, default, movedEarlier);
 
-                return Ok(200, "Fee structure updated successfully", await ToDetailAsync(entity));
+                var detail = await ToDetailAsync(entity);
+                await tx.CommitAsync();
+                return Ok(200, "Fee structure updated successfully", detail);
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, "A fee type appears twice on this structure."); }
             catch (Exception ex) { return Error(ex, "updating fee structure"); }
         }
+
+        private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;
+        private static DateOnly Min(DateOnly a, DateOnly b) => a < b ? a : b;
 
         public async Task<ApiResponse<object>> ToggleStatusAsync(string? schoolId, long id)
         {
@@ -165,8 +214,16 @@ namespace smss_api_service_layer.service
 
         // ---------------- helpers ----------------
         /// <summary>Null when the lines are acceptable, otherwise the message to return with a 400.</summary>
-        private async Task<string?> ValidateLinesAsync(string schoolId, List<FeeStructureLineRequest> lines, HashSet<long>? existingFeeTypeIds)
+        private async Task<string?> ValidateLinesAsync(string schoolId, List<FeeStructureLineRequest> lines, HashSet<long>? existingFeeTypeIds, (DateOnly Start, DateOnly End, bool IsCurrent)? yearRange)
         {
+            // an effective date has to lie inside the structure's academic year: after the year ends there is nothing left to charge, before it starts is not this year
+            foreach (var l in lines.Where(l => l.EffectiveFrom != null))
+            {
+                if (yearRange is not { } r) return "The academic year of this structure was not found.";
+                if (l.EffectiveFrom!.Value > r.End) return $"A fee can't take effect after the academic year ends ({r.End:dd MMM yyyy}).";
+                if (l.EffectiveFrom.Value < r.Start) return $"A fee can't take effect before the academic year starts ({r.Start:dd MMM yyyy}).";
+            }
+
             var typeIds = lines.Select(l => l.FeeTypeId!.Value).ToList();
             if (typeIds.Distinct().Count() != typeIds.Count)
                 return "A fee type can appear only once on a fee structure.";
@@ -194,12 +251,13 @@ namespace smss_api_service_layer.service
             return null;
         }
 
-        private static TbFeeStructureDetails NewLine(FeeStructureLineRequest l, DateTime now) => new()
+        private static TbFeeStructureDetails NewLine(FeeStructureLineRequest l, DateTime now, DateOnly defaultEffectiveFrom) => new()
         {
             FeeTypeId = l.FeeTypeId!.Value,
             FrequencyId = l.FrequencyId!.Value,
             Amount = l.Amount!.Value,
             DueDay = l.DueDay is int d ? (short)d : null,
+            EffectiveFrom = l.EffectiveFrom ?? defaultEffectiveFrom,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -214,7 +272,7 @@ namespace smss_api_service_layer.service
             dto.Details = lines.Select(l => new FeeStructureLineResponse
             {
                 FeeStructureDetailId = l.FeeStructureDetailId, FeeTypeId = l.FeeTypeId, FeeTypeName = l.FeeTypeName, FeeTypeCode = l.FeeTypeCode,
-                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount, DueDay = l.DueDay
+                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount, DueDay = l.DueDay, EffectiveFrom = l.EffectiveFrom
             }).ToList();
             return dto;
         }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using smss_api.Helpers;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
+using smss_api_service_layer.service;
 
 namespace smss_api.Controllers
 {
@@ -13,7 +14,12 @@ namespace smss_api.Controllers
     public class FeeStructureController : ControllerBase
     {
         private readonly IFeeStructureService _service;
-        public FeeStructureController(IFeeStructureService service) => _service = service;
+        private readonly IFeeBackdatingService _backdating;
+        public FeeStructureController(IFeeStructureService service, IFeeBackdatingService backdating)
+        {
+            _service = service;
+            _backdating = backdating;
+        }
 
         // GET api/FeeStructure?academicYearId=1&classId=2   (both filters optional)
         [HttpGet]
@@ -54,6 +60,27 @@ namespace smss_api.Controllers
         {
             if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can change fee structures.");
             var response = await _service.UpdateAsync(User.GetSchoolId(), id, request);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/FeeStructure/5/lines/12/backdating/preview   Body: { fromDate }
+        // What "Apply to earlier months" would create for that fee line (per student: how many dues and what amount). Writes nothing. School Admin only.
+        [HttpPost("{id:long}/lines/{feeTypeId:long}/backdating/preview")]
+        public async Task<IActionResult> PreviewBackdating(long id, long feeTypeId, [FromBody] BackdatingPreviewRequest request, CancellationToken ct)
+        {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can apply a fee to earlier months.");
+            var response = await _backdating.PreviewAsync(User.GetSchoolId(), id, feeTypeId, request.FromDate, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/FeeStructure/5/lines/12/backdating/apply   Body: { fromDate, reason, confirm: true, expectedDuesCount? }
+        // Creates the dues (source BACKDATED) and a log row, in one transaction. Current academic year only; running it again creates nothing new. School Admin only.
+        [HttpPost("{id:long}/lines/{feeTypeId:long}/backdating/apply")]
+        public async Task<IActionResult> ApplyBackdating(long id, long feeTypeId, [FromBody] ApplyBackdatingRequest request, CancellationToken ct)
+        {
+            if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can apply a fee to earlier months.");
+            if (!long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId)) return Unauthorized();
+            var response = await _backdating.ApplyAsync(User.GetSchoolId(), userId, id, feeTypeId, request, ct);
             return StatusCode(response.StatusCode, response);
         }
 

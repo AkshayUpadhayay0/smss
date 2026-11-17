@@ -113,6 +113,7 @@ builder.Services.AddScoped<IStudentFeeRepository, StudentFeeRepository>();
 builder.Services.AddScoped<IStudentFeeService, StudentFeeService>();
 builder.Services.AddScoped<IStudentFeeBillingRepository, StudentFeeBillingRepository>();
 builder.Services.AddScoped<IStudentFeeBillingService, StudentFeeBillingService>();
+builder.Services.AddScoped<IFeeBackdatingService, FeeBackdatingService>();
 builder.Services.AddScoped<IFeePaymentRepository, FeePaymentRepository>();
 builder.Services.AddScoped<IFeePaymentService, FeePaymentService>();
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();

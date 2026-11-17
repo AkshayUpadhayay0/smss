@@ -20,6 +20,11 @@ namespace smss_api_service_layer.dto
         /// <summary>Fee configuration chosen at admission (frequency / applicability per fee head). Optional: omitted = the structure's defaults.</summary>
         [MaxLength(100)] public List<FeeItemSelection>? FeeItems { get; set; }
 
+        /// <summary>The date fees are charged from. Left out = today. An earlier date (current academic year only) creates dues that are already past, so it needs <see cref="ConfirmBackdating"/> and a reason, and is logged.</summary>
+        public DateOnly? ChargeFrom { get; set; }
+        public bool ConfirmBackdating { get; set; }
+        [MaxLength(500)] public string? BackdatingReason { get; set; }
+
         [Required, MaxLength(100)] public string FirstName { get; set; } = null!;
         [MaxLength(100)] public string? MiddleName { get; set; }
         [Required, MaxLength(100)] public string LastName { get; set; } = null!;

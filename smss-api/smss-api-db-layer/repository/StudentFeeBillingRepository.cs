@@ -24,12 +24,12 @@ namespace smss_api_db_layer.repository
                 join f in _db.FeeFrequencies.AsNoTracking() on d.FrequencyId equals f.FrequencyId
                 where d.FeeStructureId == feeStructureId
                 orderby t.FeeTypeName
-                select new { d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, t.IsOptional, d.Amount, d.FrequencyId, f.FrequencyName, f.FrequencyCode, d.DueDay }).ToListAsync(ct);
+                select new { d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, t.IsOptional, d.Amount, d.FrequencyId, f.FrequencyName, f.FrequencyCode, d.DueDay, d.EffectiveFrom }).ToListAsync(ct);
 
             return rows.Select(r => new SourceLineRow
             {
                 FeeTypeId = r.FeeTypeId, FeeTypeName = r.FeeTypeName, FeeTypeCode = r.FeeTypeCode, IsOptional = r.IsOptional, Amount = r.Amount,
-                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, FrequencyCode = r.FrequencyCode, DueDay = r.DueDay
+                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, FrequencyCode = r.FrequencyCode, DueDay = r.DueDay, EffectiveFrom = r.EffectiveFrom
             }).ToList();
         }
 
@@ -75,6 +75,38 @@ namespace smss_api_db_layer.repository
                 .FirstOrDefaultAsync(ct);
             return date == null ? null : DateOnly.FromDateTime(date.Value);
         }
+
+        public async Task<Dictionary<string, DateOnly>> GetEnrollmentStartsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        {
+            var ids = studentIds.ToArray();
+            var rows = await _db.StudentEnrollments.AsNoTracking()
+                .Where(e => e.SchoolId == schoolId && e.AcademicYearId == academicYearId && ids.Contains(e.StudentId))
+                .Select(e => new { e.StudentId, e.EnrollmentDate }).ToListAsync(ct);
+            return rows.GroupBy(r => r.StudentId).ToDictionary(g => g.Key, g => DateOnly.FromDateTime(g.Min(r => r.EnrollmentDate)));
+        }
+
+        public async Task<Dictionary<string, string>> GetStudentNamesAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+        {
+            var ids = studentIds.ToArray();
+            var rows = await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && ids.Contains(s.StudentId))
+                .Select(s => new { s.StudentId, s.FirstName, s.MiddleName, s.LastName }).ToListAsync(ct);
+            return rows.ToDictionary(r => r.StudentId, r => string.Join(' ', new[] { r.FirstName, r.MiddleName, r.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))));
+        }
+
+        public Task<List<TbStudentFeeDue>> GetDuesForStructureLineAsync(string schoolId, long feeStructureId, long feeTypeId, CancellationToken ct) =>
+            (from d in _db.StudentFeeDues
+             join i in _db.StudentFeeItems on d.StudentFeeItemId equals i.StudentFeeItemId
+             join a in _db.StudentFeeStructures on new { i.StudentId, i.AcademicYearId } equals new { a.StudentId, a.AcademicYearId }
+             where d.SchoolId == schoolId && a.SchoolId == schoolId && a.FeeStructureId == feeStructureId && i.FeeTypeId == feeTypeId
+             select d).ToListAsync(ct);
+
+        public async Task LockStructureSavesAsync(string schoolId, CancellationToken ct)
+        {
+            var key = "feestruct:" + schoolId;
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+        }
+
+        public Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
         public async Task AddItemAsync(TbStudentFeeItem item, CancellationToken ct) => await _db.StudentFeeItems.AddAsync(item, ct);
         public void RemoveItem(TbStudentFeeItem item) => _db.StudentFeeItems.Remove(item);

@@ -25,6 +25,8 @@ namespace smss_api_service_layer.dto
     {
         public string FeeTypeName { get; set; } = null!;
         public string FrequencyName { get; set; } = null!;
+        /// <summary>NONE, QUARTERLY or MONTHLY: how each billing cycle is paid.</summary>
+        public string InstallmentPlan { get; set; } = "NONE";
         /// <summary>Per period, before any concession.</summary>
         public decimal Amount { get; set; }
         /// <summary>The concession already taken off per period (amount only, nothing about how it was granted).</summary>

@@ -16,6 +16,8 @@ namespace smss_api_db_layer.@interface
         public string FrequencyName { get; set; } = null!;
         public string FrequencyCode { get; set; } = null!;
         public short? DueDay { get; set; }
+        /// <summary>From when this line is charged.</summary>
+        public DateOnly EffectiveFrom { get; set; }
     }
 
     // Every method takes the school id: another school's items and dues can never be reached through this repository.
@@ -41,6 +43,15 @@ namespace smss_api_db_layer.@interface
         Task AddItemAsync(TbStudentFeeItem item, CancellationToken ct);
         void RemoveItem(TbStudentFeeItem item);
         void RemoveDues(IEnumerable<TbStudentFeeDue> dues);
+        /// <summary>Enrolment start per student for the year (students without one are absent).</summary>
+        Task<Dictionary<string, DateOnly>> GetEnrollmentStartsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
+        /// <summary>Full names of this school's students among the ids.</summary>
+        Task<Dictionary<string, string>> GetStudentNamesAsync(string schoolId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
+        /// <summary>Every due of every student assigned to the structure for one fee head, as (due id, due date, amount paid), to know what the effective date would affect.</summary>
+        Task<List<TbStudentFeeDue>> GetDuesForStructureLineAsync(string schoolId, long feeStructureId, long feeTypeId, CancellationToken ct);
+        /// <summary>Takes a transaction-scoped lock for all fee structure saves of this school (released at commit / rollback), so two admins cannot sync at once. Inside a transaction.</summary>
+        Task LockStructureSavesAsync(string schoolId, CancellationToken ct);
+        Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);
     }
 }

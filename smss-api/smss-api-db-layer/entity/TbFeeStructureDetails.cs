@@ -19,6 +19,8 @@ namespace smss_api_db_layer.entity
         [Column("amount", TypeName = "numeric(12,2)")] public decimal Amount { get; set; }
         /// <summary>Day of the month a recurring fee head falls due (1-31); null for One Time / Annual.</summary>
         [Column("due_day")] public short? DueDay { get; set; }
+        /// <summary>From when this fee line is charged (inside the structure's academic year). Dues start at the first due date on or after the later of this and the student's start date; never before today unless explicitly back-dated.</summary>
+        [Column("effective_from", TypeName = "date")] public DateOnly EffectiveFrom { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }

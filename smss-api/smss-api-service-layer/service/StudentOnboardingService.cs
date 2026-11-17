@@ -34,7 +34,7 @@ namespace smss_api_service_layer.service
             _logger = logger;
         }
 
-        public async Task<ApiResponse<StudentOnboardingResponseDto>> CreateDirectEntryAsync(string schoolId, DirectStudentEntryRequestDto req, CancellationToken ct)
+        public async Task<ApiResponse<StudentOnboardingResponseDto>> CreateDirectEntryAsync(string schoolId, DirectStudentEntryRequestDto req, CancellationToken ct, long userId = 0)
         {
             try
             {
@@ -51,6 +51,12 @@ namespace smss_api_service_layer.service
                     return Result(400, "The selected academic year was not found for your school.", null);
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result(400, "The selected class and section was not found for your school.", null);
+                // "Charge fees from": checked BEFORE the student is saved, so a refusal creates nothing
+                if (req.ChargeFrom is DateOnly chargeFrom)
+                {
+                    var chargeError = await _billing.CheckChargeFromAsync(schoolId, req.AcademicYearId, chargeFrom, req.ConfirmBackdating, req.BackdatingReason, ct);
+                    if (chargeError != null) return Result(400, chargeError, null);
+                }
                 if (req.GenderId.HasValue && !await _repo.GenderExistsAsync(req.GenderId.Value, ct))
                     return Result(400, "The selected gender is not valid.", null);
                 if (req.BloodGroupId.HasValue && !await _repo.BloodGroupExistsAsync(req.BloodGroupId.Value, ct))
@@ -135,7 +141,10 @@ namespace smss_api_service_layer.service
                         var assignedStructure = feeStructure;
                         if (feeStructure != null)
                         {
-                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _billing, req.FeeItems, _logger, schoolId, studentId, req.AcademicYearId, feeStructure.FeeStructureId, now, ct);
+                            var syncOptions = req.ChargeFrom is DateOnly cf
+                                ? new FeeSyncOptions { ChargeFrom = cf, Backdate = cf < SchoolClock.Today(), BackdatingReason = req.BackdatingReason?.Trim(), UserId = userId }
+                                : null;
+                            feeWarning = await FeeAutoAssignment.TryAssignAsync(_repo, _billing, req.FeeItems, _logger, schoolId, studentId, req.AcademicYearId, feeStructure.FeeStructureId, now, ct, syncOptions);
                             if (feeWarning != null) assignedStructure = null;
                         }
 

@@ -60,6 +60,81 @@ namespace smss_api_service_layer.helper
             return dates;
         }
 
+        // ======================================================================================================================================
+        // Billing cycle + installment plan (the model since the effective-from change).
+        // The fee line's frequency is the BILLING CYCLE and the configured amount is the amount PER CYCLE: Half-Yearly 600 = 600 every six months,
+        // Quarterly 600 = 600 every three months, Monthly 600 = 600 every month, Annual / One Time = once. An installment PLAN only splits each cycle's
+        // amount into equal installments inside that cycle; the year total never changes with it.
+        // ======================================================================================================================================
+        public const string PlanNone = "NONE";
+        public const string PlanQuarterly = "QUARTERLY";
+        public const string PlanMonthly = "MONTHLY";
+
+        /// <summary>Half-Yearly line: NONE, QUARTERLY, MONTHLY. Quarterly line: NONE, MONTHLY. Monthly, Annual, One Time: NONE only.</summary>
+        public static IReadOnlyList<string> AllowedPlans(string lineFrequencyCode) => lineFrequencyCode switch
+        {
+            HalfYearly => new[] { PlanNone, PlanQuarterly, PlanMonthly },
+            Quarterly => new[] { PlanNone, PlanMonthly },
+            _ => new[] { PlanNone }
+        };
+
+        public static string NormalisePlan(string? plan) => string.IsNullOrWhiteSpace(plan) ? PlanNone : plan.Trim().ToUpperInvariant();
+
+        public static string PlanName(string plan) => plan switch { PlanQuarterly => "Quarterly installments", PlanMonthly => "Monthly installments", _ => "None (one payment per cycle)" };
+
+        /// <summary>Months in one billing cycle of the line frequency (Monthly 1, Quarterly 3, Half-Yearly 6, Annual / One Time 12).</summary>
+        public static int CycleMonths(string lineFrequencyCode) => 12 / Installments(lineFrequencyCode);
+
+        /// <summary>How many installments a cycle is split into under the plan (NONE 1; QUARTERLY = cycle months / 3; MONTHLY = cycle months).</summary>
+        public static int PlanInstallmentsPerCycle(string lineFrequencyCode, string plan)
+        {
+            var months = CycleMonths(lineFrequencyCode);
+            return plan switch { PlanMonthly => months, PlanQuarterly => Math.Max(months / 3, 1), _ => 1 };
+        }
+
+        /// <summary>One scheduled installment: its due date, its amount, and the billing cycle (0-based) it belongs to.</summary>
+        public readonly record struct Scheduled(DateOnly Date, decimal Amount, int Cycle);
+
+        /// <summary>
+        /// The installments of a FULL academic year for a fee line: one billing cycle per <c>Installments(lineFrequency)</c>, each worth <paramref name="cycleAmount"/> (the amount per cycle),
+        /// split under the plan. The split is equal, rounded DOWN to the paisa, with the remainder on the last installment of the cycle (100 over 3 = 33.33, 33.33, 33.34).
+        /// Dates: the cycle's month plus k x (cycle months / installments) months, on the due day cut to the month's length.
+        /// </summary>
+        public static List<Scheduled> FullSchedule(DateOnly academicYearStart, string lineFrequencyCode, int? dueDay, string plan, decimal cycleAmount)
+        {
+            var cycles = Installments(lineFrequencyCode);
+            var per = PlanInstallmentsPerCycle(lineFrequencyCode, plan);
+            var step = CycleMonths(lineFrequencyCode) / per;
+            var day = dueDay ?? (cycles == 1 ? academicYearStart.Day : 1);
+            var parts = Split(cycleAmount, per);
+
+            var list = new List<Scheduled>(cycles * per);
+            for (var c = 0; c < cycles; c++)
+            {
+                var cycleStart = new DateOnly(academicYearStart.Year, academicYearStart.Month, 1).AddMonths(c * CycleMonths(lineFrequencyCode));
+                for (var k = 0; k < per; k++)
+                {
+                    var month = cycleStart.AddMonths(k * step);
+                    list.Add(new Scheduled(WithDay(month.Year, month.Month, day), parts[k], c));
+                }
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// What a student starting on <paramref name="start"/> owes from the full schedule: the installments due ON OR AFTER it (same amounts, just fewer of them); a single charge
+        /// (One Time / Annual) is dated from the start if that is later; and if no due date is left in the year, ONE installment dated at the start for the normal per-installment amount.
+        /// </summary>
+        public static List<Scheduled> Owed(IReadOnlyList<Scheduled> full, DateOnly start, bool singleCharge)
+        {
+            if (full.Count == 0) return new();
+            if (singleCharge) return new() { full[0] with { Date = full[0].Date < start ? start : full[0].Date } };
+            var owed = full.Where(i => i.Date >= start).ToList();
+            if (owed.Count > 0) return owed;
+            var lastCycle = full[^1].Cycle;
+            return new() { full.First(i => i.Cycle == lastCycle) with { Date = start } };
+        }
+
         /// <summary>A month as a number, for comparing installment months regardless of the day.</summary>
         public static int Slot(DateOnly d) => d.Year * 12 + d.Month;
 

@@ -54,14 +54,46 @@ namespace smss_api_db_layer.repository
                 join f in _db.FeeFrequencies.AsNoTracking() on d.FrequencyId equals f.FrequencyId
                 where d.FeeStructureId == feeStructureId
                 orderby t.FeeTypeName
-                select new { d.FeeStructureDetailId, d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, d.FrequencyId, f.FrequencyName, d.Amount, d.DueDay }).ToListAsync();
+                select new { d.FeeStructureDetailId, d.FeeTypeId, t.FeeTypeName, t.FeeTypeCode, d.FrequencyId, f.FrequencyName, d.Amount, d.DueDay, d.EffectiveFrom }).ToListAsync();
 
             return rows.Select(r => new FeeStructureLineRow
             {
                 FeeStructureDetailId = r.FeeStructureDetailId, FeeTypeId = r.FeeTypeId, FeeTypeName = r.FeeTypeName, FeeTypeCode = r.FeeTypeCode,
-                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, Amount = r.Amount, DueDay = r.DueDay
+                FrequencyId = r.FrequencyId, FrequencyName = r.FrequencyName, Amount = r.Amount, DueDay = r.DueDay, EffectiveFrom = r.EffectiveFrom
             }).ToList();
         }
+
+        public async Task<(DateOnly Start, DateOnly End, bool IsCurrent)?> GetYearRangeAsync(string schoolId, long academicYearId)
+        {
+            var y = await _db.AcademicYears.AsNoTracking().Where(a => a.SchoolId == schoolId && a.AcademicYearId == academicYearId)
+                .Select(a => new { a.StartDate, a.EndDate, a.IsCurrent }).FirstOrDefaultAsync();
+            return y == null ? null : (y.StartDate, y.EndDate, y.IsCurrent);
+        }
+
+        public Task<bool> HasAssignedStudentsAsync(string schoolId, long feeStructureId) =>
+            _db.StudentFeeStructures.AnyAsync(a => a.SchoolId == schoolId && a.FeeStructureId == feeStructureId);
+
+        public Task<List<TbStudentFeeDue>> GetLineDuesAsync(string schoolId, long feeStructureId, long feeTypeId) =>
+            (from d in _db.StudentFeeDues.AsNoTracking()   // read fresh from the database: the payment check must see the latest amount_paid (RemoveDues attaches what it deletes)
+             join i in _db.StudentFeeItems on d.StudentFeeItemId equals i.StudentFeeItemId
+             join a in _db.StudentFeeStructures on new { i.StudentId, i.AcademicYearId } equals new { a.StudentId, a.AcademicYearId }
+             where d.SchoolId == schoolId && a.SchoolId == schoolId && a.FeeStructureId == feeStructureId && i.FeeTypeId == feeTypeId
+             select d).ToListAsync();
+
+        public async Task RemoveDuesAsync(IReadOnlyCollection<long> dueIds)
+        {
+            if (dueIds.Count == 0) return;
+            var ids = dueIds.ToArray();
+            _db.StudentFeeDues.RemoveRange(await _db.StudentFeeDues.Where(d => ids.Contains(d.FeeDueId)).ToListAsync());
+        }
+
+        public async Task LockStructureSavesAsync(string schoolId)
+        {
+            var key = "feestruct:" + schoolId;
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))");
+        }
+
+        public Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync() => _db.Database.BeginTransactionAsync();
 
         public Task<string?> GetAcademicYearNameAsync(string schoolId, long academicYearId) =>
             _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId)

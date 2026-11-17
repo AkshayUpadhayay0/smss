@@ -22,36 +22,54 @@ namespace smss_api_service_layer.service
 
         // ================= syncing items and dues =================
 
-        public async Task SyncAsync(string schoolId, string studentId, long academicYearId, IReadOnlyList<FeeItemSelection>? selections, CancellationToken ct)
+        /// <summary>
+        /// Brings a student's fee items and installments in line with their fee structure. THE RULES (see FeeSchedule for the arithmetic):
+        ///  - An item's frequency is always the fee line's (the billing cycle); the configured amount is the amount PER cycle; an installment plan only splits each cycle.
+        ///  - A due is never created before the start: the later of the line's effective date and the student's start (charge-from / enrolment date), and never before today,
+        ///    unless <see cref="FeeSyncOptions.Backdate"/> (the explicit, confirmed back-dating, which creates BACKDATED dues and logs them).
+        ///  - A due with a payment is never touched; an unpaid due that is already past is never deleted; only unpaid FUTURE dues are replaced.
+        ///  - No year total is recomputed from another frequency, so nothing can shrink: if the arithmetic ever came out negative the item is left exactly as it is and an error is logged.
+        /// </summary>
+        public async Task<FeeSyncResult> SyncAsync(string schoolId, string studentId, long academicYearId, IReadOnlyList<FeeItemSelection>? selections, CancellationToken ct, FeeSyncOptions? options = null)
         {
+            var result = new FeeSyncResult();
             var year = await _repo.GetAcademicYearAsync(schoolId, academicYearId, ct);
-            if (year == null) return;
+            if (year == null) return result;
 
             var assignment = await _fees.GetAssignmentAsync(schoolId, studentId, academicYearId, track: false, ct);
             var lines = assignment == null ? new List<SourceLineRow>() : await _repo.GetSourceLinesAsync(assignment.FeeStructureId, ct);
-            var frequencies = (await _repo.GetFrequenciesAsync(ct)).ToDictionary(f => f.FrequencyId);
             var items = await _repo.GetItemsAsync(schoolId, studentId, academicYearId, ct);
             var now = DateTime.UtcNow;
             var today = SchoolClock.Today();
 
-            // A student owes recurring fees from the month they were admitted, never retroactively from the start of the year
+            // The student's own start: the charge-from date they were admitted with, else their enrolment date, never before the year starts
             var enrolled = await _repo.GetEnrollmentStartAsync(schoolId, studentId, academicYearId, ct);
-            var floor = enrolled == null || enrolled.Value < year.StartDate ? year.StartDate : enrolled.Value;
+            var studentStart = options?.ChargeFrom ?? enrolled ?? year.StartDate;
+            if (studentStart < year.StartDate) studentStart = year.StartDate;
+            var backdate = options is { Backdate: true };
+            var log = backdate
+                ? new TbFeeBackdatingLog
+                {
+                    SchoolId = schoolId, Kind = "STUDENT", StudentId = studentId, AcademicYearId = academicYearId, FromDate = studentStart, ToDate = today,
+                    Reason = options!.BackdatingReason ?? string.Empty, CreatedBy = options.UserId ?? 0, CreatedAt = now
+                }
+                : null;
 
             // 1. one item per fee head of the structure
             foreach (var line in lines)
             {
-                var allowedIds = AllowedFrequencies(line, frequencies).Select(f => f.FrequencyId).ToHashSet();
+                var allowedPlans = FeeSchedule.AllowedPlans(line.FrequencyCode);
                 var item = items.FirstOrDefault(i => i.FeeTypeId == line.FeeTypeId);
                 var selection = selections?.FirstOrDefault(s => s.FeeTypeId == line.FeeTypeId);
 
                 if (item == null)
                 {
+                    var plan = FeeSchedule.NormalisePlan(selection?.InstallmentPlan);
                     item = new TbStudentFeeItem
                     {
                         StudentId = studentId, SchoolId = schoolId, AcademicYearId = academicYearId, FeeTypeId = line.FeeTypeId,
-                        // the structure's frequency is the default; an admission-time choice only counts when it is allowed for this fee head
-                        FrequencyId = selection?.FrequencyId is long f && allowedIds.Contains(f) ? f : line.FrequencyId,
+                        // the billing cycle is the line's; an admission-time plan only counts when it is allowed for this fee head
+                        FrequencyId = line.FrequencyId, InstallmentPlan = allowedPlans.Contains(plan) ? plan : FeeSchedule.PlanNone,
                         BaseAmount = line.Amount, ConcessionAmount = 0, NetAmount = line.Amount,
                         // a non-optional fee is always applied; an optional one only when it was opted into
                         IsApplicable = !line.IsOptional || (selection?.IsApplicable ?? false), IsActive = true, CreatedAt = now, UpdatedAt = now
@@ -63,7 +81,8 @@ namespace smss_api_service_layer.service
                 {
                     item.IsActive = true;
                     item.BaseAmount = line.Amount;                      // the structure may have been edited
-                    if (!allowedIds.Contains(item.FrequencyId)) item.FrequencyId = line.FrequencyId;
+                    item.FrequencyId = line.FrequencyId;                // a student never has a frequency of their own
+                    if (!allowedPlans.Contains(FeeSchedule.NormalisePlan(item.InstallmentPlan))) item.InstallmentPlan = FeeSchedule.PlanNone;
                     item.UpdatedAt = now;
                 }
             }
@@ -106,95 +125,127 @@ namespace smss_api_service_layer.service
             foreach (var item in items.Where(i => i.IsActive || i.Dues.Count > 0))
             {
                 var line = lines.FirstOrDefault(l => l.FeeTypeId == item.FeeTypeId);
-                RegenerateDues(item, line, frequencies, year.StartDate, floor, today, now);
+                RegenerateDues(item, line, year.StartDate, studentStart, today, now, log, result, options?.NoNewDuesForFeeTypes?.Contains(item.FeeTypeId) == true);
+            }
+
+            if (log != null && result.BackdatedCount > 0)
+            {
+                // reached from the back-dated dues, so it is saved with them; its figures are final now
+                log.DuesCount = result.BackdatedCount;
+                log.TotalAmount = result.BackdatedAmount;
+                log.StudentsCount = 1;
             }
 
             await _repo.SaveChangesAsync(ct);
+            return result;
         }
 
         /// <summary>
-        /// Brings an item's installments in line with its frequency, applicability and net amount.
-        ///  - Not applicable (or inactive): every unpaid installment goes.
-        ///  - First time (no installments yet): the full year's schedule.
-        ///  - Otherwise: installments with a payment, or already past their due date, stay exactly as they are; the unpaid FUTURE
-        ///    ones are recreated to cover what is still left of the year's net amount. Nothing with a payment is ever touched.
+        /// Brings an item's installments in line with its billing cycle, plan and net amount (per cycle). See <see cref="SyncAsync"/> for the rules.
+        ///  - Not applicable / inactive: the unpaid FUTURE installments go; nothing with a payment and nothing already past is deleted.
+        ///  - First time (no installments yet): the installments owed from the start (see FeeSchedule.Owed).
+        ///  - Otherwise: installments with a payment, or due today or earlier, stay exactly as they are; the unpaid FUTURE ones are updated in place (same month), added or removed to match
+        ///    the schedule from the start. Amounts come from the schedule (cycle amount split by the plan), never from "what is left of a year total", so they cannot go negative.
         /// </summary>
-        private void RegenerateDues(TbStudentFeeItem item, SourceLineRow? line, Dictionary<long, LutFeeFrequency> frequencies,
-            DateOnly yearStart, DateOnly floor, DateOnly today, DateTime now)
+        private void RegenerateDues(TbStudentFeeItem item, SourceLineRow? line, DateOnly yearStart, DateOnly studentStart, DateOnly today, DateTime now, TbFeeBackdatingLog? log, FeeSyncResult result, bool noNewDues = false)
         {
             var existing = item.Dues.ToList();
 
-            if (!item.IsActive || !item.IsApplicable || line == null || !frequencies.TryGetValue(item.FrequencyId, out var frequency))
+            if (!item.IsActive || !item.IsApplicable || line == null)
             {
-                _repo.RemoveDues(existing.Where(d => d.AmountPaid == 0).ToList());
+                _repo.RemoveDues(existing.Where(d => d.AmountPaid == 0 && d.DueDate > today).ToList());
                 return;
             }
 
-            var fullYearDates = FeeSchedule.DueDates(yearStart, frequency.FrequencyCode, line.DueDay);
-            var yearNet = item.NetAmount * FeeSchedule.Installments(line.FrequencyCode);   // net per structure period x periods in a year
-            var fullYearAmounts = FeeSchedule.Split(yearNet, fullYearDates.Count);
+            var plan = FeeSchedule.NormalisePlan(item.InstallmentPlan);
+            var full = FeeSchedule.FullSchedule(yearStart, line.FrequencyCode, line.DueDay, plan, item.NetAmount);
 
-            // Only the installments due on or after the student's start date are owed: same amount per installment as everyone else, just
-            // fewer of them, and never an installment that was already overdue before the student joined.
-            // (a single charge is still billed in full but dated from the start date; and if no configured date is left this year, one installment
-            // at the start date: see FeeSchedule.OwedSchedule)
-            var owed = FeeSchedule.OwedSchedule(fullYearDates, floor);
-            var dates = owed.Select(o => o.Date).ToList();
-            var billable = owed.Sum(o => fullYearAmounts[o.Index]);
+            // The guard: never act on arithmetic that came out wrong. The item is left exactly as it is.
+            if (item.NetAmount < 0 || full.Any(f => f.Amount < 0))
+            {
+                _logger.LogError("Fee item {ItemId} of student {StudentId}: the schedule came out negative (net {Net}); its dues were left unchanged", item.StudentFeeItemId, item.StudentId, item.NetAmount);
+                return;
+            }
+
+            var single = FeeSchedule.Installments(line.FrequencyCode) == 1;
+            var from = studentStart > line.EffectiveFrom ? studentStart : line.EffectiveFrom;   // the later of the line's effective date and the student's start
+            var start = log != null ? from : (from > today ? from : today);                     // never before today unless explicitly back-dated
 
             if (existing.Count == 0)
             {
-                if (yearNet <= 0) return;
-                foreach (var o in owed) AddDue(item, o.Date, fullYearAmounts[o.Index], now);
+                if (item.NetAmount <= 0 || noNewDues) return;
+                foreach (var o in FeeSchedule.Owed(full, start, single)) AddDue(item, o.Date, o.Amount, now, o.Date < today ? log : null, result);
                 return;
             }
 
-            // An installment belongs to a month of the schedule (its slot), not to an exact date, so moving the due day within a month
-            // never creates a second installment for that month.
+            // An installment belongs to a month of the schedule (its slot), not to an exact date, so moving the due day within a month never creates a second installment for that month.
             static int Slot(DateOnly d) => FeeSchedule.Slot(d);
 
-            var retained = existing.Where(d => d.AmountPaid > 0 || d.DueDate <= today).ToList();
+            var retained = existing.Where(d => d.AmountPaid > 0 || d.DueDate <= today).ToList();   // payments and the past: never touched
             var retainedSlots = retained.Select(d => Slot(d.DueDate)).ToHashSet();
-            // installments from before the start date (schedules generated before this rule) are left alone and do not count against what is owed
-            var retainedCounted = retained.Where(d => fullYearDates.Count == 1 || d.DueDate >= floor).ToList();
-            var replaceable = existing.Except(retained).ToList();
-            var reusable = replaceable.GroupBy(d => Slot(d.DueDate)).ToDictionary(g => g.Key, g => g.OrderBy(d => d.DueDate).First());
+            var replaceable = existing.Except(retained).ToList();                                    // unpaid and in the future
 
-            // The slots still to be paid: not covered by a retained installment, and either still in the future or already holding an
-            // unpaid installment (whose date follows the schedule, e.g. after the due day changed).
-            var openDates = dates.Where(d => !retainedSlots.Contains(Slot(d)) && (d > today || reusable.ContainsKey(Slot(d)))).ToList();
-            var remaining = billable - retainedCounted.Sum(d => d.AmountDue);
+            var desired = (single && retained.Count > 0)
+                ? new List<FeeSchedule.Scheduled>()   // a single charge that already has its installment is not charged twice
+                : FeeSchedule.Owed(full, start > today ? start : today, single).Where(o => o.Date > today && !retainedSlots.Contains(Slot(o.Date))).ToList();
+            if (item.NetAmount <= 0) desired.Clear();
 
-            if (remaining > 0 && openDates.Count == 0)
+            // A plan splits each billing cycle's amount. When part of a cycle is already billed (a retained installment: paid, or already due), only what is LEFT of that cycle's own
+            // amount is spread over its remaining installments, so changing the plan can never bill a cycle twice. Never negative: if the retained part is more than the cycle's amount the item is left as it is.
+            if (plan != FeeSchedule.PlanNone && desired.Count > 0)
             {
-                // nothing of the schedule is left to pay in: the rest falls due the day after today / the last due date
-                var latest = retained.Count == 0 ? today : retained.Max(d => d.DueDate);
-                openDates.Add((latest > today ? latest : today).AddDays(1));
-            }
-            if (remaining <= 0) openDates.Clear();
-
-            var split = FeeSchedule.Split(Math.Max(remaining, 0), openDates.Count);
-            var used = new HashSet<TbStudentFeeDue>();
-            for (var i = 0; i < openDates.Count; i++)
-            {
-                if (reusable.TryGetValue(Slot(openDates[i]), out var same) && used.Add(same))
+                var cycleMonths = FeeSchedule.CycleMonths(line.FrequencyCode);
+                var cycles = FeeSchedule.Installments(line.FrequencyCode);
+                int CycleOf(DateOnly d) => Math.Clamp((d.Year * 12 + d.Month - (yearStart.Year * 12 + yearStart.Month)) / cycleMonths, 0, cycles - 1);
+                var billed = retained.GroupBy(d => CycleOf(d.DueDate)).ToDictionary(g => g.Key, g => g.Sum(d => d.AmountDue));
+                var resplit = new List<FeeSchedule.Scheduled>();
+                foreach (var cycle in desired.GroupBy(o => o.Cycle))
                 {
-                    // same month: update in place (date follows the due day, amount follows the net amount)
-                    if (same.DueDate != openDates[i] || same.AmountDue != split[i]) { same.DueDate = openDates[i]; same.AmountDue = split[i]; same.UpdatedAt = now; }
+                    var open = cycle.ToList();
+                    if (billed.TryGetValue(cycle.Key, out var already))
+                    {
+                        var left = item.NetAmount - already;
+                        if (left < 0)
+                        {
+                            _logger.LogError("Fee item {ItemId} of student {StudentId}: cycle {Cycle} is already billed {Billed} of {Cycle_Amount}; its future dues were left unchanged", item.StudentFeeItemId, item.StudentId, cycle.Key, already, item.NetAmount);
+                            return;
+                        }
+                        var parts = FeeSchedule.Split(left, open.Count);
+                        for (var k = 0; k < open.Count; k++) open[k] = open[k] with { Amount = parts[k] };
+                    }
+                    resplit.AddRange(open);
+                }
+                desired = resplit.Where(o => o.Amount > 0).ToList();
+            }
+
+            var reusable = replaceable.GroupBy(d => Slot(d.DueDate)).ToDictionary(g => g.Key, g => g.OrderBy(d => d.DueDate).First());
+            if (noNewDues) desired = desired.Where(o => reusable.ContainsKey(Slot(o.Date))).ToList();   // only what already exists is updated
+            var used = new HashSet<TbStudentFeeDue>();
+            foreach (var o in desired)
+            {
+                if (reusable.TryGetValue(Slot(o.Date), out var same) && used.Add(same))
+                {
+                    // same month: update in place (the date follows the due day, the amount follows the schedule)
+                    if (same.DueDate != o.Date || same.AmountDue != o.Amount) { same.DueDate = o.Date; same.AmountDue = o.Amount; same.UpdatedAt = now; }
                 }
                 else
                 {
-                    AddDue(item, openDates[i], split[i], now);
+                    AddDue(item, o.Date, o.Amount, now, null, result);
                 }
             }
-            _repo.RemoveDues(replaceable.Where(d => !used.Contains(d)).ToList());   // unpaid future installments that no longer exist
+            _repo.RemoveDues(replaceable.Where(d => !used.Contains(d)).ToList());   // unpaid FUTURE installments that no longer exist in the schedule
         }
 
-        private static void AddDue(TbStudentFeeItem item, DateOnly date, decimal amount, DateTime now) =>
-            item.Dues.Add(new TbStudentFeeDue
+        private static void AddDue(TbStudentFeeItem item, DateOnly date, decimal amount, DateTime now, TbFeeBackdatingLog? log, FeeSyncResult result)
+        {
+            var due = new TbStudentFeeDue
             {
-                StudentId = item.StudentId, SchoolId = item.SchoolId, DueDate = date, AmountDue = amount, AmountPaid = 0, CreatedAt = now, UpdatedAt = now
-            });
+                StudentId = item.StudentId, SchoolId = item.SchoolId, DueDate = date, AmountDue = amount, AmountPaid = 0, CreatedAt = now, UpdatedAt = now,
+                Source = log == null ? "AUTO" : "BACKDATED", BackdatingLog = log
+            };
+            if (log != null) { result.BackdatedCount++; result.BackdatedAmount += amount; }
+            item.Dues.Add(due);
+        }
 
         public async Task ApplyDueDayChangeAsync(string schoolId, long feeStructureId, long feeTypeId, int newDueDay, CancellationToken ct)
         {
@@ -219,11 +270,11 @@ namespace smss_api_service_layer.service
             await _repo.SaveChangesAsync(ct);
         }
 
-        public async Task SyncStructureAsync(string schoolId, long feeStructureId, CancellationToken ct)
+        public async Task SyncStructureAsync(string schoolId, long feeStructureId, CancellationToken ct, IReadOnlySet<long>? noNewDuesForFeeTypes = null)
         {
             foreach (var (studentId, yearId) in await _repo.GetAssignedStudentsAsync(schoolId, feeStructureId, ct))
             {
-                try { await SyncAsync(schoolId, studentId, yearId, null, ct); }
+                try { await SyncAsync(schoolId, studentId, yearId, null, ct, noNewDuesForFeeTypes == null ? null : new FeeSyncOptions { NoNewDuesForFeeTypes = noNewDuesForFeeTypes }); }
                 catch (Exception ex)
                 {
                     // one student's problem must not stop the others from being brought up to date
@@ -285,6 +336,7 @@ namespace smss_api_service_layer.service
                             FeeDueId = d.FeeDueId, StudentFeeItemId = item.StudentFeeItemId, FeeTypeId = item.FeeTypeId,
                             FeeTypeName = names.GetValueOrDefault(item.FeeTypeId, string.Empty),
                             FrequencyName = freqNames.TryGetValue(item.FrequencyId, out var f) ? f.FrequencyName : string.Empty,
+                            InstallmentPlan = FeeSchedule.NormalisePlan(item.InstallmentPlan), Source = d.Source,
                             DueDate = d.DueDate, AmountDue = d.AmountDue, AmountPaid = d.AmountPaid,
                             Outstanding = Math.Max(d.AmountDue - d.AmountPaid, 0), Status = status
                         });
@@ -301,6 +353,22 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<StudentFeeDuesDto>(ex, "fetching student fee dues"); }
         }
 
+        public async Task<string?> CheckChargeFromAsync(string schoolId, long academicYearId, DateOnly chargeFrom, bool confirmedBackdating, string? reason, CancellationToken ct)
+        {
+            var year = await _repo.GetAcademicYearAsync(schoolId, academicYearId, ct);
+            if (year == null) return "The selected academic year was not found for your school.";
+            if (chargeFrom < year.StartDate) return $"Fees can't be charged from before the academic year starts ({year.StartDate:dd MMM yyyy}).";
+            if (chargeFrom > year.EndDate) return $"Fees can't be charged from after the academic year ends ({year.EndDate:dd MMM yyyy}).";
+            if (chargeFrom >= SchoolClock.Today()) return null;
+
+            // an earlier date creates dues that are already past: only in the current year, only explicitly confirmed, and always with a written reason
+            if (!year.IsCurrent) return "Fees can be charged from an earlier date only in the current academic year.";
+            if (!confirmedBackdating) return "Charging fees from an earlier date creates dues that are already past. Review the preview and confirm to continue.";
+            if (string.IsNullOrWhiteSpace(reason)) return "A reason is required to charge fees from an earlier date.";
+            if (reason.Trim().Length > 500) return "The reason can be at most 500 characters.";
+            return null;
+        }
+
         public async Task<ApiResponse<FeePreviewDto>> PreviewAsync(string? schoolId, long academicYearId, long classId, DateOnly? startDate, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<FeePreviewDto>(400, TenantMessages.NoSchool, null);
@@ -309,27 +377,32 @@ namespace smss_api_service_layer.service
                 // ids come from the query string: they must belong to THIS school
                 var year = await _repo.GetAcademicYearAsync(schoolId, academicYearId, ct);
                 if (year == null) return Result<FeePreviewDto>(400, "The selected academic year was not found for your school.", null);
-                var floor = startDate == null || startDate.Value < year.StartDate ? year.StartDate : startDate.Value;
+                var today = SchoolClock.Today();
+                var chargeFrom = startDate ?? today;
+                if (chargeFrom < year.StartDate) chargeFrom = year.StartDate;
 
-                var dto = new FeePreviewDto { AcademicYearId = academicYearId, ClassId = classId };
+                var dto = new FeePreviewDto { AcademicYearId = academicYearId, ClassId = classId, ChargeFrom = chargeFrom, IsBackdated = chargeFrom < today };
+                if (dto.IsBackdated)
+                {
+                    if (!year.IsCurrent) { dto.BackdatingAllowed = false; dto.BackdatingMessage = "Fees can be charged from an earlier date only in the current academic year."; }
+                }
                 var structure = await _repo.FindActiveStructureAsync(schoolId, classId, academicYearId, ct);
                 if (structure == null) return Result(200, "Successfully fetched", dto);
 
-                var frequencies = (await _repo.GetFrequenciesAsync(ct)).ToDictionary(f => f.FrequencyId);
                 dto.HasFeeStructure = true;
                 dto.FeeStructureId = structure.FeeStructureId;
                 dto.StructureName = structure.StructureName;
                 dto.Lines = (await _repo.GetSourceLinesAsync(structure.FeeStructureId, ct)).Select(l =>
                 {
-                    var options = AllowedFrequencies(l, frequencies);
-                    foreach (var o in options)
-                        o.RemainingInstallments = FeeSchedule.OwedSchedule(FeeSchedule.DueDates(year.StartDate, o.FrequencyCode, l.DueDay), floor).Count;
+                    var from = chargeFrom > l.EffectiveFrom ? chargeFrom : l.EffectiveFrom;
+                    var single = FeeSchedule.Installments(l.FrequencyCode) == 1;
+                    var options = AllowedPlans(l, l.Amount, year.StartDate, from, today, single);
                     return new FeePreviewLineDto
                     {
                         FeeTypeId = l.FeeTypeId, FeeTypeName = l.FeeTypeName, FeeTypeCode = l.FeeTypeCode, IsOptional = l.IsOptional, Amount = l.Amount,
                         StructureFrequencyId = l.FrequencyId, StructureFrequencyName = l.FrequencyName,
-                        PeriodsPerYear = FeeSchedule.Installments(l.FrequencyCode), DueDay = l.DueDay,
-                        AllowedFrequencies = options
+                        PeriodsPerYear = FeeSchedule.Installments(l.FrequencyCode), DueDay = l.DueDay, EffectiveFrom = l.EffectiveFrom,
+                        AllowedPlans = options
                     };
                 }).ToList();
                 return Result(200, "Successfully fetched", dto);
@@ -346,21 +419,21 @@ namespace smss_api_service_layer.service
             {
                 var student = await _fees.GetStudentAsync(schoolId, studentId, ct);
                 if (student == null) return Result<StudentFeeItemsDto>(404, "Student not found.", null);
-                if (req.FrequencyId == null && req.IsApplicable == null) return Result<StudentFeeItemsDto>(400, "Nothing to change: send a frequency and/or isApplicable.", null);
+                if (req.InstallmentPlan == null && req.IsApplicable == null) return Result<StudentFeeItemsDto>(400, "Nothing to change: send an installmentPlan and/or isApplicable.", null);
 
                 var item = await _repo.GetItemAsync(schoolId, studentId, itemId, ct);
                 if (item == null || !item.IsActive) return Result<StudentFeeItemsDto>(404, "Fee item not found.", null);
 
-                if (req.FrequencyId is long newFreq && newFreq != item.FrequencyId)
+                if (req.InstallmentPlan != null)
                 {
                     var assignment = await _fees.GetAssignmentAsync(schoolId, studentId, item.AcademicYearId, track: false, ct);
                     var line = assignment == null ? null : (await _repo.GetSourceLinesAsync(assignment.FeeStructureId, ct)).FirstOrDefault(l => l.FeeTypeId == item.FeeTypeId);
                     if (line == null) return Result<StudentFeeItemsDto>(400, "This fee head is no longer part of the student's fee structure.", null);
 
-                    var frequencies = (await _repo.GetFrequenciesAsync(ct)).ToDictionary(f => f.FrequencyId);
-                    if (AllowedFrequencies(line, frequencies).All(f => f.FrequencyId != newFreq))
-                        return Result<StudentFeeItemsDto>(400, $"A {line.FrequencyName} fee can't be paid at that frequency.", null);
-                    item.FrequencyId = newFreq;
+                    var plan = FeeSchedule.NormalisePlan(req.InstallmentPlan);
+                    if (!FeeSchedule.AllowedPlans(line.FrequencyCode).Contains(plan))
+                        return Result<StudentFeeItemsDto>(400, $"A {line.FrequencyName} fee can't be paid with that installment plan. Allowed: {string.Join(", ", FeeSchedule.AllowedPlans(line.FrequencyCode))}.", null);
+                    item.InstallmentPlan = plan;   // only the unpaid FUTURE installments are re-split by the sync below
                 }
                 if (req.IsApplicable is bool applicable)
                 {
@@ -429,10 +502,13 @@ namespace smss_api_service_layer.service
                 dto.Items.Add(new StudentFeeItemDto
                 {
                     StudentFeeItemId = item.StudentFeeItemId, FeeTypeId = item.FeeTypeId, FeeTypeName = line.FeeTypeName, FeeTypeCode = line.FeeTypeCode,
-                    FrequencyId = item.FrequencyId,
-                    FrequencyName = ctx.Frequencies.TryGetValue(item.FrequencyId, out var f) ? f.FrequencyName : string.Empty,
+                    FrequencyId = line.FrequencyId,
+                    FrequencyName = line.FrequencyName,
                     StructureFrequencyName = line.FrequencyName,
-                    AllowedFrequencies = AllowedFrequencies(line, ctx.Frequencies),
+                    InstallmentPlan = FeeSchedule.NormalisePlan(item.InstallmentPlan),
+                    InstallmentPlanName = FeeSchedule.PlanName(FeeSchedule.NormalisePlan(item.InstallmentPlan)),
+                    AllowedPlans = AllowedPlans(line, item.NetAmount, ctx.Year?.StartDate ?? today, null, today, false),
+                    EffectiveFrom = line.EffectiveFrom,
                     DueDay = line.DueDay,
                     IsOptional = line.IsOptional,
                     BaseAmount = item.BaseAmount, ConcessionAmount = item.ConcessionAmount, NetAmount = item.NetAmount,
@@ -447,16 +523,31 @@ namespace smss_api_service_layer.service
             return dto;
         }
 
-        private static List<FeeFrequencyOptionDto> AllowedFrequencies(SourceLineRow line, Dictionary<long, LutFeeFrequency> frequencies)
+        /// <summary>
+        /// The installment plans a fee line allows. With <paramref name="from"/> (a preview) each option also says how many installments fall on or after the start and how many
+        /// before today (what a back-dated "Charge fees from" would create), with their amounts, for the given per-cycle amount.
+        /// </summary>
+        private static List<InstallmentPlanOptionDto> AllowedPlans(SourceLineRow line, decimal cycleAmount, DateOnly yearStart, DateOnly? from, DateOnly today, bool single)
         {
-            var allowed = FeeSchedule.AllowedStudentFrequencies(line.FrequencyCode);
-            return frequencies.Values
-                .Where(f => f.IsActive && allowed.Contains(f.FrequencyCode))
-                .OrderBy(f => f.FrequencyId)
-                .Select(f => new FeeFrequencyOptionDto
+            return FeeSchedule.AllowedPlans(line.FrequencyCode).Select(code =>
+            {
+                var full = FeeSchedule.FullSchedule(yearStart, line.FrequencyCode, line.DueDay, code, cycleAmount);
+                var option = new InstallmentPlanOptionDto
                 {
-                    FrequencyId = f.FrequencyId, FrequencyName = f.FrequencyName, FrequencyCode = f.FrequencyCode, Installments = FeeSchedule.Installments(f.FrequencyCode)
-                }).ToList();
+                    Code = code, Name = FeeSchedule.PlanName(code), InstallmentsPerCycle = FeeSchedule.PlanInstallmentsPerCycle(line.FrequencyCode, code), Installments = full.Count
+                };
+                if (from is DateOnly f)
+                {
+                    var forward = FeeSchedule.Owed(full, f > today ? f : today, single);
+                    option.RemainingInstallments = forward.Count;
+                    option.RemainingAmount = forward.Sum(x => x.Amount);
+                    var past = f < today ? full.Where(x => x.Date >= f && x.Date < today).ToList() : new List<FeeSchedule.Scheduled>();
+                    if (single && f < today && line.EffectiveFrom <= f) past = full.Where(x => x.Date < today).Select(x => x with { Date = x.Date < f ? f : x.Date }).ToList();
+                    option.BackdatedInstallments = past.Count;
+                    option.BackdatedAmount = past.Sum(x => x.Amount);
+                }
+                return option;
+            }).ToList();
         }
 
         private static ApiResponse<T> Result<T>(int code, string message, T? data) =>

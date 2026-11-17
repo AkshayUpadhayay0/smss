@@ -29,7 +29,8 @@ namespace smss_api.Controllers
             // Creating a student straight in is a School Admin job (an Approved admission application becomes a student through Confirm Admission instead).
             if (!User.IsSchoolAdmin()) return Reject(403, "Only a School Admin can add a student directly.");
 
-            var response = await _service.CreateDirectEntryAsync(own, request, ct);
+            long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId);
+            var response = await _service.CreateDirectEntryAsync(own, request, ct, userId);
             return StatusCode(response.StatusCode, response);
         }
 

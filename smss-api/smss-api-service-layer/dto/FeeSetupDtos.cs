@@ -67,6 +67,12 @@ namespace smss_api_service_layer.dto
         /// <summary>Day of the month (1-31) a recurring (Monthly / Quarterly / Half-Yearly) fee head falls due. Required for those, ignored otherwise.</summary>
         [Range(1, 31, ErrorMessage = "Due day must be between 1 and 31.")]
         public int? DueDay { get; set; }
+
+        /// <summary>
+        /// From when this line is charged: inside the structure's academic year. Left out: an existing line keeps its date; a NEW line defaults to the start of the year, or to today
+        /// when the structure already has students (so adding a fee in September does not bill April to August).
+        /// </summary>
+        public DateOnly? EffectiveFrom { get; set; }
     }
 
     public abstract class FeeStructureRequestBase
@@ -88,7 +94,14 @@ namespace smss_api_service_layer.dto
     }
 
     /// <summary>Academic year and class are fixed once a structure exists (it is "the fee structure of THAT class and year").</summary>
-    public class UpdateFeeStructureRequest : FeeStructureRequestBase { }
+    public class UpdateFeeStructureRequest : FeeStructureRequestBase
+    {
+        /// <summary>
+        /// Moving a line's effective date LATER removes the unpaid dues dated before the new date. The first save answers 409 with their count and amount; send true to confirm
+        /// the removal and save.
+        /// </summary>
+        public bool ConfirmDueRemoval { get; set; }
+    }
 
     public class FeeStructureLineResponse
     {
@@ -100,6 +113,7 @@ namespace smss_api_service_layer.dto
         public string FrequencyName { get; set; } = null!;
         public decimal Amount { get; set; }
         public int? DueDay { get; set; }
+        public DateOnly EffectiveFrom { get; set; }
     }
 
     /// <summary>List row: the header plus how many lines it has.</summary>

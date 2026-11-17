@@ -48,7 +48,7 @@ namespace smss_api_service_layer.service
                     TotalDue = d.TotalDue, TotalPaid = d.TotalPaid, Balance = d.Outstanding, OverdueAmount = d.OverdueAmount, OverdueCount = d.OverdueCount,
                     Heads = applicable.Select(i => new MyFeeHeadDto
                     {
-                        FeeTypeName = i.FeeTypeName, FrequencyName = i.FrequencyName, Amount = i.BaseAmount, Concession = i.ConcessionAmount, NetAmount = i.NetAmount, AnnualNetAmount = i.AnnualNetAmount
+                        FeeTypeName = i.FeeTypeName, FrequencyName = i.FrequencyName, InstallmentPlan = i.InstallmentPlan, Amount = i.BaseAmount, Concession = i.ConcessionAmount, NetAmount = i.NetAmount, AnnualNetAmount = i.AnnualNetAmount
                     }).ToList(),
                     Dues = d.Dues.Select(x => new MyFeeDueDto
                     {

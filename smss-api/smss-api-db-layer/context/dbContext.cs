@@ -60,6 +60,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbTaxType> TaxTypes { get; set; } = null!;
         public DbSet<TbStudentFeeStructure> StudentFeeStructures { get; set; } = null!;
         public DbSet<TbStudentFeeItem> StudentFeeItems { get; set; } = null!;
+        public DbSet<TbFeeBackdatingLog> FeeBackdatingLogs { get; set; } = null!;
         public DbSet<TbStudentFeeDue> StudentFeeDues { get; set; } = null!;
         public DbSet<TbFeePayment> FeePayments { get; set; } = null!;
         public DbSet<TbFeePaymentAllocation> FeePaymentAllocations { get; set; } = null!;

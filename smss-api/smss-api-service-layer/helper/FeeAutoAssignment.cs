@@ -25,7 +25,7 @@ namespace smss_api_service_layer.helper
         /// <summary>Null when the assignment was saved; otherwise the warning to show.</summary>
         public static async Task<string?> TryAssignAsync(
             IAdmissionRepository repo, IStudentFeeBillingService billing, IReadOnlyList<FeeItemSelection>? selections,
-            ILogger logger, string schoolId, string studentId, long academicYearId, long feeStructureId, DateTime now, CancellationToken ct)
+            ILogger logger, string schoolId, string studentId, long academicYearId, long feeStructureId, DateTime now, CancellationToken ct, FeeSyncOptions? options = null)
         {
             try
             {
@@ -50,7 +50,7 @@ namespace smss_api_service_layer.helper
             // The student's own fee items (frequency / applicability choices made at admission) and their installments
             try
             {
-                await billing.SyncAsync(schoolId, studentId, academicYearId, selections, ct);
+                await billing.SyncAsync(schoolId, studentId, academicYearId, selections, ct, options);
                 return null;
             }
             catch (Exception ex)

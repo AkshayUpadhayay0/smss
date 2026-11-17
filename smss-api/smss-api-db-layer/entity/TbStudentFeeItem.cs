@@ -19,7 +19,10 @@ namespace smss_api_db_layer.entity
         [Column("school_id")][StringLength(100)] public string SchoolId { get; set; } = null!;
         [Column("academic_year_id")] public long AcademicYearId { get; set; }
         [Column("fee_type_id")] public long FeeTypeId { get; set; }
+        /// <summary>Always the frequency of the fee line (the billing cycle); the student has no frequency of their own.</summary>
         [Column("frequency_id")] public long FrequencyId { get; set; }
+        /// <summary>How each billing cycle's amount is split into installments: NONE, QUARTERLY or MONTHLY (see FeeSchedule.AllowedPlans). The year total never depends on it.</summary>
+        [Column("installment_plan")][StringLength(12)] public string InstallmentPlan { get; set; } = "NONE";
         [Column("base_amount", TypeName = "numeric(12,2)")] public decimal BaseAmount { get; set; }
         [Column("concession_amount", TypeName = "numeric(12,2)")] public decimal ConcessionAmount { get; set; }
         [Column("net_amount", TypeName = "numeric(12,2)")] public decimal NetAmount { get; set; }
