@@ -335,6 +335,19 @@ describe('FeeStructureBuilderComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/fee-setup/fee-structures']);
   });
 
+  it('locked (disabled) fields never show an error after a save attempt', async () => {
+    openEdit({ hasDues: true });
+    vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(false);
+    removeSavedLine();
+    cmp()['save']();
+    http.expectOne(`${API}/api/FeeStructure/7`).flush(REMOVAL_409, { status: 409, statusText: 'Conflict' });
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(cmp()['error'](cmp()['form'].controls.academicYearId)).toBeUndefined();   // year and class are locked when editing
+    expect(cmp()['error'](cmp()['form'].controls.classId)).toBeUndefined();
+    expect(el().textContent).not.toContain('Invalid value');
+  });
+
   it('declining the line-removal confirmation sends nothing more and keeps the page as it is', async () => {
     openEdit();
     vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(false);

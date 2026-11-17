@@ -318,7 +318,7 @@ export class FeeStructureBuilderComponent implements OnInit {
   }
 
   protected error(control: AbstractControl | null): string | undefined {
-    if (!control || control.valid || !(control.touched || this.submitted())) return undefined;
+    if (!control || control.valid || control.disabled || !(control.touched || this.submitted())) return undefined;   // a disabled control is neither valid nor invalid: never show an error for it
     if (control.hasError('required') || control.hasError('blank')) return 'This field is required';
     if (control.hasError('maxlength')) return `Maximum ${control.getError('maxlength').requiredLength} characters`;
     if (control.hasError('amount')) return control.getError('amount');
