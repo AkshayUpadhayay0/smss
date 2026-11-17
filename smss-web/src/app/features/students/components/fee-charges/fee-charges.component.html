@@ -60,7 +60,9 @@
               }
             </span>
             <span role="cell">
-              @if (r.applies) {
+              @if (r.applies && r.midCycle && backdated().isBackdated) {
+                {{ r.remaining }} installments <small>(the first cycle is spread, so they differ)</small>
+              } @else if (r.applies) {
                 {{ inr(r.perInstallment) }}@if (r.remaining > 1) { <small> × {{ r.remaining }}</small> }
               } @else {
                 <small>Not included</small>
