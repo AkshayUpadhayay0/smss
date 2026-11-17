@@ -3,10 +3,11 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
+import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { Breadcrumb, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
+import { Breadcrumb, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption, TextareaComponent } from '../../../../shared/components';
 import { GUARDIAN_RELATIONSHIPS } from '../../../admissions/models/admission.model';
-import { FeeConfigurationComponent } from '../../../students/components/fee-configuration/fee-configuration.component';
+import { BackdatingSummary, FeeConfigurationComponent } from '../../../students/components/fee-charges/fee-charges.component';
 import { FeeItemSelection } from '../../../students/models/student-billing.model';
 import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
@@ -36,7 +37,7 @@ function pastDate(c: AbstractControl): ValidationErrors | null {
 /** Direct entry of a student the school already has: no application, review or approval stage. */
 @Component({
   selector: 'app-existing-student-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './existing-student-form.component.scss',
   templateUrl: './existing-student-form.component.html',
@@ -48,6 +49,7 @@ export class ExistingStudentFormComponent implements OnInit {
   private readonly years = inject(AcademicYearService);
   private readonly sections = inject(SectionService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -63,6 +65,9 @@ export class ExistingStudentFormComponent implements OnInit {
     academicYearId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     classSectionId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     rollNumber: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(30)] }),
+    // Fees
+    chargeFrom: new FormControl(today(), { nonNullable: true, validators: [Validators.required] }),
+    backdatingReason: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] }),
     // Student
     firstName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(100)] }),
     middleName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),
@@ -101,9 +106,15 @@ export class ExistingStudentFormComponent implements OnInit {
   private readonly sectionClass = signal<Record<string, number>>({});
   protected readonly feeYearId = signal<number | null>(null);
   protected readonly feeClassId = signal<number | null>(null);
-  protected readonly feeStartDate = signal<string | null>(null);
-  /** The frequency choices from the Fee Configuration section; sent with the request. */
+  protected readonly feeStartDate = signal<string | null>(today());
+  /** What the chosen "Charge fees from" date would back-date (count and amount), reported by the Fee Configuration section. */
+  protected readonly backdating = signal<BackdatingSummary | null>(null);
+  /** The installment plan choices from the Fee Configuration section; sent with the request. */
   private feeSelections: FeeItemSelection[] = [];
+
+  protected onBackdating(summary: BackdatingSummary): void {
+    this.backdating.set(summary);
+  }
 
   protected onFeeSelections(selections: FeeItemSelection[]): void {
     this.feeSelections = selections;
@@ -113,7 +124,7 @@ export class ExistingStudentFormComponent implements OnInit {
     const year = this.form.controls.academicYearId.value;
     const section = this.form.controls.classSectionId.value;
     this.feeYearId.set(year ? Number(year) : null);
-    this.feeStartDate.set(this.form.controls.admissionDate.value || null);
+    this.feeStartDate.set(this.form.controls.chargeFrom.value || null);
     this.feeClassId.set(section ? (this.sectionClass()[section] ?? null) : null);
   }
 
@@ -130,7 +141,7 @@ export class ExistingStudentFormComponent implements OnInit {
     // The fee heads depend on the class (via the section) and the academic year
     this.form.controls.academicYearId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
     this.form.controls.classSectionId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
-    this.form.controls.admissionDate.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
+    this.form.controls.chargeFrom.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncFeePlacement());
     this.loadSchoolOptions();
   }
 
@@ -199,6 +210,35 @@ export class ExistingStudentFormComponent implements OnInit {
     }
 
     const v = this.form.getRawValue();
+    const back = this.backdating();
+    const backdated = !!back?.isBackdated;
+    if (backdated && !back.allowed) {
+      this.toast.error(back.message ?? 'Fees cannot be charged from that date.');
+      return;
+    }
+    if (backdated && !v.backdatingReason.trim()) {
+      this.form.controls.backdatingReason.markAsTouched();
+      this.toast.error('Give a reason for charging fees from an earlier date.');
+      return;
+    }
+    if (backdated) {
+      void this.confirmDialog
+        .confirm({
+          title: 'Charge fees from an earlier date?',
+          message: `This creates ${back.count} due(s) worth ${back.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} that are already past. They are recorded as back-dated and logged with your reason.`,
+          confirmText: 'Charge earlier dues',
+          variant: 'danger',
+        })
+        .then((ok) => {
+          if (ok) this.save(true);
+        });
+      return;
+    }
+    this.save(false);
+  }
+
+  private save(backdated: boolean): void {
+    const v = this.form.getRawValue();
     const payload: DirectStudentEntryRequest = {
       admissionNumber: str(v.admissionNumber),
       admissionDate: v.admissionDate,
@@ -220,6 +260,9 @@ export class ExistingStudentFormComponent implements OnInit {
       guardianMobileNumber: v.guardianMobileNumber.trim(),
       guardianEmail: str(v.guardianEmail),
       feeItems: this.feeSelections.length ? this.feeSelections : null,
+      chargeFrom: v.chargeFrom || null,
+      confirmBackdating: backdated,
+      backdatingReason: backdated ? v.backdatingReason.trim() : null,
     };
 
     this.saving.set(true);

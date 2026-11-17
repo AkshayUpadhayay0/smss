@@ -41,15 +41,16 @@ const assigned: StudentFees = {
   availableConcessions: [{ concessionId: 11, concessionName: 'Merit', concessionCode: 'MERIT', concessionType: 'FIXED', value: 500, applicableFeeTypeId: 1, applicableFeeTypeName: 'Tuition' }],
 };
 
-const FREQS = [
-  { frequencyId: 2, frequencyName: 'Monthly', frequencyCode: 'MONTHLY', installments: 12 },
-  { frequencyId: 3, frequencyName: 'Quarterly', frequencyCode: 'QUARTERLY', installments: 4 },
+const PLANS = [
+  { code: 'NONE', name: 'None (one payment per cycle)', installmentsPerCycle: 1, installments: 2 },
+  { code: 'QUARTERLY', name: 'Quarterly', installmentsPerCycle: 2, installments: 4 },
+  { code: 'MONTHLY', name: 'Monthly', installmentsPerCycle: 6, installments: 12 },
 ];
 const ITEMS: StudentFeeItems = {
   studentId: 'DPS001ST001', academicYearId: 1, academicYearName: '2026-27', annualNetTotal: 30000,
   items: [
-    { studentFeeItemId: 7, feeTypeId: 1, feeTypeName: 'Tuition', feeTypeCode: 'TUI', frequencyId: 2, frequencyName: 'Monthly', structureFrequencyName: 'Monthly',
-      allowedFrequencies: FREQS, dueDay: 10, isOptional: false, baseAmount: 2500, concessionAmount: 0, netAmount: 2500, annualNetAmount: 30000, isApplicable: true, dueCount: 12, nextDueDate: '2026-11-10', totalDue: 30000, totalPaid: 0 },
+    { studentFeeItemId: 7, feeTypeId: 1, feeTypeName: 'Tuition', feeTypeCode: 'TUI', frequencyId: 2, frequencyName: 'Half-Yearly', structureFrequencyName: 'Half-Yearly',
+      installmentPlan: 'NONE', installmentPlanName: 'None (one payment per cycle)', allowedPlans: PLANS, effectiveFrom: '2026-04-01', dueDay: 10, isOptional: false, baseAmount: 2500, concessionAmount: 0, netAmount: 2500, annualNetAmount: 30000, isApplicable: true, dueCount: 12, nextDueDate: '2026-11-10', totalDue: 30000, totalPaid: 0 },
   ],
 };
 const DUES: StudentFeeDues = {
@@ -182,7 +183,7 @@ describe('StudentFeesTabComponent', () => {
   it('shows each fee head with how often it is paid, and the installment schedule with coloured status badges', () => {
     open(assigned);
     expect(text()).toContain('Fee items');
-    expect(cmp()['itemRows']()[0]).toMatchObject({ feeTypeName: 'Tuition', frequencyName: 'Monthly', applicable: 'Yes', annualNet: '₹30,000.00', dues: '12' });
+    expect(cmp()['itemRows']()[0]).toMatchObject({ feeTypeName: 'Tuition', frequencyName: 'Half-Yearly', applicable: 'Yes', annualNet: '₹30,000.00', dues: '12' });
     expect(cmp()['dueRows']().map((r: { status: string }) => r.status)).toEqual(['Paid', 'Overdue', 'Pending']);
 
     const pills = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.pill')].map((e) => [e.textContent?.trim(), e.className]);
@@ -193,23 +194,24 @@ describe('StudentFeesTabComponent', () => {
     expect(cmp()['dueSummary']()).toMatchObject({ total: '₹5,000.00', paid: '₹2,500.00', outstanding: '₹2,500.00' });
   });
 
-  it('changing an item\'s frequency PUTs just that change, then refreshes the schedule', () => {
+  it('changing an item\'s installment plan PUTs just that change, then refreshes the schedule', () => {
     open(assigned);
+    expect(cmp()['itemRows']()[0].planName).toBe('None');
     cmp()['openEdit'](cmp()['itemRows']()[0]);
-    expect(cmp()['editFrequencyOptions']().map((o: { label: string }) => o.label)).toEqual(['Monthly', 'Quarterly']);
-    cmp()['frequencyControl'].setValue('3');
+    expect(cmp()['editPlanOptions']().map((o: { value: string }) => o.value)).toEqual(['NONE', 'QUARTERLY', 'MONTHLY']);
+    cmp()['planControl'].setValue('QUARTERLY');
     cmp()['submitEdit']();
 
     const req = http.expectOne(`${URL}/fee-items/7`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ frequencyId: 3 });   // applicability unchanged -> not sent
-    req.flush(env({ ...ITEMS, items: [{ ...ITEMS.items[0], frequencyId: 3, frequencyName: 'Quarterly', dueCount: 5 }] }));
+    expect(req.request.body).toEqual({ installmentPlan: 'QUARTERLY' });   // applicability unchanged -> not sent
+    req.flush(env({ ...ITEMS, items: [{ ...ITEMS.items[0], installmentPlan: 'QUARTERLY', installmentPlanName: 'Quarterly', dueCount: 4 }] }));
     // the schedule and the concession totals both move
     http.expectOne(URL).flush(env(assigned));
     http.expectOne(`${URL}/fee-dues`).flush(env(DUES));
     fixture.detectChanges();
     expect(cmp()['editing']()).toBeNull();
-    expect(cmp()['itemRows']()[0].frequencyName).toContain('Quarterly');
+    expect(cmp()['itemRows']()[0].planName).toBe('Quarterly');
   });
 
   it('a NON-optional fee head cannot be switched off from the dialog (no checkbox, just an explanation)', () => {

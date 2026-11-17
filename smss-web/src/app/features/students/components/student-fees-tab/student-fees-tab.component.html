@@ -93,9 +93,9 @@
             }
           </app-card>
 
-          <app-card title="Fee items &amp; payment frequency" [noPadding]="true">
+          <app-card title="Fee items &amp; installment plan" [noPadding]="true">
             <div class="card-note">
-              How often this student pays each fee head. Changing it regenerates the unpaid future installments; installments that already have a payment are never touched.
+              The amount is per billing cycle, as set by the fee structure. An installment plan splits each cycle into smaller payments; changing it regenerates the unpaid future installments, and installments that already have a payment are never touched.
             </div>
             @if (billingFailed()) {
               <p class="empty pad">The fee items could not be loaded. <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></p>
@@ -107,7 +107,7 @@
                 emptyMessage="No fee items yet."
               >
                 <ng-template #rowActions let-row>
-                  <app-button variant="secondary" size="sm" aria-label="Change frequency or applicability" title="Edit" [disabled]="busy()" (click)="openEdit(row)">
+                  <app-button variant="secondary" size="sm" aria-label="Change installment plan or applicability" title="Edit" [disabled]="busy()" (click)="openEdit(row)">
                     <app-icon name="pencil" [size]="14" />Edit
                   </app-button>
                 </ng-template>
@@ -234,14 +234,14 @@
       <app-modal [title]="'Edit ' + item.feeTypeName" [dismissible]="!busy()" (closed)="editing.set(null)">
         <div class="dialog">
           <app-select
-            label="Pays"
+            label="Installment plan"
             [required]="true"
-            [options]="editFrequencyOptions()"
-            [formControl]="frequencyControl"
-            [disabled]="editFrequencyOptions().length <= 1"
+            [options]="editPlanOptions()"
+            [formControl]="planControl"
+            [disabled]="editPlanOptions().length <= 1"
           />
-          @if (editFrequencyOptions().length <= 1) {
-            <p class="meta">A {{ item.structureFrequencyName }} fee is a single charge, so it can't be split into installments.</p>
+          @if (editPlanOptions().length <= 1) {
+            <p class="meta">A {{ item.structureFrequencyName }} fee is one payment per cycle, so it can't be split into installments.</p>
           }
           @if (item.isOptional) {
             <label class="check">

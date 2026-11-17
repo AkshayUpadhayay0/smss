@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import {
+  BackdatingPreview,
+  BackdatingResult,
   CreateFeeStructureRequest,
   FeeFrequency,
   FeeStructure,
@@ -33,8 +35,17 @@ export class FeeStructureService {
     return this.api.post<FeeStructure>(BASE, request);
   }
 
+  /** `skipErrorToast`: the builder answers the "confirm the removal of unpaid dues" 409 itself. */
   update(id: number, request: UpdateFeeStructureRequest): Observable<FeeStructure> {
-    return this.api.put<FeeStructure>(`${BASE}/${id}`, request);
+    return this.api.put<FeeStructure>(`${BASE}/${id}`, request, { skipErrorToast: true });
+  }
+
+  backdatingPreview(id: number, feeTypeId: number, fromDate: string): Observable<BackdatingPreview> {
+    return this.api.post<BackdatingPreview>(`${BASE}/${id}/lines/${feeTypeId}/backdating/preview`, { fromDate });
+  }
+
+  backdatingApply(id: number, feeTypeId: number, body: { fromDate: string; reason: string; expectedDuesCount: number }): Observable<BackdatingResult> {
+    return this.api.post<BackdatingResult>(`${BASE}/${id}/lines/${feeTypeId}/backdating/apply`, { ...body, confirm: true });
   }
 
   toggleStatus(id: number): Observable<FeeStructure> {

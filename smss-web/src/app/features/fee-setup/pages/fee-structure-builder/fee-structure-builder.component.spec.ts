@@ -3,13 +3,14 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
+import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { FeeStructureBuilderComponent } from './fee-structure-builder.component';
 
 const API = environment.apiUrl;
 const env = <T>(data: T, statusCode = 200) => ({ status: true, statusCode, message: 'ok', data });
 
-const YEARS = [{ academicYearId: 1, yearName: '2026-27', statusName: 'Active' }];
+const YEARS = [{ academicYearId: 1, yearName: '2026-27', statusName: 'Active', startDate: '2026-04-01', endDate: '2027-03-31' }];
 const CLASSES = [
   { classId: 10, className: 'Class 1', sequenceOrder: 1, statusName: 'Active' },
   { classId: 11, className: 'Class 2', sequenceOrder: 2, statusName: 'Active' },
@@ -123,8 +124,8 @@ describe('FeeStructureBuilderComponent', () => {
       classId: 10,
       structureName: 'Class 1 Fees',
       details: [
-        { feeTypeId: 100, frequencyId: 2, amount: 2500, dueDay: 10 },   // Monthly: due day sent
-        { feeTypeId: 101, frequencyId: 1, amount: 800, dueDay: null },  // One Time: none
+        { feeTypeId: 100, frequencyId: 2, amount: 2500, dueDay: 10, effectiveFrom: '2026-04-01' },   // Monthly: due day sent; no students yet: the year start
+        { feeTypeId: 101, frequencyId: 1, amount: 800, dueDay: null, effectiveFrom: '2026-04-01' },  // One Time: none
       ],
     });
     req.flush(env({ feeStructureId: 7 }, 201));
@@ -192,7 +193,7 @@ describe('FeeStructureBuilderComponent', () => {
     http.expectOne(`${API}/api/FeeStructure/7`).flush(
       env({
         feeStructureId: 7, academicYearId: 1, academicYearName: '2026-27', classId: 10, className: 'Class 1', structureName: 'Class 1 Fees', isActive: true, statusName: 'Active', lineCount: 1,
-        details: [{ feeStructureDetailId: 1, feeTypeId: 100, feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', frequencyId: 2, frequencyName: 'Monthly', amount: 2500, dueDay: 10 }],
+        details: [{ feeStructureDetailId: 1, feeTypeId: 100, feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', frequencyId: 2, frequencyName: 'Monthly', amount: 2500, dueDay: 10, effectiveFrom: '2026-04-01', hasDues: false }],
       }),
     );
     fixture.detectChanges();
@@ -205,7 +206,101 @@ describe('FeeStructureBuilderComponent', () => {
     cmp()['save']();
     const req = http.expectOne(`${API}/api/FeeStructure/7`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ structureName: 'Class 1 Fees', details: [{ feeTypeId: 100, frequencyId: 2, amount: 3000, dueDay: 10 }] });
+    expect(req.request.body).toEqual({ structureName: 'Class 1 Fees', details: [{ feeTypeId: 100, frequencyId: 2, amount: 3000, dueDay: 10, effectiveFrom: '2026-04-01' }] });
     req.flush(env({ feeStructureId: 7 }));
+  });
+
+  function openEdit(opts: { hasAssignedStudents?: boolean; hasDues?: boolean } = {}) {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['School Admin'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(FeeStructureBuilderComponent);
+    fixture.componentRef.setInput('feeStructureId', '7');
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
+    http.expectOne(`${API}/api/FeeType`).flush(env(FEE_TYPES));
+    http.expectOne(`${API}/api/FeeStructure/frequencies`).flush(env(FREQUENCIES));
+    http.expectOne(`${API}/api/FeeStructure/7`).flush(
+      env({
+        feeStructureId: 7, academicYearId: 1, academicYearName: '2026-27', classId: 10, className: 'Class 1', structureName: 'Class 1 Fees', isActive: true, statusName: 'Active', lineCount: 1,
+        hasAssignedStudents: opts.hasAssignedStudents ?? false,
+        details: [{ feeStructureDetailId: 1, feeTypeId: 100, feeTypeName: 'Tuition Fee', feeTypeCode: 'TUITION', frequencyId: 2, frequencyName: 'Monthly', amount: 2500, dueDay: 10, effectiveFrom: '2026-06-01', hasDues: opts.hasDues ?? false }],
+      }),
+    );
+    fixture.detectChanges();
+  }
+
+  it('a new line defaults to today when students already have the structure, to the year start otherwise', () => {
+    openEdit({ hasAssignedStudents: true });
+    cmp()['addLine']();
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const inYear = iso >= '2026-04-01' && iso <= '2027-03-31';
+    expect(cmp()['lines'].at(1).controls.effectiveFrom.value).toBe(inYear ? iso : '2026-04-01');
+    http.verify();
+  });
+
+  it('a date outside the academic year is refused before anything is sent', () => {
+    create();
+    cmp()['form'].patchValue({ academicYearId: '1', classId: '10', structureName: 'X' });
+    fillLine(0, '100', '1', '800');
+    cmp()['lines'].at(0).patchValue({ effectiveFrom: '2027-04-01' });
+    expect(cmp()['lines'].at(0).controls.effectiveFrom.hasError('amount')).toBe(true);
+    cmp()['lines'].at(0).patchValue({ effectiveFrom: '2026-03-31' });
+    expect(cmp()['lines'].at(0).controls.effectiveFrom.hasError('amount')).toBe(true);
+    cmp()['save']();
+    http.expectNone(`${API}/api/FeeStructure`);
+  });
+
+  it('a line that already has dues cannot have its frequency changed', () => {
+    openEdit({ hasDues: true });
+    expect(cmp()['lines'].at(0).controls.frequencyId.disabled).toBe(true);
+    expect(el().textContent).toContain("frequency can't be changed");
+  });
+
+  it('"Apply to earlier months" is offered for a saved line, and only on a clean form', () => {
+    openEdit();
+    const button = () => Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.includes('Apply to earlier months')) as HTMLButtonElement;
+    expect(button()).toBeTruthy();
+    expect(button().disabled).toBe(false);
+    cmp()['lines'].at(0).controls.amount.markAsDirty();
+    cmp()['form'].markAsDirty();
+    fixture.detectChanges();
+    expect(button().disabled).toBe(true);
+    expect(el().textContent).toContain('Save your changes first');
+  });
+
+  it('moving a date later: the 409 asks first, then re-sends with the confirmation', async () => {
+    openEdit();
+    const confirm = vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(true);
+    cmp()['lines'].at(0).patchValue({ effectiveFrom: '2026-09-01' });
+    cmp()['save']();
+    const first = http.expectOne(`${API}/api/FeeStructure/7`);
+    expect(first.request.body.confirmDueRemoval).toBeUndefined();
+    first.flush({ status: false, statusCode: 409, message: 'Confirm.', data: { confirmationRequired: true, duesCount: 3, totalAmount: 7500 } }, { status: 409, statusText: 'Conflict' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0][0].message).toContain('3 unpaid due(s)');
+    const second = http.expectOne(`${API}/api/FeeStructure/7`);
+    expect(second.request.body.confirmDueRemoval).toBe(true);
+    expect(second.request.body.details[0].effectiveFrom).toBe('2026-09-01');
+    second.flush(env({ feeStructureId: 7 }));
+    expect(navigate).toHaveBeenCalledWith(['/fee-setup/fee-structures']);
+  });
+
+  it('declining the confirmation sends nothing more', async () => {
+    openEdit();
+    vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(false);
+    cmp()['lines'].at(0).patchValue({ effectiveFrom: '2026-09-01' });
+    cmp()['save']();
+    http.expectOne(`${API}/api/FeeStructure/7`).flush({ status: false, statusCode: 409, message: 'Confirm.', data: { confirmationRequired: true, duesCount: 1, totalAmount: 100 } }, { status: 409, statusText: 'Conflict' });
+    await Promise.resolve();
+    await Promise.resolve();
+    http.expectNone(`${API}/api/FeeStructure/7`);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

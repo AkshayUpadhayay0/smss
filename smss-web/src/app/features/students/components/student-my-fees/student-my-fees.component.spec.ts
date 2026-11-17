@@ -13,7 +13,7 @@ const FEES: StudentMyFees = {
   academicYearName: '2026-27', hasFees: true, overallStatus: 'Overdue', totalDue: 48700, totalPaid: 11600, balance: 37100, overdueAmount: 20000, overdueCount: 2,
   heads: [
     { feeTypeName: 'Tuition Fee', frequencyName: 'Monthly', amount: 2500, concession: 250, netAmount: 2250, annualNetAmount: 27000 },
-    { feeTypeName: 'Annual Charges', frequencyName: 'Annual', amount: 5000, concession: 0, netAmount: 5000, annualNetAmount: 5000 },
+    { feeTypeName: 'Annual Charges', frequencyName: 'Annual', installmentPlan: 'NONE', amount: 5000, concession: 0, netAmount: 5000, annualNetAmount: 5000 },
   ],
   dues: [
     { feeTypeName: 'Tuition Fee', dueDate: '2026-04-10', amountDue: 2250, amountPaid: 2250, balance: 0, status: 'Paid' },

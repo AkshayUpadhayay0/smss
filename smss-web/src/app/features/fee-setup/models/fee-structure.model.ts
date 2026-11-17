@@ -28,10 +28,16 @@ export interface FeeStructureLine {
   amount: number;
   /** Day of the month a recurring fee falls due (1-31); null for One Time / Annual. */
   dueDay?: number | null;
+  /** From when the line is charged (yyyy-MM-dd). */
+  effectiveFrom: string;
+  /** Students already have dues for it: its frequency can no longer be changed. */
+  hasDues?: boolean;
 }
 
 /** The header together with its lines (GET by id). */
 export interface FeeStructure extends FeeStructureSummary {
+  /** Any student is assigned: a new line then defaults to starting today. */
+  hasAssignedStudents?: boolean;
   details: FeeStructureLine[];
 }
 
@@ -41,6 +47,8 @@ export interface FeeStructureLineRequest {
   amount: number;
   /** Required for Monthly / Quarterly / Half-Yearly; null otherwise. */
   dueDay: number | null;
+  /** yyyy-MM-dd, inside the structure's academic year. */
+  effectiveFrom: string;
 }
 
 export interface CreateFeeStructureRequest {
@@ -54,6 +62,44 @@ export interface CreateFeeStructureRequest {
 export interface UpdateFeeStructureRequest {
   structureName: string;
   details: FeeStructureLineRequest[];
+  /** Sent as true after the person confirmed that unpaid dues before a later effective date are removed. */
+  confirmDueRemoval?: boolean;
+}
+
+/** The 409 answer of an update that needs that confirmation. */
+export interface DueRemovalConfirmation {
+  confirmationRequired: boolean;
+  duesCount: number;
+  totalAmount: number;
+}
+
+export interface BackdatingStudent {
+  studentId: string;
+  studentName: string;
+  duesCount: number;
+  amount: number;
+}
+
+/** What "Apply to earlier months" would create (nothing is written by a preview). */
+export interface BackdatingPreview {
+  feeStructureId: number;
+  feeTypeId: number;
+  feeTypeName: string;
+  fromDate: string;
+  toDate: string;
+  currentEffectiveFrom: string;
+  studentsCount: number;
+  duesCount: number;
+  totalAmount: number;
+  students: BackdatingStudent[];
+}
+
+export interface BackdatingResult {
+  backdatingLogId?: number | null;
+  studentsCount: number;
+  duesCount: number;
+  totalAmount: number;
+  effectiveFrom: string;
 }
 
 /** lut_fee_frequency (global): One Time, Monthly, Quarterly, Half-Yearly, Annual. */

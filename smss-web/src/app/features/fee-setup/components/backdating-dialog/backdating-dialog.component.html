@@ -1,0 +1,47 @@
+<app-modal [title]="'Apply ' + feeTypeName() + ' to earlier months'" [dismissible]="!working()" (closed)="closed.emit()">
+  <div class="dialog">
+    <p class="intro">
+      This fee currently starts on <strong>{{ fmt(currentEffectiveFrom()) }}</strong>. Applying it to earlier months creates dues for the students already assigned to this
+      structure, dated from the date you choose up to today, and moves the start of this fee back to that date. Nothing is created until you confirm.
+    </p>
+
+    <div class="date-row">
+      <app-input label="Apply from" type="date" [required]="true" [formControl]="fromDate" [errorText]="dateError()" />
+      <app-button variant="secondary" [disabled]="working()" (click)="showPreview()">Show what will be created</app-button>
+    </div>
+
+    @if (preview(); as p) {
+      <section class="preview" aria-live="polite" aria-label="Preview">
+        @if (p.duesCount === 0) {
+          <p class="empty">Nothing to create: no student has a due in that period (or it was already applied).</p>
+        } @else {
+          <p class="summary">
+            <strong>{{ p.duesCount }}</strong> due(s) worth <strong>{{ inr(p.totalAmount) }}</strong> for <strong>{{ p.studentsCount }}</strong> student(s),
+            dated {{ fmt(p.fromDate) }} to {{ fmt(p.toDate) }}.
+          </p>
+          <div class="table" role="table" aria-label="Dues per student">
+            <div class="row head" role="row"><span role="columnheader">Student</span><span role="columnheader">Dues</span><span role="columnheader">Amount</span></div>
+            @for (s of p.students; track s.studentId) {
+              <div class="row" role="row">
+                <span role="cell">{{ s.studentName }} <small>{{ s.studentId }}</small></span>
+                <span role="cell">{{ s.duesCount }}</span>
+                <span role="cell">{{ inr(s.amount) }}</span>
+              </div>
+            }
+          </div>
+
+          <app-textarea label="Reason" [required]="true" [maxLength]="500" placeholder="Why are the earlier months being billed now?" [formControl]="reason" [errorText]="reasonError()" />
+          <label class="check">
+            <input type="checkbox" [formControl]="confirmed" />
+            I have checked the list above and want these dues created. This is recorded in the back-dating log.
+          </label>
+        }
+      </section>
+    }
+  </div>
+
+  <ng-container modal-footer>
+    <app-button variant="secondary" [disabled]="working()" (click)="closed.emit()">Cancel</app-button>
+    <app-button [disabled]="working() || !canApply() || !confirmed.value" (click)="apply()">{{ working() ? 'Working…' : 'Create earlier dues' }}</app-button>
+  </ng-container>
+</app-modal>

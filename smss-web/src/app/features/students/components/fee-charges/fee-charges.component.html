@@ -23,14 +23,16 @@
         No fee structure exists for this class and academic year. The student will be saved without fees; assign a structure later from their Fees tab.
       </p>
     } @else {
-      <p class="hint">Fee structure: <strong>{{ p.structureName }}</strong>. Change how often a fee head is paid if the parent prefers; amounts update below.</p>
+      <p class="hint">
+        Fee structure: <strong>{{ p.structureName }}</strong>. Fees are charged from <strong>{{ chargeFromLabel() }}</strong>. The amount is per billing cycle; an installment plan only splits each cycle into smaller payments.
+      </p>
 
       <div class="table" role="table" aria-label="Fee heads">
         <div class="row head" role="row">
           <span role="columnheader">Fee head</span>
-          <span role="columnheader">Pays</span>
+          <span role="columnheader">Installment plan</span>
           <span role="columnheader">Each installment</span>
-          <span role="columnheader">Payable this year</span>
+          <span role="columnheader">Payable from {{ chargeFromLabel() }}</span>
         </div>
         @for (r of rows(); track r.line.feeTypeId) {
           <div class="row" role="row" [class.excluded]="!r.applies">
@@ -47,19 +49,19 @@
               }
             </span>
             <span role="cell">
-              <select
-                [attr.aria-label]="'Payment frequency for ' + r.line.feeTypeName"
-                [disabled]="r.locked || !r.applies"
-                (change)="onFrequency(r.line, $event)"
-              >
-                @for (f of r.line.allowedFrequencies; track f.frequencyId) {
-                  <option [value]="f.frequencyId" [selected]="f.frequencyId === r.frequencyId">{{ f.frequencyName }}</option>
-                }
-              </select>
+              @if (r.locked) {
+                <small>One payment per cycle</small>
+              } @else {
+                <select [attr.aria-label]="'Installment plan for ' + r.line.feeTypeName" [disabled]="!r.applies" (change)="onPlan(r.line, $event)">
+                  @for (o of r.line.allowedPlans; track o.code) {
+                    <option [value]="o.code" [selected]="o.code === r.plan">{{ o.name }}</option>
+                  }
+                </select>
+              }
             </span>
             <span role="cell">
               @if (r.applies) {
-                {{ inr(r.perInstallment) }}@if (r.installments > 1) { <small> × {{ r.remaining }}@if (r.remaining < r.installments) { of {{ r.installments }} }</small> }
+                {{ inr(r.perInstallment) }}@if (r.remaining > 1) { <small> × {{ r.remaining }}</small> }
               } @else {
                 <small>Not included</small>
               }
@@ -68,19 +70,27 @@
           </div>
         }
         <div class="row total" role="row">
-          <span role="cell">Total payable this year</span>
+          <span role="cell">Total payable from {{ chargeFromLabel() }}</span>
           <span role="cell"></span>
           <span role="cell"></span>
           <span role="cell"><strong>{{ inr(yearTotal()) }}</strong></span>
         </div>
       </div>
+
+      @if (p.isBackdated) {
+        @if (!p.backdatingAllowed) {
+          <p class="hint warn" role="alert"><app-icon name="triangle-alert" [size]="16" />{{ p.backdatingMessage }}</p>
+        } @else {
+          <p class="hint warn" role="status">
+            <app-icon name="triangle-alert" [size]="16" />
+            Charging from an earlier date creates <strong>{{ backdated().count }}</strong> due(s) worth <strong>{{ inr(backdated().amount) }}</strong> that are already past. Review them, then confirm below.
+          </p>
+        }
+      }
       @if (hasOptional()) {
         <p class="hint">Tick an optional fee to include it for this student; it can also be changed later from their Fees tab.</p>
       }
-      @if (isPartYear()) {
-        <p class="hint">The student joins part-way through the year, so fees are owed only from their start month.</p>
-      }
-      <p class="hint">Concessions are applied after the student is added, from their Fees tab.</p>
+      <p class="hint">Concessions are chosen when a payment is collected.</p>
     }
   }
 </ng-template>

@@ -7,7 +7,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent, SelectComponent, SelectOption, TextareaComponent, InputComponent } from '../../../../shared/components';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
-import { FeeConfigurationComponent } from '../../../students/components/fee-configuration/fee-configuration.component';
+import { FeeConfigurationComponent } from '../../../students/components/fee-charges/fee-charges.component';
 import { FeeItemSelection } from '../../../students/models/student-billing.model';
 import { StudentService } from '../../../students/services/student.service';
 import { ACTIONS_BY_STATUS, Admission, AdmissionAction, AdmissionDetail } from '../../models/admission.model';

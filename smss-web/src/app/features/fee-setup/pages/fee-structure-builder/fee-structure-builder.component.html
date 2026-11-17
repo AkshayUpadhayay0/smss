@@ -82,6 +82,14 @@
               formControlName="amount"
               [errorText]="lineError(i, 'amount')"
             />
+            <app-input
+              label="Effective from"
+              type="date"
+              [required]="true"
+              formControlName="effectiveFrom"
+              [errorText]="lineError(i, 'effectiveFrom')"
+              helpText="Dues start on the first due date on or after this"
+            />
             <app-button
               class="remove"
               variant="danger-ghost"
@@ -92,6 +100,27 @@
             >
               <app-icon name="trash-2" [size]="16" />
             </app-button>
+            @if (saved(i); as s) {
+              <div class="row-extra">
+                @if (s.hasDues) {
+                  <span class="meta">Students have dues for this fee, so its frequency can't be changed.</span>
+                }
+                @if (isEdit()) {
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="form.dirty || saving()"
+                    [title]="form.dirty ? 'Save your changes first' : 'Bill the months before this fee starts'"
+                    (click)="openBackdating(i)"
+                  >
+                    <app-icon name="clock" [size]="14" />Apply to earlier months
+                  </app-button>
+                  @if (form.dirty) {
+                    <span class="meta">Save your changes first.</span>
+                  }
+                }
+              </div>
+            }
           </div>
         }
       </div>
@@ -122,4 +151,16 @@
       <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : isEdit() ? 'Update Fee Structure' : 'Save Fee Structure' }}</app-button>
     </div>
   </form>
+
+  @if (backdatingLine(); as line) {
+    <app-backdating-dialog
+      [feeStructureId]="loaded()!.feeStructureId"
+      [feeTypeId]="line.feeTypeId"
+      [feeTypeName]="line.feeTypeName"
+      [currentEffectiveFrom]="line.effectiveFrom.slice(0, 10)"
+      [yearStart]="yearRange()?.start ?? line.effectiveFrom.slice(0, 10)"
+      (closed)="backdatingLine.set(null)"
+      (applied)="onBackdatingApplied()"
+    />
+  }
 }

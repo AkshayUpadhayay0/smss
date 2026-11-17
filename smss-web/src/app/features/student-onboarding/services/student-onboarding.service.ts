@@ -28,8 +28,12 @@ export interface DirectStudentEntryRequest {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail: string | null;
-  /** Fee configuration chosen at admission (frequency per fee head). Omitted = the fee structure's defaults. */
+  /** Fee configuration chosen at admission (installment plan per fee head). Omitted = the fee structure's defaults. */
   feeItems?: FeeItemSelection[] | null;
+  /** The date fees are charged from (yyyy-MM-dd); omitted = today. An earlier date needs confirmBackdating and a reason. */
+  chargeFrom?: string | null;
+  confirmBackdating?: boolean;
+  backdatingReason?: string | null;
 }
 
 /** Mirrors StudentOnboardingResponseDto. The Aadhaar comes back already masked. */

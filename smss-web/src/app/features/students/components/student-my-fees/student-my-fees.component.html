@@ -42,7 +42,7 @@
         @for (h of f.heads; track $index) {
           <li>
             <span class="fee">{{ h.feeTypeName }}</span>
-            <span class="muted">{{ inr(h.netAmount) }} / {{ h.frequencyName }}@if (h.concession > 0) { · includes a concession of {{ inr(h.concession) }} }</span>
+            <span class="muted">{{ inr(h.netAmount) }} / {{ h.frequencyName }}@if (h.installmentPlan === 'QUARTERLY') { · paid quarterly } @else if (h.installmentPlan === 'MONTHLY') { · paid monthly }@if (h.concession > 0) { · includes a concession of {{ inr(h.concession) }} }</span>
             <span class="num">{{ inr(h.annualNetAmount) }} a year</span>
           </li>
         }

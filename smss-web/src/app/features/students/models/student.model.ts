@@ -208,6 +208,8 @@ export interface StudentMyProfile {
 export interface MyFeeHead {
   feeTypeName: string;
   frequencyName: string;
+  /** NONE | QUARTERLY | MONTHLY: how each billing cycle is paid. */
+  installmentPlan?: string;
   amount: number;
   concession: number;
   netAmount: number;

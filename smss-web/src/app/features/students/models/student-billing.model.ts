@@ -1,19 +1,25 @@
 // Mirrors StudentFeeItemsDto / StudentFeeDuesDto / FeePreviewDto and the admission-time FeeItemSelection.
 
-export interface FeeFrequencyOption {
-  frequencyId: number;
-  frequencyName: string;
-  frequencyCode: string;
-  /** Installments in a full academic year at this frequency. */
+/** How a billing cycle is split into installments (NONE | QUARTERLY | MONTHLY), as allowed for one fee line. */
+export interface InstallmentPlanOption {
+  code: string;
+  name: string;
+  /** Installments in each billing cycle (None = 1). */
+  installmentsPerCycle: number;
+  /** Installments in a full academic year under this plan. */
   installments: number;
-  /** Preview only: how many of them fall on or after the student's start month (a mid-year admission pays fewer). */
+  /** Preview only: how many fall on or after the start. */
   remainingInstallments?: number | null;
+  remainingAmount?: number | null;
+  /** Preview only: installments (and their total) dated before today that an earlier "Charge fees from" would create. */
+  backdatedInstallments?: number | null;
+  backdatedAmount?: number | null;
 }
 
-/** What is chosen for one fee head while admitting a student; anything left out falls back to the fee structure's default. */
+/** What is chosen for one fee head while admitting a student; anything left out falls back to None / the structure's default. */
 export interface FeeItemSelection {
   feeTypeId: number;
-  frequencyId?: number | null;
+  installmentPlan?: string | null;
   isApplicable?: boolean | null;
 }
 
@@ -30,7 +36,8 @@ export interface FeePreviewLine {
   structureFrequencyName: string;
   periodsPerYear: number;
   dueDay?: number | null;
-  allowedFrequencies: FeeFrequencyOption[];
+  effectiveFrom: string;
+  allowedPlans: InstallmentPlanOption[];
 }
 
 export interface FeePreview {
@@ -40,6 +47,12 @@ export interface FeePreview {
   hasFeeStructure: boolean;
   feeStructureId?: number | null;
   structureName?: string | null;
+  /** The date the preview was worked out from. */
+  chargeFrom: string;
+  /** The charge-from date is before today: needs a confirmation and a reason. */
+  isBackdated: boolean;
+  backdatingAllowed: boolean;
+  backdatingMessage?: string | null;
   lines: FeePreviewLine[];
 }
 
@@ -48,12 +61,15 @@ export interface StudentFeeItem {
   feeTypeId: number;
   feeTypeName: string;
   feeTypeCode: string;
-  /** The frequency THIS student pays it at. */
+  /** The billing cycle: always the fee line's frequency (amounts are per cycle). */
   frequencyId: number;
   frequencyName: string;
-  /** The frequency the fee structure charges it at (the amounts are per period of this). */
   structureFrequencyName: string;
-  allowedFrequencies: FeeFrequencyOption[];
+  /** NONE | QUARTERLY | MONTHLY: how each cycle is split into installments. */
+  installmentPlan: string;
+  installmentPlanName: string;
+  allowedPlans: InstallmentPlanOption[];
+  effectiveFrom?: string | null;
   dueDay?: number | null;
   /** Optional fees can be switched on/off per student; non-optional ones always apply. */
   isOptional: boolean;
@@ -87,6 +103,9 @@ export interface StudentFeeDue {
   feeTypeId?: number;
   feeTypeName: string;
   frequencyName: string;
+  installmentPlan?: string;
+  /** AUTO or BACKDATED. */
+  source?: string;
   dueDate: string;
   amountDue: number;
   amountPaid: number;
@@ -108,7 +127,7 @@ export interface StudentFeeDues {
 }
 
 export interface UpdateFeeItemRequest {
-  frequencyId?: number;
+  installmentPlan?: string;
   isApplicable?: boolean;
 }
 
@@ -132,6 +151,7 @@ export interface FeeItemRow extends Record<string, unknown> {
   studentFeeItemId: number;
   feeTypeName: string;
   frequencyName: string;
+  planName: string;
   applicable: string;
   netAmount: string;
   annualNet: string;

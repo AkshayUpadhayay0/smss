@@ -61,13 +61,29 @@
         <app-select label="Academic year" [required]="true" placeholder="Select…" [options]="yearOptions()" formControlName="academicYearId" [errorText]="err('academicYearId')" />
         <app-select label="Class – Section" [required]="true" placeholder="Select…" [options]="sectionOptions()" formControlName="classSectionId" [errorText]="err('classSectionId')" />
         <app-input label="Roll number" placeholder="Optional" formControlName="rollNumber" [errorText]="err('rollNumber')" />
+        <app-input
+          label="Charge fees from"
+          type="date"
+          [required]="true"
+          helpText="Fees are owed from the first due date on or after this date. Today by default."
+          formControlName="chargeFrom"
+          [errorText]="err('chargeFrom')"
+        />
       </div>
       @if (sectionOptions().length === 0) {
         <p class="hint">No active sections yet. Add classes and sections under School Setup first.</p>
       }
     </app-card>
 
-    <app-fee-configuration [academicYearId]="feeYearId()" [classId]="feeClassId()" [startDate]="feeStartDate()" (selectionsChange)="onFeeSelections($event)" />
+    <app-fee-configuration [academicYearId]="feeYearId()" [classId]="feeClassId()" [startDate]="feeStartDate()" (selectionsChange)="onFeeSelections($event)" (backdatingChange)="onBackdating($event)" />
+
+    @if (backdating(); as b) {
+      @if (b.isBackdated && b.allowed) {
+        <app-card title="Reason for charging earlier dues">
+          <app-textarea label="Reason" [required]="true" [maxLength]="500" placeholder="Why are earlier months being billed now?" formControlName="backdatingReason" />
+        </app-card>
+      }
+    }
 
     <app-card title="Student Details">
       <div class="grid">

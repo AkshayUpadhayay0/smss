@@ -37,8 +37,8 @@ export class ApiService {
     return this.unwrap(this.http.post<ApiResponse<T>>(this.url(path), body ?? {}, { context: this.context(options) }));
   }
 
-  put<T>(path: string, body?: unknown): Observable<T> {
-    return this.unwrap(this.http.put<ApiResponse<T>>(this.url(path), body ?? {}));
+  put<T>(path: string, body?: unknown, options?: ApiRequestOptions): Observable<T> {
+    return this.unwrap(this.http.put<ApiResponse<T>>(this.url(path), body ?? {}, { context: this.context(options) }));
   }
 
   delete<T>(path: string): Observable<T> {

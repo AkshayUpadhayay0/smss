@@ -25,7 +25,8 @@ const LINE_COLUMNS: TableColumn<StudentFeeLineRow>[] = [
 
 const ITEM_COLUMNS: TableColumn<FeeItemRow>[] = [
   { key: 'feeTypeName', label: 'Fee Head' },
-  { key: 'frequencyName', label: 'Pays' },
+  { key: 'frequencyName', label: 'Billed' },
+  { key: 'planName', label: 'Installment plan' },
   { key: 'applicable', label: 'Applies', type: 'badge' },
   { key: 'netAmount', label: 'Net / Period' },
   { key: 'annualNet', label: 'Net / Year' },
@@ -134,14 +135,15 @@ export class StudentFeesTabComponent implements OnInit {
 
   // ---- edit-item dialog
   protected readonly editing = signal<StudentFeeItem | null>(null);
-  protected readonly frequencyControl = new FormControl('', { nonNullable: true });
+  protected readonly planControl = new FormControl('NONE', { nonNullable: true });
   protected readonly applicableControl = new FormControl(true, { nonNullable: true });
 
   protected readonly itemRows = computed<FeeItemRow[]>(() =>
     (this.items()?.items ?? []).map((i) => ({
       studentFeeItemId: i.studentFeeItemId,
       feeTypeName: i.feeTypeName,
-      frequencyName: i.frequencyName === i.structureFrequencyName ? i.frequencyName : `${i.frequencyName} (structure: ${i.structureFrequencyName})`,
+      frequencyName: i.frequencyName,
+      planName: i.installmentPlan === 'NONE' ? 'None' : i.installmentPlanName,
       applicable: i.isApplicable ? 'Yes' : 'No',
       netAmount: `${formatInr(i.netAmount)} / ${i.structureFrequencyName}`,
       annualNet: i.isApplicable ? formatInr(i.annualNetAmount) : '—',
@@ -157,7 +159,7 @@ export class StudentFeesTabComponent implements OnInit {
     (this.dues()?.dues ?? []).map((d) => ({
       feeDueId: d.feeDueId,
       dueDate: formatDate(d.dueDate),
-      feeTypeName: d.feeTypeName,
+      feeTypeName: d.source === 'BACKDATED' ? `${d.feeTypeName} (back-dated)` : d.feeTypeName,
       amountDue: formatInr(d.amountDue),
       amountPaid: formatInr(d.amountPaid),
       status: d.status,
@@ -172,8 +174,8 @@ export class StudentFeesTabComponent implements OnInit {
     return { total: formatInr(d.totalDue), paid: formatInr(d.totalPaid), outstanding: formatInr(d.outstanding), overdue: formatInr(d.overdueAmount), overdueCount: d.overdueCount };
   });
 
-  protected readonly editFrequencyOptions = computed<SelectOption[]>(() =>
-    (this.editing()?.allowedFrequencies ?? []).map((f) => ({ label: f.frequencyName, value: String(f.frequencyId) })),
+  protected readonly editPlanOptions = computed<SelectOption[]>(() =>
+    (this.editing()?.allowedPlans ?? []).map((p) => ({ label: p.name, value: p.code })),
   );
   protected readonly describeValue = describeValue;
 
@@ -319,7 +321,7 @@ export class StudentFeesTabComponent implements OnInit {
   protected openEdit(row: FeeItemRow): void {
     const item = this.items()?.items.find((i) => i.studentFeeItemId === row.studentFeeItemId);
     if (!item) return;
-    this.frequencyControl.setValue(String(item.frequencyId));
+    this.planControl.setValue(item.installmentPlan);
     this.applicableControl.setValue(item.isApplicable);
     this.editing.set(item);
   }
@@ -327,8 +329,8 @@ export class StudentFeesTabComponent implements OnInit {
   protected submitEdit(): void {
     const item = this.editing();
     if (!item || this.busy()) return;
-    const body: { frequencyId?: number; isApplicable?: boolean } = {};
-    if (Number(this.frequencyControl.value) !== item.frequencyId) body.frequencyId = Number(this.frequencyControl.value);
+    const body: { installmentPlan?: string; isApplicable?: boolean } = {};
+    if (this.planControl.value !== item.installmentPlan) body.installmentPlan = this.planControl.value;
     if (this.applicableControl.value !== item.isApplicable) body.isApplicable = this.applicableControl.value;
     if (Object.keys(body).length === 0) {
       this.editing.set(null);

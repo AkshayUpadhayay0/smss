@@ -1,15 +1,19 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormArray, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { finalize, forkJoin, map, startWith } from 'rxjs';
+import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { extractErrorMessage } from '../../../../core/interceptors/error.interceptor';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { AcademicYear } from '../../../school-setup/models/academic-year.model';
 import { SchoolClass } from '../../../school-setup/models/class.model';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ClassService } from '../../../school-setup/services/class.service';
-import { FeeFrequency, FeeStructure, FeeStructureLineRequest, FeeTypeOption } from '../../models/fee-structure.model';
+import { BackdatingDialogComponent } from '../../components/backdating-dialog/backdating-dialog.component';
+import { DueRemovalConfirmation, FeeFrequency, FeeStructure, FeeStructureLine, FeeStructureLineRequest, FeeTypeOption } from '../../models/fee-structure.model';
 import { FeeStructureService } from '../../services/fee-structure.service';
 
 const MAX_AMOUNT = 9_999_999_999.99;
@@ -20,6 +24,8 @@ interface LineControls {
   /** Day of the month (1-31); only enabled (and required) for a recurring frequency. */
   dueDay: FormControl<string>;
   amount: FormControl<string>;
+  /** yyyy-MM-dd: from when this fee is charged. */
+  effectiveFrom: FormControl<string>;
 }
 
 /** Frequencies that fall due on a day of the month. One Time and Annual are a single charge and need no due day. */
@@ -46,6 +52,11 @@ function amountValidator(c: AbstractControl): ValidationErrors | null {
   return null;
 }
 
+const todayIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
@@ -54,7 +65,7 @@ const inr = (n: number) => '₹' + n.toLocaleString('en-IN', { minimumFractionDi
  */
 @Component({
   selector: 'app-fee-structure-builder',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, BackdatingDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './fee-structure-builder.component.scss',
   templateUrl: './fee-structure-builder.component.html',
@@ -65,6 +76,7 @@ export class FeeStructureBuilderComponent implements OnInit {
   private readonly classes = inject(ClassService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Bound from the :feeStructureId route param; absent when adding. */
@@ -133,6 +145,36 @@ export class FeeStructureBuilderComponent implements OnInit {
     );
   });
 
+  /** The chosen academic year's first and last day (yyyy-MM-dd): every effective date has to fall inside it. */
+  protected readonly yearRange = computed(() => this.rangeOf(this.value().academicYearId));
+
+  /** Read straight from the control (not the `value` signal, which lags one change behind inside a valueChanges handler). */
+  private currentRange(): { start: string; end: string } | null {
+    return this.rangeOf(this.form.controls.academicYearId.getRawValue());
+  }
+
+  private rangeOf(yearId: string): { start: string; end: string } | null {
+    const y = this.allYears().find((x) => String(x.academicYearId) === yearId);
+    return y ? { start: y.startDate.slice(0, 10), end: y.endDate.slice(0, 10) } : null;
+  }
+
+  /** Saved lines (by their form group): used for the backdating action and the frequency lock. */
+  private readonly savedLines = new Map<LineGroup, FeeStructureLine>();
+  /** The line whose "Apply to earlier months" dialog is open. */
+  protected readonly backdatingLine = signal<FeeStructureLine | null>(null);
+
+  protected saved(index: number): FeeStructureLine | undefined {
+    return this.savedLines.get(this.lines.at(index));
+  }
+
+  /** The default date for a NEW line: today when students already have this structure (so adding a fee in September does not bill April to August), otherwise the first day of the year. */
+  private defaultEffective(): string {
+    const range = this.currentRange();
+    if (!range) return '';
+    const today = todayIso();
+    return this.loaded()?.hasAssignedStudents && today >= range.start && today <= range.end ? today : range.start;
+  }
+
   protected readonly frequencyOptions = computed<SelectOption[]>(() =>
     this.frequencies().map((f) => ({ label: f.frequencyName, value: String(f.frequencyId) })),
   );
@@ -165,6 +207,13 @@ export class FeeStructureBuilderComponent implements OnInit {
     };
     this.form.controls.classId.valueChanges.pipe(takeUntilDestroyed()).subscribe(maybeSuggest);
     this.form.controls.academicYearId.valueChanges.pipe(takeUntilDestroyed()).subscribe(maybeSuggest);
+    // choosing (or changing) the year gives every still-untouched date the new year's default
+    this.form.controls.academicYearId.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      for (const l of this.lines.controls) {
+        if (!this.savedLines.has(l) && !l.controls.effectiveFrom.dirty) l.controls.effectiveFrom.setValue(this.defaultEffective());
+        l.controls.effectiveFrom.updateValueAndValidity();
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -195,8 +244,16 @@ export class FeeStructureBuilderComponent implements OnInit {
           if (s) {
             this.loaded.set(s);
             this.lines.clear();
+            this.savedLines.clear();
             this.form.patchValue({ academicYearId: String(s.academicYearId), classId: String(s.classId), structureName: s.structureName });
-            for (const d of s.details) this.lines.push(this.newLine(String(d.feeTypeId), String(d.frequencyId), String(d.amount), d.dueDay == null ? '' : String(d.dueDay)));
+            for (const d of s.details) {
+              const g = this.newLine(String(d.feeTypeId), String(d.frequencyId), String(d.amount), d.dueDay == null ? '' : String(d.dueDay), d.effectiveFrom?.slice(0, 10) ?? '');
+              this.savedLines.set(g, d);
+              // students already have dues for it: the frequency is locked (a different frequency is a new line with its own date)
+              if (d.hasDues) g.controls.frequencyId.disable({ emitEvent: false });
+              this.lines.push(g);
+            }
+            this.form.markAsPristine();
             // A structure belongs to ONE class and year; changing them would be a different structure
             this.form.controls.academicYearId.disable();
             this.form.controls.classId.disable();
@@ -208,12 +265,13 @@ export class FeeStructureBuilderComponent implements OnInit {
       });
   }
 
-  private newLine(feeTypeId = '', frequencyId = '', amount = '', dueDay = ''): LineGroup {
+  private newLine(feeTypeId = '', frequencyId = '', amount = '', dueDay = '', effectiveFrom = ''): LineGroup {
     const group = new FormGroup<LineControls>({
       feeTypeId: new FormControl(feeTypeId, { nonNullable: true, validators: [Validators.required] }),
       frequencyId: new FormControl(frequencyId, { nonNullable: true, validators: [Validators.required] }),
       dueDay: new FormControl(dueDay, { nonNullable: true, validators: [Validators.required, dueDayValidator] }),
       amount: new FormControl(amount, { nonNullable: true, validators: [Validators.required, amountValidator] }),
+      effectiveFrom: new FormControl(effectiveFrom, { nonNullable: true, validators: [Validators.required, (c: AbstractControl) => this.effectiveValidator(c)] }),
     });
     // The due day only applies to a recurring frequency: enable / require it for those, switch it off (and clear it) otherwise
     const sync = () => {
@@ -232,6 +290,16 @@ export class FeeStructureBuilderComponent implements OnInit {
     return group;
   }
 
+  /** The date must lie inside the academic year of the structure. */
+  private effectiveValidator(c: AbstractControl): ValidationErrors | null {
+    const v = String(c.value ?? '');
+    const range = this.currentRange();
+    if (!v || !range) return null; // `required` reports the empty case
+    if (v < range.start) return { amount: 'Cannot be before the start of the academic year' };
+    if (v > range.end) return { amount: 'Cannot be after the end of the academic year' };
+    return null;
+  }
+
   /** True when the frequency (by id) is Monthly, Quarterly or Half-Yearly. */
   protected isRecurring(frequencyId: string): boolean {
     const f = this.frequencies().find((x) => String(x.frequencyId) === frequencyId);
@@ -239,11 +307,14 @@ export class FeeStructureBuilderComponent implements OnInit {
   }
 
   protected addLine(): void {
-    this.lines.push(this.newLine());
+    this.lines.push(this.newLine('', '', '', '', this.defaultEffective()));
   }
 
   protected removeLine(index: number): void {
-    if (this.lines.length > 1) this.lines.removeAt(index);
+    if (this.lines.length > 1) {
+      this.savedLines.delete(this.lines.at(index));
+      this.lines.removeAt(index);
+    }
   }
 
   protected error(control: AbstractControl | null): string | undefined {
@@ -274,12 +345,17 @@ export class FeeStructureBuilderComponent implements OnInit {
       frequencyId: Number(l.frequencyId),
       amount: Number(l.amount),
       dueDay: this.isRecurring(l.frequencyId) ? Number(l.dueDay) : null,
+      effectiveFrom: l.effectiveFrom,
     }));
     const structureName = v.structureName.trim();
 
+    this.send(structureName, details, v, false);
+  }
+
+  private send(structureName: string, details: FeeStructureLineRequest[], v: { academicYearId: string; classId: string }, confirmDueRemoval: boolean): void {
     this.saving.set(true);
     const request$ = this.isEdit()
-      ? this.service.update(Number(this.feeStructureId()), { structureName, details })
+      ? this.service.update(Number(this.feeStructureId()), { structureName, details, ...(confirmDueRemoval ? { confirmDueRemoval: true } : {}) })
       : this.service.create({ academicYearId: Number(v.academicYearId), classId: Number(v.classId), structureName, details });
 
     request$.pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -287,7 +363,36 @@ export class FeeStructureBuilderComponent implements OnInit {
         this.toast.success(`Fee structure ${this.isEdit() ? 'updated' : 'created'} successfully.`);
         void this.router.navigate(['/fee-setup/fee-structures']);
       },
-      error: () => undefined, // the server's reason (e.g. 409 duplicate class + year) is toasted; the form stays as it is
+      error: (e: unknown) => {
+        const body = e instanceof HttpErrorResponse ? (e.error as { data?: DueRemovalConfirmation } | null) : null;
+        if (e instanceof HttpErrorResponse && e.status === 409 && body?.data?.confirmationRequired) {
+          // moving a date later removes unpaid dues: show how many and ask
+          const c = body.data;
+          void this.confirmDialog
+            .confirm({
+              title: 'Move the start date later?',
+              message: `This removes ${c.duesCount} unpaid due(s) worth ${inr(c.totalAmount)} dated before the new date. Payments already made are never touched.`,
+              confirmText: 'Remove and save',
+              variant: 'danger',
+            })
+            .then((ok) => {
+              if (ok) this.send(structureName, details, v, true);
+            });
+          return;
+        }
+        // the server's reason (409 duplicate class + year, frequency locked, ...) is shown here: the update skips the global toast so the confirmation above can be answered
+        if (e instanceof HttpErrorResponse) this.toast.error(extractErrorMessage(e));
+      },
     });
+  }
+
+  protected openBackdating(index: number): void {
+    const line = this.saved(index);
+    if (line) this.backdatingLine.set(line);
+  }
+
+  protected onBackdatingApplied(): void {
+    this.backdatingLine.set(null);
+    this.load(); // the line's effective date has moved back
   }
 }
