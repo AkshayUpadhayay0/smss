@@ -114,6 +114,8 @@ namespace smss_api_service_layer.dto
         public decimal Amount { get; set; }
         public int? DueDay { get; set; }
         public DateOnly EffectiveFrom { get; set; }
+        /// <summary>True when students already have dues for this fee: its frequency can't be changed any more (add a new line instead).</summary>
+        public bool HasDues { get; set; }
     }
 
     /// <summary>List row: the header plus how many lines it has.</summary>
@@ -136,6 +138,8 @@ namespace smss_api_service_layer.dto
     /// <summary>The header together with its lines (fee type and frequency names joined), for the structure builder.</summary>
     public class FeeStructureResponse : FeeStructureSummaryResponse
     {
+        /// <summary>True when any student is assigned to the structure (a new line then defaults to starting today).</summary>
+        public bool HasAssignedStudents { get; set; }
         public List<FeeStructureLineResponse> Details { get; set; } = new();
     }
 

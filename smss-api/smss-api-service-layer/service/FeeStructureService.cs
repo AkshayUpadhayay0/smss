@@ -269,10 +269,12 @@ namespace smss_api_service_layer.service
             var lines = await _repo.GetLinesAsync(s.FeeStructureId);
 
             var dto = ToSummary(new FeeStructureResponse(), s, year, cls, lines.Count);
+            dto.HasAssignedStudents = await _repo.HasAssignedStudentsAsync(s.SchoolId, s.FeeStructureId);
+            var withDues = await _repo.GetFeeTypeIdsWithDuesAsync(s.SchoolId, s.FeeStructureId);
             dto.Details = lines.Select(l => new FeeStructureLineResponse
             {
                 FeeStructureDetailId = l.FeeStructureDetailId, FeeTypeId = l.FeeTypeId, FeeTypeName = l.FeeTypeName, FeeTypeCode = l.FeeTypeCode,
-                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount, DueDay = l.DueDay, EffectiveFrom = l.EffectiveFrom
+                FrequencyId = l.FrequencyId, FrequencyName = l.FrequencyName, Amount = l.Amount, DueDay = l.DueDay, EffectiveFrom = l.EffectiveFrom, HasDues = withDues.Contains(l.FeeTypeId)
             }).ToList();
             return dto;
         }

@@ -70,6 +70,13 @@ namespace smss_api_db_layer.repository
             return y == null ? null : (y.StartDate, y.EndDate, y.IsCurrent);
         }
 
+        public async Task<HashSet<long>> GetFeeTypeIdsWithDuesAsync(string schoolId, long feeStructureId) =>
+            (await (from d in _db.StudentFeeDues.AsNoTracking()
+                    join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                    join a in _db.StudentFeeStructures.AsNoTracking() on new { i.StudentId, i.AcademicYearId } equals new { a.StudentId, a.AcademicYearId }
+                    where d.SchoolId == schoolId && a.SchoolId == schoolId && a.FeeStructureId == feeStructureId
+                    select i.FeeTypeId).Distinct().ToListAsync()).ToHashSet();
+
         public Task<bool> HasAssignedStudentsAsync(string schoolId, long feeStructureId) =>
             _db.StudentFeeStructures.AnyAsync(a => a.SchoolId == schoolId && a.FeeStructureId == feeStructureId);
 

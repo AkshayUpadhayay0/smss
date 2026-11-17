@@ -634,6 +634,20 @@ namespace smss_api_tests
             Assert.Equal(Monthly, db.Scalar<long>($"select i.frequency_id from tb_student_fee_items i join tb_fee_types t on t.fee_type_id=i.fee_type_id where i.student_id='GHS001ST002' and t.fee_type_name='Tuition Fee'"));
         }
 
+        [DbFact]
+        public async Task TheStructureDetail_SaysWhetherStudentsAreAssignedAndWhichLinesHaveDues()
+        {
+            using var db = new TaxDb(); using var r = Open(db);
+            var sports = NewFeeType(db, "Sports Fee");
+            var trip = NewFeeType(db, "Trip Fee", optional: true);   // nobody opted in: no dues
+            Assert.Equal(200, (await Save(r, l => { l.Add(Line(sports, Monthly, 600, 10)); l.Add(Line(trip, Monthly, 300, 10)); })).StatusCode);
+            var d = (FeeStructureResponse)(await r.Structures.GetByIdAsync(TaxDb.SchoolA, Nursery)).Data!;
+            Assert.True(d.HasAssignedStudents);
+            Assert.True(d.Details.Single(x => x.FeeTypeId == sports).HasDues);
+            Assert.False(d.Details.Single(x => x.FeeTypeId == trip).HasDues);
+            Assert.All(d.Details, x => Assert.NotEqual(default, x.EffectiveFrom));
+        }
+
         [Fact]
         public void TheAuditReportFile_IsReadOnly()
         {

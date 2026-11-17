@@ -35,6 +35,8 @@ namespace smss_api_db_layer.@interface
         Task<List<FeeStructureLineRow>> GetLinesAsync(long feeStructureId);
         /// <summary>Start, end and "current" flag of this school's academic year, or null.</summary>
         Task<(DateOnly Start, DateOnly End, bool IsCurrent)?> GetYearRangeAsync(string schoolId, long academicYearId);
+        /// <summary>Fee types of the structure that at least one assigned student has a due for.</summary>
+        Task<HashSet<long>> GetFeeTypeIdsWithDuesAsync(string schoolId, long feeStructureId);
         /// <summary>True when any student is assigned to the structure.</summary>
         Task<bool> HasAssignedStudentsAsync(string schoolId, long feeStructureId);
         /// <summary>Every due (TRACKED) of every student assigned to the structure, for one fee head.</summary>
