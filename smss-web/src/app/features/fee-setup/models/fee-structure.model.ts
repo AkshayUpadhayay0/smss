@@ -64,6 +64,8 @@ export interface UpdateFeeStructureRequest {
   details: FeeStructureLineRequest[];
   /** Sent as true after the person confirmed that unpaid dues before a later effective date are removed. */
   confirmDueRemoval?: boolean;
+  /** Sent as true after the person confirmed that removing a fee line deletes the unpaid dues of its students (see LineRemovalConfirmation). */
+  confirmLineRemoval?: boolean;
 }
 
 /** The 409 answer of an update that needs that confirmation. */
@@ -71,6 +73,29 @@ export interface DueRemovalConfirmation {
   confirmationRequired: boolean;
   duesCount: number;
   totalAmount: number;
+  /** Present (LINE_REMOVAL) when the confirmation is for removing fee lines rather than for moving a date. */
+  kind?: 'LINE_REMOVAL';
+  lines?: LineRemovalImpact[];
+  pastCount?: number;
+  pastAmount?: number;
+  futureCount?: number;
+  futureAmount?: number;
+  itemsDeactivated?: number;
+  itemsRemoved?: number;
+}
+
+/** What removing one fee line would do to the students already on the structure. */
+export interface LineRemovalImpact {
+  feeTypeId: number;
+  feeTypeName: string;
+  items: number;
+  itemsDeactivated: number;
+  itemsRemoved: number;
+  pastCount: number;
+  pastAmount: number;
+  futureCount: number;
+  futureAmount: number;
+  paidDuesKept: number;
 }
 
 export interface BackdatingStudent {

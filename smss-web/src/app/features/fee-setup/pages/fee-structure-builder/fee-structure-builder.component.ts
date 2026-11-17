@@ -349,13 +349,13 @@ export class FeeStructureBuilderComponent implements OnInit {
     }));
     const structureName = v.structureName.trim();
 
-    this.send(structureName, details, v, false);
+    this.send(structureName, details, v, {});
   }
 
-  private send(structureName: string, details: FeeStructureLineRequest[], v: { academicYearId: string; classId: string }, confirmDueRemoval: boolean): void {
+  private send(structureName: string, details: FeeStructureLineRequest[], v: { academicYearId: string; classId: string }, confirmed: { dueRemoval?: boolean; lineRemoval?: boolean }): void {
     this.saving.set(true);
     const request$ = this.isEdit()
-      ? this.service.update(Number(this.feeStructureId()), { structureName, details, ...(confirmDueRemoval ? { confirmDueRemoval: true } : {}) })
+      ? this.service.update(Number(this.feeStructureId()), { structureName, details, ...(confirmed.dueRemoval ? { confirmDueRemoval: true } : {}), ...(confirmed.lineRemoval ? { confirmLineRemoval: true } : {}) })
       : this.service.create({ academicYearId: Number(v.academicYearId), classId: Number(v.classId), structureName, details });
 
     request$.pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -366,17 +366,18 @@ export class FeeStructureBuilderComponent implements OnInit {
       error: (e: unknown) => {
         const body = e instanceof HttpErrorResponse ? (e.error as { data?: DueRemovalConfirmation } | null) : null;
         if (e instanceof HttpErrorResponse && e.status === 409 && body?.data?.confirmationRequired) {
-          // moving a date later removes unpaid dues: show how many and ask
+          // moving a date later, or removing a fee line, deletes unpaid dues: show how many (and what) and ask
           const c = body.data;
+          const removal = c.kind === 'LINE_REMOVAL';
           void this.confirmDialog
             .confirm({
-              title: 'Move the start date later?',
-              message: `This removes ${c.duesCount} unpaid due(s) worth ${inr(c.totalAmount)} dated before the new date. Payments already made are never touched.`,
-              confirmText: 'Remove and save',
+              title: removal ? 'Remove this fee from the structure?' : 'Move the start date later?',
+              message: removal ? this.removalMessage(c) : `This removes ${c.duesCount} unpaid due(s) worth ${inr(c.totalAmount)} dated before the new date. Payments already made are never touched.`,
+              confirmText: removal ? 'Remove fee and delete dues' : 'Remove and save',
               variant: 'danger',
             })
             .then((ok) => {
-              if (ok) this.send(structureName, details, v, true);
+              if (ok) this.send(structureName, details, v, { ...confirmed, ...(removal ? { lineRemoval: true } : { dueRemoval: true }) });
             });
           return;
         }
@@ -384,6 +385,20 @@ export class FeeStructureBuilderComponent implements OnInit {
         if (e instanceof HttpErrorResponse) this.toast.error(extractErrorMessage(e));
       },
     });
+  }
+
+  /** The numbers of the dry run, in words: what is deleted (past and future), what is kept, what is switched off. */
+  private removalMessage(c: DueRemovalConfirmation): string {
+    const lines = c.lines ?? [];
+    const per = lines
+      .map((l) => `${l.feeTypeName}: ${l.pastCount + l.futureCount} unpaid due(s) worth ${inr(l.pastAmount + l.futureAmount)} (${l.pastCount} past, ${inr(l.pastAmount)}; ${l.futureCount} future, ${inr(l.futureAmount)})`)
+      .join('. ');
+    const switchedOff = c.itemsDeactivated ?? 0;
+    return (
+      `${per}. ` +
+      (switchedOff > 0 ? `${switchedOff} student fee item(s) already have payments: they are kept but switched off. ` : '') +
+      `Dues with a payment are never touched. This is recorded in the removal log.`
+    );
   }
 
   protected openBackdating(index: number): void {

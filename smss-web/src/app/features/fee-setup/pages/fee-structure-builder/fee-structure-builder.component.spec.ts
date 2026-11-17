@@ -292,6 +292,62 @@ describe('FeeStructureBuilderComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/fee-setup/fee-structures']);
   });
 
+  const REMOVAL_409 = {
+    status: false, statusCode: 409, message: 'Removing Tuition Fee deletes 49 unpaid due(s).',
+    data: {
+      confirmationRequired: true, kind: 'LINE_REMOVAL', pastCount: 30, pastAmount: 54000, futureCount: 19, futureAmount: 34200, itemsDeactivated: 2, itemsRemoved: 10,
+      lines: [{ feeTypeId: 100, feeTypeName: 'Tuition Fee', items: 12, itemsDeactivated: 2, itemsRemoved: 10, pastCount: 30, pastAmount: 54000, futureCount: 19, futureAmount: 34200, paidDuesKept: 2 }],
+    },
+  };
+
+  function removeSavedLine() {
+    cmp()['addLine']();
+    fillLine(1, '101', '5', '500');     // an Annual fee replaces the Monthly one
+    cmp()['removeLine'](0);
+    fixture.detectChanges();
+  }
+
+  it('removing a fee line: the 409 shows the past / future numbers, and only a confirmed save re-sends with confirmLineRemoval', async () => {
+    openEdit();
+    const confirm = vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(true);
+    removeSavedLine();
+    cmp()['save']();
+    const first = http.expectOne(`${API}/api/FeeStructure/7`);
+    expect(first.request.body.confirmLineRemoval).toBeUndefined();
+    expect(first.request.body.details).toHaveLength(1);
+    first.flush(REMOVAL_409, { status: 409, statusText: 'Conflict' });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    const asked = confirm.mock.calls[0][0];
+    expect(asked.title).toContain('Remove this fee');
+    expect(asked.message).toContain('Tuition Fee: 49 unpaid due(s) worth ₹88,200.00');
+    expect(asked.message).toContain('30 past, ₹54,000.00');
+    expect(asked.message).toContain('19 future, ₹34,200.00');
+    expect(asked.message).toContain('2 student fee item(s) already have payments');
+    expect(asked.message).toContain('Dues with a payment are never touched');
+
+    const second = http.expectOne(`${API}/api/FeeStructure/7`);
+    expect(second.request.body.confirmLineRemoval).toBe(true);
+    expect(second.request.body.confirmDueRemoval).toBeUndefined();
+    second.flush(env({ feeStructureId: 7 }));
+    expect(navigate).toHaveBeenCalledWith(['/fee-setup/fee-structures']);
+  });
+
+  it('declining the line-removal confirmation sends nothing more and keeps the page as it is', async () => {
+    openEdit();
+    vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(false);
+    removeSavedLine();
+    cmp()['save']();
+    http.expectOne(`${API}/api/FeeStructure/7`).flush(REMOVAL_409, { status: 409, statusText: 'Conflict' });
+    await Promise.resolve();
+    await Promise.resolve();
+    http.expectNone(`${API}/api/FeeStructure/7`);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(cmp()['saving']()).toBe(false);
+  });
+
   it('declining the confirmation sends nothing more', async () => {
     openEdit();
     vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(false);
