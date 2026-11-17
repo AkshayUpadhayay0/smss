@@ -650,7 +650,11 @@ namespace smss_api_tests
             var t1 = Task.Run(() => Save(r1, l => l.Add(Line(a, Monthly, 300, 10, r1.Today))));
             var t2 = Task.Run(() => Save(r2, l => l.Add(Line(b, Monthly, 400, 10, r2.Today))));
             var results = await Task.WhenAll(t1, t2);
-            Assert.All(results, x => Assert.Equal(200, x.StatusCode));
+            // The saves are serialised. The one that runs second was built from a snapshot WITHOUT the other's new line, so saving it would silently drop that line: that now needs the removal
+            // confirmation (409) instead of quietly losing the other admin's work. Either way: no error, at least one save went through, and nothing was deleted without being asked.
+            Assert.All(results, x => Assert.True(x.StatusCode == 200 || (x.StatusCode == 409 && x.Message.Contains("Confirm to continue")), $"unexpected {x.StatusCode}: {x.Message}"));
+            Assert.Contains(results, x => x.StatusCode == 200);
+            Assert.Equal(0, db.Scalar<long>("select count(*) from tb_fee_line_removal_log"));                                  // the refused one logged nothing
             // whatever the final set of lines is, every student has exactly one item per fee head and at most one due per month of an item
             Assert.Equal(0, db.Scalar<long>("select count(*) from (select student_id, academic_year_id, fee_type_id from tb_student_fee_items group by 1,2,3 having count(*)>1) x"));
             Assert.Equal(0, db.Scalar<long>("select count(*) from (select student_fee_item_id, extract(year from due_date)*12+extract(month from due_date) m from tb_student_fee_dues group by 1,2 having count(*)>1) x"));
