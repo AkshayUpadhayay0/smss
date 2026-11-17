@@ -229,7 +229,7 @@ namespace smss_api_tests
 
             var current = (FeeStructureResponse)(await r.Structures.GetByIdAsync(TaxDb.SchoolA, Nursery)).Data!;
             var lines = current.Details.Where(d => d.FeeTypeId != tuition).Select(d => new FeeStructureLineRequest { FeeTypeId = d.FeeTypeId, FrequencyId = d.FrequencyId, Amount = d.Amount, DueDay = d.DueDay ?? 10, EffectiveFrom = d.EffectiveFrom }).ToList();
-            var res = await r.Structures.UpdateAsync(TaxDb.SchoolA, Nursery, new UpdateFeeStructureRequest { StructureName = current.StructureName, Details = lines });
+            var res = await r.Structures.UpdateAsync(TaxDb.SchoolA, Nursery, new UpdateFeeStructureRequest { StructureName = current.StructureName, Details = lines, ConfirmLineRemoval = true }, UserA);
             Assert.Equal(200, res.StatusCode);
 
             // the student WITH payments: item kept but switched off; the two dues with money stay exactly as they were; every unpaid due (past and future) is gone

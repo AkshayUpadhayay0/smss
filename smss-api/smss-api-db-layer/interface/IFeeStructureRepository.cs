@@ -25,6 +25,9 @@ namespace smss_api_db_layer.@interface
         public int LineCount { get; set; }
     }
 
+    /// <summary>One due of one student item of a fee head (DueDate null: the item has no dues at all). Used to work out what removing a fee line would do.</summary>
+    public record LineRemovalFact(long ItemId, DateOnly? DueDate, decimal AmountDue, decimal AmountPaid);
+
     // Every method takes the school id: another school's structures can never be reached through this repository.
     public interface IFeeStructureRepository
     {
@@ -41,6 +44,9 @@ namespace smss_api_db_layer.@interface
         Task<bool> HasAssignedStudentsAsync(string schoolId, long feeStructureId);
         /// <summary>Every due (TRACKED) of every student assigned to the structure, for one fee head.</summary>
         Task<List<TbStudentFeeDue>> GetLineDuesAsync(string schoolId, long feeStructureId, long feeTypeId);
+        /// <summary>Every student item of one fee head on the structure's students (for the structure's year), each with its dues, read fresh and untracked.</summary>
+        Task<List<LineRemovalFact>> GetLineRemovalFactsAsync(string schoolId, long feeStructureId, long feeTypeId);
+        void AddRemovalLog(TbFeeLineRemovalLog row);
         /// <summary>Deletes the dues with these ids (they are loaded through the change tracker first, so a due already tracked in this request is not attached twice).</summary>
         Task RemoveDuesAsync(IReadOnlyCollection<long> dueIds);
         /// <summary>Takes a transaction-scoped lock for every fee structure save of this school (released at commit / rollback), so two admins cannot sync the same structure at once.</summary>

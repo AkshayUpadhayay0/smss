@@ -101,6 +101,33 @@ namespace smss_api_service_layer.dto
         /// the removal and save.
         /// </summary>
         public bool ConfirmDueRemoval { get; set; }
+
+        /// <summary>
+        /// Removing a fee line deletes the unpaid dues of the students already on it (and switches off items that have a payment). The first save answers 409 with the counts and amounts
+        /// (past and future); send true to confirm. Dues with any payment are never touched. Every confirmed removal is written to the removal log.
+        /// </summary>
+        public bool ConfirmLineRemoval { get; set; }
+    }
+
+    /// <summary>What removing one fee line would do (or did) to the students already on the structure.</summary>
+    public class LineRemovalImpactDto
+    {
+        public long FeeTypeId { get; set; }
+        public string FeeTypeName { get; set; } = null!;
+        /// <summary>Student items on this fee head (every student on the structure has one).</summary>
+        public int Items { get; set; }
+        /// <summary>Items with a payment: kept but switched off.</summary>
+        public int ItemsDeactivated { get; set; }
+        /// <summary>Items with no payment: removed with their dues.</summary>
+        public int ItemsRemoved { get; set; }
+        /// <summary>Unpaid dues dated before today.</summary>
+        public int PastCount { get; set; }
+        public decimal PastAmount { get; set; }
+        /// <summary>Unpaid dues dated today or later.</summary>
+        public int FutureCount { get; set; }
+        public decimal FutureAmount { get; set; }
+        /// <summary>Dues with a payment: left exactly as they are.</summary>
+        public int PaidDuesKept { get; set; }
     }
 
     public class FeeStructureLineResponse

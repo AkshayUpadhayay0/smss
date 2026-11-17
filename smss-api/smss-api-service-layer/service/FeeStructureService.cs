@@ -100,7 +100,7 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error(ex, "creating fee structure"); }
         }
 
-        public async Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateFeeStructureRequest req)
+        public async Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateFeeStructureRequest req, long userId = 0)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             try
@@ -155,8 +155,42 @@ namespace smss_api_service_layer.service
                     }
                 }
 
+                // ---- removing a line: the dry run. Counts and amounts of what it would delete, answered as a 409 until the request carries the confirmation ----
+                var removedLines = entity.Details.Where(d => !wanted.ContainsKey(d.FeeTypeId)).ToList();
+                var removals = new List<LineRemovalImpactDto>();
+                if (removedLines.Count > 0)
+                {
+                    var names = (await _repo.GetLinesAsync(entity.FeeStructureId)).ToDictionary(x => x.FeeTypeId, x => x.FeeTypeName);
+                    foreach (var line in removedLines)
+                        removals.Add(await RemovalImpactAsync(schoolId, entity.FeeStructureId, line.FeeTypeId, names.GetValueOrDefault(line.FeeTypeId, "this fee"), today));
+                    if (removals.Any(r => r.Items > 0) && !req.ConfirmLineRemoval)
+                    {
+                        var pastN = removals.Sum(r => r.PastCount); var futN = removals.Sum(r => r.FutureCount);
+                        return new ApiResponse<object>
+                        {
+                            Status = false, StatusCode = 409,
+                            Message = $"Removing {string.Join(", ", removals.Select(r => r.FeeTypeName))} deletes {pastN + futN} unpaid due(s) worth {removals.Sum(r => r.PastAmount + r.FutureAmount):0.00} " +
+                                      $"({pastN} past, {futN} future) and switches off {removals.Sum(r => r.ItemsDeactivated)} student fee item(s) that have payments. Dues with a payment are kept. Confirm to continue.",
+                            Data = new
+                            {
+                                confirmationRequired = true, kind = "LINE_REMOVAL", lines = removals,
+                                pastCount = pastN, pastAmount = removals.Sum(r => r.PastAmount), futureCount = futN, futureAmount = removals.Sum(r => r.FutureAmount),
+                                itemsDeactivated = removals.Sum(r => r.ItemsDeactivated), itemsRemoved = removals.Sum(r => r.ItemsRemoved)
+                            }
+                        };
+                    }
+                    // confirmed (or nothing to confirm): one audit row per removed line, in the same transaction as the removal itself
+                    foreach (var r in removals)
+                        _repo.AddRemovalLog(new TbFeeLineRemovalLog
+                        {
+                            SchoolId = schoolId, FeeStructureId = entity.FeeStructureId, FeeTypeId = r.FeeTypeId, FeeTypeName = r.FeeTypeName,
+                            ItemsDeactivated = r.ItemsDeactivated, ItemsRemoved = r.ItemsRemoved, PastDuesDeleted = r.PastCount, PastAmount = r.PastAmount,
+                            FutureDuesDeleted = r.FutureCount, FutureAmount = r.FutureAmount, PaidDuesKept = r.PaidDuesKept, CreatedBy = userId, CreatedAt = now
+                        });
+                }
+
                 // Lines are matched on fee type (unique per structure): update in place, add new ones, remove dropped ones
-                _repo.RemoveDetails(entity.Details.Where(d => !wanted.ContainsKey(d.FeeTypeId)).ToList());
+                _repo.RemoveDetails(removedLines);
                 var dueDayChanges = new List<(long FeeTypeId, int NewDueDay)>();
                 foreach (var d in entity.Details.Where(d => wanted.ContainsKey(d.FeeTypeId)))
                 {
@@ -190,6 +224,28 @@ namespace smss_api_service_layer.service
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, "A fee type appears twice on this structure."); }
             catch (Exception ex) { return Error(ex, "updating fee structure"); }
+        }
+
+        /// <summary>
+        /// What the sync does to the students' items of a removed line, worked out beforehand: an item with a payment is kept but switched off and loses its UNPAID dues; an item with no payment is
+        /// removed with all its dues; a due with any payment (even part-paid) is never touched. Past = due before today.
+        /// </summary>
+        private async Task<LineRemovalImpactDto> RemovalImpactAsync(string schoolId, long structureId, long feeTypeId, string name, DateOnly today)
+        {
+            var impact = new LineRemovalImpactDto { FeeTypeId = feeTypeId, FeeTypeName = name };
+            foreach (var item in (await _repo.GetLineRemovalFactsAsync(schoolId, structureId, feeTypeId)).GroupBy(f => f.ItemId))
+            {
+                var dues = item.Where(f => f.DueDate != null).ToList();
+                impact.Items++;
+                if (dues.Any(f => f.AmountPaid > 0)) impact.ItemsDeactivated++; else impact.ItemsRemoved++;
+                impact.PaidDuesKept += dues.Count(f => f.AmountPaid > 0);
+                foreach (var f in dues.Where(f => f.AmountPaid == 0))
+                {
+                    if (f.DueDate!.Value < today) { impact.PastCount++; impact.PastAmount += f.AmountDue; }
+                    else { impact.FutureCount++; impact.FutureAmount += f.AmountDue; }
+                }
+            }
+            return impact;
         }
 
         private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;

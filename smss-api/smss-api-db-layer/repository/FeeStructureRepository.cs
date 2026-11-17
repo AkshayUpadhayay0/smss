@@ -87,6 +87,20 @@ namespace smss_api_db_layer.repository
              where d.SchoolId == schoolId && a.SchoolId == schoolId && a.FeeStructureId == feeStructureId && i.FeeTypeId == feeTypeId
              select d).ToListAsync();
 
+        public async Task<List<LineRemovalFact>> GetLineRemovalFactsAsync(string schoolId, long feeStructureId, long feeTypeId)
+        {
+            var rows = await (
+                from i in _db.StudentFeeItems.AsNoTracking()
+                join a in _db.StudentFeeStructures.AsNoTracking() on new { i.StudentId, i.AcademicYearId } equals new { a.StudentId, a.AcademicYearId }
+                where i.SchoolId == schoolId && a.SchoolId == schoolId && a.FeeStructureId == feeStructureId && i.FeeTypeId == feeTypeId
+                join d in _db.StudentFeeDues.AsNoTracking() on i.StudentFeeItemId equals d.StudentFeeItemId into ds
+                from d in ds.DefaultIfEmpty()
+                select new { i.StudentFeeItemId, Due = d }).ToListAsync();
+            return rows.Select(r => new LineRemovalFact(r.StudentFeeItemId, r.Due == null ? null : r.Due.DueDate, r.Due == null ? 0 : r.Due.AmountDue, r.Due == null ? 0 : r.Due.AmountPaid)).ToList();
+        }
+
+        public void AddRemovalLog(TbFeeLineRemovalLog row) => _db.FeeLineRemovalLogs.Add(row);
+
         public async Task RemoveDuesAsync(IReadOnlyCollection<long> dueIds)
         {
             if (dueIds.Count == 0) return;

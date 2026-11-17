@@ -59,7 +59,8 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Update(long id, [FromBody] UpdateFeeStructureRequest request)
         {
             if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can change fee structures.");
-            var response = await _service.UpdateAsync(User.GetSchoolId(), id, request);
+            long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId);   // for the removal log; always from the token
+            var response = await _service.UpdateAsync(User.GetSchoolId(), id, request, userId);
             return StatusCode(response.StatusCode, response);
         }
 

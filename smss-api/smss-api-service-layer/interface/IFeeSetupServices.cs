@@ -19,7 +19,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> GetByIdAsync(string? schoolId, long id);
         Task<ApiResponse<object>> GetFrequenciesAsync();
         Task<ApiResponse<object>> CreateAsync(string? schoolId, CreateFeeStructureRequest req);
-        Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateFeeStructureRequest req);
+        Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateFeeStructureRequest req, long userId = 0);
         Task<ApiResponse<object>> ToggleStatusAsync(string? schoolId, long id);
     }
 
