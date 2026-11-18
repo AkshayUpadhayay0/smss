@@ -335,11 +335,12 @@ app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
 
     app.MapOpenApi();
 }
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AngularDev");
 
