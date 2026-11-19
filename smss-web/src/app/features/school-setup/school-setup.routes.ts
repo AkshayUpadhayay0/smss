@@ -40,6 +40,10 @@ export const SCHOOL_SETUP_ROUTES: Routes = [
     loadComponent: () => import('./pages/id-card-settings/id-card-settings.component').then((m) => m.IdCardSettingsComponent),
   },
   {
+    path: 'school-setup/notifications',
+    loadComponent: () => import('./pages/notification-settings/notification-settings.component').then((m) => m.NotificationSettingsComponent),
+  },
+  {
     path: 'school-setup/document-types',
     loadComponent: () => import('./pages/document-type-list/document-type-list.component').then((m) => m.DocumentTypeListComponent),
   },

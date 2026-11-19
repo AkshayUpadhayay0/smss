@@ -12,7 +12,9 @@ const ROLE_SETS: Record<string, string[]> = {
 
 const INVENTORY_ROUTES = ['/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
 const isInventory = (route: string) => route === '/inventory' || route.startsWith('/inventory/');
-const shape = (items: ReturnType<typeof visibleNav>) => items.map((i) => ({ label: i.label, route: i.route ?? null, children: i.children?.map((c) => `${c.label}|${c.route}`) ?? null }));
+/** Pages added after Inventory, on purpose, by other modules. The frozen golden predates them, so they are set aside here (never added to the golden). */
+const ADDED_AFTER_INVENTORY = ['/school-setup/notifications'];
+const shape = (items: ReturnType<typeof visibleNav>) => items.map((i) => ({ label: i.label, route: i.route ?? null, children: i.children?.filter((c) => !ADDED_AFTER_INVENTORY.includes(c.route ?? '')).map((c) => `${c.label}|${c.route}`) ?? null }));
 
 describe('Inventory leaves every other role exactly as it was', () => {
   it('the golden snapshot covers every pre-existing role', () => {
@@ -30,7 +32,7 @@ describe('Inventory leaves every other role exactly as it was', () => {
       });
 
       it('can open exactly the same routes, apart from the /inventory ones', () => {
-        const now = Object.keys(ROUTE_ROLES).filter((p) => !isInventory(p) && canAccess(p, roles)).sort();
+        const now = Object.keys(ROUTE_ROLES).filter((p) => !isInventory(p) && !ADDED_AFTER_INVENTORY.includes(p) && canAccess(p, roles)).sort();
         expect(now).toEqual(golden.routes);
       });
 

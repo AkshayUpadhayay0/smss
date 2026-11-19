@@ -61,6 +61,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/school-setup/document-types': [ROLES.SCHOOL_ADMIN],
   // ID card template + branding (School Admin only; the API enforces it too)
   '/school-setup/id-card': [ROLES.SCHOOL_ADMIN],
+  // Push notification settings: fee reminders (School Admin only; the API enforces it too)
+  '/school-setup/notifications': [ROLES.SCHOOL_ADMIN],
   '/school-setup/class-subjects': [ROLES.SCHOOL_ADMIN],
   '/school-setup/employee-designations': [ROLES.SCHOOL_ADMIN],
   '/school-setup/employee-departments': [ROLES.SCHOOL_ADMIN],

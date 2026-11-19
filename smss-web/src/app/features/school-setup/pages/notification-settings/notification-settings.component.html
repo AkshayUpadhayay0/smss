@@ -1,0 +1,95 @@
+<app-page-header
+  title="Notification Settings"
+  subtitle="Choose which push notifications your school sends to the school app."
+  icon="bell"
+  [breadcrumbs]="breadcrumbs"
+>
+  @if (dirty()) {
+    <span class="unsaved">Unsaved changes</span>
+  }
+  <app-button [disabled]="!canSave() || loading()" (click)="save()">
+    <app-icon [name]="saving() ? 'loader-circle' : 'circle-check'" [size]="16" />{{ saving() ? 'Saving…' : 'Save settings' }}
+  </app-button>
+</app-page-header>
+
+@if (loading()) {
+  <app-card><p class="note">Loading your notification settings…</p></app-card>
+} @else if (forbidden()) {
+  <app-card>
+    <p class="note" role="alert">Only a School Admin can view or change notification settings.</p>
+  </app-card>
+} @else if (loadFailed()) {
+  <app-card>
+    <div class="note" role="alert">
+      <p>Your notification settings could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  <div class="stack">
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <app-card title="Fee reminders">
+        <p class="lead">
+          Students with an overdue fee get one push notification a day on the school app, until the dues are paid. The message does not show the amount.
+        </p>
+        <label class="switch">
+          <input type="checkbox" role="switch" formControlName="feeReminderEnabled" />
+          <span class="track"></span>
+          <span class="text">{{ value().feeReminderEnabled ? 'Fee reminders are on' : 'Fee reminders are off' }}</span>
+        </label>
+        <div class="fields">
+          <app-input
+            label="Send time (India time)"
+            type="time"
+            formControlName="feeReminderSendTime"
+            [errorText]="err('feeReminderSendTime')"
+            helpText="24-hour clock, e.g. 09:00. The reminder goes out once a day, at or shortly after this time."
+          />
+          <app-input
+            label="Grace period (days)"
+            type="number"
+            formControlName="feeReminderGraceDays"
+            [errorText]="err('feeReminderGraceDays')"
+            [helpText]="'0 to ' + maxGrace + '. Reminders start this many days after the due date.'"
+          />
+        </div>
+        @if (lastRunDate(); as last) {
+          <p class="help">Last daily run: {{ last }}.</p>
+        }
+      </app-card>
+    </form>
+
+    <app-card title="Preview today">
+      <p class="lead">See how many students would be reminded today. A preview sends nothing.</p>
+      <app-button variant="secondary" [disabled]="previewing()" (click)="runPreview()">
+        <app-icon [name]="previewing() ? 'loader-circle' : 'eye'" [size]="16" />{{ previewing() ? 'Checking…' : 'Preview today' }}
+      </app-button>
+      @if (dirty()) {
+        <p class="help">The preview uses your saved settings. Save your changes first to preview them.</p>
+      }
+      @if (previewError(); as problem) {
+        <p class="error" role="alert">{{ problem }}</p>
+      }
+      @if (preview(); as p) {
+        <div class="stats" role="group" aria-label="Preview of today's fee reminders">
+          <div class="stat">
+            <span class="num">{{ p.studentsToRemind }}</span>
+            <span class="label">Students would be reminded</span>
+          </div>
+          <div class="stat">
+            <span class="num ok">{{ p.withDevice }}</span>
+            <span class="label">Have the app registered</span>
+          </div>
+          <div class="stat">
+            <span class="num warn">{{ p.withoutDevice }}</span>
+            <span class="label">Do not have the app registered</span>
+          </div>
+        </div>
+        <p class="help">
+          Students without the app registered will not receive anything. Counted for {{ p.date }} with a grace period of {{ p.graceDays }}
+          {{ p.graceDays === 1 ? 'day' : 'days' }}.
+        </p>
+      }
+    </app-card>
+  </div>
+}
