@@ -44,7 +44,7 @@ namespace smss_api.Helpers
                 using var scope = _scopes.CreateScope();
                 var result = await scope.ServiceProvider.GetRequiredService<IFeeReminderService>().RunTickAsync(ct);
                 if (result.SchoolsRun + result.SchoolsRetried + result.SchoolsFailed + result.SchoolsSkippedLocked > 0)
-                    _logger.LogInformation("Fee reminder tick: {Run} run, {Retried} retried, {Locked} locked elsewhere, {FailedSchools} school(s) failed; {Sent} sent, {NoDevice} without a device, {Failed} failed",
+                    _logger.LogDebug("Fee reminder tick: {Run} run, {Retried} retried, {Locked} locked elsewhere, {FailedSchools} school(s) failed; {Sent} sent, {NoDevice} without a device, {Failed} failed",
                         result.SchoolsRun, result.SchoolsRetried, result.SchoolsSkippedLocked, result.SchoolsFailed, result.Sent, result.NoDevice, result.Failed);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { }

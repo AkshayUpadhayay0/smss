@@ -109,15 +109,22 @@ namespace smss_api_service_layer.service
                 var action = Decide(settings, today, timeNow);
                 if (action == Action.None) return;
 
+                // This run's own counters, so the one log line below describes this school only
+                var school = new FeeReminderTickResult();
+                int eligible;
+                string mode;
                 if (action == Action.FullRun)
                 {
+                    mode = "full";
+                    eligible = 0;
                     var yearId = await _repo.GetCurrentAcademicYearIdAsync(schoolId, ct);
                     if (yearId != null)
                     {
                         var overdue = await FindOverdueStudentsAsync(schoolId, yearId.Value, settings.FeeReminderGraceDays, today, ct);
+                        eligible = overdue.Count;
                         await _repo.CreateLogRowsAsync(schoolId, today, NotificationTypes.FeeOverdue, Title, Body, overdue, ct);
                     }
-                    await SendOpenRowsAsync(schoolId, today, nowUtc, result, ct);
+                    await SendOpenRowsAsync(schoolId, today, nowUtc, school, ct);
                     settings.LastFeeReminderRunDate = today;
                     settings.UpdatedAt = DateTime.UtcNow;
                     await _repo.SaveChangesAsync(ct);
@@ -125,9 +132,17 @@ namespace smss_api_service_layer.service
                 }
                 else
                 {
-                    await SendOpenRowsAsync(schoolId, today, nowUtc, result, ct);
+                    mode = "retry";
+                    eligible = await SendOpenRowsAsync(schoolId, today, nowUtc, school, ct); // a retry's "eligible" = the rows still open
                     result.SchoolsRetried++;
                 }
+                result.Sent += school.Sent; result.NoDevice += school.NoDevice; result.Failed += school.Failed; result.DryRun += school.DryRun;
+
+                // ONE line per school run: counts only. Never a student name, a token or the message text.
+                // A retry tick that found nothing open (every tick after the send time visits the school) says nothing, so the log is not flooded every 5 minutes.
+                if (mode == "full" || eligible > 0)
+                    _logger.LogInformation("Fee reminder run for school {SchoolId} ({Mode}): eligible={Eligible} sent={Sent} failed={Failed} noDevice={NoDevice} dryRun={DryRun}",
+                        schoolId, mode, eligible, school.Sent, school.Failed, school.NoDevice, school.DryRun);
             }
             finally { await _repo.UnlockSchoolRunAsync(schoolId); }
         }
@@ -178,7 +193,8 @@ namespace smss_api_service_layer.service
 
         // ------------------------------------------------------------------ sending
 
-        private async Task SendOpenRowsAsync(string schoolId, DateOnly today, DateTime nowUtc, FeeReminderTickResult result, CancellationToken ct)
+        /// <summary>Sends every open row of the school's day and returns how many rows it handled.</summary>
+        private async Task<int> SendOpenRowsAsync(string schoolId, DateOnly today, DateTime nowUtc, FeeReminderTickResult result, CancellationToken ct)
         {
             var rows = await _repo.GetOpenLogRowsAsync(schoolId, today, NotificationTypes.FeeOverdue, MaxAttempts, includeDryRun: !_firebase.Value.DryRun, ct);
             foreach (var batch in rows.Chunk(SendBatchRows))
@@ -221,7 +237,7 @@ namespace smss_api_service_layer.service
                 await _repo.SaveChangesAsync(ct);
                 if (deadTokens.Count > 0) await _repo.DeactivateTokensAsync(deadTokens.Distinct().ToArray(), ct);
             }
-            _logger.LogInformation("Fee reminders for school {SchoolId}: {Rows} open row(s) processed", schoolId, rows.Count);
+            return rows.Count;
         }
 
         private void Apply(TbPushNotificationLog row, List<FcmResult> rs, DateTime nowUtc, FeeReminderTickResult result)
@@ -237,6 +253,7 @@ namespace smss_api_service_layer.service
                     row.Status = PushStatuses.DryRun;
                     row.SentAt = null;
                     row.ErrorSummary = DryRunNote;
+                    result.DryRun++;
                     return;
                 }
                 row.Status = PushStatuses.Sent;

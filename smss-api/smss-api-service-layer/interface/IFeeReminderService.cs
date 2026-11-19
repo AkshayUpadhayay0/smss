@@ -13,6 +13,8 @@ namespace smss_api_service_layer.@interface
         public int Sent { get; set; }
         public int NoDevice { get; set; }
         public int Failed { get; set; }
+        /// <summary>Rows validated by Firebase but not delivered (Firebase:DryRun is on).</summary>
+        public int DryRun { get; set; }
         /// <summary>True when there was work but Firebase was not usable, so nothing was sent.</summary>
         public bool NotReady { get; set; }
     }
