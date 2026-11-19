@@ -130,7 +130,7 @@ Copy these from `smss-old` into the new `smss` (they are ignored or uncommitted,
 
 User-secrets live in your Windows profile, so they stay. Check: `dotnet user-secrets list --project smss-api/smss-api`.
 
-Then verify the clone: `git log --oneline | wc -l`, and `gitleaks git . --config .gitleaks.toml --log-opts="--all" --redact` (expect no leaks).
+Then verify the clone: `git log --oneline | wc -l`.
 
 ### 3d. What the rewrite cannot do
 

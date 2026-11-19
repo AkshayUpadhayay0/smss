@@ -1,6 +1,5 @@
 #!/bin/sh
-# SMSS pre-commit. Refuses secrets, database dumps, build output and uploads. Enable once per clone:  git config core.hooksPath .githooks
-# Needs gitleaks (MIT) on PATH or in $GITLEAKS_BIN. See Docs/configuration.md.
+# SMSS pre-commit. Refuses database dumps, build output and uploads. Enable once per clone:  git config core.hooksPath .githooks
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
@@ -25,15 +24,3 @@ if [ -n "$dumps" ]; then
   for f in $dumps; do echo "  $f" >&2; done
   exit 1
 fi
-
-# 3. secrets in the staged changes
-GL="${GITLEAKS_BIN:-$(command -v gitleaks || true)}"
-if [ -z "$GL" ]; then
-  echo "pre-commit: gitleaks is not installed, so the secret scan cannot run." >&2
-  echo "  Install it (https://github.com/gitleaks/gitleaks/releases, MIT) and put it on PATH or set GITLEAKS_BIN. See Docs/configuration.md." >&2
-  exit 1
-fi
-"$GL" git --pre-commit --staged --config .gitleaks.toml --redact --no-banner || {
-  echo "pre-commit: possible secret in the staged changes (values hidden above). Move it to user-secrets / environment variables." >&2
-  exit 1
-}

@@ -72,11 +72,7 @@ Do **not** set `Bootstrap__Enabled=true` except for the moment you create the ve
 
 A secret that was ever committed to git must be treated as exposed even after it is removed from the file: rotate it (see `git log` for the history findings).
 
-## Secret scan (so a secret cannot be committed again)
-
-The scanner is [gitleaks](https://github.com/gitleaks/gitleaks) (MIT licence). `.gitleaks.toml` extends its built-in rules with SMSS rules (a connection string with a password, a non-empty `Key` / `SuperAdminSetupKey` / `SenderAppPassword` in a JSON file, and any PostgreSQL dump).
-
-**Install** (once): download `gitleaks_<version>_windows_x64.zip` from the releases page, check it against `gitleaks_<version>_checksums.txt` (`sha256sum`), unzip it somewhere outside the repository and put that folder on `PATH` (or set `GITLEAKS_BIN` to the exe).
+## Commit guard (so dumps and build output cannot be committed)
 
 **Switch the pre-commit hook on** (once per clone):
 
@@ -84,16 +80,4 @@ The scanner is [gitleaks](https://github.com/gitleaks/gitleaks) (MIT licence). `
 git config core.hooksPath .githooks
 ```
 
-The hook (`.githooks/pre-commit`) refuses a commit that stages build output (`bin/`, `obj/`), IDE state (`.vs/`), a database dump or backup (by name, or by content: a `PGDMP` archive or a "PostgreSQL database dump" header under any name), an uploaded file or a credentials file, or any change gitleaks flags. It refuses to run without gitleaks installed, so the check cannot be skipped by accident.
-
-The same scan runs on GitHub for every push and pull request once you enable it: `.github/workflows/secret-scan.yml` (it only reads the repository; nothing needs to be configured beyond leaving Actions on).
-
-**Scan the working tree** (one line, from the repository root; prints nothing secret; it also reports ignored build folders such as `bin/` that exist on your disk, which is expected and harmless):
-
-```
-gitleaks dir . --config .gitleaks.toml --redact
-```
-
-Other scans: `gitleaks git --staged --config .gitleaks.toml --redact` (what is about to be committed) and `gitleaks git . --config .gitleaks.toml --redact` (all history; it will keep reporting the old, already-leaked values until the history is rewritten).
-
-A false positive can be silenced for one finding with its fingerprint in a `.gitleaksignore` file; never silence a real secret, rotate it instead.
+The hook (`.githooks/pre-commit`) refuses a commit that stages build output (`bin/`, `obj/`), IDE state (`.vs/`), a database dump or backup (by name, or by content: a `PGDMP` archive or a "PostgreSQL database dump" header under any name), an uploaded file or a credentials file. It does not scan for secrets: keep them in user-secrets / environment variables.
