@@ -2,8 +2,10 @@ import type { ExpoConfig } from 'expo/config';
 
 // The API base URL is configuration, never a literal in source. Local dev: .env (untracked). EAS builds: EAS environment variables.
 // The release-build HTTPS rule is enforced at runtime in src/config/env.ts.
-// !!! IDENTIFIERS ARE PERMANENT !!! `com.smss.mobile` (ios.bundleIdentifier / android.package) is a DEVELOPMENT PLACEHOLDER. After the first
-// store build it can never change. It must be decided and confirmed by the owner BEFORE any store or production build. Do not build for stores until then.
+// !!! IDENTIFIERS ARE PERMANENT !!! `com.smsserp.mobile` (ios.bundleIdentifier / android.package) is still awaiting the owner's final confirmation. After the first
+// store build it can never change. It must be confirmed by the owner BEFORE any store or production build. Do not build for stores until then.
+// The Firebase app (project smss-erp, google-services.json) is registered against com.smsserp.mobile: changing the identifier means registering a new Firebase app too.
+// iOS push still needs GoogleService-Info.plist (client config) and `ios.googleServicesFile: './GoogleService-Info.plist'` below: add both when the iOS Firebase app is registered (not done yet).
 const config: ExpoConfig = {
   name: 'SMSS',
   slug: 'smss-mobile',
@@ -14,7 +16,8 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.smsserp.mobile', // TODO confirm before the first store build: it cannot change afterwards
+    bundleIdentifier: 'com.smsserp.mobile',
+    // TODO confirm before the first store build: it cannot change afterwards
   },
   android: {
     package: 'com.smsserp.mobile', 
@@ -43,6 +46,11 @@ const config: ExpoConfig = {
     'expo-sharing',
     // Driver duty: location while the app is in the background, shown by a foreground-service notification. Needs a development / EAS build: Expo Go cannot do it.
     'expo-dev-client',
+    // Push notifications (FCM). Native modules: a development build is required, Expo Go cannot run them.
+    '@react-native-firebase/app',
+    '@react-native-firebase/messaging',
+    // React Native Firebase on iOS needs dynamic frameworks (per its Expo setup docs). No effect on Android.
+    ['expo-build-properties', { ios: { useFrameworks: 'dynamic' } }],
     // Windows only, opt-in: SMSS_ANDROID_CMAKE_VERSION=4.1.2 pins the CMake version so the first Android build does not fail on 260-character paths (see CLAUDE.md).
     ...(process.env.SMSS_ANDROID_CMAKE_VERSION ? ([['./plugins/withAndroidCmakeVersion', { version: process.env.SMSS_ANDROID_CMAKE_VERSION }]] as [string, unknown][]) : []),
     [

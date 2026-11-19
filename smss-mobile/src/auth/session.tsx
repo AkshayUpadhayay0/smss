@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import * as authApi from '../api/auth';
 import { api } from '../api';
 import { clearAttachmentCache } from '../lib/attachments';
+import { pushLifecycle } from '../services/push';
 import type { AuthUser } from '../api/types';
 import { resolveRole, type AppRole } from './roles';
 
@@ -88,7 +89,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A network failure keeps the stored session; an expired session is handled by onSessionExpired.
       try {
         const me = await authApi.fetchMe();
-        if (!cancelled) setUser(me);
+        if (!cancelled) {
+          setUser(me);
+          void pushLifecycle.afterRestore(me); // silent retry of an earlier failed push registration
+        }
       } catch {
         // offline or transient: keep going with what we have
       }
@@ -104,6 +108,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       setUser(res.user);
       setStatus('signedIn');
+      void pushLifecycle.afterSignIn(res.user); // never awaited, never throws: push can't block sign-in
     },
     [queryClient],
   );
@@ -111,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     const res = await authApi.changePassword(currentPassword, newPassword);
     setUser(res.user); // isFirstLogin is now false: the route guards open up
+    void pushLifecycle.afterPasswordChange(res.user);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -121,6 +127,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // navigation not ready: ending the session below still works
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
+    await pushLifecycle.beforeSignOut(); // needs the access token, so before the session is cleared; bounded and never throws
     try {
       const refreshToken = await api.refreshToken();
       if (refreshToken) {

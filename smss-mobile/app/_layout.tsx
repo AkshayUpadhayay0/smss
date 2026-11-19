@@ -10,6 +10,7 @@ import { Screen } from '../src/components/Screen';
 import { SessionProvider, useSession } from '../src/auth/session';
 import { env } from '../src/config/env';
 import { ApiError } from '../src/api/errors';
+import { PushBanner } from '../src/components/PushBanner';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -103,6 +104,7 @@ export default function RootLayout() {
       <SessionProvider>
         <StatusBar style="dark" />
         <Gate />
+        <PushBanner />
       </SessionProvider>
     </QueryClientProvider>
   );
