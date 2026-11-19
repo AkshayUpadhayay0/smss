@@ -14,10 +14,11 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.smss.mobile', // TODO confirm before the first store build: it cannot change afterwards
+    bundleIdentifier: 'com.smsserp.mobile', // TODO confirm before the first store build: it cannot change afterwards
   },
   android: {
-    package: 'com.smss.mobile', // TODO confirm before the first store build: it cannot change afterwards
+    package: 'com.smsserp.mobile', 
+    googleServicesFile: './google-services.json',
     // Driver live location (Stage 2). ACCESS_FINE/COARSE are also added by the expo-location plugin; they are listed here so the full set is visible in one place.
     // FOREGROUND_SERVICE_LOCATION is required on Android 14+ for a location foreground service. We never request REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (Play policy).
     permissions: [
