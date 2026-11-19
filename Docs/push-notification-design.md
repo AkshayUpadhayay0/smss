@@ -1,6 +1,6 @@
 # SMSS — Push Notifications (Firebase) — Fee Overdue Reminders
 
-Status: DESIGNED 2026-11-19, not built. Scope decided with the user: mobile app only, Student login recipient, daily from due date until paid, dev build/EAS for the mobile app.
+Status: DESIGNED 2026-11-19. Backend BUILT and scratch-DB tested 2026-11-19 (not deployed: real smss-db not migrated, no real push sent). Scope decided with the user: mobile app only, Student login recipient, daily from due date until paid, dev build/EAS for the mobile app.
 
 ## 1. Requirement and decisions
 

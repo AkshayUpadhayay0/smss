@@ -85,6 +85,10 @@ namespace smss_api_db_layer.context
         public DbSet<LutEventCategory> LutEventCategories { get; set; } = null!;
         public DbSet<TbSchoolEvent> SchoolEvents { get; set; } = null!;
         public DbSet<TbSchoolIdCardSettings> SchoolIdCardSettings { get; set; } = null!;
+        // Push notifications (Docs/smss-push-notifications.sql)
+        public DbSet<TbUserDevice> UserDevices { get; set; } = null!;
+        public DbSet<TbSchoolNotificationSettings> SchoolNotificationSettings { get; set; } = null!;
+        public DbSet<TbPushNotificationLog> PushNotificationLog { get; set; } = null!;
         public DbSet<TbSchoolReportCardSettings> SchoolReportCardSettings { get; set; } = null!;
         public DbSet<TbPeriod> Periods { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;

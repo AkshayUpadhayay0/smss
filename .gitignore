@@ -38,3 +38,7 @@ Docs/smss-db*.sql
 *.pgdump
 *.dmp
 *.backup
+
+# Firebase service-account keys (never commit; the API reads the path from Firebase:CredentialsPath / env Firebase__CredentialsPath)
+*firebase*adminsdk*.json
+firebase-service-account*.json

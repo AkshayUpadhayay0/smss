@@ -164,6 +164,17 @@ builder.Services.AddScoped<ICompanyFinanceService, CompanyFinanceService>();
 builder.Services.AddScoped<IFeeReportRepository, FeeReportRepository>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
 
+// Push notifications (Docs/push-notification-design.md): devices, settings, log, the FCM sender and the daily fee-reminder job.
+// Firebase:CredentialsPath comes ONLY from configuration (env Firebase__CredentialsPath); Firebase:DryRun defaults to true. Missing credentials never stop the API.
+builder.Services.Configure<FirebaseOptions>(builder.Configuration.GetSection(FirebaseOptions.Section));
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<INotificationSettingsService, NotificationSettingsService>();
+builder.Services.AddScoped<INotificationLogService, NotificationLogService>();
+builder.Services.AddSingleton<IFcmSender, FcmSender>();
+builder.Services.AddScoped<IFeeReminderService, FeeReminderService>();
+builder.Services.AddHostedService<smss_api.Helpers.FeeReminderHostedService>();
+
 builder.Services.AddScoped<IEnquiryRepository, EnquiryRepository>();
 builder.Services.AddScoped<IEnquiryService, EnquiryService>();
 
