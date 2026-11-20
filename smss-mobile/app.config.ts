@@ -10,20 +10,18 @@ const config: ExpoConfig = {
   name: 'SMSS',
   slug: 'smss-mobile',
   scheme: 'smss',
-  version: '0.1.0',
+  version: '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   icon: './assets/icon.png',
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.smsserp.mobile',
-    // TODO confirm before the first store build: it cannot change afterwards
   },
   android: {
     package: 'com.smsserp.mobile', 
+    versionCode: 1,
     googleServicesFile: './google-services.json',
-    // Driver live location (Stage 2). ACCESS_FINE/COARSE are also added by the expo-location plugin; they are listed here so the full set is visible in one place.
-    // FOREGROUND_SERVICE_LOCATION is required on Android 14+ for a location foreground service. We never request REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (Play policy).
     permissions: [
       'ACCESS_COARSE_LOCATION',
       'ACCESS_FINE_LOCATION',
@@ -33,10 +31,8 @@ const config: ExpoConfig = {
       'POST_NOTIFICATIONS',
     ],
     adaptiveIcon: {
-      backgroundColor: '#EDE9FE',
-      foregroundImage: './assets/android-icon-foreground.png',
-      backgroundImage: './assets/android-icon-background.png',
-      monochromeImage: './assets/android-icon-monochrome.png',
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#0044ff',
     },
   },
   plugins: [
@@ -68,10 +64,11 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
   extra: {
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
-    // DEV BUILDS ONLY (ignored in release builds): send a fix every N seconds instead of the server's 60, for quick emulator passes.
     dutyIntervalSeconds: process.env.EXPO_PUBLIC_DUTY_INTERVAL_SECONDS ?? '',
-    // DEV BUILDS ONLY: 'high' asks for GPS-grade fixes. The Android emulator has no network location, so Balanced (wifi / cell) never produces a fix there.
     dutyAccuracy: process.env.EXPO_PUBLIC_DUTY_ACCURACY ?? '',
+    eas: {
+      projectId: 'cf55cb32-354d-4434-8038-7384ad31a2c1',
+    },
   },
 };
 
