@@ -121,7 +121,7 @@ export function paidDonutOptions(d: SchoolAdminDashboard, c: ChartColors = FALLB
     colors: [c.success, c.danger],
     dataLabels: { enabled: false },
     legend: { position: 'bottom' },
-    plotOptions: { pie: { donut: { size: '68%', labels: { show: true, total: { show: true, label: 'Students with dues', formatter: () => String(d.studentsPaidThisMonth + d.studentsNotPaidThisMonth) } } } } },
+    plotOptions: { pie: { donut: { size: '68%', labels: { show: true, name: { fontSize: '12px', offsetY: -4 }, value: { fontSize: '22px', offsetY: 2 }, total: { show: true, label: 'With dues', fontSize: '12px', formatter: () => String(d.studentsPaidThisMonth + d.studentsNotPaidThisMonth) } } } } },
     stroke: { width: 2 },
   } as ApexOptions;
 }
