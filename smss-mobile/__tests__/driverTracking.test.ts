@@ -172,9 +172,9 @@ describe('dutyStore', () => {
 });
 
 describe('the disclosure text', () => {
-  it('is exactly the approved wording', () => {
-    expect(DISCLOSURE_TEXT).toBe(
-      "SMSS shares this vehicle's location with your school, and with students assigned to your area, only while you are on duty. Sharing starts when you tap Mark today's attendance and stops when you tap End duty. SMSS does not keep a location history.",
-    );
+  it('tells the driver what is collected, that it runs in the background during duty, who sees it, and how to stop it', () => {
+    const t = DISCLOSURE_TEXT.toLowerCase();
+    for (const needle of ['location', 'in the background', 'only while you are on duty', 'your school', 'students assigned to your area', 'end duty', 'does not keep a location history', 'advertising', 'does not sell'])
+      expect(t).toContain(needle);
   });
 });

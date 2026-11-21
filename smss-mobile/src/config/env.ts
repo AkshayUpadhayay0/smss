@@ -22,6 +22,17 @@ export function resolveApiBaseUrl(raw: unknown, isDev: boolean): string {
   return value;
 }
 
+/** The public Privacy Policy address (https only), or null when it is not configured. The app still works without it; the link is just hidden. */
+export function resolvePrivacyPolicyUrl(raw: unknown): string | null {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (!value) return null;
+  try {
+    return new URL(value).protocol === 'https:' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /** DEV builds only: a shorter duty interval in seconds (1..600), or null. Anything else (empty, not a number, out of range) is ignored. */
 export function parseDutyIntervalOverride(raw: unknown): number | null {
   const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : typeof raw === 'number' ? raw : NaN;
@@ -39,6 +50,9 @@ export const env = {
   },
   get dutyIntervalOverrideSeconds(): number | null {
     return parseDutyIntervalOverride(Constants.expoConfig?.extra?.dutyIntervalSeconds);
+  },
+  get privacyPolicyUrl(): string | null {
+    return resolvePrivacyPolicyUrl(Constants.expoConfig?.extra?.privacyPolicyUrl);
   },
   get apiBaseUrl(): string {
     return resolveApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl, __DEV__);

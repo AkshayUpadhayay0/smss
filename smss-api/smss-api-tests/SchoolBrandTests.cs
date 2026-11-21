@@ -47,7 +47,7 @@ namespace smss_api_tests
         private static SchoolRegistrationService Service(TbSchools? school)
         {
             var repo = Fake.Of<ISchoolRegistrationRepository>(new() { ["GetSchoolByIdAsync"] = school });
-            return new SchoolRegistrationService(repo, Fake.Of<IFileStorageService>(), Fake.Of<IEmailService>(), new ConfigurationBuilder().Build(), NullLogger<SchoolRegistrationService>.Instance);
+            return new SchoolRegistrationService(repo, Fake.Of<IFileStorageService>(), Fake.Of<IEmailService>(), new ConfigurationBuilder().Build(), new PartnerSchoolCache(new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions())), NullLogger<SchoolRegistrationService>.Instance);
         }
 
         [Fact]

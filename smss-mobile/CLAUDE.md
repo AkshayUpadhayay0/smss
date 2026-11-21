@@ -173,6 +173,7 @@ Everything below needs the Android SDK + JDK 17 (`ANDROID_HOME` set) for local b
   Release builds block cleartext: they need an `https://` URL.
 - **EAS development build (to share an APK):** set `EXPO_PUBLIC_API_BASE_URL` in the EAS `development` environment (never in git), then
   `eas build --profile development --platform android` (apk). Install it on the phone and run `npx expo start --dev-client` on the PC, or use the `preview` profile for a standalone APK.
+- The in-app Privacy Policy link (sign-in, driver disclosure, profile sheet) reads `EXPO_PUBLIC_PRIVACY_POLICY_URL` (`extra.privacyPolicyUrl`, https only; set in `eas.json`). The driver disclosure (`DISCLOSURE_VERSION` 2) now says it runs in the background during duty, who sees it and that no history is kept, with Accept / Not now.
 - The app identifier `com.smss.mobile` is a placeholder that is only acceptable for development builds (see Commands).
 - Play Store (later): background location needs a Permissions Declaration with a demo video, the foreground-service type needs its own declaration, the in-app disclosure above, and a
   privacy policy that mentions location. New builds with these permissions go through Google review.

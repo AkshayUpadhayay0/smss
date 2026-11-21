@@ -85,3 +85,16 @@
 .req {
   color: var(--color-danger);
 }
+
+.website-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+
+  input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-primary-600);
+  }
+}

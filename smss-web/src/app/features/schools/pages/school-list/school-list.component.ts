@@ -24,6 +24,8 @@ import { SchoolService } from '../../services/school.service';
 interface SchoolRow extends SchoolsListModel {
   /** Resolved from schoolStatusId via the general-status lookup. */
   statusName: string;
+  /** 'Yes' when the school is opted in to the public Partner Schools section (it still needs to be Active to appear). */
+  onWebsite: string;
 }
 
 @Component({
@@ -47,6 +49,7 @@ export class SchoolListComponent {
     { key: 'email', label: 'Email', sortable: true },
     { key: 'mobileNumber', label: 'Mobile', sortable: true, width: '140px' },
     { key: 'statusName', label: 'Status', sortable: true, type: 'status', width: '120px' },
+    { key: 'onWebsite', label: 'On website', sortable: true, type: 'badge', width: '120px' },
   ];
 
   protected readonly rows = signal<SchoolRow[]>([]);
@@ -174,6 +177,6 @@ export class SchoolListComponent {
   }
 
   private toRow(s: SchoolsListModel): SchoolRow {
-    return { ...s, statusName: s.schoolStatusId != null ? (this.statusNames.get(s.schoolStatusId) ?? '') : '' };
+    return { ...s, statusName: s.schoolStatusId != null ? (this.statusNames.get(s.schoolStatusId) ?? '') : '', onWebsite: s.showOnWebsite ? 'Yes' : 'No' };
   }
 }

@@ -1,9 +1,9 @@
 /** Words the driver sees. The disclosure text is fixed by the product owner: change it only with their approval (it is also what the Play Console review sees). */
 export const DISCLOSURE_TEXT =
-  "SMSS shares this vehicle's location with your school, and with students assigned to your area, only while you are on duty. Sharing starts when you tap Mark today's attendance and stops when you tap End duty. SMSS does not keep a location history.";
+  "SMSS collects this vehicle's location, including in the background while the app is not on screen or the phone's screen is off, but only while you are on duty. Your school, and students assigned to your area, can see the vehicle's current location. Sharing starts when you tap Mark today's attendance and stops when you tap End duty: you can stop it at any time by ending duty. Only the latest position is kept; SMSS does not keep a location history, does not use location for advertising and does not sell it.";
 
 /** Bump when DISCLOSURE_TEXT changes: drivers then see it again. */
-export const DISCLOSURE_VERSION = 1;
+export const DISCLOSURE_VERSION = 2;
 
 export const NOTIFICATION_TITLE = 'SMSS duty is on';
 export const NOTIFICATION_BODY = "SMSS is sharing this vehicle's location while you are on duty";

@@ -55,7 +55,7 @@ namespace smss_api_tests
                     AddressLine1 = "1 Main Rd", Email = "info@school.test", MobileNumber = "9876543210", Website = "https://school.test", SchoolStatusId = 1,
                     Contacts = new List<TbSchoolContacts> { new() { ContactName = "Secret Person", Email = "p@x.test" } }
                 }
-            }), Fake.Of<IFileStorageService>(), Fake.Of<IEmailService>(), new ConfigurationBuilder().Build(), NullLogger<SchoolRegistrationService>.Instance);
+            }), Fake.Of<IFileStorageService>(), Fake.Of<IEmailService>(), new ConfigurationBuilder().Build(), new PartnerSchoolCache(new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions())), NullLogger<SchoolRegistrationService>.Instance);
 
         [Fact]
         public async Task NonAdminResponse_HasNameLogoAddressContact_ButNoTaxNumbersOrContactPersons()

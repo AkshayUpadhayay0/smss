@@ -6,6 +6,7 @@ import { colors, radii, spacing } from '../theme/tokens';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { Icon, type IconName } from './Icon';
+import { PrivacyPolicyLink } from './PrivacyPolicyLink';
 import { Text } from './Text';
 
 function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
@@ -88,6 +89,7 @@ export function ProfileSheet({ visible, onClose, classText, signOutWarning, befo
           </View>
 
           <Button title="Sign out" icon="log-out" variant="secondary" onPress={confirmSignOut} />
+          <PrivacyPolicyLink />
           {version ? (
             <Text variant="small" style={styles.version}>
               SMSS app version {version}

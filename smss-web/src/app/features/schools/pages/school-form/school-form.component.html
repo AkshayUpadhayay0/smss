@@ -22,6 +22,16 @@
       <app-logo-upload [currentUrl]="logoUrl()" [disabled]="isView()" (changed)="onLogoChanged($event)" />
     </app-card>
 
+    @if (!isAdd() && school(); as s) {
+      <app-card title="Website listing">
+        <label class="website-toggle">
+          <input type="checkbox" [checked]="!!s.showOnWebsite" [disabled]="isView() || visibilitySaving()" (change)="onWebsiteToggle($event)" />
+          <span>Show this school under "Our Partner Schools" on the public website</span>
+        </label>
+        <p class="status-note">Only the school's name, logo and city are shown, and only while the school is Active. Saved immediately; you do not need to press Save.</p>
+      </app-card>
+    }
+
     <app-card title="School Identity">
       <div class="grid">
         <app-input

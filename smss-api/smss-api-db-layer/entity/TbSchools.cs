@@ -47,6 +47,9 @@ namespace smss_api_db_layer.entity
 
         [Column("school_status_id")] public int? SchoolStatusId { get; set; }
 
+        // Super Admin opt-in for the public "Our Partner Schools" section (also needs an Active school)
+        [Column("show_on_website")] public bool ShowOnWebsite { get; set; }
+
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
 

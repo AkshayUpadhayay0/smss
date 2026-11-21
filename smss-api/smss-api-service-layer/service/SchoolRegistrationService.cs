@@ -20,18 +20,21 @@ namespace smss_api_service_layer.service
         private readonly IFileStorageService _storage;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _config;
+        private readonly IPartnerSchoolCache _partnerCache;
 
         public SchoolRegistrationService(
             ISchoolRegistrationRepository repo,
             IFileStorageService storage,
             IEmailService emailService,
             IConfiguration config,
+            IPartnerSchoolCache partnerCache,
             ILogger<SchoolRegistrationService> logger)
         {
             _repo = repo;
             _storage = storage;
             _emailService = emailService;
             _config = config;
+            _partnerCache = partnerCache;
             _logger = logger;
         }
         // ---------------- GET ----------------
@@ -244,6 +247,7 @@ namespace smss_api_service_layer.service
                         other.IsPrimary = false;
 
                 await _repo.SaveChangesAsync();
+                _partnerCache.Invalidate();   // the public Partner Schools list shows name / logo / city / state of Active schools
                 return Ok(200, "School updated successfully", SchoolMapper.ToResponse(school));
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
@@ -335,6 +339,7 @@ namespace smss_api_service_layer.service
                 school.UpdatedAt = DateTime.UtcNow;
 
                 await _repo.SaveChangesAsync();
+                _partnerCache.Invalidate();   // the public Partner Schools list shows name / logo / city / state of Active schools
                 return Ok(200, "School profile updated successfully", SchoolMapper.ToResponse(school));
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
@@ -385,6 +390,7 @@ namespace smss_api_service_layer.service
                 }
 
                 await _repo.SaveChangesAsync();
+                _partnerCache.Invalidate();   // the public Partner Schools list shows name / logo / city / state of Active schools
 
                 var message = newStatusId == activeId ? "School activated successfully" : "School deactivated successfully";
                 return Ok(200, message, SchoolMapper.ToResponse(school));
@@ -415,6 +421,7 @@ namespace smss_api_service_layer.service
                 school.LogoUrl = savedUrl;
                 school.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
+                _partnerCache.Invalidate();   // the public Partner Schools list shows name / logo / city / state of Active schools
                 committed = true;
 
                 if (!string.IsNullOrEmpty(oldUrl)) _storage.Delete(oldUrl);   // replaced: remove the previous file
@@ -442,6 +449,7 @@ namespace smss_api_service_layer.service
                 school.LogoUrl = null;
                 school.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
+                _partnerCache.Invalidate();   // the public Partner Schools list shows name / logo / city / state of Active schools
 
                 _storage.Delete(oldUrl);
                 return Ok(200, "Logo removed successfully", SchoolMapper.ToResponse(school));

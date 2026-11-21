@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { PartnerSchoolsComponent } from '../../components/partner-schools/partner-schools.component';
 import { FEATURES, MODULES, STEPS } from '../../config/landing.content';
 
 @Component({
   selector: 'app-landing',
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, PartnerSchoolsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './landing.component.scss',
   template: `
@@ -92,6 +93,8 @@ import { FEATURES, MODULES, STEPS } from '../../config/landing.content';
         </ol>
       </div>
     </section>
+
+    <app-partner-schools />
 
     <section class="band" aria-labelledby="cta-title">
       <div class="pub-container band-inner">

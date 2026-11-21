@@ -9,6 +9,25 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
+// The developer name must be set (core/config/site.config.ts DEVELOPER_NAME) before any build: it is shown in the footer and the Privacy Policy that Google Play reviews.
+const dev = /export const DEVELOPER_NAME\s*=\s*'([^']*)'/.exec(read('src/app/core/config/site.config.ts'));
+if (!dev || dev[1].trim() === '' || dev[1].includes('<<') || dev[1].includes('PUT EXACT')) {
+  console.error(
+    [
+      '',
+      'BUILD STOPPED: the developer name is not set.',
+      "Set DEVELOPER_NAME in src/app/core/config/site.config.ts to the name exactly as it appears on the Google Play Console.",
+      'That one constant feeds every place below (nothing else needs editing):',
+      '  - src/app/features/public/layout/public-layout.component.ts   footer: "(c) <name>. All rights reserved."',
+      '  - src/app/features/public/pages/privacy-policy.component.ts   "Who we are" and "Contact" sections',
+      '  - src/app/features/public/public.routes.ts                    Organization structured data (legalName)',
+      '  - src/app/core/config/site.config.ts                          SITE_CONFIG.legalName',
+      '',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
+
 const match = /siteUrl:\s*'([^']+)'/.exec(read('src/environments/environment.ts'));
 if (!match) throw new Error('siteUrl not found in src/environments/environment.ts');
 const site = match[1].replace(/\/+$/, '');

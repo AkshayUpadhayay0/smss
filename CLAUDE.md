@@ -228,6 +228,10 @@ A marketing site lives inside the SAME Angular app. Visitors submit Contact Us /
 - CORS: allowed web origins come from `Cors:AllowedOrigins` (array; env `Cors__AllowedOrigins__0`, `__1`, ...). Development defaults to `http://localhost:4200`;
   outside Development the API REFUSES TO START with none configured (`StartupConfigGuard`), and `*` is not accepted. Never `AllowAnyOrigin`. Details: `Docs/configuration.md`.
 
+**Partner Schools + Privacy Policy** (script: `Docs/smss-partner-schools.sql`, adds `tb_schools.show_on_website`, default FALSE)
+- `GET /api/public/partner-schools` (anonymous, `PublicPartnerSchoolsController`): Active (by name) AND show_on_website schools, only name/logoUrl/city/state, no input. Config: `PartnerSchools:MaxItems`/`CacheSeconds`, rate limit `RateLimiting:PublicPartnerSchools`. Super Admin switch: `POST /api/superadmin/schools/{id}/website-visibility` `{show}` (drops the cache). Toggle-status of a school is NOT wired to the cache: up to `CacheSeconds` of delay.
+- Landing section `public/components/partner-schools` loads in the browser only (afterNextRender), hides itself when empty/failed. Privacy page = `pages/privacy-policy.component` (final text, covers the website AND the mobile app incl. driver live location; date = `PRIVACY_LAST_UPDATED` in site.config.ts). The developer name is the ONE constant `DEVELOPER_NAME` in site.config.ts: `npm run build` refuses to run while it is still the `<<PUT EXACT DEVELOPER NAME ...>>` placeholder. Deploy steps: `Docs/DEPLOY-CHECKLIST.md`.
+
 **SEO / prerender (public pages only)**
 - `@angular/ssr` with `outputMode: "static"`: `/`, `/contact`, `/request-demo`, `/privacy-policy`, `/terms` are prerendered to HTML at build time
   (`app.routes.server.ts`; no Node server in production). `/login` and the whole signed-in app stay client-rendered. A new public page needs entries in
@@ -237,12 +241,20 @@ A marketing site lives inside the SAME Angular app. Visitors submit Contact Us /
 - `SeoService` (`core/services/seo.service.ts`) sets title, description, canonical, Open Graph, Twitter and robots from route `data.seo`;
   a route WITHOUT `seo.index: true` is `noindex, nofollow` (fail closed). Landing JSON-LD (Organization + SoftwareApplication) is route data too.
 - `npm run build` runs `scripts/seo-files.mjs` first: it regenerates `public/robots.txt` (Disallow for every top-level segment found in ROUTE_ROLES, plus `/login`)
-  and `public/sitemap.xml` from `siteUrl` in `src/environments/environment.ts`. Set the real `siteUrl` before deploying. Plain `ng build` skips it.
+  and `public/sitemap.xml` from `siteUrl` in `src/environments/environment.ts`. Set the real `siteUrl` before deploying. Plain `ng build` skips it. `public/robots.txt` and `public/sitemap.xml` are generated and git-ignored (not in the repo): **deploys must use `npm run build`, never bare `ng build`**, or the site ships without them.
 - Any browser-only API in shared/core code must stay guarded (try/catch or `isPlatformBrowser`): the public pages are rendered in Node.
 
 **Placeholders still to replace:** privacy/terms text (marked "to be reviewed"), `public/og-image.png`, the logo, `siteUrl`.
 
 ---
+
+## Production checklist (every new environment)
+- `Cors:AllowedOrigins` includes the website origin(s) (e.g. `https://smss-erp.digital`, plus `www` if used); the API refuses to start without any outside Development. Env: `Cors__AllowedOrigins__0`, `__1`, ...
+- `siteUrl` (and `apiUrl`) set to the real values in the production environment file (`src/environments/environment.ts`); build with `npm run build`.
+- On each new database run `Docs/smss-enquiries.sql` and `Docs/smss-partner-schools.sql` (both safe to re-run) BEFORE starting an API build that maps those tables.
+- Set `DEVELOPER_NAME` in `core/config/site.config.ts` (exactly as on the Play Console); keep the Privacy Policy text in step with what the code does (it is what Google Play reviews). Full ordered steps: `Docs/DEPLOY-CHECKLIST.md`.
+- Only school logos are served from `/uploads` (`UploadsAllowListMiddleware`); other files are in the private store. After any restore that lacks the `uploads` folder, re-upload the school logos (rows in `tb_schools.logo_url` then point at missing files; the public site falls back to initials).
+- `ForwardedHeaders:KnownProxies` lists the real proxy / load balancer (otherwise every visitor shares one rate-limit bucket); `Bootstrap:Enabled` is `false`; hosting falls back unknown URLs to `index.csr.html`.
 
 ## House rules (apply to both projects)
 - Don't build features not yet requested — current scope is

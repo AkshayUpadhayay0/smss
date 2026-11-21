@@ -67,6 +67,7 @@ export class SchoolFormComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly school = signal<SchoolsListModel | null>(null);
+  protected readonly visibilitySaving = signal(false);
   protected readonly created = signal<SchoolRegistrationResponse | null>(null);
   private logoChange: LogoChange = { file: null, remove: false };
 
@@ -138,6 +139,27 @@ export class SchoolFormComponent implements OnInit {
           if (this.isView()) this.form.disable({ emitEvent: false });
         },
         error: () => this.loadFailed.set(true), // already toasted by the error interceptor
+      });
+  }
+
+  /** Super Admin switch: saved at once by its own endpoint (not part of the school form's Save). */
+  protected onWebsiteToggle(event: Event): void {
+    const current = this.school();
+    const box = event.target as HTMLInputElement;
+    if (!current || this.isView() || this.visibilitySaving()) return;
+    const show = box.checked;
+    this.visibilitySaving.set(true);
+    this.schools
+      .setWebsiteVisibility(current.schoolId, show)
+      .pipe(finalize(() => this.visibilitySaving.set(false)))
+      .subscribe({
+        next: (r) => {
+          this.school.update((s) => (s ? { ...s, showOnWebsite: r.showOnWebsite } : s));
+          this.toast.success(r.showOnWebsite ? `${current.schoolName} will be listed on the website.` : `${current.schoolName} is hidden from the website.`);
+        },
+        error: () => {
+          box.checked = !show; // the interceptor already toasted; put the switch back
+        },
       });
   }
 

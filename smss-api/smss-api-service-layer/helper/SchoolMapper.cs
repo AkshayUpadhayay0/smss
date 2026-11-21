@@ -51,6 +51,7 @@ namespace smss_api_service_layer.helper
             Website = s.Website,
             LogoUrl = s.LogoUrl,
             SchoolStatusId = s.SchoolStatusId,
+            ShowOnWebsite = s.ShowOnWebsite,
             CreatedAt = s.CreatedAt,
             UpdatedAt = s.UpdatedAt,
             Contacts = s.Contacts.Select(c => new SchoolContactResponse

@@ -67,8 +67,8 @@ export const PUBLIC_ROUTES: Routes = [
   },
   {
     path: 'privacy-policy',
-    loadComponent: () => import('./pages/legal-page.component').then((m) => m.LegalPageComponent),
-    data: { kind: 'privacy', ...seo({ title: `Privacy Policy | ${SITE_CONFIG.name}`, description: `How ${SITE_CONFIG.name} handles the details you send us.`, path: '/privacy-policy' }) },
+    loadComponent: () => import('./pages/privacy-policy.component').then((m) => m.PrivacyPolicyComponent),
+    data: { ...seo({ title: `Privacy Policy | ${SITE_CONFIG.name}`, description: `How ${SITE_CONFIG.name} handles personal information on its website and mobile app, including driver live location.`, path: '/privacy-policy' }) },
   },
   {
     path: 'terms',

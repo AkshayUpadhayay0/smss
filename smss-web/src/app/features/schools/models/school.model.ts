@@ -67,9 +67,17 @@ export interface SchoolsListModel extends SchoolBase {
   schoolCode: string;
   schoolStatusId?: number | null; // read-only, changed only via toggle-status
   logoUrl?: string | null; // relative path, prepend environment.apiUrl
+  /** Super Admin opt-in for the public "Our Partner Schools" section (changed only via website-visibility). */
+  showOnWebsite?: boolean;
   createdAt: string;
   updatedAt: string;
   contacts: SchoolContact[];
+}
+
+/** Answer of POST /api/superadmin/schools/{id}/website-visibility. */
+export interface WebsiteVisibility {
+  schoolId: string;
+  showOnWebsite: boolean;
 }
 
 export interface SchoolRegistrationResponse {

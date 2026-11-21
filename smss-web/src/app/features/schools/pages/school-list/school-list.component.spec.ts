@@ -33,8 +33,9 @@ describe('SchoolListComponent', () => {
 
   it('lists schools with the status resolved from schoolStatusId (never the raw number)', () => {
     expect(bodyRows()).toHaveLength(3);
-    const pills = [...el().querySelectorAll('.pill')].map((p) => p.textContent?.trim());
+    const pills = [...el().querySelectorAll('.pill')].map((p) => p.textContent?.trim()).filter((t) => t !== 'Yes' && t !== 'No'); // the "On website" badge is Yes / No
     expect(pills).toEqual(['Active', 'Inactive', 'Active']);
+    expect([...el().querySelectorAll('tbody tr')].every((r) => ['Yes', 'No'].includes([...r.querySelectorAll('.pill')].at(-1)?.textContent?.trim() ?? ''))).toBe(true);
     expect(el().textContent).toContain('3 records');
   });
 

@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Icon } from '../../components/Icon';
+import { PrivacyPolicyLink } from '../../components/PrivacyPolicyLink';
 import { Screen } from '../../components/Screen';
 import { Text } from '../../components/Text';
 import { colors, spacing } from '../../theme/tokens';
@@ -14,7 +15,7 @@ import { driverKeys } from './queries';
 
 /**
  * The prominent disclosure. Shown BEFORE any permission prompt (Google Play requirement): nothing on this screen or before it asks Android for anything.
- * Continue records the acceptance and opens the permission steps; Not now returns to Home, where duty cannot start until this is done.
+ * Accept records the acceptance and opens the permission steps; Not now returns to Home, where duty cannot start until this is done.
  */
 export function DisclosureScreen() {
   const router = useRouter();
@@ -42,8 +43,9 @@ export function DisclosureScreen() {
         </Text>
       </Card>
       <Text variant="small">The next screens ask Android for permission, one at a time. Nothing is shared until you start duty.</Text>
+      <PrivacyPolicyLink />
       <View style={{ gap: spacing.md }}>
-        <Button title="Continue" icon="arrow-right" onPress={() => void onContinue()} />
+        <Button title="Accept" icon="check" onPress={() => void onContinue()} />
         <Button title="Not now" variant="secondary" onPress={onNotNow} />
       </View>
     </Screen>

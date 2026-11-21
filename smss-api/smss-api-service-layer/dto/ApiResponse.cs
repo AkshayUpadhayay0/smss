@@ -52,6 +52,7 @@ namespace smss_api_service_layer.dto
         public string? Website { get; set; }
         public string? LogoUrl { get; set; }
         public int? SchoolStatusId { get; set; }
+        public bool ShowOnWebsite { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public List<SchoolContactResponse> Contacts { get; set; } = new();

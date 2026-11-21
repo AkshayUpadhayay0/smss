@@ -7,6 +7,7 @@ import { messageOf } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
+import { PrivacyPolicyLink } from '../../src/components/PrivacyPolicyLink';
 import { Text } from '../../src/components/Text';
 import { colors, fonts } from '../../src/theme/tokens';
 
@@ -86,6 +87,7 @@ export default function SignIn() {
           <Text variant="small" style={styles.center}>
             Forgot your password? Ask your school office to reset it.
           </Text>
+          <PrivacyPolicyLink />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -1,12 +1,22 @@
 import { environment } from '../../../environments/environment';
 
 /**
+ * The developer name EXACTLY as it appears on the Google Play Console. The ONE place to set it: `npm run build` refuses to run while it still holds the
+ * placeholder (scripts/seo-files.mjs), listing every place that shows it.
+ */
+export const DEVELOPER_NAME = 'Akshay Upadhayay';
+
+/** "Last updated" date of the Privacy Policy (yyyy-MM-dd). Change it whenever the policy text changes. */
+export const PRIVACY_LAST_UPDATED = '2026-11-21';
+
+/**
  * Everything about the company that the public site shows or publishes (header, footer, contact page, SEO, structured data).
  * Change it here and nowhere else. EVERY value below is a PLACEHOLDER until the real details are filled in.
  */
 export const SITE_CONFIG = {
   name: 'SMSS',
-  legalName: 'SMSS (company name to be confirmed)',
+  /** The developer / publisher name shown in the footer, the Privacy Policy and the structured data. */
+  legalName: DEVELOPER_NAME,
   tagline: 'School Management System',
   description:
     'SMSS is a modern, multi-school management platform: admissions, students, attendance, examinations, fees and communication in one secure place.',

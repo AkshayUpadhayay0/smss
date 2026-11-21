@@ -2,18 +2,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SITE_CONFIG } from '../../../core/config/site.config';
 
-type LegalKind = 'privacy' | 'terms';
+type LegalKind = 'terms';
 
 const CONTENT: Record<LegalKind, { title: string; sections: { heading: string; text: string }[] }> = {
-  privacy: {
-    title: 'Privacy Policy',
-    sections: [
-      { heading: 'What we collect', text: 'When you contact us or request a demo we collect the details you type into the form: your name, email, phone, school details and message.' },
-      { heading: 'How we use it', text: 'We use these details only to reply to you and to arrange a demo. We do not sell them.' },
-      { heading: 'How long we keep it', text: 'Placeholder: the retention period will be confirmed here.' },
-      { heading: 'Your choices', text: 'You can ask us to correct or delete your details by writing to us at the email address on the Contact page.' },
-    ],
-  },
   terms: {
     title: 'Terms of Use',
     sections: [
@@ -25,7 +16,7 @@ const CONTENT: Record<LegalKind, { title: string; sections: { heading: string; t
   },
 };
 
-/** Placeholder legal pages (route data `kind`). The wording must be reviewed and replaced before launch. */
+/** Placeholder Terms page (the Privacy Policy has its own component). The wording must be reviewed and replaced before launch. */
 @Component({
   selector: 'app-legal-page',
   imports: [RouterLink],
@@ -46,7 +37,7 @@ const CONTENT: Record<LegalKind, { title: string; sections: { heading: string; t
   `,
 })
 export class LegalPageComponent {
-  readonly kind = input<LegalKind>('privacy');
+  readonly kind = input<LegalKind>('terms');
   protected readonly site = SITE_CONFIG;
   protected content() {
     return CONTENT[this.kind()];

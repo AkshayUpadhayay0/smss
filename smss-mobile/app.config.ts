@@ -64,6 +64,8 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
   extra: {
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
+    // The public Privacy Policy page (opened from the app: sign-in, driver disclosure, profile). Google Play requires the link inside the app.
+    privacyPolicyUrl: process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? '',
     dutyIntervalSeconds: process.env.EXPO_PUBLIC_DUTY_INTERVAL_SECONDS ?? '',
     dutyAccuracy: process.env.EXPO_PUBLIC_DUTY_ACCURACY ?? '',
     eas: {

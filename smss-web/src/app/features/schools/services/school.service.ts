@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiService } from '../../../core/services/api.service';
-import { CreateSchoolRequest, SchoolBrand, SchoolStats, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest } from '../models/school.model';
+import { CreateSchoolRequest, SchoolBrand, SchoolStats, SchoolRegistrationResponse, SchoolsListModel, UpdateMySchoolProfileRequest, UpdateSchoolRequest, WebsiteVisibility } from '../models/school.model';
 
 const BASE = '/api/SchoolRegistration';
 
@@ -61,6 +61,11 @@ export class SchoolService {
   /** Flips Active/Inactive. This is the only way a school's status changes ("delete" is never real). */
   toggleStatus(schoolId: string): Observable<SchoolsListModel> {
     return this.api.post<SchoolsListModel>(`${BASE}/schools/${encodeURIComponent(schoolId)}/toggle-status`);
+  }
+
+  /** Super Admin: show or hide the school in the public "Our Partner Schools" section (a POST, not a PATCH; the school id travels in the route only). */
+  setWebsiteVisibility(schoolId: string, show: boolean): Observable<WebsiteVisibility> {
+    return this.api.post<WebsiteVisibility>(`/api/superadmin/schools/${encodeURIComponent(schoolId)}/website-visibility`, { show });
   }
 
   /** Callers handle failure themselves (the school itself is already saved), so no global toast. */

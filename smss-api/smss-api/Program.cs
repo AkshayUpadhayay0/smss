@@ -178,6 +178,11 @@ builder.Services.AddHostedService<smss_api.Helpers.FeeReminderHostedService>();
 builder.Services.AddScoped<IEnquiryRepository, EnquiryRepository>();
 builder.Services.AddScoped<IEnquiryService, EnquiryService>();
 
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IPartnerSchoolCache, PartnerSchoolCache>();
+builder.Services.AddScoped<IPartnerSchoolRepository, PartnerSchoolRepository>();
+builder.Services.AddScoped<IPartnerSchoolService, PartnerSchoolService>();
+
 builder.Services.AddScoped<IMasterImportRepository, MasterImportRepository>();
 builder.Services.AddScoped<IMasterImportService, MasterImportService>();
 builder.Services.AddScoped<ISystemSetupRepository, SystemSetupRepository>();
@@ -266,6 +271,8 @@ builder.Services.AddSwaggerGen();
 // Public enquiry form: a fixed window per client IP (appsettings RateLimiting:PublicEnquiries). Over the limit -> 429 in the project's response shape.
 var enquiryLimit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicEnquiries:PermitLimit") ?? 5);
 var enquiryWindow = TimeSpan.FromMinutes(Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicEnquiries:WindowMinutes") ?? 10));
+var partnerLimit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicPartnerSchools:PermitLimit") ?? 60);
+var partnerWindow = TimeSpan.FromMinutes(Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:PublicPartnerSchools:WindowMinutes") ?? 1));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -273,6 +280,11 @@ builder.Services.AddRateLimiter(options =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = enquiryLimit, Window = enquiryWindow, QueueLimit = 0, AutoReplenishment = true }));
+    // Public partner-schools list: read-only and cached, so a more generous per-IP window than the enquiry form (appsettings RateLimiting:PublicPartnerSchools)
+    options.AddPolicy(smss_api.Controllers.PublicPartnerSchoolsController.RateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = partnerLimit, Window = partnerWindow, QueueLimit = 0, AutoReplenishment = true }));
     // Driver location pings: a coarse shield per tracking token (hashed: the raw token is never used as a key), per client address when there is none.
     // The authoritative minimum interval is enforced in DriverDutyService; this only stops a flood.
     var driverPermit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:DriverLocation:PermitLimit") ?? 12);
@@ -355,17 +367,9 @@ app.UseSwaggerUI();
 
 app.UseCors("AngularDev");
 
-// Student and employee photos are PRIVATE (served only by GET /api/Student/{id}/photo and GET /api/Employee/{id}/photo). Whatever an old deployment still has under /uploads/<school>/students/ or /employees/ is not served either.
-app.Use(async (context, next) =>
-{
-    var path = context.Request.Path.Value ?? string.Empty;
-    if (path.StartsWith(uploadsRequestPath + "/", StringComparison.OrdinalIgnoreCase) && (path.Contains("/students/", StringComparison.OrdinalIgnoreCase) || path.Contains("/employees/", StringComparison.OrdinalIgnoreCase)))
-    {
-        context.Response.StatusCode = StatusCodes.Status404NotFound;
-        return;
-    }
-    await next();
-});
+// The public /uploads space serves ONLY school logos (/uploads/{schoolCode}/logo/{file}.png|jpg|jpeg|webp); everything else under it is a 404 (see UploadsAllowListMiddleware).
+// Student / employee photos, documents and the rest live in the private store and are served only by authenticated endpoints.
+app.UseMiddleware<smss_api.Helpers.UploadsAllowListMiddleware>();
 
 app.UseStaticFiles(new StaticFileOptions
 {
