@@ -3,14 +3,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
+import { OnboardingService } from '../../../core/services/onboarding.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, InputComponent, PageHeaderComponent } from '../../../shared/components';
 
 const MIN_LENGTH = 8; // server rule
-/** First page a School Admin sees after replacing the temporary password: Import Masters, the quickest way to set up. */
-const FIRST_LOGIN_LANDING = '/school-setup/import-masters';
 
 function matchesNewPassword(control: AbstractControl): ValidationErrors | null {
   const parent = control.parent;
@@ -28,6 +26,7 @@ export class ChangePasswordComponent {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly onboarding = inject(OnboardingService);
 
   protected readonly firstLogin = this.auth.user()?.isFirstLogin ?? false;
   protected readonly form = new FormGroup({
@@ -54,13 +53,6 @@ export class ChangePasswordComponent {
     return 'Invalid value';
   }
 
-  /**
-   * Where a user lands after replacing their temporary password. A new School Admin starts with Import Masters;
-   * anyone who may not open it (students, other roles) gets the dashboard.
-   */
-  private firstLoginLanding(): string {
-    return canAccess(FIRST_LOGIN_LANDING, this.auth.currentUserRoles()) ? FIRST_LOGIN_LANDING : '/dashboard';
-  }
 
   protected submit(): void {
     if (this.saving()) return;
@@ -76,7 +68,12 @@ export class ChangePasswordComponent {
       .subscribe({
         next: () => {
           this.toast.success('Password changed. Other devices have been signed out.');
-          void this.router.navigateByUrl(this.firstLogin ? this.firstLoginLanding() : '/dashboard');
+          if (!this.firstLogin) {
+            void this.router.navigateByUrl('/dashboard');
+            return;
+          }
+          // A new School Admin is routed by the setup status: Add Academic Year first, then Import Masters, and so on. Anyone else: the dashboard.
+          this.onboarding.landingFor('/dashboard').subscribe((target) => void this.router.navigateByUrl(target));
         },
         error: () => undefined, // the server's reason (e.g. wrong current password) is toasted by the interceptor
       });

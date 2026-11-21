@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { setupGuard } from './core/guards/setup.guard';
 
 // Feature route files are mounted at the ROOT path (e.g. /schools, /masters/board-type).
 export const routes: Routes = [
@@ -24,7 +25,7 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [authGuard],
-    canActivateChild: [roleGuard], // per-page role check, re-run on every child navigation
+    canActivateChild: [roleGuard, setupGuard], // per-page role check + unfinished-setup redirect, re-run on every child navigation
     loadComponent: () => import('./layouts/main-layout/main-layout.component').then((m) => m.MainLayoutComponent),
     children: [
       { path: '', loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES) },

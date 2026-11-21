@@ -6,6 +6,13 @@
   @for (item of items(); track item.label) {
     @if (item.children) {
       <div class="group" [class.open]="isOpen(item)">
+        @if (groupLocked(item)) {
+          <button type="button" class="link group-toggle locked" disabled aria-disabled="true" [attr.title]="lockTip()" [attr.aria-label]="item.label + ' (locked). ' + lockTip()">
+            <app-icon [name]="item.icon" [size]="20" />
+            <span class="label">{{ item.label }}</span>
+            <app-icon name="lock" [size]="16" />
+          </button>
+        } @else {
         <button type="button" class="link group-toggle" [attr.aria-expanded]="isOpen(item)" [title]="collapsed() ? item.label : ''" (click)="toggleGroup(item)">
           <app-icon [name]="item.icon" [size]="20" />
           <span class="label">{{ item.label }}</span>
@@ -14,14 +21,28 @@
         @if (isOpen(item) && !collapsed()) {
           <div class="children">
             @for (child of item.children; track child.route) {
+              @if (locked(child.route)) {
+              <span class="link child locked" role="link" aria-disabled="true" tabindex="0" [attr.title]="lockTip()" [attr.aria-label]="child.label + ' (locked). ' + lockTip()">
+                <app-icon name="lock" [size]="14" />
+                <span class="label">{{ child.label }}</span>
+              </span>
+              } @else {
               <a class="link child" [routerLink]="child.route" [class.active]="isActive(child.route)" [attr.aria-current]="isActive(child.route) ? 'page' : null" (click)="navigated.emit()">
                 <span class="dot"></span>
                 <span class="label">{{ child.label }}</span>
               </a>
+              }
             }
           </div>
         }
+        }
       </div>
+    } @else if (locked(item.route)) {
+      <span class="link locked" role="link" aria-disabled="true" tabindex="0" [attr.title]="lockTip()" [attr.aria-label]="item.label + ' (locked). ' + lockTip()">
+        <app-icon [name]="item.icon" [size]="20" />
+        <span class="label">{{ item.label }}</span>
+        <app-icon name="lock" [size]="16" />
+      </span>
     } @else {
       <a class="link" [routerLink]="item.route" [class.active]="isActive(item.route)" [attr.aria-current]="isActive(item.route) ? 'page' : null" [title]="collapsed() ? item.label : ''" (click)="navigated.emit()">
         <app-icon [name]="item.icon" [size]="20" />

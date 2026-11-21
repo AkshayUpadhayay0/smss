@@ -7,6 +7,9 @@ import { routes } from './app.routes';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ToastService } from './core/services/toast.service';
 import { clearSessions, makeUser, seedSession } from './core/testing/auth-test-utils';
+import { envelope, makeStatus } from './core/testing/onboarding-test-utils';
+import { OnboardingService } from './core/services/onboarding.service';
+import { environment } from '../environments/environment';
 
 describe('app routes', () => {
   beforeEach(() => {
@@ -144,6 +147,40 @@ describe('app routes', () => {
 
     describe('School Admin', () => {
       beforeEach(asSchoolAdmin);
+      // These tests are about an established school: its setup is complete, so nothing is locked or redirected
+      beforeEach(() => {
+        TestBed.inject(OnboardingService).refresh().subscribe();
+        TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/api/Onboarding/status`).flush(envelope(makeStatus(6)));
+      });
+
+      it('a School Admin whose setup is incomplete is sent from /students (and /employees, /transport/vehicles) to the next setup step, and the menu locks those entries', async () => {
+        const http = TestBed.inject(HttpTestingController);
+        const statusUrl = `${environment.apiUrl}/api/Onboarding/status`;
+        const incomplete = () => http.match(statusUrl).forEach((r) => r.flush(envelope(makeStatus(1))));
+        incomplete();
+        TestBed.inject(OnboardingService).refresh().subscribe();
+        incomplete();
+        const harness = (sharedHarness ??= await RouterTestingHarness.create());
+        // the guard asks the API again while the setup is incomplete: answer it as the navigation runs
+        const navigate = async (url: string) => {
+          const done = harness.navigateByUrl(url);
+          for (let i = 0; i < 5; i++) {
+            await new Promise((r) => setTimeout(r));
+            incomplete();
+          }
+          await done;
+        };
+        await navigate('/nowhere-start');
+        for (const guarded of ['/students', '/employees/new', '/transport/vehicles']) {
+          await navigate(guarded);
+          expect(TestBed.inject(Router).url, guarded).toBe('/school-setup/academic-year');
+        }
+        expect(TestBed.inject(ToastService).toasts().some((t) => t.message.includes('Add the academic year'))).toBe(true);
+        harness.fixture.detectChanges();
+        const locked = [...(harness.routeNativeElement?.querySelectorAll('app-sidebar nav .locked') ?? [])].map((e) => e.querySelector('.label')?.textContent?.trim());
+        expect(locked).toEqual(expect.arrayContaining(['Transport', 'Employees']));
+        expect(harness.routeNativeElement?.querySelector('app-setup-progress .setup')).not.toBeNull();
+      });
 
       it('/students/onboard-existing opens the onboarding form, not a student profile (route order)', async () => {
         const { harness, url } = await go('/students/onboard-existing');

@@ -1,0 +1,180 @@
+:host {
+  display: block;
+}
+
+.setup,
+.banner {
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.setup {
+  padding: var(--space-5);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-color: var(--color-warning);
+  background: var(--color-warning-soft);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.sub {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.bar {
+  flex: 0 1 240px;
+  min-width: 140px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-600);
+  transition: width var(--transition-fast);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-link {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--color-surface-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-600);
+    outline-offset: 2px;
+  }
+}
+
+.marker {
+  display: inline-flex;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.step-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.detail {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.done {
+  .marker {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  .step-title {
+    color: var(--color-text-muted);
+    font-weight: var(--weight-medium);
+  }
+}
+
+.next .step-link {
+  border-color: var(--color-primary-600);
+  background: var(--color-primary-soft);
+
+  .marker {
+    background: var(--color-primary-600);
+    color: var(--color-on-primary);
+  }
+}
+
+// On the setup screens the card is a slim strip
+.compact {
+  padding: var(--space-3) var(--space-4);
+
+  .head {
+    margin-bottom: var(--space-3);
+  }
+
+  .sub {
+    display: none;
+  }
+
+  .step-link {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+@media (max-width: 575px) {
+  .setup {
+    padding: var(--space-4);
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .bar {
+    flex-basis: 100%;
+  }
+}

@@ -40,10 +40,39 @@ describe('ChangePasswordComponent landing page', () => {
     clearSessions();
   });
 
-  it('sends a School Admin to Import Masters after the first password change', () => {
+  const STATUS = `${environment.apiUrl}/api/Onboarding/status`;
+  const step = (code: string, route: string, done = false) => ({ code, title: code, done, route, detail: '' });
+  const status = (nextStep: ReturnType<typeof step> | null) => ({
+    status: true, statusCode: 200, message: 'ok',
+    data: { isComplete: nextStep === null, nextStep, steps: nextStep ? [nextStep] : [] },
+  });
+
+  it('sends a School Admin to Add Academic Year (the next setup step) after the first password change', () => {
     setup({ isFirstLogin: true, roles: ['School Admin'], userType: 'School Id' });
     changePassword({ roles: ['School Admin'], userType: 'School Id' });
+    http.expectOne(STATUS).flush(status(step('ACADEMIC_YEAR', '/school-setup/academic-year')));
+    expect(navigateByUrl).toHaveBeenCalledWith('/school-setup/academic-year');
+  });
+
+  it('routes a School Admin whose school already has an academic year to the step after it', () => {
+    setup({ isFirstLogin: true, roles: ['School Admin'], userType: 'School Id' });
+    changePassword({ roles: ['School Admin'], userType: 'School Id' });
+    http.expectOne(STATUS).flush(status(step('IMPORT_MASTERS_OR_CLASSES', '/school-setup/import-masters')));
     expect(navigateByUrl).toHaveBeenCalledWith('/school-setup/import-masters');
+  });
+
+  it('sends a first-login School Admin to the dashboard when the setup is already complete', () => {
+    setup({ isFirstLogin: true, roles: ['School Admin'], userType: 'School Id' });
+    changePassword({ roles: ['School Admin'], userType: 'School Id' });
+    http.expectOne(STATUS).flush(status(null));
+    expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('falls back to the dashboard when the setup status cannot be read', () => {
+    setup({ isFirstLogin: true, roles: ['School Admin'], userType: 'School Id' });
+    changePassword({ roles: ['School Admin'], userType: 'School Id' });
+    http.expectOne(STATUS).flush({}, { status: 500, statusText: 'err' });
+    expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
   });
 
   it('sends a School Admin who is only changing a password later to the dashboard', () => {

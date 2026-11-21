@@ -6,13 +6,14 @@ import { provideClientHydration, withEventReplay } from '@angular/platform-brows
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { setupRefreshInterceptor } from './core/interceptors/setup-refresh.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     // anchorScrolling: the landing page's "/#features" style links
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ anchorScrolling: 'enabled' })),
-    provideHttpClient(withFetch(), withInterceptors([errorInterceptor, authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([errorInterceptor, setupRefreshInterceptor, authInterceptor])),
     // Reuses the prerendered HTML of the public pages instead of re-drawing it (no flash, no layout shift)
     provideClientHydration(withEventReplay()),
   ]

@@ -1,6 +1,7 @@
 import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { Injector, inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
+import { OnboardingService, isSetupIncomplete } from '../services/onboarding.service';
 import { ToastService } from '../services/toast.service';
 import { ApiResponse } from '../models/api-response.model';
 
@@ -41,9 +42,15 @@ export function extractErrorMessage(error: HttpErrorResponse): string {
 /** Shows a toast for failed API calls, then re-throws so callers can still react. */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
+  const injector = inject(Injector);
 
   return next(req).pipe(
     catchError((error: unknown) => {
+      // 409 SETUP_INCOMPLETE: a friendly explanation with a button to the next setup step, never the raw error
+      if (isSetupIncomplete(error)) {
+        void injector.get(OnboardingService).handleSetupIncomplete(error);
+        return throwError(() => error);
+      }
       if (error instanceof HttpErrorResponse && !req.context.get(SKIP_ERROR_TOAST)) {
         toast.error(extractErrorMessage(error));
       }

@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, effect, inject, signal, untracked } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { OnboardingService } from '../../core/services/onboarding.service';
+import { SetupProgressComponent } from '../../features/onboarding/components/setup-progress/setup-progress.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { TopbarComponent } from './topbar/topbar.component';
 
@@ -7,7 +9,7 @@ const MOBILE_QUERY = '(max-width: 991px)';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, SetupProgressComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './main-layout.component.scss',
   template: `
@@ -24,6 +26,7 @@ const MOBILE_QUERY = '(max-width: 991px)';
       <div class="main">
         <app-topbar class="topbar" (menuToggle)="toggleSidebar()" />
         <main class="content">
+          <app-setup-progress />
           <router-outlet />
         </main>
       </div>
@@ -31,9 +34,17 @@ const MOBILE_QUERY = '(max-width: 991px)';
   `,
 })
 export class MainLayoutComponent {
+  private readonly onboarding = inject(OnboardingService);
   protected readonly isMobile = signal(window.matchMedia(MOBILE_QUERY).matches);
   protected readonly collapsed = signal(false);
   protected readonly drawerOpen = signal(false);
+
+  constructor() {
+    // Reads the setup status once per signed-in user (School Admin, Principal, Accountant) so the menu and the checklist know it
+    effect(() => {
+      if (this.onboarding.eligible()) untracked(() => this.onboarding.ensure().subscribe());
+    });
+  }
 
   @HostListener('window:resize')
   protected onResize(): void {

@@ -1,0 +1,43 @@
+@if (visible()) {
+  @if (onboarding.isSchoolAdmin()) {
+    <section class="setup" [class.compact]="!onDashboard()" aria-label="School setup progress">
+      <header class="head">
+        <div>
+          <h2 class="title">Finish setting up your school</h2>
+          <p class="sub">
+            {{ doneCount() }} of {{ steps().length }} steps done. Students, employees and transport unlock when every step is done.
+          </p>
+        </div>
+        <div class="bar" role="progressbar" aria-label="Setup progress" [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
+          <span class="fill" [style.width.%]="percent()"></span>
+        </div>
+      </header>
+      <ol class="steps">
+        @for (step of steps(); track step.code; let i = $index) {
+          <li class="step" [class.done]="step.done" [class.next]="step.code === onboarding.nextStep()?.code">
+            <a class="step-link" [routerLink]="step.route" [attr.aria-label]="step.title + (step.done ? ' (done)' : ' (to do)')">
+              <span class="marker" aria-hidden="true">
+                @if (step.done) {
+                  <app-icon name="circle-check" [size]="18" />
+                } @else {
+                  {{ i + 1 }}
+                }
+              </span>
+              <span class="text">
+                <span class="step-title">{{ step.title }}</span>
+                @if (!step.done && !(!onDashboard() && step.code !== onboarding.nextStep()?.code)) {
+                  <span class="detail">{{ step.detail }}</span>
+                }
+              </span>
+            </a>
+          </li>
+        }
+      </ol>
+    </section>
+  } @else {
+    <div class="banner" role="status">
+      <app-icon name="circle-alert" [size]="18" />
+      <span>School setup is incomplete. Students, employees and transport open once your School Admin finishes it.</span>
+    </div>
+  }
+}

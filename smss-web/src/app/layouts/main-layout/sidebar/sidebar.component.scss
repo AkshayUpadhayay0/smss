@@ -80,6 +80,17 @@
   }
 }
 
+// Closed until the school's setup is complete: visible, but not clickable
+.link.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+
+  &:hover {
+    background: transparent;
+    color: var(--sidebar-text);
+  }
+}
+
 .label {
   flex: 1;
   overflow: hidden;

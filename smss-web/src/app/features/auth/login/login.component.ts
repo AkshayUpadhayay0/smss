@@ -3,6 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { OnboardingService } from '../../../core/services/onboarding.service';
 import { ButtonComponent, IconComponent, InputComponent } from '../../../shared/components';
 
 /** Only same-app absolute paths are allowed as a post-login target (prevents open redirects). */
@@ -20,6 +21,7 @@ export function safeReturnUrl(url: string | undefined): string | null {
 export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly onboarding = inject(OnboardingService);
 
   /** Bound from the ?returnUrl= query param (withComponentInputBinding). */
   readonly returnUrl = input<string>();
@@ -56,8 +58,12 @@ export class LoginComponent {
       .subscribe({
         next: (user) => {
           // A temporary password (first login) must be replaced before anything else.
-          const target = user.isFirstLogin ? '/change-password' : (safeReturnUrl(this.returnUrl()) ?? '/dashboard');
-          void this.router.navigateByUrl(target);
+          if (user.isFirstLogin) {
+            void this.router.navigateByUrl('/change-password');
+            return;
+          }
+          // A School Admin whose school setup is unfinished is routed to the next setup step instead
+          this.onboarding.landingFor(safeReturnUrl(this.returnUrl()) ?? '/dashboard').subscribe((target) => void this.router.navigateByUrl(target));
         },
         error: (e: { error?: { message?: string }; status?: number }) => {
           this.form.controls.password.reset('');

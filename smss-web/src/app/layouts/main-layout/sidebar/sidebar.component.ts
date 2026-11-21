@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 import { canAccess } from '../../../core/config/route-roles';
 import { AuthService } from '../../../core/services/auth.service';
+import { OnboardingService } from '../../../core/services/onboarding.service';
 import { EnquiryService } from '../../../features/enquiries/services/enquiry.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { LogoComponent } from '../../../shared/components/logo/logo.component';
@@ -21,6 +22,7 @@ export class SidebarComponent {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly enquiries = inject(EnquiryService);
+  private readonly onboarding = inject(OnboardingService);
 
   /** Current URL path (no query / fragment), kept in a signal so the active highlight follows every navigation. */
   private readonly path = toSignal(
@@ -79,6 +81,23 @@ export class SidebarComponent {
     const matches = (r: string) => path === r || path.startsWith(r + '/');
     if (!matches(route)) return false;
     return !SidebarComponent.ALL_ROUTES.some((r) => r.length > route.length && matches(r));
+  }
+
+  /** A menu entry that stays closed until the school's setup is complete (students, employees, transport records). */
+  protected locked(route: string | undefined): boolean {
+    return !!route && this.onboarding.isLocked(route);
+  }
+
+  /** A group whose every visible entry is locked is locked as a whole. */
+  protected groupLocked(item: NavItem): boolean {
+    return !!item.children?.length && item.children.every((c) => this.locked(c.route));
+  }
+
+  protected lockTip(): string {
+    const next = this.onboarding.nextStep();
+    return this.onboarding.isSchoolAdmin()
+      ? `Finish the school setup first.${next ? ' Next step: ' + next.title + '.' : ''}`
+      : 'School setup is incomplete. Your School Admin must finish it first.';
   }
 
   protected isOpen(item: NavItem): boolean {
