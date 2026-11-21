@@ -7,6 +7,7 @@ import { canAccess } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { formatInr } from '../../../../core/utils/currency';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption, SortChange, SortDirection, TableColumn, TableComponent } from '../../../../shared/components';
+import { monthLabel } from '../../../dashboard/utils/school-admin-dashboard-format';
 import { Section } from '../../../school-setup/models/section.model';
 import { dueStatusTone } from '../../../students/models/student-billing.model';
 import { ClassFeeReport, ClassFeeTableRow, STATUS_RANK, csvCell } from '../../models/fee-report.model';
@@ -58,6 +59,9 @@ export class ClassFeeReportComponent implements OnInit {
   );
 
   protected readonly report = signal<ClassFeeReport | null>(null);
+  /** yyyy-MM from the URL (the dashboard's "Not paid this month" card): only installments due that month count. Null = the whole year. */
+  protected readonly month = signal<string | null>(null);
+  protected readonly monthText = computed(() => (this.month() ? monthLabel(this.month() + '-01') : ''));
   protected readonly loading = signal(false);
   protected readonly failed = signal(false);
   protected readonly sortKey = signal<string | null>('outstanding');
@@ -121,7 +125,10 @@ export class ClassFeeReportComponent implements OnInit {
         // opened from the dashboard with its filter in the URL
         const q = this.route.snapshot.queryParamMap;
         const year = active.find((y) => String(y.academicYearId) === q.get('academicYearId')) ?? active.find((y) => y.isCurrent) ?? active[0];
-        const wantedClass = q.get('classId');
+        const wantedMonth = q.get('month');
+        this.month.set(wantedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(wantedMonth) ? wantedMonth : null);
+        // opened for a month without a class (the dashboard card is school-wide): start with the first class
+        const wantedClass = q.get('classId') ?? (this.month() ? (this.classOptions()[0]?.value ?? null) : null);
         const wantedSection = q.get('sectionId');
         if (wantedClass && this.classOptions().some((o) => o.value === wantedClass)) {
           this.classValue.set(wantedClass);
@@ -138,12 +145,18 @@ export class ClassFeeReportComponent implements OnInit {
     if (!this.yearControl.value || !this.classControl.value) return;
     this.loading.set(true);
     this.reports
-      .classReport(Number(this.classControl.value), Number(this.yearControl.value), Number(this.sectionControl.value) || null)
+      .classReport(Number(this.classControl.value), Number(this.yearControl.value), Number(this.sectionControl.value) || null, this.month())
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => this.report.set(r),
         error: () => this.failed.set(true), // already toasted by the interceptor
       });
+  }
+
+  protected showWholeYear(): void {
+    this.month.set(null);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { month: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    this.load();
   }
 
   protected onSort(change: SortChange): void {

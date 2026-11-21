@@ -66,6 +66,8 @@ export interface ClassFeeRow {
 }
 
 export interface ClassFeeReport {
+  /** yyyy-MM when the report was asked for one month of dues; null/absent for the whole year. */
+  month?: string | null;
   academicYearId: number;
   academicYearName: string;
   classId: number;

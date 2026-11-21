@@ -1,0 +1,123 @@
+<app-welcome-banner [title]="welcomeTitle()" [subtitle]="welcomeSub()" [badge]="yearBadge()" />
+
+@if (loading() && !data()) {
+  <div class="skeleton-wrap" role="status" aria-label="Loading your dashboard" data-state="loading">
+    @for (s of [0, 1, 2]; track s) {
+      <section class="section">
+        <div class="sk sk-title"></div>
+        <div class="cards">
+          @for (c of skeletons; track c) {
+            <div class="card sk-card"><div class="sk sk-line short"></div><div class="sk sk-line big"></div><div class="sk sk-line"></div></div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+} @else if (loadFailed() || !data()) {
+  <app-card>
+    <div class="state" role="alert" data-state="error">
+      <p>Your dashboard could not be loaded.</p>
+      <app-button variant="secondary" size="sm" (click)="load()">Try again</app-button>
+    </div>
+  </app-card>
+} @else {
+  @let d = data()!;
+
+  @if (empty()) {
+    <p class="empty" role="status" data-state="empty">
+      <app-icon name="info" [size]="18" />
+      <span>No students or staff have been added yet, so the figures below are zero. They fill in as you add students, employees and fees.</span>
+    </p>
+  }
+
+  <!-- ============================================================ Students & Fees -->
+  <section class="section" aria-labelledby="sec-fees" [class.refreshing]="loading()">
+    <h2 id="sec-fees">Students &amp; Fees <small>{{ monthName() }}</small></h2>
+    <div class="cards">
+      @for (c of feeCards(); track c.id) {
+        @if (c.link) {
+          <a class="card link" [class]="c.tone" [routerLink]="c.link.path" [queryParams]="c.link.query" [attr.title]="c.hint" [attr.data-card]="c.id">
+            <span class="ico"><app-icon [name]="c.icon" [size]="26" /></span>
+            <span class="txt"><span class="label">{{ c.label }}</span><strong>{{ c.value }}</strong><small>{{ c.note }}</small></span>
+          </a>
+        } @else {
+          <div class="card" [class]="c.tone" [attr.title]="c.hint" [attr.data-card]="c.id">
+            <span class="ico"><app-icon [name]="c.icon" [size]="26" /></span>
+            <span class="txt"><span class="label">{{ c.label }}</span><strong>{{ c.value }}</strong><small>{{ c.note }}</small></span>
+          </div>
+        }
+      }
+    </div>
+    <section class="panel" aria-label="Paid and not paid students">
+      <header><h3>Paid vs not paid this month</h3></header>
+      @if (anyDues()) {
+        <app-chart [options]="donut()" label="Students who paid and have not paid this month" />
+      } @else {
+        <p class="muted" data-empty="dues">No student has a fee due this month.</p>
+      }
+    </section>
+  </section>
+
+  <!-- ============================================================ Money -->
+  <section class="section" aria-labelledby="sec-money">
+    <h2 id="sec-money">Money</h2>
+    <div class="cards four">
+      @for (c of moneyCards(); track c.id) {
+        <div class="card" [class]="c.tone" [class.muted-card]="c.muted" [attr.title]="c.hint" [attr.data-card]="c.id">
+          <span class="ico"><app-icon [name]="c.icon" [size]="26" /></span>
+          <span class="txt"><span class="label">{{ c.label }}</span><strong [class.small]="c.muted">{{ c.value }}</strong><small>{{ c.note }}</small></span>
+        </div>
+      }
+    </div>
+    <section class="panel" aria-label="Income and expenses">
+      <header><h3>Income vs expenses</h3></header>
+      <app-chart [options]="incomeExpense()" label="Income compared with expenses, this month and this session" />
+      @if (!d.expensesSetUp) {
+        <p class="muted" data-note="expenses">Expenses are not set up yet, so only income is shown.</p>
+      }
+    </section>
+  </section>
+
+  <!-- ============================================================ People -->
+  <section class="section" aria-labelledby="sec-people">
+    <h2 id="sec-people">People</h2>
+    <div class="cards">
+      @let a = attendance()!;
+      <div class="card" [class.success]="a.marked" [class.warning]="!a.marked" [class.muted-card]="!a.marked" title="Students marked Present today out of the students marked today, across the school." data-card="attendance">
+        <span class="ico"><app-icon name="calendar-check" [size]="26" /></span>
+        <span class="txt"><span class="label">Attendance today</span><strong [class.small]="!a.marked">{{ a.value }}</strong><small>{{ a.note }}</small></span>
+      </div>
+
+      <div class="card primary" title="Active students admitted as New Admission with an admission date inside the current academic year. Students entered as existing are not counted." data-card="new-admissions">
+        <span class="ico"><app-icon name="user-plus" [size]="26" /></span>
+        <span class="txt">
+          <span class="label">New admissions this session</span>
+          @if (d.newAdmissionsThisSession !== null) {
+            <strong>{{ d.newAdmissionsThisSession }}</strong><small>Academic Year {{ d.session?.name }}</small>
+          } @else {
+            <strong class="small">Not set up yet</strong><small>Add a current academic year</small>
+          }
+        </span>
+      </div>
+
+      <div class="card info employees" title="Active employees. Teaching staff are teachers; the rest are grouped by designation (accountant, admission, driver); any other designation is other staff." data-card="employees">
+        <span class="ico"><app-icon name="users" [size]="26" /></span>
+        <span class="txt">
+          <span class="label">Employees</span><strong>{{ d.employees.total }}</strong><small>Active staff</small>
+          <ul class="breakdown">
+            @for (l of employeeLines(); track l.label) {
+              <li><span>{{ l.label }}</span><b>{{ l.count }}</b></li>
+            }
+          </ul>
+        </span>
+      </div>
+
+      @if (showVehicles()) {
+        <div class="card warning" title="Active vehicles of the school." data-card="vehicles">
+          <span class="ico"><app-icon name="truck" [size]="26" /></span>
+          <span class="txt"><span class="label">Vehicles</span><strong>{{ d.activeVehicles }}</strong><small>Active vehicles</small></span>
+        </div>
+      }
+    </div>
+  </section>
+}

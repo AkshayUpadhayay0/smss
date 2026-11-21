@@ -7,7 +7,7 @@ import { PlaceholderPageComponent } from '../../../placeholder/placeholder-page.
 import { AccountantDashboardComponent } from '../accountant-dashboard/accountant-dashboard.component';
 import { AdmissionDashboardComponent } from '../admission-dashboard/admission-dashboard.component';
 import { PrincipalDashboardComponent } from '../principal-dashboard/principal-dashboard.component';
-import { SchoolDashboardComponent } from '../school-dashboard/school-dashboard.component';
+import { SchoolAdminDashboardComponent } from '../school-admin-dashboard/school-admin-dashboard.component';
 import { SuperAdminDashboardComponent } from '../super-admin-dashboard/super-admin-dashboard.component';
 import { StudentDashboardComponent } from '../student-dashboard/student-dashboard.component';
 import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboard.component';
@@ -18,7 +18,7 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [AccountantDashboardComponent, AdmissionDashboardComponent, PlaceholderPageComponent, PrincipalDashboardComponent, SchoolDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
+  imports: [AccountantDashboardComponent, AdmissionDashboardComponent, PlaceholderPageComponent, PrincipalDashboardComponent, SchoolAdminDashboardComponent, StudentDashboardComponent, SuperAdminDashboardComponent, TeacherDashboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isStudent()) {
@@ -28,7 +28,7 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
     } @else if (isTeacher()) {
       <app-teacher-dashboard />
     } @else if (isSchoolAdmin()) {
-      <app-school-dashboard />
+      <app-school-admin-dashboard />
     } @else if (isPrincipal()) {
       <app-principal-dashboard />
     } @else if (isAccountant()) {

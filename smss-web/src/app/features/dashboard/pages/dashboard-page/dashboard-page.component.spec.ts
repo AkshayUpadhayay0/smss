@@ -45,10 +45,10 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it('gives a School Admin their own dashboard (one SchoolDashboard request, no placeholder)', () => {
+  it('gives a School Admin their own dashboard (one Dashboard/school-admin request, no placeholder)', () => {
     const { fixture, http } = open(['School Admin']);
-    http.expectOne(`${environment.apiUrl}/api/SchoolDashboard/summary`);
-    expect(fixture.nativeElement.querySelector('app-school-dashboard')).not.toBeNull();
+    http.expectOne(`${environment.apiUrl}/api/Dashboard/school-admin`);
+    expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-super-admin-dashboard')).toBeNull();
     http.verify();
@@ -57,7 +57,7 @@ describe('DashboardPageComponent', () => {
   it('keeps the Teacher dashboard for an account that is both a Teacher and a School Admin (existing behaviour unchanged)', () => {
     const { fixture, http } = open(['Teacher', 'School Admin']);
     http.expectOne(`${environment.apiUrl}/api/TeacherDashboard`);
-    expect(fixture.nativeElement.querySelector('app-school-dashboard')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).toBeNull();
     http.verify();
   });
 
@@ -66,13 +66,13 @@ describe('DashboardPageComponent', () => {
     http.expectOne(`${environment.apiUrl}/api/PrincipalDashboard/summary`);
     expect(fixture.nativeElement.querySelector('app-principal-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-school-dashboard')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).toBeNull();
     http.verify();
   });
 
   it('keeps the School Admin dashboard for an account that is both a School Admin and a Principal', () => {
     const { fixture, http } = open(['School Admin', 'Principal']);
-    http.expectOne(`${environment.apiUrl}/api/SchoolDashboard/summary`);
+    http.expectOne(`${environment.apiUrl}/api/Dashboard/school-admin`);
     expect(fixture.nativeElement.querySelector('app-principal-dashboard')).toBeNull();
     http.verify();
   });
@@ -105,7 +105,7 @@ describe('DashboardPageComponent', () => {
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-teacher-dashboard')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-school-dashboard')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).toBeNull();
     http.verify(); // no request was made
   });
 

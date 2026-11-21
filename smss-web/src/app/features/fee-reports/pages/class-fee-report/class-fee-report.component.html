@@ -1,6 +1,12 @@
 <app-page-header title="Class-wise Fee Report" subtitle="Who has paid, and who still owes, in a class" icon="file-text" [breadcrumbs]="breadcrumbs" />
 
 <app-card>
+  @if (month()) {
+    <p class="month-note" role="status" data-month-filter>
+      Showing fees due in <b>{{ monthText() }}</b> only.
+      <button type="button" class="linkish" (click)="showWholeYear()">Show the whole year</button>
+    </p>
+  }
   <div class="filters">
     <app-select label="Academic year" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
     <app-select label="Class" placeholder="Select class…" [options]="classOptions()" [formControl]="classControl" />

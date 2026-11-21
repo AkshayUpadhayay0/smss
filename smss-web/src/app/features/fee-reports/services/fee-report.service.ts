@@ -35,9 +35,10 @@ export class FeeReportService {
     return this.api.get<SectionFeeGrid>('/api/Fee/section-status/months', { sectionId, ...(academicYearId ? { academicYearId } : {}) });
   }
 
-  classReport(classId: number, academicYearId: number, sectionId: number | null): Observable<ClassFeeReport> {
+  classReport(classId: number, academicYearId: number, sectionId: number | null, month: string | null = null): Observable<ClassFeeReport> {
     const params: Record<string, string | number> = { academicYearId };
     if (sectionId) params['sectionId'] = sectionId;
+    if (month) params['month'] = month; // yyyy-MM: only installments due that month
     return this.api.get<ClassFeeReport>(`/api/FeeReports/class/${classId}`, params);
   }
 
