@@ -81,7 +81,7 @@ namespace smss_api_service_layer.service
             }).ToList();
         }
 
-        public async Task<ApiResponse<ClassFeeReportDto>> GetClassReportAsync(string? schoolId, long classId, long academicYearId, long? sectionId, bool canManage, CancellationToken ct)
+        public async Task<ApiResponse<ClassFeeReportDto>> GetClassReportAsync(string? schoolId, long classId, long academicYearId, long? sectionId, bool canManage, CancellationToken ct, DateOnly? dueMonth = null)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<ClassFeeReportDto>(400, TenantMessages.NoSchool, null);
             try
@@ -95,7 +95,11 @@ namespace smss_api_service_layer.service
 
                 var students = await _repo.GetClassStudentsAsync(schoolId, academicYearId, classId, sectionId, ct);
                 // the same one grouped query the student list uses, for the whole class at once
-                var fees = await _students.GetFeeAggregatesAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), SchoolClock.Today(), ct);
+                // optional month view: only installments due in that calendar month count, and only students who have one are listed
+                DateOnly? monthFrom = dueMonth == null ? null : new DateOnly(dueMonth.Value.Year, dueMonth.Value.Month, 1);
+                DateOnly? monthTo = monthFrom?.AddMonths(1).AddDays(-1);
+                var fees = await _students.GetFeeAggregatesAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), SchoolClock.Today(), ct, monthFrom, monthTo);
+                if (monthFrom != null) students = students.Where(s => fees.TryGetValue(s.StudentId, out var f) && f.TotalDue > 0).ToList();
                 var concessions = await _repo.GetConcessionGivenByStudentAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), ct);
 
                 var rows = students.Select(s =>
@@ -116,7 +120,7 @@ namespace smss_api_service_layer.service
 
                 return Result(200, "Successfully fetched", new ClassFeeReportDto
                 {
-                    AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, ClassName = className, SectionId = sectionId,
+                    AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, ClassName = className, SectionId = sectionId, Month = monthFrom?.ToString("yyyy-MM"),
                     Students = rows,
                     TotalDue = rows.Sum(r => r.TotalDue), TotalCollected = rows.Sum(r => r.TotalCollected), TotalConcession = rows.Sum(r => r.Concession), TotalOutstanding = rows.Sum(r => r.Outstanding),
                     StatusCounts = FeeSchedule.OverallStatuses.ToDictionary(s => s, s => rows.Count(r => r.Status == s)),

@@ -105,6 +105,8 @@ builder.Services.AddScoped<IFeeTypeRepository, FeeTypeRepository>();
 builder.Services.AddScoped<IFeeTypeService, FeeTypeService>();
 builder.Services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
 builder.Services.AddScoped<IFeeStructureService, FeeStructureService>();
+builder.Services.AddScoped<ISchoolAdminDashboardRepository, SchoolAdminDashboardRepository>();
+builder.Services.AddScoped<ISchoolAdminDashboardService, SchoolAdminDashboardService>();
 builder.Services.AddScoped<IOnboardingRepository, OnboardingRepository>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
 builder.Services.AddScoped<IFeeConcessionRepository, FeeConcessionRepository>();

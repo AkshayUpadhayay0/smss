@@ -80,6 +80,8 @@ namespace smss_api_service_layer.dto
         public long ClassId { get; set; }
         public string ClassName { get; set; } = null!;
         public long? SectionId { get; set; }
+        /// <summary>"yyyy-MM" when the report was asked for one month of dues (only installments due that month are counted); null for the whole year.</summary>
+        public string? Month { get; set; }
         public List<ClassFeeRowDto> Students { get; set; } = new();
         /// <summary>The class total row.</summary>
         public decimal TotalDue { get; set; }

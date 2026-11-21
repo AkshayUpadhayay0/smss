@@ -8,6 +8,6 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<FeeDashboardDto>> GetDashboardAsync(string? schoolId, long academicYearId, long? classId, long? sectionId, int days, bool canManage, CancellationToken ct);
         /// <summary>The audit list of payments that carried a concession (dates are India calendar days; open-ended when null). Newest first, paged.</summary>
         Task<ApiResponse<ConcessionsGivenDto>> GetConcessionsGivenAsync(string? schoolId, DateOnly? from, DateOnly? to, int page, int pageSize, CancellationToken ct);
-        Task<ApiResponse<ClassFeeReportDto>> GetClassReportAsync(string? schoolId, long classId, long academicYearId, long? sectionId, bool canManage, CancellationToken ct);
+        Task<ApiResponse<ClassFeeReportDto>> GetClassReportAsync(string? schoolId, long classId, long academicYearId, long? sectionId, bool canManage, CancellationToken ct, DateOnly? dueMonth = null);
     }
 }

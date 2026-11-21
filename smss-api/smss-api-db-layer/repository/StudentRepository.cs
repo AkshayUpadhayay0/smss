@@ -42,7 +42,7 @@ namespace smss_api_db_layer.repository
                 r.RollNumber, r.GenderId, r.StatusId, r.EnrollmentId, r.ProfilePhotoUrl)).ToList();
         }
 
-        public async Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct)
+        public async Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct, DateOnly? dueFrom = null, DateOnly? dueTo = null)
         {
             if (studentIds.Count == 0) return new();
             var ids = studentIds.ToArray();
@@ -51,7 +51,7 @@ namespace smss_api_db_layer.repository
             var rows = await (
                 from i in _db.StudentFeeItems.AsNoTracking()
                 where i.SchoolId == schoolId && i.AcademicYearId == academicYearId && ids.Contains(i.StudentId)
-                join d in _db.StudentFeeDues.AsNoTracking() on i.StudentFeeItemId equals d.StudentFeeItemId into dg
+                join d in _db.StudentFeeDues.AsNoTracking().Where(x => (dueFrom == null || x.DueDate >= dueFrom) && (dueTo == null || x.DueDate <= dueTo)) on i.StudentFeeItemId equals d.StudentFeeItemId into dg
                 from d in dg.DefaultIfEmpty()
                 group d by i.StudentId into g
                 select new

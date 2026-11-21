@@ -27,15 +27,22 @@ namespace smss_api.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
-        // GET api/FeeReports/class/{classId}?academicYearId=1&sectionId=
+        // GET api/FeeReports/class/{classId}?academicYearId=1&sectionId=&month=2026-11   (month: only installments due that month, only students who have one)
         [HttpGet("class/{classId:long}")]
-        public async Task<IActionResult> GetClassReport(long classId, [FromQuery] long? academicYearId, [FromQuery] long? sectionId, CancellationToken ct)
+        public async Task<IActionResult> GetClassReport(long classId, [FromQuery] long? academicYearId, [FromQuery] long? sectionId, [FromQuery] string? month, CancellationToken ct)
         {
             if (!User.CanViewFees())
                 return StatusCode(403, new ApiResponse<object> { Status = false, StatusCode = 403, Message = "You do not have access to the fee reports.", Data = null });
+            DateOnly? dueMonth = null;
+            if (!string.IsNullOrWhiteSpace(month))
+            {
+                if (!DateOnly.TryParseExact(month + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var m))
+                    return StatusCode(400, new ApiResponse<object> { Status = false, StatusCode = 400, Message = "month must look like 2026-11.", Data = null });
+                dueMonth = m;
+            }
             if (academicYearId is null or <= 0)
                 return StatusCode(400, new ApiResponse<object> { Status = false, StatusCode = 400, Message = "academicYearId is required.", Data = null });
-            var response = await _service.GetClassReportAsync(User.GetSchoolId(), classId, academicYearId.Value, sectionId, User.CanManageFees(), ct);
+            var response = await _service.GetClassReportAsync(User.GetSchoolId(), classId, academicYearId.Value, sectionId, User.CanManageFees(), ct, dueMonth);
             return StatusCode(response.StatusCode, response);
         }
     }

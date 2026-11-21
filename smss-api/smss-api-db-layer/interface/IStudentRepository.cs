@@ -30,7 +30,8 @@ namespace smss_api_db_layer.@interface
         /// ONE grouped query for all the given students: each one's installments of that academic year (every fee head), summed, plus how many are
         /// overdue (still owed and due before <paramref name="today"/>). Students with no fee items at all are simply absent from the result (a student with items but no installments is present with zero totals).
         /// </summary>
-        Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct);
+        /// <remarks>Optional <paramref name="dueFrom"/>..<paramref name="dueTo"/> (both included) count only installments due inside that range (the class fee report's month view); left out = the whole year, as before.</remarks>
+        Task<Dictionary<string, StudentFeeAggregate>> GetFeeAggregatesAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, DateOnly today, CancellationToken ct, DateOnly? dueFrom = null, DateOnly? dueTo = null);
         /// <summary>ONE read: every instalment of the given students for the academic year (school id on both tables). The class teacher's month view and year grid are built from it.</summary>
         Task<List<StudentDueRow>> GetFeeDueRowsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<TbStudent?> GetStudentAsync(string schoolId, string studentId, CancellationToken ct);
