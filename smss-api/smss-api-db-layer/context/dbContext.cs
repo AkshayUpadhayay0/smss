@@ -39,6 +39,8 @@ namespace smss_api_db_layer.context
         public DbSet<TbPasswordResetAudit> PasswordResetAudit { get; set; } = null!;
         public DbSet<TbSchoolContacts> SchoolContacts { get; set; } = null!;
         public DbSet<TbAcademicYears> AcademicYears { get; set; } = null!;
+        public DbSet<TbAcademicYearClass> AcademicYearClasses { get; set; } = null!;
+        public DbSet<TbAcademicYearSection> AcademicYearSections { get; set; } = null!;
         public DbSet<TbClasses> Classes { get; set; } = null!;
         public DbSet<TbSections> Sections { get; set; } = null!;
         public DbSet<TbClassSubjects> ClassSubjects { get; set; } = null!;

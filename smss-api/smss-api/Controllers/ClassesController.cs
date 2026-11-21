@@ -16,11 +16,11 @@ namespace smss_api.Controllers
         private readonly IClassService _service;
         public ClassesController(IClassService service) => _service = service;
 
-        // GET api/Classes
+        // GET api/Classes  or  api/Classes?academicYearId=5  (only the classes offered in that year)
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] long? academicYearId)
         {
-            var response = await _service.GetAllAsync(User.GetSchoolId());
+            var response = await _service.GetAllAsync(User.GetSchoolId(), academicYearId);
             return StatusCode(response.StatusCode, response);
         }
 

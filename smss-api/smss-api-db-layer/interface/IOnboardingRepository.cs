@@ -12,8 +12,10 @@ namespace smss_api_db_layer.@interface
         Task<bool> HasActiveStudentAsync(string schoolId, int activeStatusId, CancellationToken ct);
         /// <summary>The id of the school's current (is_current and Active) academic year, or null.</summary>
         Task<long?> CurrentYearIdAsync(string schoolId, int activeStatusId, CancellationToken ct);
-        Task<List<OnboardingClassRow>> ActiveClassesAsync(string schoolId, int activeStatusId, CancellationToken ct);
-        Task<HashSet<long>> ClassIdsWithActiveSectionAsync(string schoolId, int activeStatusId, CancellationToken ct);
+        /// <summary>Active classes that are OFFERED (Active offering row) in the given academic year, in class order. No year: none.</summary>
+        Task<List<OnboardingClassRow>> ActiveClassesAsync(string schoolId, long? academicYearId, int activeStatusId, CancellationToken ct);
+        /// <summary>Class ids that have an Active section offered in the given academic year. No year: none.</summary>
+        Task<HashSet<long>> ClassIdsWithActiveSectionAsync(string schoolId, long? academicYearId, int activeStatusId, CancellationToken ct);
         Task<bool> HasActiveFeeTypeAsync(string schoolId, CancellationToken ct);
         /// <summary>Classes that have an active fee structure with at least one line in the given academic year.</summary>
         Task<HashSet<long>> ClassIdsWithFeeStructureAsync(string schoolId, long academicYearId, CancellationToken ct);

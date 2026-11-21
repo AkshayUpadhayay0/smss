@@ -28,6 +28,9 @@ namespace smss_api.Helpers
         /// does not change what is charged, matching the frontend route rules where all of Fee Setup is School Admin only.
         /// </summary>
         /// <summary>School Admin only (the employee module, ...). Keep role-name matching in this one file.</summary>
+        /// <summary>Academic Setup (what a school offers in each year): the School Admin configures it, the Principal can view it.</summary>
+        public static bool CanViewAcademicSetup(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
         public static bool IsSchoolAdmin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
         /// <summary>The Accountant role (the Accountant dashboard).</summary>

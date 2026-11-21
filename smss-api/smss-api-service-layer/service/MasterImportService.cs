@@ -130,10 +130,12 @@ namespace smss_api_service_layer.service
                 // Section A for every selected class that has no section yet: the classes just created, and any
                 // existing selected class that is still empty. A class that already has sections is left alone.
                 var sections = new List<TbSections>();
+                var touchedClassIds = new List<long>();
                 foreach (var c in classPick)
                 {
                     var classId = newClasses.FirstOrDefault(n => n.ClassName == c.Name)?.ClassId
                                   ?? (existingClasses.TryGetValue(c.Name, out var id) ? id : 0);
+                    if (classId != 0) touchedClassIds.Add(classId);
                     if (classId == 0 || classesWithSections.Contains(classId)) { result.Sections.Skipped++; continue; }
                     sections.Add(new TbSections
                     {
@@ -143,6 +145,8 @@ namespace smss_api_service_layer.service
                 }
                 await _repo.AddRangeAsync(sections, ct);
                 await _repo.SaveChangesAsync(ct);
+                // what was imported (and the classes it picked that already existed) is offered in the current year, so the setup checklist and dashboards see it
+                await _repo.OfferInCurrentYearAsync(schoolId, touchedClassIds.ToArray(), ct);
                 await tx.CommitAsync(ct);
 
                 result.Classes.Created = newClasses.Count;

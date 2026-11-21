@@ -15,11 +15,11 @@ namespace smss_api.Controllers
         private readonly ISectionService _service;
         public SectionsController(ISectionService service) => _service = service;
 
-        // GET api/Sections  or  api/Sections?classId=5
+        // GET api/Sections  or  api/Sections?classId=5  or  api/Sections?academicYearId=5 (only the sections offered in that year)
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] long? classId)
+        public async Task<IActionResult> GetAll([FromQuery] long? classId, [FromQuery] long? academicYearId)
         {
-            var response = await _service.GetAllAsync(User.GetSchoolId(), classId);
+            var response = await _service.GetAllAsync(User.GetSchoolId(), classId, academicYearId);
             return StatusCode(response.StatusCode, response);
         }
 

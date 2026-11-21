@@ -22,13 +22,27 @@ namespace smss_api_db_layer.repository
             _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.IsCurrent && y.StatusId == activeStatusId)
                 .OrderByDescending(y => y.StartDate).Select(y => (long?)y.AcademicYearId).FirstOrDefaultAsync(ct);
 
-        public async Task<List<OnboardingClassRow>> ActiveClassesAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
-            (await _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && c.StatusId == activeStatusId)
-                .OrderBy(c => c.SequenceOrder).ThenBy(c => c.ClassName).Select(c => new { c.ClassId, c.ClassName }).ToListAsync(ct))
-            .Select(c => new OnboardingClassRow(c.ClassId, c.ClassName)).ToList();
+        // The checklist judges what the CURRENT YEAR offers (tb_academic_year_classes / _sections), not the masters: a class that exists but is not offered this year does not count.
+        public async Task<List<OnboardingClassRow>> ActiveClassesAsync(string schoolId, long? academicYearId, int activeStatusId, CancellationToken ct)
+        {
+            if (academicYearId == null) return new();
+            var rows = await (from c in _db.Classes.AsNoTracking()
+                              join o in _db.AcademicYearClasses.AsNoTracking() on c.ClassId equals o.ClassId
+                              where c.SchoolId == schoolId && c.StatusId == activeStatusId && o.SchoolId == schoolId && o.AcademicYearId == academicYearId && o.StatusId == activeStatusId
+                              orderby c.SequenceOrder, c.ClassName
+                              select new { c.ClassId, c.ClassName }).ToListAsync(ct);
+            return rows.Select(c => new OnboardingClassRow(c.ClassId, c.ClassName)).ToList();
+        }
 
-        public async Task<HashSet<long>> ClassIdsWithActiveSectionAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
-            (await _db.Sections.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StatusId == activeStatusId).Select(s => s.ClassId).Distinct().ToListAsync(ct)).ToHashSet();
+        public async Task<HashSet<long>> ClassIdsWithActiveSectionAsync(string schoolId, long? academicYearId, int activeStatusId, CancellationToken ct)
+        {
+            if (academicYearId == null) return new();
+            var ids = await (from s in _db.Sections.AsNoTracking()
+                             join o in _db.AcademicYearSections.AsNoTracking() on s.SectionId equals o.SectionId
+                             where s.SchoolId == schoolId && s.StatusId == activeStatusId && o.SchoolId == schoolId && o.AcademicYearId == academicYearId && o.StatusId == activeStatusId
+                             select s.ClassId).Distinct().ToListAsync(ct);
+            return ids.ToHashSet();
+        }
 
         public Task<bool> HasActiveFeeTypeAsync(string schoolId, CancellationToken ct) =>
             _db.FeeTypes.AsNoTracking().AnyAsync(t => t.SchoolId == schoolId && t.IsActive, ct);

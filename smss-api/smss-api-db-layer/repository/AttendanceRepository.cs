@@ -120,6 +120,7 @@ namespace smss_api_db_layer.repository
                 from s in _db.Sections.AsNoTracking()
                 join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
                 where s.SchoolId == schoolId && c.SchoolId == schoolId && s.StatusId == activeStatusId && c.StatusId == activeStatusId
+                      && _db.AcademicYearSections.Any(o => o.AcademicYearId == academicYearId && o.SectionId == s.SectionId && o.StatusId == activeStatusId)   // offered in that year
                 let roster = (from e in _db.StudentEnrollments
                               join st in _db.Students on e.StudentId equals st.StudentId
                               where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == s.SectionId && e.StatusId == activeStatusId && st.StatusId == activeStatusId
@@ -146,6 +147,7 @@ namespace smss_api_db_layer.repository
                 from s in _db.Sections.AsNoTracking()
                 join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
                 where s.SchoolId == schoolId && c.SchoolId == schoolId && s.StatusId == activeStatusId && c.StatusId == activeStatusId
+                      && _db.AcademicYearSections.Any(o => o.AcademicYearId == academicYearId && o.SectionId == s.SectionId && o.StatusId == activeStatusId)   // offered in that year
                       && (employeeId == null || _db.ClassTeacherAssignments.Any(a => a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.SectionId == s.SectionId
                                                                                   && a.EmployeeId == employeeId && a.StatusId == activeStatusId))
                 orderby c.SequenceOrder, c.ClassName, s.SectionName

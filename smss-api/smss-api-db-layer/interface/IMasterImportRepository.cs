@@ -17,5 +17,7 @@ namespace smss_api_db_layer.@interface
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         Task AddRangeAsync<T>(IEnumerable<T> entities, CancellationToken ct) where T : class;
         Task SaveChangesAsync(CancellationToken ct);
+        /// <summary>Offers these classes and all their sections in the school's current, open academic year (no current year: nothing happens).</summary>
+        Task OfferInCurrentYearAsync(string schoolId, long[] classIds, CancellationToken ct);
     }
 }

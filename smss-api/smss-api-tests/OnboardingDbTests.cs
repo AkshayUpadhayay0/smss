@@ -20,6 +20,12 @@ namespace smss_api_tests
         /// <summary>The first undone step after the password (these tests have no login row for the fresh school).</summary>
         private static string NextAfterPassword(OnboardingStatusDto d) => d.Steps.First(s => !s.Done && s.Code != "PASSWORD_CHANGED").Code;
 
+        /// <summary>The checklist reads what the CURRENT YEAR offers: a class or section made by raw SQL is only 'there' once it is offered.</summary>
+        private static void OfferClasses(TaxDb db, string id) =>
+            db.Exec($"insert into tb_academic_year_classes (school_id, academic_year_id, class_id, status_id) select c.school_id, y.academic_year_id, c.class_id, c.status_id from tb_classes c join tb_academic_years y on y.school_id = c.school_id and y.is_current where c.school_id = '{id}' on conflict do nothing");
+        private static void OfferSections(TaxDb db, string id) =>
+            db.Exec($"insert into tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, status_id) select s.school_id, y.academic_year_id, s.class_id, s.section_id, s.status_id from tb_sections s join tb_academic_years y on y.school_id = s.school_id and y.is_current where s.school_id = '{id}' on conflict do nothing");
+
         private static void NewSchool(TaxDb db, string id) =>
             db.Exec($"insert into tb_schools (school_id, school_code, school_name, school_status_id) values ('{id}', '{id}-C', 'Onboarding test {id}', (select sid from lut_status where sname='Active' and stype='general status'))");
 
@@ -41,12 +47,14 @@ namespace smss_api_tests
             Assert.Equal("IMPORT_MASTERS_OR_CLASSES", NextAfterPassword(d));
 
             db.Exec($"insert into tb_classes (school_id, class_name, sequence_order, status_id) values ('{Fresh}', 'Class 1', 1, {active}), ('{Fresh}', 'Class 2', 2, {active})");
+            OfferClasses(db, Fresh);
             d = await Status(db, Fresh);
             Assert.True(Step(d, "IMPORT_MASTERS_OR_CLASSES").Done);
             Assert.Equal("SCHOOL_SETUP", NextAfterPassword(d));
             Assert.Contains("Class 1", Step(d, "SCHOOL_SETUP").Detail);
 
             db.Exec($"insert into tb_sections (school_id, class_id, section_name, status_id) select school_id, class_id, 'A', {active} from tb_classes where school_id='{Fresh}'");
+            OfferSections(db, Fresh);
             d = await Status(db, Fresh);
             Assert.True(Step(d, "SCHOOL_SETUP").Done);
             Assert.Equal("FEE_TYPES", NextAfterPassword(d));

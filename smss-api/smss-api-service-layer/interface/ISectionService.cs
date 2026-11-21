@@ -5,7 +5,7 @@ namespace smss_api_service_layer.@interface
     // schoolId always comes from the caller's token; null/empty means the account has no school (400).
     public interface ISectionService
     {
-        Task<ApiResponse<object>> GetAllAsync(string? schoolId, long? classId);
+        Task<ApiResponse<object>> GetAllAsync(string? schoolId, long? classId, long? academicYearId = null);
         Task<ApiResponse<object>> GetByIdAsync(string? schoolId, long id);
         Task<ApiResponse<object>> CreateAsync(string? schoolId, CreateSectionRequest request);
         Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateSectionRequest request);

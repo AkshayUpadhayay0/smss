@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { OnboardingService } from '../services/onboarding.service';
 
 /** The APIs behind the setup steps: a successful save here can change the setup status. */
-const SETUP_API_PREFIXES = ['/api/AcademicYear', '/api/Classes', '/api/Sections', '/api/MasterImport', '/api/FeeType', '/api/FeeStructure'];
+const SETUP_API_PREFIXES = ['/api/AcademicYear', '/api/AcademicSetup', '/api/Classes', '/api/Sections', '/api/MasterImport', '/api/FeeType', '/api/FeeStructure'];
 
 export function isSetupApiWrite(method: string, url: string): boolean {
   if (method === 'GET' || method === 'HEAD') return false;

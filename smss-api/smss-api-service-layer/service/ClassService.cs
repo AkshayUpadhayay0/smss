@@ -22,12 +22,12 @@ namespace smss_api_service_layer.service
             _logger = logger;
         }
 
-        public async Task<ApiResponse<object>> GetAllAsync(string? schoolId)
+        public async Task<ApiResponse<object>> GetAllAsync(string? schoolId, long? academicYearId = null)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             try
             {
-                var classes = await _repo.GetBySchoolAsync(schoolId);
+                var classes = await _repo.GetBySchoolAsync(schoolId, academicYearId);
                 var names = await StatusNamesAsync();
                 return Ok(200, "Successfully fetched", classes.Select(c => ToResponse(c, names)).ToList());
             }
@@ -69,8 +69,14 @@ namespace smss_api_service_layer.service
                     CreatedAt = now,
                     UpdatedAt = now
                 };
-                await _repo.AddAsync(entity);
-                await _repo.SaveChangesAsync();
+                // one transaction: the class and its offering in the current year appear together (the setup checklist and dashboards read the offering)
+                await using (var tx = await _repo.BeginTransactionAsync())
+                {
+                    await _repo.AddAsync(entity);
+                    await _repo.SaveChangesAsync();
+                    await _repo.OfferInCurrentYearAsync(schoolId, entity.ClassId);
+                    await tx.CommitAsync();
+                }
 
                 return Ok(201, "Class created successfully", ToResponse(entity, await StatusNamesAsync()));
             }

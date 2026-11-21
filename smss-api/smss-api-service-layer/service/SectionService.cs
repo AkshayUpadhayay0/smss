@@ -23,12 +23,12 @@ namespace smss_api_service_layer.service
             _logger = logger;
         }
 
-        public async Task<ApiResponse<object>> GetAllAsync(string? schoolId, long? classId)
+        public async Task<ApiResponse<object>> GetAllAsync(string? schoolId, long? classId, long? academicYearId = null)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             try
             {
-                var rows = await _repo.GetBySchoolAsync(schoolId, classId);
+                var rows = await _repo.GetBySchoolAsync(schoolId, classId, academicYearId);
                 var names = await StatusNamesAsync();
                 return Ok(200, "Successfully fetched", rows.Select(r => ToResponse(r, names)).ToList());
             }
@@ -74,8 +74,13 @@ namespace smss_api_service_layer.service
                     CreatedAt = now,
                     UpdatedAt = now
                 };
-                await _repo.AddAsync(entity);
-                await _repo.SaveChangesAsync();
+                await using (var tx = await _repo.BeginTransactionAsync())
+                {
+                    await _repo.AddAsync(entity);
+                    await _repo.SaveChangesAsync();
+                    await _repo.OfferInCurrentYearAsync(schoolId, entity.SectionId);   // follows its class into the current year
+                    await tx.CommitAsync();
+                }
 
                 return await RespondAsync(201, "Section created successfully", schoolId, entity.SectionId);
             }
@@ -97,11 +102,18 @@ namespace smss_api_service_layer.service
                 var name = req.SectionName.Trim();
                 if (await _repo.ExistsAsync(classId, name, excludeId: id)) return Fail(409, DuplicateMessage);
 
-                entity.ClassId = classId;
-                entity.SectionName = name;
-                entity.MaxStrength = (short?)req.MaxStrength;
-                entity.UpdatedAt = DateTime.UtcNow;
-                await _repo.SaveChangesAsync();
+                var movedClass = entity.ClassId != classId;
+                await using (var tx = await _repo.BeginTransactionAsync())
+                {
+                    if (movedClass) await _repo.DetachOfferingsAsync(schoolId, id);   // the year offerings are tied to (section, class)
+                    entity.ClassId = classId;
+                    entity.SectionName = name;
+                    entity.MaxStrength = (short?)req.MaxStrength;
+                    entity.UpdatedAt = DateTime.UtcNow;
+                    await _repo.SaveChangesAsync();
+                    if (movedClass) await _repo.ReattachOfferingsAsync(schoolId, id, classId);
+                    await tx.CommitAsync();
+                }
 
                 return await RespondAsync(200, "Section updated successfully", schoolId, id);
             }

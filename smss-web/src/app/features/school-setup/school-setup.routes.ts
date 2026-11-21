@@ -24,6 +24,10 @@ export const SCHOOL_SETUP_ROUTES: Routes = [
     loadComponent: () => import('./pages/academic-year-list/academic-year-list.component').then((m) => m.AcademicYearListComponent),
   },
   {
+    path: 'school-setup/academic-setup',
+    loadComponent: () => import('./pages/academic-setup/academic-setup.component').then((m) => m.AcademicSetupComponent),
+  },
+  {
     path: 'school-setup/classes',
     loadComponent: () => import('./pages/class-list/class-list.component').then((m) => m.ClassListComponent),
   },

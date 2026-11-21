@@ -19,6 +19,8 @@ namespace smss_api_db_layer.@interface
         /// <summary>An ACTIVE year of the school whose dates overlap [start, end] (inclusive), other than excludeId.</summary>
         Task<TbAcademicYears?> FindOverlapAsync(string schoolId, DateOnly start, DateOnly end, int activeStatusId, long? excludeId);
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+        /// <summary>Offers every existing class and section of the school in this year (used when it is the school's first year).</summary>
+        Task OfferAllAsync(string schoolId, long academicYearId, CancellationToken ct = default);
         Task<int> SaveChangesAsync();
     }
 }

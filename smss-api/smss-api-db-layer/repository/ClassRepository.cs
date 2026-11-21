@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
@@ -10,9 +11,11 @@ namespace smss_api_db_layer.repository
         private readonly dbContext _db;
         public ClassRepository(dbContext db) => _db = db;
 
-        public Task<List<TbClasses>> GetBySchoolAsync(string schoolId) =>
+        public Task<List<TbClasses>> GetBySchoolAsync(string schoolId, long? academicYearId = null) =>
             _db.Classes.AsNoTracking()
                 .Where(c => c.SchoolId == schoolId)
+                .Where(c => academicYearId == null || _db.AcademicYearClasses.Any(o => o.SchoolId == schoolId && o.AcademicYearId == academicYearId && o.ClassId == c.ClassId
+                    && o.StatusId == _db.LutStatus.Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => s.Sid).FirstOrDefault()))
                 .OrderBy(c => c.SequenceOrder).ThenBy(c => c.ClassName)
                 .ToListAsync();
 
@@ -41,6 +44,10 @@ namespace smss_api_db_layer.repository
                 .ToListAsync();
             return rows.Select(r => (r.Sid, r.Sname)).ToList();
         }
+
+        public Task<IDbContextTransaction> BeginTransactionAsync() => _db.Database.BeginTransactionAsync();
+
+        public async Task OfferInCurrentYearAsync(string schoolId, long classId) => await _db.OfferClassInCurrentYearAsync(schoolId, classId, default);
 
         public async Task AddAsync(TbClasses entity) => await _db.Classes.AddAsync(entity);
 

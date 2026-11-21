@@ -50,6 +50,8 @@ namespace smss_api_db_layer.repository
         public async Task AddRangeAsync<T>(IEnumerable<T> entities, CancellationToken ct) where T : class =>
             await _db.Set<T>().AddRangeAsync(entities, ct);
 
+        public Task OfferInCurrentYearAsync(string schoolId, long[] classIds, CancellationToken ct) => _db.OfferClassesWithSectionsInCurrentYearAsync(schoolId, classIds, ct);
+
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
     }
 }

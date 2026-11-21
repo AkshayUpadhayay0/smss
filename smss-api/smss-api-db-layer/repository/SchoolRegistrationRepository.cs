@@ -117,8 +117,12 @@ namespace smss_api_db_layer.repository
             var a = active.Value;
             var students = await _dbContext.Students.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
             var employees = await _dbContext.Employees.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
-            var classes = await _dbContext.Classes.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
-            var sections = await _dbContext.Sections.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.StatusId == a, ct);
+            // classes and sections = what the CURRENT academic year offers (the offering and its class / section must both be Active); no current year = none
+            var yearId = await _dbContext.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.IsCurrent).Select(y => (long?)y.AcademicYearId).FirstOrDefaultAsync(ct);
+            var classes = yearId == null ? 0 : await (from c in _dbContext.Classes.AsNoTracking() join o in _dbContext.AcademicYearClasses.AsNoTracking() on c.ClassId equals o.ClassId
+                                                      where c.SchoolId == schoolId && c.StatusId == a && o.AcademicYearId == yearId && o.StatusId == a select c.ClassId).CountAsync(ct);
+            var sections = yearId == null ? 0 : await (from s in _dbContext.Sections.AsNoTracking() join o in _dbContext.AcademicYearSections.AsNoTracking() on s.SectionId equals o.SectionId
+                                                       where s.SchoolId == schoolId && s.StatusId == a && o.AcademicYearId == yearId && o.StatusId == a select s.SectionId).CountAsync(ct);
             return new SchoolCounts(students, employees, classes, sections);
         }
 

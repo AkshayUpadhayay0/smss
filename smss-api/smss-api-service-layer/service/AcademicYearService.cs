@@ -76,8 +76,14 @@ namespace smss_api_service_layer.service
                     CreatedAt = now,
                     UpdatedAt = now
                 };
-                await _repo.AddAsync(year);
-                await _repo.SaveChangesAsync();
+                await using (var tx = await _repo.BeginTransactionAsync())
+                {
+                    await _repo.AddAsync(year);
+                    await _repo.SaveChangesAsync();
+                    // the school's FIRST year offers the classes and sections that already exist (a later year starts empty and is set up in Academic Setup)
+                    if (year.IsCurrent) await _repo.OfferAllAsync(schoolId, year.AcademicYearId);
+                    await tx.CommitAsync();
+                }
 
                 return Ok(201, "Academic year created successfully", await ResponseAsync(schoolId, year));
             }

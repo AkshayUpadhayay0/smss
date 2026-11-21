@@ -1,0 +1,129 @@
+<app-page-header
+  title="Academic Setup"
+  subtitle="Choose the classes and sections your school runs in each academic year"
+  icon="layers"
+  [breadcrumbs]="breadcrumbs"
+/>
+
+@if (loadingYears()) {
+  <app-card><p class="status-note">Loading academic years…</p></app-card>
+} @else if (yearsFailed()) {
+  <app-card>
+    <div class="status-note">
+      <p>Academic years could not be loaded.</p>
+      <app-button variant="secondary" (click)="loadYears()">Try again</app-button>
+    </div>
+  </app-card>
+} @else if (yearOptions().length === 0) {
+  <app-card><p class="status-note">No academic year yet. Add one under School Setup → Academic Year first.</p></app-card>
+} @else {
+  <div class="stack">
+    <app-card>
+      <div class="year-bar">
+        <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
+        <p class="year-hint">
+          The class and section lists (School Setup → Class / Section) stay as they are. Here you pick which of them <strong>this year</strong> uses and how many
+          students each section can hold. A year with students in a class or section can't drop it.
+        </p>
+      </div>
+      @if (readOnly()) {
+        <p class="notice info"><app-icon name="lock" [size]="16" />This academic year is closed, so its classes and sections can't be changed. Reopen it under School Setup → Academic Year.</p>
+      }
+    </app-card>
+
+    @if (loading()) {
+      <app-card><p class="status-note" aria-busy="true">Loading this year's classes…</p></app-card>
+    } @else if (loadFailed()) {
+      <app-card>
+        <div class="status-note">
+          <p>This year's classes could not be loaded.</p>
+          <app-button variant="secondary" (click)="loadOffering(+yearControl.value)">Try again</app-button>
+        </div>
+      </app-card>
+    } @else if (nothingToOffer()) {
+      <app-card><p class="status-note">There are no classes yet. Add them under School Setup → Class (or use Import Masters), then come back.</p></app-card>
+    } @else {
+      <app-card>
+        <div class="toolbar">
+          <span class="summary" data-summary>{{ offeredClasses() }} {{ offeredClasses() === 1 ? 'class' : 'classes' }}, {{ offeredSections() }} {{ offeredSections() === 1 ? 'section' : 'sections' }} offered</span>
+          <span class="spacer"></span>
+          <app-button variant="secondary" size="sm" [disabled]="readOnly() || saving()" (click)="offerAll()">Offer all</app-button>
+          <app-button variant="secondary" size="sm" [disabled]="readOnly() || saving()" (click)="clearUnused()">Clear unused</app-button>
+        </div>
+
+        <ul class="classes">
+          @for (c of draft(); track c.classId) {
+            <li class="class" [class.on]="c.offered" [attr.data-class]="c.classId">
+              <label class="class-row">
+                <input
+                  type="checkbox"
+                  [checked]="c.offered"
+                  [disabled]="readOnly() || saving() || (!c.offered && !c.isActive) || (c.offered && !!c.lockedReason)"
+                  (change)="toggleClass(c.classId, $any($event.target).checked)"
+                />
+                <span class="name">{{ c.className }}</span>
+                @if (!c.isActive) {
+                  <span class="tag">Inactive</span>
+                }
+                @if (c.lockedReason) {
+                  <span class="tag lock" [title]="'Can\'t be removed: ' + c.lockedReason"><app-icon name="lock" [size]="12" />In use</span>
+                }
+              </label>
+
+              @if (c.sections.length) {
+                <ul class="sections">
+                  @for (s of c.sections; track s.sectionId) {
+                    <li class="section" [class.on]="s.offered" [attr.data-section]="s.sectionId">
+                      <label class="check">
+                        <input
+                          type="checkbox"
+                          [checked]="s.offered"
+                          [disabled]="readOnly() || saving() || (!s.offered && !s.isActive) || (s.offered && !!s.lockedReason)"
+                          (change)="toggleSection(c.classId, s.sectionId, $any($event.target).checked)"
+                        />
+                        <span class="name">{{ s.sectionName }}</span>
+                        @if (!s.isActive) {
+                          <span class="tag">Inactive</span>
+                        }
+                        @if (s.lockedReason) {
+                          <span class="tag lock" [title]="'Can\'t be removed: ' + s.lockedReason"><app-icon name="lock" [size]="12" />In use</span>
+                        }
+                      </label>
+                      @if (s.offered) {
+                        <label class="capacity">
+                          <span>Capacity</span>
+                          <input
+                            type="text"
+                            inputmode="numeric"
+                            [value]="s.capacity"
+                            [placeholder]="s.masterCapacity != null ? 'Default ' + s.masterCapacity : 'No limit'"
+                            [disabled]="readOnly() || saving()"
+                            [class.bad]="capacityInvalid(s)"
+                            [attr.aria-label]="'Capacity of section ' + s.sectionName + ' in ' + c.className"
+                            (input)="setCapacity(c.classId, s.sectionId, $any($event.target).value)"
+                          />
+                        </label>
+                      }
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="none">No sections yet. Add them under School Setup → Section.</p>
+              }
+            </li>
+          }
+        </ul>
+
+        <div class="footer">
+          @if (hasBadCapacity()) {
+            <span class="unsaved"><app-icon name="circle-alert" [size]="16" />Capacity must be a whole number from 1 to 32767 (or empty)</span>
+          } @else if (dirty()) {
+            <span class="unsaved"><app-icon name="circle-alert" [size]="16" />Unsaved changes</span>
+          }
+          <app-button variant="secondary" [disabled]="saving() || !dirty()" (click)="reset()">Reset</app-button>
+          <app-button [disabled]="readOnly() || saving() || !dirty() || hasBadCapacity()" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</app-button>
+        </div>
+      </app-card>
+    }
+  </div>
+}

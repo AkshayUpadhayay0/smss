@@ -27,6 +27,63 @@ namespace smss_api_db_layer.context
         public static Task<bool> IsYearClosedAsync(this dbContext db, string schoolId, long academicYearId, CancellationToken ct) =>
             db.AcademicYears.AsNoTracking().AnyAsync(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId && y.ClosedAt != null, ct);
 
+        // ---- S2 offerings: which classes / sections exist in a year. The masters (tb_classes, tb_sections) never change here. ----
+
+        /// <summary>A new class is offered in the school's CURRENT, open year (so Import Masters, the setup checklist and the dashboards see it at once). No current year: nothing to do.</summary>
+        public static Task<int> OfferClassInCurrentYearAsync(this dbContext db, string schoolId, long classId, CancellationToken ct) =>
+            db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_classes (school_id, academic_year_id, class_id, status_id)
+SELECT y.school_id, y.academic_year_id, c.class_id, coalesce(c.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_academic_years y JOIN public.tb_classes c ON c.school_id = y.school_id AND c.class_id = {classId}
+WHERE y.school_id = {schoolId} AND y.is_current AND y.closed_at IS NULL
+ON CONFLICT (academic_year_id, class_id) DO NOTHING", ct);
+
+        /// <summary>A new section follows its class: offered in the current, open year when its class is offered there.</summary>
+        public static Task<int> OfferSectionInCurrentYearAsync(this dbContext db, string schoolId, long sectionId, CancellationToken ct) =>
+            db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, max_strength, status_id)
+SELECT y.school_id, y.academic_year_id, s.class_id, s.section_id, NULL, coalesce(s.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_academic_years y
+JOIN public.tb_sections s ON s.school_id = y.school_id AND s.section_id = {sectionId}
+JOIN public.tb_academic_year_classes oc ON oc.academic_year_id = y.academic_year_id AND oc.class_id = s.class_id
+WHERE y.school_id = {schoolId} AND y.is_current AND y.closed_at IS NULL
+ON CONFLICT (academic_year_id, section_id) DO NOTHING", ct);
+
+        /// <summary>Import Masters: the classes it just created or picked, and all their active sections, are offered in the current, open year.</summary>
+        public static async Task OfferClassesWithSectionsInCurrentYearAsync(this dbContext db, string schoolId, long[] classIds, CancellationToken ct)
+        {
+            if (classIds.Length == 0) return;
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_classes (school_id, academic_year_id, class_id, status_id)
+SELECT y.school_id, y.academic_year_id, c.class_id, coalesce(c.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_academic_years y JOIN public.tb_classes c ON c.school_id = y.school_id AND c.class_id = ANY({classIds})
+WHERE y.school_id = {schoolId} AND y.is_current AND y.closed_at IS NULL
+ON CONFLICT (academic_year_id, class_id) DO NOTHING", ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, max_strength, status_id)
+SELECT y.school_id, y.academic_year_id, s.class_id, s.section_id, NULL, coalesce(s.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_academic_years y
+JOIN public.tb_sections s ON s.school_id = y.school_id AND s.class_id = ANY({classIds})
+JOIN public.tb_academic_year_classes oc ON oc.academic_year_id = y.academic_year_id AND oc.class_id = s.class_id
+WHERE y.school_id = {schoolId} AND y.is_current AND y.closed_at IS NULL
+ON CONFLICT (academic_year_id, section_id) DO NOTHING", ct);
+        }
+
+        /// <summary>The first year of a school offers every class and section that already exists (the old meaning: masters apply to every year).</summary>
+        public static async Task OfferAllInYearAsync(this dbContext db, string schoolId, long academicYearId, CancellationToken ct)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_classes (school_id, academic_year_id, class_id, status_id)
+SELECT c.school_id, {academicYearId}, c.class_id, coalesce(c.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_classes c WHERE c.school_id = {schoolId}
+ON CONFLICT (academic_year_id, class_id) DO NOTHING", ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO public.tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, max_strength, status_id)
+SELECT s.school_id, {academicYearId}, s.class_id, s.section_id, NULL, coalesce(s.status_id, (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status'))
+FROM public.tb_sections s WHERE s.school_id = {schoolId}
+ON CONFLICT (academic_year_id, section_id) DO NOTHING", ct);
+        }
+
         // One statement for every year of the school. Aggregated in the database; nothing is loaded to be counted.
         public static Task<List<AcademicYearUsage>> GetAcademicYearUsageAsync(this dbContext db, string schoolId, CancellationToken ct) =>
             db.Database.SqlQuery<AcademicYearUsage>($@"

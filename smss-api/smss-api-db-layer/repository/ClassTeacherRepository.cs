@@ -85,6 +85,7 @@ namespace smss_api_db_layer.repository
                 from s in _db.Sections.AsNoTracking()
                 join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
                 where s.SchoolId == schoolId && c.SchoolId == schoolId && s.StatusId == activeStatusId && c.StatusId == activeStatusId
+                      && _db.AcademicYearSections.Any(o => o.AcademicYearId == academicYearId && o.SectionId == s.SectionId && o.StatusId == activeStatusId)   // offered in that year
                 join a in _db.ClassTeacherAssignments.AsNoTracking().Where(x => x.SchoolId == schoolId && x.AcademicYearId == academicYearId && x.StatusId == activeStatusId)
                     on s.SectionId equals a.SectionId into ag
                 from a in ag.DefaultIfEmpty()

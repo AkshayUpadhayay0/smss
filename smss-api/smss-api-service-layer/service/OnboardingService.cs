@@ -66,8 +66,8 @@ namespace smss_api_service_layer.service
             if (callerUserId != null) passwordDone = await _repo.IsFirstLoginAsync(schoolId, callerUserId.Value, ct) == false;
 
             var yearId = await _repo.CurrentYearIdAsync(schoolId, active, ct);
-            var classes = await _repo.ActiveClassesAsync(schoolId, active, ct);
-            var withSection = await _repo.ClassIdsWithActiveSectionAsync(schoolId, active, ct);
+            var classes = await _repo.ActiveClassesAsync(schoolId, yearId, active, ct);
+            var withSection = await _repo.ClassIdsWithActiveSectionAsync(schoolId, yearId, active, ct);
             var hasFeeType = await _repo.HasActiveFeeTypeAsync(schoolId, ct);
             var withFees = yearId == null ? new HashSet<long>() : await _repo.ClassIdsWithFeeStructureAsync(schoolId, yearId.Value, ct);
 

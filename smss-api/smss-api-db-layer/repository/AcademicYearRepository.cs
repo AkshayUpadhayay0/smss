@@ -52,6 +52,8 @@ namespace smss_api_db_layer.repository
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default) => _db.Database.BeginTransactionAsync(ct);
 
+        public Task OfferAllAsync(string schoolId, long academicYearId, CancellationToken ct = default) => _db.OfferAllInYearAsync(schoolId, academicYearId, ct);
+
         public Task<List<AcademicYearUsage>> GetUsageAsync(string schoolId, CancellationToken ct = default) => _db.GetAcademicYearUsageAsync(schoolId, ct);
 
         public Task<TbAcademicYears?> FindOverlapAsync(string schoolId, DateOnly start, DateOnly end, int activeStatusId, long? excludeId) =>
