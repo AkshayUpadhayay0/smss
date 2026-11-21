@@ -15,6 +15,9 @@ namespace smss_api_db_layer.@interface
     // Every method that reads or changes a school's data takes the school id.
     public interface IAdmissionRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         /// <summary>The school's applications, newest first; each filter is optional.</summary>
         Task<List<TbAdmission>> GetAllAsync(string schoolId, int? statusId, long? classId, long? academicYearId, CancellationToken ct);
         Task<TbAdmission?> GetByIdAsync(string schoolId, long admissionId, bool track, CancellationToken ct);

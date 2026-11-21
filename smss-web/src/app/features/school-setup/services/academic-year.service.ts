@@ -26,6 +26,15 @@ export class AcademicYearService {
     return this.api.post<AcademicYear>(`${BASE}/${id}/toggle-status`);
   }
 
+  /** Closing blocks configuration, attendance, enrolments, homework and timetable edits; fee payments and reads stay open. The current year can't be closed. */
+  close(id: number, note?: string): Observable<AcademicYear> {
+    return this.api.post<AcademicYear>(`${BASE}/${id}/close`, { note: note ?? null });
+  }
+
+  reopen(id: number): Observable<AcademicYear> {
+    return this.api.post<AcademicYear>(`${BASE}/${id}/reopen`);
+  }
+
   /** Makes this the current year and clears the flag on every other year, in one server transaction. */
   setCurrent(id: number): Observable<AcademicYear> {
     return this.api.post<AcademicYear>(`${BASE}/${id}/set-current`);

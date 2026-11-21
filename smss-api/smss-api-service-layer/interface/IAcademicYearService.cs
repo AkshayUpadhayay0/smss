@@ -11,5 +11,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<object>> UpdateAsync(string? schoolId, long id, UpdateAcademicYearRequest request);
         Task<ApiResponse<object>> ToggleStatusAsync(string? schoolId, long id);
         Task<ApiResponse<object>> SetCurrentAsync(string? schoolId, long id);
+        Task<ApiResponse<object>> CloseAsync(string? schoolId, long id, long userId, CloseAcademicYearRequest request);
+        Task<ApiResponse<object>> ReopenAsync(string? schoolId, long id);
     }
 }

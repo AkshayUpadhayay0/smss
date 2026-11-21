@@ -15,16 +15,36 @@ import {
   TableComponent,
 } from '../../../../shared/components';
 import { AcademicYearFormModalComponent } from '../../components/academic-year-form-modal/academic-year-form-modal.component';
-import { AcademicYear, AcademicYearRow } from '../../models/academic-year.model';
+import { AcademicYear, AcademicYearRow, AcademicYearState, AcademicYearUsage } from '../../models/academic-year.model';
 import { AcademicYearService } from '../../services/academic-year.service';
 
 const COLUMNS: TableColumn<AcademicYearRow>[] = [
   { key: 'yearName', label: 'Year Name', sortable: true },
   { key: 'startDate', label: 'Start Date', sortable: true },
   { key: 'endDate', label: 'End Date', sortable: true },
-  { key: 'currentLabel', label: 'Current', sortable: true },
+  { key: 'stateLabel', label: 'State', type: 'badge', tone: (v) => STATE_TONE[String(v)] ?? 'gray', sortable: true },
+  { key: 'usageText', label: 'In use' },
   { key: 'statusName', label: 'Status', type: 'status', sortable: true },
 ];
+
+const STATE_LABEL: Record<AcademicYearState, string> = { CLOSED: 'Closed', CURRENT: 'Current', UPCOMING: 'Upcoming', PAST: 'Past', IN_SESSION: 'In session' };
+const STATE_TONE: Record<string, string> = { Closed: 'gray-strike', Current: 'green', Upcoming: 'blue', Past: 'gray', 'In session': 'violet' };
+
+/** "12 enrolments, 3 fee structures" or an em dash: what already depends on the year. */
+export function usageSummary(u: AcademicYearUsage | undefined): string {
+  if (!u) return '—';
+  const parts: string[] = [];
+  const add = (n: number, one: string, many: string) => { if (n > 0) parts.push(`${n} ${n === 1 ? one : many}`); };
+  add(u.enrolments, 'enrolment', 'enrolments');
+  add(u.feeStructures, 'fee structure', 'fee structures');
+  add(u.attendanceRows, 'attendance record', 'attendance records');
+  add(u.timetableEntries, 'timetable slot', 'timetable slots');
+  add(u.classTeachers, 'class teacher row', 'class teacher rows');
+  add(u.homework, 'homework', 'homework');
+  add(u.tests, 'class test', 'class tests');
+  add(u.events, 'event', 'events');
+  return parts.length ? parts.join(', ') : '—';
+}
 
 /** Sort on the raw ISO date, not the formatted text shown in the cell. */
 const SORT_KEY: Record<string, keyof AcademicYear> = { startDate: 'startDate', endDate: 'endDate' };
@@ -69,7 +89,7 @@ export class AcademicYearListComponent implements OnInit {
     const dir = this.sortDirection() === 'asc' ? 1 : -1;
 
     const rows = this.years().filter(
-      (y) => !q || [y.yearName, formatDate(y.startDate), formatDate(y.endDate), y.statusName ?? '', y.isCurrent ? 'current' : ''].some((t) => t.toLowerCase().includes(q)),
+      (y) => !q || [y.yearName, formatDate(y.startDate), formatDate(y.endDate), y.statusName ?? '', STATE_LABEL[y.state] ?? ''].some((t) => t.toLowerCase().includes(q)),
     );
     if (!key) return rows;
 
@@ -111,6 +131,10 @@ export class AcademicYearListComponent implements OnInit {
       startDate: formatDate(y.startDate),
       endDate: formatDate(y.endDate),
       currentLabel: y.isCurrent ? '★ Current' : '—',
+      isClosed: y.isClosed,
+      state: y.state,
+      stateLabel: STATE_LABEL[y.state] ?? y.state,
+      usageText: usageSummary(y.usage),
       statusName: y.statusName ?? 'Inactive',
       isCurrent: y.isCurrent,
       isActive,
@@ -160,6 +184,27 @@ export class AcademicYearListComponent implements OnInit {
     if (!confirmed) return;
 
     this.run(row.academicYearId, this.service.toggleStatus(row.academicYearId), (y) => `${y.yearName} is now ${y.statusName}.`);
+  }
+
+  protected async close(row: AcademicYearRow): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Close academic year?',
+      message: `"${row.yearName}" will be closed: its classes, class teachers, timetable, attendance, homework, class tests and new admissions can no longer be changed. Fee payments, receipts and every report stay available, and you can reopen the year later.`,
+      confirmText: 'Close year',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    this.run(row.academicYearId, this.service.close(row.academicYearId), (y) => `${y.yearName} is now closed.`);
+  }
+
+  protected async reopen(row: AcademicYearRow): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Reopen academic year?',
+      message: `"${row.yearName}" will accept changes again.`,
+      confirmText: 'Reopen',
+    });
+    if (!confirmed) return;
+    this.run(row.academicYearId, this.service.reopen(row.academicYearId), (y) => `${y.yearName} is open again.`);
   }
 
   protected async setCurrent(row: AcademicYearRow): Promise<void> {

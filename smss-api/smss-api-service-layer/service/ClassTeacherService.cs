@@ -30,6 +30,7 @@ namespace smss_api_service_layer.service
             {
                 var ctx = await ResolveAsync(schoolId, req.AcademicYearId!.Value, req.SectionId!.Value, req.ClassId, ct);
                 if (ctx.Error != null) return Result<ClassTeacherAssignmentDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
+                if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId.Value, ct)) return Result<ClassTeacherAssignmentDto>(409, ClosedYear.Message, null);
                 var (activeId, inactiveId, section) = (ctx.ActiveId, ctx.InactiveId, ctx.Section!);
 
                 var employeeId = req.EmployeeId!.Trim();
@@ -81,6 +82,7 @@ namespace smss_api_service_layer.service
             {
                 var ctx = await ResolveAsync(schoolId, req.AcademicYearId!.Value, req.SectionId!.Value, null, ct);
                 if (ctx.Error != null) return Result<ClassTeacherAssignmentDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
+                if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId.Value, ct)) return Result<ClassTeacherAssignmentDto>(409, ClosedYear.Message, null);
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 await _repo.LockSectionYearAsync(schoolId, req.AcademicYearId.Value, req.SectionId.Value, ct);

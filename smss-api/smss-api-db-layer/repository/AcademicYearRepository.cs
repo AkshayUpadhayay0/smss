@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
@@ -48,6 +49,16 @@ namespace smss_api_db_layer.repository
         }
 
         public async Task AddAsync(TbAcademicYears year) => await _db.AcademicYears.AddAsync(year);
+
+        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default) => _db.Database.BeginTransactionAsync(ct);
+
+        public Task<List<AcademicYearUsage>> GetUsageAsync(string schoolId, CancellationToken ct = default) => _db.GetAcademicYearUsageAsync(schoolId, ct);
+
+        public Task<TbAcademicYears?> FindOverlapAsync(string schoolId, DateOnly start, DateOnly end, int activeStatusId, long? excludeId) =>
+            _db.AcademicYears.AsNoTracking()
+                .Where(y => y.SchoolId == schoolId && y.StatusId == activeStatusId && y.StartDate <= end && start <= y.EndDate
+                            && (excludeId == null || y.AcademicYearId != excludeId))
+                .OrderBy(y => y.StartDate).FirstOrDefaultAsync();
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();
     }

@@ -48,6 +48,7 @@ namespace smss_api_service_layer.service
 
                 var year = await _repo.GetYearContainingAsync(schoolId, date, ct);
                 if (year == null) return Result<SubmitAttendanceResultDto>(409, "No academic year covers today's date, so attendance can't be recorded.", null);
+                if (await _repo.IsYearClosedAsync(schoolId, year.AcademicYearId, ct)) return Result<SubmitAttendanceResultDto>(409, ClosedYear.Message, null);
 
                 if (!await MayMarkAsync(schoolId, callerUserId, callerIsSchoolAdmin, section.SectionId, year.AcademicYearId, ct))
                     return Result<SubmitAttendanceResultDto>(403, "Only this section's class teacher (or a School Admin) can submit its attendance.", null);
@@ -166,6 +167,7 @@ namespace smss_api_service_layer.service
                     sectionId = section.SectionId;
                 }
 
+                if (await _repo.IsYearClosedAsync(schoolId, mark?.AcademicYearId ?? year!.AcademicYearId, ct)) return Result<AttendanceCorrectionDto>(409, ClosedYear.Message, null);
                 await _repo.LockSectionDayAsync(schoolId, sectionId, date, ct);   // never in the middle of a teacher's submission of that section-day
                 mark = await _repo.GetMarkForUpdateAsync(schoolId, studentId, date, ct);   // (re-read under the lock: a teacher may have just marked it)
 

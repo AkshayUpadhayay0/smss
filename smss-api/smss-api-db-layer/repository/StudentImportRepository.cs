@@ -10,6 +10,7 @@ namespace smss_api_db_layer.repository
     {
         private readonly dbContext _db;
         public StudentImportRepository(dbContext db) => _db = db;
+        public Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct) => _db.IsYearClosedAsync(schoolId, academicYearId, ct);
 
         public Task<int?> GetActiveStatusIdAsync(CancellationToken ct) =>
             _db.LutStatus.AsNoTracking().Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);

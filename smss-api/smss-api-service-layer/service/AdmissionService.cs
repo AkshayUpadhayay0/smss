@@ -295,6 +295,7 @@ namespace smss_api_service_layer.service
 
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result<AdmissionDetailDto>(400, "The selected section was not found for your school.", null);
+                if (await _repo.IsYearClosedAsync(schoolId, admission.AcademicYearId, ct)) return Result<AdmissionDetailDto>(409, ClosedYear.Message, null);
 
                 var admittedId = await _repo.GetAdmissionStatusIdAsync(Admitted, ct);
                 var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);

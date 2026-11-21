@@ -10,6 +10,7 @@ namespace smss_api_db_layer.repository
     {
         private readonly dbContext _db;
         public AssessmentRepository(dbContext db) => _db = db;
+        public Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct) => _db.IsYearClosedAsync(schoolId, academicYearId, ct);
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 

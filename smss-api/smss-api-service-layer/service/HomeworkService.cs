@@ -67,6 +67,7 @@ namespace smss_api_service_layer.service
                 var year = req.AcademicYearId != null ? await _repo.GetYearAsync(schoolId, req.AcademicYearId.Value, ct) : await _repo.GetYearContainingAsync(schoolId, assigned, ct);
                 if (year == null)
                     return Result<HomeworkDto>(400, req.AcademicYearId != null ? "The selected academic year was not found for your school." : "No academic year covers the assigned date. Choose an academic year.", null);
+                if (await _repo.IsYearClosedAsync(schoolId, year.AcademicYearId, ct)) return Result<HomeworkDto>(409, ClosedYear.Message, null);
 
                 // a Teacher may only set homework for a section + subject the Timetable gives them; a School Admin bypasses this
                 if (!caller.IsSchoolAdmin && !await _timetable.IsTeachingSectionSubjectAsync(schoolId, owner.EmployeeId, section.SectionId, subject.SubjectId, year.AcademicYearId, ct))
@@ -278,6 +279,7 @@ namespace smss_api_service_layer.service
             if (activeId == null) return (null, ConfigError<HomeworkDto>());
             var entity = await _repo.GetActiveForUpdateAsync(schoolId, id, activeId.Value, ct);
             if (entity == null) return (null, Result<HomeworkDto>(404, "Homework not found.", null));
+            if (await _repo.IsYearClosedAsync(schoolId, entity.AcademicYearId, ct)) return (null, Result<HomeworkDto>(409, ClosedYear.Message, null));
             if (!caller.IsSchoolAdmin)
             {
                 var (loginId, _) = await _repo.GetUserAsync(schoolId, caller.UserId, ct);

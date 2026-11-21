@@ -266,6 +266,7 @@ namespace smss_api_service_layer.service
             }
             if (day < 1 || day > 6) return Bad(400, "Day of week must be 1 (Monday) to 6 (Saturday). Sunday is not a school day.");
             if (await _repo.GetYearAsync(schoolId, academicYearId, ct) == null) return Bad(400, "The selected academic year was not found for your school.");
+            if (await _repo.IsYearClosedAsync(schoolId, academicYearId, ct)) return Bad(409, ClosedYear.Message);
             var section = await _repo.GetSectionAsync(schoolId, sectionId, ct);
             if (section == null) return Bad(400, "The selected section was not found for your school.");
             if (classId != null && classId != section.ClassId) return Bad(400, "The selected section does not belong to the selected class.");

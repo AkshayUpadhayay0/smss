@@ -92,6 +92,7 @@ namespace smss_api_service_layer.service
 
                 var setup = await ResolveSetupAsync(schoolId, caller, owner.EmployeeId, req.AcademicYearId!.Value, req.SectionId!.Value, req.ClassId, req.SubjectId!.Value, activeId.Value, ct);
                 if (setup.Error != null) return Result<AssessmentDetailDto>(setup.Error.Value.Code, setup.Error.Value.Message, null);
+                if (await _repo.IsYearClosedAsync(schoolId, setup.Year!.AcademicYearId, ct)) return Result<AssessmentDetailDto>(409, ClosedYear.Message, null);
 
                 var roster = await _repo.GetRosterAsync(schoolId, setup.Year!.AcademicYearId, setup.Section!.SectionId, activeId.Value, ct);
                 var markError = ValidateMarks(req.Marks, roster, req.MaxMarks.Value);
@@ -353,6 +354,7 @@ namespace smss_api_service_layer.service
         {
             var entity = await _repo.GetActiveForUpdateAsync(schoolId, id, activeId, ct);
             if (entity == null) return (null, (404, "Test not found."));
+            if (await _repo.IsYearClosedAsync(schoolId, entity.AcademicYearId, ct)) return (null, (409, ClosedYear.Message));
             if (!caller.IsSchoolAdmin)
             {
                 var (loginId, _) = await _repo.GetUserAsync(schoolId, caller.UserId, ct);

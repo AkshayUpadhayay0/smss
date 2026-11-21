@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.@interface
@@ -13,6 +15,10 @@ namespace smss_api_db_layer.@interface
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType);
         Task<List<(int Sid, string Name)>> GetGeneralStatusesAsync(string statusType);
         Task AddAsync(TbAcademicYears year);
+        Task<List<AcademicYearUsage>> GetUsageAsync(string schoolId, CancellationToken ct = default);
+        /// <summary>An ACTIVE year of the school whose dates overlap [start, end] (inclusive), other than excludeId.</summary>
+        Task<TbAcademicYears?> FindOverlapAsync(string schoolId, DateOnly start, DateOnly end, int activeStatusId, long? excludeId);
+        Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
         Task<int> SaveChangesAsync();
     }
 }

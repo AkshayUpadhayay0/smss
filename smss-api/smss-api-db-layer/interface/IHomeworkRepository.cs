@@ -19,6 +19,9 @@ namespace smss_api_db_layer.@interface
     // Every method takes the school id: another school's homework, sections and people can never be reached through this repository.
     public interface IHomeworkRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         Task<int> SaveChangesAsync(CancellationToken ct);
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType, CancellationToken ct);
         Task<(string? LoginId, string? Name)> GetUserAsync(string schoolId, long userId, CancellationToken ct);

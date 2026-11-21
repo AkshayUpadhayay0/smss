@@ -13,6 +13,9 @@ namespace smss_api_db_layer.@interface
     // Every method takes the school id: another school's sections, employees and assignments can never be reached through this repository.
     public interface IClassTeacherRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         /// <summary>Transaction-scoped lock for one section-year, so two assign / reassign calls on it queue up instead of racing.</summary>
         Task LockSectionYearAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);

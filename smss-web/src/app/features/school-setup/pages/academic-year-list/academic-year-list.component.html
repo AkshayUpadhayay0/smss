@@ -24,9 +24,18 @@
       <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
         <app-icon name="pencil" [size]="14" />
       </app-button>
-      @if (row.isActive && !row.isCurrent) {
+      @if (row.isActive && !row.isCurrent && !row.isClosed) {
         <app-button variant="secondary" size="sm" [disabled]="busyId() === row.academicYearId" (click)="setCurrent(row)">
           <app-icon name="star" [size]="14" />Set as Current
+        </app-button>
+      }
+      @if (row.isClosed) {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.academicYearId" (click)="reopen(row)">
+          <app-icon name="lock-open" [size]="14" />Reopen
+        </app-button>
+      } @else if (!row.isCurrent) {
+        <app-button variant="secondary" size="sm" [disabled]="busyId() === row.academicYearId" (click)="close(row)">
+          <app-icon name="lock" [size]="14" />Close
         </app-button>
       }
       @if (row.isActive) {

@@ -11,6 +11,9 @@ namespace smss_api_db_layer.@interface
     // Every method takes the school id: another school's timetable can never be reached through this repository.
     public interface ITimetableRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         /// <summary>Does the employee have an Active entry for exactly this section + subject in the year (any day / period)?</summary>
         Task<bool> IsTeachingSectionSubjectAsync(string schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, int activeStatusId, CancellationToken ct);
 

@@ -13,6 +13,9 @@ namespace smss_api_db_layer.@interface
     /// <summary>Set-based reads and one bulk write for the student Excel import: a fixed number of queries however many rows the file has.</summary>
     public interface IStudentImportRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         Task<int?> GetActiveStatusIdAsync(CancellationToken ct);
         Task<LutAdmissionType?> GetAdmissionTypeByCodeAsync(string code, CancellationToken ct);
         Task<TbAcademicYears?> GetCurrentYearAsync(string schoolId, int activeStatusId, CancellationToken ct);

@@ -49,6 +49,7 @@ namespace smss_api_service_layer.service
                 // ---- ids come from the client: school-owned ones must belong to THIS school ----
                 if (!await _repo.AcademicYearBelongsToSchoolAsync(schoolId, req.AcademicYearId, ct))
                     return Result(400, "The selected academic year was not found for your school.", null);
+                if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId, ct)) return Result(409, ClosedYear.Message, null);
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result(400, "The selected class and section was not found for your school.", null);
                 // "Charge fees from": checked BEFORE the student is saved, so a refusal creates nothing

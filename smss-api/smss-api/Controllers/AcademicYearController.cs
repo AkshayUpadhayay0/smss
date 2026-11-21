@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using smss_api.Helpers;
 using smss_api_service_layer.dto;
@@ -64,6 +65,25 @@ namespace smss_api.Controllers
         {
             if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change academic years.");
             var response = await _service.SetCurrentAsync(User.GetSchoolId(), id);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/AcademicYear/5/close   body { note? }   (the current year can't be closed: 409)
+        [HttpPost("{id:long}/close")]
+        public async Task<IActionResult> Close(long id, [FromBody] CloseAcademicYearRequest? request)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can close an academic year.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _service.CloseAsync(User.GetSchoolId(), id, userId, request ?? new CloseAcademicYearRequest());
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/AcademicYear/5/reopen
+        [HttpPost("{id:long}/reopen")]
+        public async Task<IActionResult> Reopen(long id)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can reopen an academic year.");
+            var response = await _service.ReopenAsync(User.GetSchoolId(), id);
             return StatusCode(response.StatusCode, response);
         }
     }

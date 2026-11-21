@@ -10,6 +10,7 @@ namespace smss_api_db_layer.repository
     {
         private readonly dbContext _db;
         public TimetableRepository(dbContext db) => _db = db;
+        public Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct) => _db.IsYearClosedAsync(schoolId, academicYearId, ct);
 
         public Task<bool> IsTeachingSectionSubjectAsync(string schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, int activeStatusId, CancellationToken ct) =>
             _db.TimetableEntries.AsNoTracking().AnyAsync(e => e.SchoolId == schoolId && e.EmployeeId == employeeId && e.SectionId == sectionId && e.SubjectId == subjectId

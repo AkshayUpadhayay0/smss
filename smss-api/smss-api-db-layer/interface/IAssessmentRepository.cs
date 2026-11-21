@@ -23,6 +23,9 @@ namespace smss_api_db_layer.@interface
     // Every method takes the school id: another school's tests, sections and people can never be reached through this repository.
     public interface IAssessmentRepository
     {
+        // A closed academic year accepts no configuration, attendance, enrolment, homework or timetable writes.
+        Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
+
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         /// <summary>Transaction-scoped lock for one test, so two saves of its marks queue up instead of racing.</summary>
         Task LockAssessmentAsync(string schoolId, long assessmentId, CancellationToken ct);

@@ -13,6 +13,7 @@ namespace smss_api_db_layer.repository
 
         private readonly dbContext _db;
         public AdmissionRepository(dbContext db) => _db = db;
+        public Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct) => _db.IsYearClosedAsync(schoolId, academicYearId, ct);
 
         public Task<List<TbAdmission>> GetAllAsync(string schoolId, int? statusId, long? classId, long? academicYearId, CancellationToken ct) =>
             _db.Admissions.AsNoTracking()
