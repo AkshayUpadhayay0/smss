@@ -19,7 +19,13 @@ describe('resolveRole', () => {
     expect(resolveRole(['Driver', 'Student'])).toBe('STUDENT');
     expect(resolveRole(['Driver', 'Teacher'])).toBe('TEACHER');
   });
-  it.each([[['School Admin']], [['Principal']], [['Accountant']], [['Super Admin']], [['Guardian']], [[]]])('is unsupported for %j', (roles) => {
+  it('maps a School Admin to the School Admin home, after the other supported roles', () => {
+    expect(resolveRole(['School Admin'])).toBe('SCHOOL_ADMIN');
+    expect(resolveRole(['  school admin '])).toBe('SCHOOL_ADMIN');
+    expect(resolveRole(['School Admin', 'Driver'])).toBe('DRIVER');
+    expect(resolveRole(['School Admin', 'Student'])).toBe('STUDENT');
+  });
+  it.each([[['Principal']], [['Accountant']], [['Super Admin']], [['Guardian']], [[]]])('is unsupported for %j', (roles) => {
     expect(resolveRole(roles)).toBe('UNSUPPORTED');
   });
   it('is unsupported for missing roles', () => {

@@ -56,6 +56,9 @@ function RootStack() {
       <Stack.Protected guard={inApp && role === 'DRIVER'}>
         <Stack.Screen name="(driver)" />
       </Stack.Protected>
+      <Stack.Protected guard={inApp && role === 'SCHOOL_ADMIN'}>
+        <Stack.Screen name="(admin)" />
+      </Stack.Protected>
       <Stack.Protected guard={inApp && role === 'UNSUPPORTED'}>
         <Stack.Screen name="unsupported" />
       </Stack.Protected>

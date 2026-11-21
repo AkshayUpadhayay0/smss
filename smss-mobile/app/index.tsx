@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Redirect, type Href } from 'expo-router';
 import { useSession } from '../src/auth/session';
 
 /**
@@ -13,5 +13,6 @@ export default function Index() {
   if (role === 'STUDENT') return <Redirect href="/(student)/(tabs)" />;
   if (role === 'TEACHER') return <Redirect href="/(teacher)/(tabs)" />;
   if (role === 'DRIVER') return <Redirect href="/(driver)" />;
+  if (role === 'SCHOOL_ADMIN') return <Redirect href={'/(admin)' as Href} />;
   return <Redirect href="/unsupported" />;
 }

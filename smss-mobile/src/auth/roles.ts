@@ -3,11 +3,12 @@
  * not codes. If a role is ever renamed in lut_roles this breaks; a roleCodes field in the auth response is the proper long-term fix.
  * Client-side roles decide what to SHOW. The server is the authority on what is allowed.
  */
-export type AppRole = 'STUDENT' | 'TEACHER' | 'DRIVER' | 'UNSUPPORTED';
+export type AppRole = 'STUDENT' | 'TEACHER' | 'DRIVER' | 'SCHOOL_ADMIN' | 'UNSUPPORTED';
 
 const STUDENT = 'student';
 const TEACHER = 'teacher';
 const DRIVER = 'driver';
+const SCHOOL_ADMIN = 'school admin';
 
 // TODO: a role switcher for people who hold several supported roles. v1 picks one: Student first, then Teacher, then Driver.
 export function resolveRole(roles: readonly string[] | null | undefined): AppRole {
@@ -15,5 +16,7 @@ export function resolveRole(roles: readonly string[] | null | undefined): AppRol
   if (names.has(STUDENT)) return 'STUDENT';
   if (names.has(TEACHER)) return 'TEACHER';
   if (names.has(DRIVER)) return 'DRIVER';
+  // after the others: a School Admin who is also a Teacher (or Driver, Student) keeps that app
+  if (names.has(SCHOOL_ADMIN)) return 'SCHOOL_ADMIN';
   return 'UNSUPPORTED';
 }

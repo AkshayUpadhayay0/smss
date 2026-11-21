@@ -84,7 +84,11 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
   also a Teacher lands in the Teacher app (acceptable: the server still enforces what they can do). TODO: role switcher (not built).
 - **Known fragility:** if a role is ever renamed in `lut_roles`, the app breaks. The proper long-term fix is a `roleCodes` field in the auth
   response (`AuthUserResponse` in smss-api). Deliberately NOT changed now.
-- SUPER_ADMIN, SCHOOL_ADMIN, PRINCIPAL, ACCOUNTANT (and Guardian, Admission Staff) stay on the web.
+- Previous decision: SCHOOL_ADMIN stays on the web. New decision (School Admin dashboard task): a School Admin gets a mobile HOME ONLY, `app/(admin)` + `src/features/admin/`
+  (`SCHOOL_ADMIN` in `resolveRole`, ranked after Student / Teacher / Driver, so an admin who is also a teacher still lands in the Teacher app). It reads the one endpoint
+  `GET /api/Dashboard/school-admin` (numbers only; "Not set up yet" for expenses, vehicles card hidden when there are none). No fee report screen exists in the app, so the
+  "Not paid" card is a plain card. Everything else for the School Admin stays on the web.
+- SUPER_ADMIN, PRINCIPAL, ACCOUNTANT (and Guardian, Admission Staff) stay on the web.
 
 ## Design system (matches smss-web)
 Tokens in `src/theme/tokens.ts`: primary `#6D28D9`, deep `#4C1D95`, text `#5B21B6`, tint `#EDE9FE`/border `#C4B5FD`, background `#FAF9FF`,
@@ -126,61 +130,61 @@ Render real API data only; a screen that has fewer fields than a design shows fe
 - Day rollover: a long session can cross midnight; re-read the server's "today" (`/api/StudentDashboard`) instead of reusing one saved earlier.
 
 
-## Driver duty (live location) — Stage B
-The DRIVER role (a `tb_users` login with role "Driver", `org_user_id` = `tb_drivers.driver_id`) gets its own app: `app/(driver)` + `src/features/driver/`.
-Home shows the vehicle, areas and the duty state; **Mark today's attendance** starts a duty session and location sharing; **End duty** stops it.
-Server side: `GET api/Drivers/me`, `POST api/DriverDuty/start` (driver login), `POST api/DriverDuty/location` and `/end` (tracking token), see `smss-api`.
-
-### Rules
-- **Expo Go no longer works for this app.** Background location, the foreground service and the dev client are native: use a development build (below).
-- **The prominent disclosure comes BEFORE any permission prompt**, with the approved wording in `src/features/driver/copy.ts` (`DISCLOSURE_TEXT`; changing it needs the
-  product owner's approval, and bumping `DISCLOSURE_VERSION` shows it to everyone again). Order: disclosure, foreground location, background ("Allow all the time"; on
-  Android 11+ the system only offers its Settings page), notifications (Android 13+, `PermissionsAndroid`). Denied: ask again. Denied forever: open Settings.
-  Battery screen only OPENS the system battery list; **never request `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** (Google Play restricts it).
-- **The tracking token** (returned once by `/start`, valid only for `/location` and `/end` of that session) lives only in `expo-secure-store` (`smss.duty.token`).
-  The background task reads it **on every ping and never caches it** (a resume at duty start issues a NEW token and invalidates the old one), sends it only as
-  the `X-Duty-Token` header with plain `fetch` (`dutyHttp.ts`, never `src/api/client.ts`), and **never uses the JWT or the refresh token** (two JS contexts must never refresh at once).
-  It is deleted at duty end and on every STOP. It is never logged, put in a URL, a query key, an error message or a screenshot. **Never log coordinates or request bodies either.**
-- The background task is defined at module scope and imported from the app entry `index.ts` (`package.json` `main`): Android may start the app with no UI just to run it.
-- 60 s `timeInterval` (the server's `intervalSeconds`, never below its `minIntervalSeconds`), balanced accuracy, `distanceInterval` 0, foreground service with a visible notification.
-  **Dev builds only:** `EXPO_PUBLIC_DUTY_INTERVAL_SECONDS` (1..600) shortens the interval for quick emulator passes; it is ignored in release builds.
-- The first fix is sent at once after `/start` succeeds. **No offline queue**: a missed ping is simply replaced by the next one (latest-only on the server).
-- The UI never reads the phone's clock for duty decisions: "On duty since", status (LIVE/STALE/OFFLINE) and "last sent" come from `GET api/Drivers/me` (server time and ages).
-- Signing out while on duty warns "This will end your duty" and calls `/end` (login first, tracking token as a fallback) before the session ends. End duty always stops sharing
-  locally, even if the server cannot be reached (the school then sees the vehicle go OFFLINE; the open session is closed the next time duty starts).
-
-### Driver duty: what each answer makes the app do (`classifyPing` in `src/features/driver/ping.ts`; unit-tested)
-| Answer to `POST /api/DriverDuty/location` | Action | What the app does |
-|---|---|---|
-| 200 `accepted: true` | OK | nothing; the next ping follows the interval |
-| 200 `accepted: false` (`LOW_ACCURACY`, `STALE_FIX`, `FUTURE_FIX`, `OUT_OF_ORDER`, `MOCK_LOCATION`) | **DROP** | ignore this fix; send the next one on schedule. Duty continues. |
-| 400 (an impossible value) | **DROP** | same; the next fix is a new reading |
-| 401 (unknown / replaced token) | **STOP** | stop the service, delete the token, show "duty ended" (`UNKNOWN_TOKEN`) |
-| 409 `SESSION_ENDED`, `SESSION_EXPIRED`, `DRIVER_DEACTIVATED` (any other 409 too) | **STOP** | stop the service, delete the token, show "duty ended" with the reason |
-| no network / timeout | **RETRY** | do nothing; the next ping sends a fresh fix (nothing is queued) |
-| 429 `TOO_SOON` | **RETRY** | do nothing; the next ping |
-| 5xx, and anything unexpected (a gateway page, 403, 404) | **RETRY** | do nothing; never end duty over a transient failure |
-| no token on the phone | **STOP** | stop the service (`NO_TOKEN`) |
-
-A STOP is remembered (`smss.duty.stopped`) so the Home screen can say why. On app resume, if the server says a duty is open but `Location.hasStartedLocationUpdatesAsync`
-is false, Home shows "Location sharing stopped. Resume?"; Resume calls `/start` again (the server resumes the same session with a NEW token).
-
-### Running and building (Android first)
-Everything below needs the Android SDK + JDK 17 (`ANDROID_HOME` set) for local builds.
-- **Local development build (primary):** put the API URL in `.env` (see Environment), then `npx expo run:android` (prebuilds `android/`, which is git-ignored, builds the debug APK,
-  installs it on the running emulator / USB phone and starts Metro). Afterwards start only Metro with `npx expo start --dev-client`. A debug build allows cleartext HTTP, so an
-  emulator can use `http://10.0.2.2:<port>` (the host's localhost); a physical phone over USB can use `adb reverse tcp:<port> tcp:<port>` and `http://localhost:<port>`.
-  Release builds block cleartext: they need an `https://` URL.
-- **EAS development build (to share an APK):** set `EXPO_PUBLIC_API_BASE_URL` in the EAS `development` environment (never in git), then
-  `eas build --profile development --platform android` (apk). Install it on the phone and run `npx expo start --dev-client` on the PC, or use the `preview` profile for a standalone APK.
+## Driver duty (live location) — Stage B
+The DRIVER role (a `tb_users` login with role "Driver", `org_user_id` = `tb_drivers.driver_id`) gets its own app: `app/(driver)` + `src/features/driver/`.
+Home shows the vehicle, areas and the duty state; **Mark today's attendance** starts a duty session and location sharing; **End duty** stops it.
+Server side: `GET api/Drivers/me`, `POST api/DriverDuty/start` (driver login), `POST api/DriverDuty/location` and `/end` (tracking token), see `smss-api`.
+
+### Rules
+- **Expo Go no longer works for this app.** Background location, the foreground service and the dev client are native: use a development build (below).
+- **The prominent disclosure comes BEFORE any permission prompt**, with the approved wording in `src/features/driver/copy.ts` (`DISCLOSURE_TEXT`; changing it needs the
+  product owner's approval, and bumping `DISCLOSURE_VERSION` shows it to everyone again). Order: disclosure, foreground location, background ("Allow all the time"; on
+  Android 11+ the system only offers its Settings page), notifications (Android 13+, `PermissionsAndroid`). Denied: ask again. Denied forever: open Settings.
+  Battery screen only OPENS the system battery list; **never request `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** (Google Play restricts it).
+- **The tracking token** (returned once by `/start`, valid only for `/location` and `/end` of that session) lives only in `expo-secure-store` (`smss.duty.token`).
+  The background task reads it **on every ping and never caches it** (a resume at duty start issues a NEW token and invalidates the old one), sends it only as
+  the `X-Duty-Token` header with plain `fetch` (`dutyHttp.ts`, never `src/api/client.ts`), and **never uses the JWT or the refresh token** (two JS contexts must never refresh at once).
+  It is deleted at duty end and on every STOP. It is never logged, put in a URL, a query key, an error message or a screenshot. **Never log coordinates or request bodies either.**
+- The background task is defined at module scope and imported from the app entry `index.ts` (`package.json` `main`): Android may start the app with no UI just to run it.
+- 60 s `timeInterval` (the server's `intervalSeconds`, never below its `minIntervalSeconds`), balanced accuracy, `distanceInterval` 0, foreground service with a visible notification.
+  **Dev builds only:** `EXPO_PUBLIC_DUTY_INTERVAL_SECONDS` (1..600) shortens the interval for quick emulator passes; it is ignored in release builds.
+- The first fix is sent at once after `/start` succeeds. **No offline queue**: a missed ping is simply replaced by the next one (latest-only on the server).
+- The UI never reads the phone's clock for duty decisions: "On duty since", status (LIVE/STALE/OFFLINE) and "last sent" come from `GET api/Drivers/me` (server time and ages).
+- Signing out while on duty warns "This will end your duty" and calls `/end` (login first, tracking token as a fallback) before the session ends. End duty always stops sharing
+  locally, even if the server cannot be reached (the school then sees the vehicle go OFFLINE; the open session is closed the next time duty starts).
+
+### Driver duty: what each answer makes the app do (`classifyPing` in `src/features/driver/ping.ts`; unit-tested)
+| Answer to `POST /api/DriverDuty/location` | Action | What the app does |
+|---|---|---|
+| 200 `accepted: true` | OK | nothing; the next ping follows the interval |
+| 200 `accepted: false` (`LOW_ACCURACY`, `STALE_FIX`, `FUTURE_FIX`, `OUT_OF_ORDER`, `MOCK_LOCATION`) | **DROP** | ignore this fix; send the next one on schedule. Duty continues. |
+| 400 (an impossible value) | **DROP** | same; the next fix is a new reading |
+| 401 (unknown / replaced token) | **STOP** | stop the service, delete the token, show "duty ended" (`UNKNOWN_TOKEN`) |
+| 409 `SESSION_ENDED`, `SESSION_EXPIRED`, `DRIVER_DEACTIVATED` (any other 409 too) | **STOP** | stop the service, delete the token, show "duty ended" with the reason |
+| no network / timeout | **RETRY** | do nothing; the next ping sends a fresh fix (nothing is queued) |
+| 429 `TOO_SOON` | **RETRY** | do nothing; the next ping |
+| 5xx, and anything unexpected (a gateway page, 403, 404) | **RETRY** | do nothing; never end duty over a transient failure |
+| no token on the phone | **STOP** | stop the service (`NO_TOKEN`) |
+
+A STOP is remembered (`smss.duty.stopped`) so the Home screen can say why. On app resume, if the server says a duty is open but `Location.hasStartedLocationUpdatesAsync`
+is false, Home shows "Location sharing stopped. Resume?"; Resume calls `/start` again (the server resumes the same session with a NEW token).
+
+### Running and building (Android first)
+Everything below needs the Android SDK + JDK 17 (`ANDROID_HOME` set) for local builds.
+- **Local development build (primary):** put the API URL in `.env` (see Environment), then `npx expo run:android` (prebuilds `android/`, which is git-ignored, builds the debug APK,
+  installs it on the running emulator / USB phone and starts Metro). Afterwards start only Metro with `npx expo start --dev-client`. A debug build allows cleartext HTTP, so an
+  emulator can use `http://10.0.2.2:<port>` (the host's localhost); a physical phone over USB can use `adb reverse tcp:<port> tcp:<port>` and `http://localhost:<port>`.
+  Release builds block cleartext: they need an `https://` URL.
+- **EAS development build (to share an APK):** set `EXPO_PUBLIC_API_BASE_URL` in the EAS `development` environment (never in git), then
+  `eas build --profile development --platform android` (apk). Install it on the phone and run `npx expo start --dev-client` on the PC, or use the `preview` profile for a standalone APK.
 - The in-app Privacy Policy link (sign-in, driver disclosure, profile sheet) reads `EXPO_PUBLIC_PRIVACY_POLICY_URL` (`extra.privacyPolicyUrl`, https only; set in `eas.json`). The driver disclosure (`DISCLOSURE_VERSION` 2) now says it runs in the background during duty, who sees it and that no history is kept, with Accept / Not now.
-- The app identifier `com.smss.mobile` is a placeholder that is only acceptable for development builds (see Commands).
-- Play Store (later): background location needs a Permissions Declaration with a demo video, the foreground-service type needs its own declaration, the in-app disclosure above, and a
-  privacy policy that mentions location. New builds with these permissions go through Google review.
-
-### Emulator testing recipe
-Scratch API on a spare port against `smss-db-dev` (see Testing), `.env` with `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:<port>`. Move the emulator with
-`adb emu geo fix <lon> <lat>` (note: LONGITUDE first) or Extended controls > Location > Routes (GPX playback). Emulator fixes carry the mocked flag: the API's `RejectMockLocations` is OFF in
+- The app identifier `com.smss.mobile` is a placeholder that is only acceptable for development builds (see Commands).
+- Play Store (later): background location needs a Permissions Declaration with a demo video, the foreground-service type needs its own declaration, the in-app disclosure above, and a
+  privacy policy that mentions location. New builds with these permissions go through Google review.
+
+### Emulator testing recipe
+Scratch API on a spare port against `smss-db-dev` (see Testing), `.env` with `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:<port>`. Move the emulator with
+`adb emu geo fix <lon> <lat>` (note: LONGITUDE first) or Extended controls > Location > Routes (GPX playback). Emulator fixes carry the mocked flag: the API's `RejectMockLocations` is OFF in
 Development and ON in production. Airplane mode: `adb shell cmd connectivity airplane-mode enable|disable`. Never use a real driver's login: use the throwaway ZZ drivers.
 
 ### Student: "Where is my bus" (Stage C)
