@@ -20,7 +20,8 @@ namespace smss_api.Controllers
     {
         private const string XlsxType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         private readonly IStudentImportService _service;
-        public StudentImportController(IStudentImportService service) => _service = service;
+        private readonly IOnboardingService _onboarding;
+        public StudentImportController(IStudentImportService service, IOnboardingService onboarding) { _service = service; _onboarding = onboarding; }
 
         [HttpGet("template")]
         public async Task<IActionResult> Template(CancellationToken ct)
@@ -51,6 +52,7 @@ namespace smss_api.Controllers
         {
             var denied = Guard(out var school);
             if (denied != null) return denied;
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             var (bytes, error) = await ReadUploadAsync(file, ct);
             if (bytes == null) return error!;
             var response = await _service.CommitAsync(school, bytes, ct);

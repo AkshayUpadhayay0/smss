@@ -17,7 +17,8 @@ namespace smss_api.Controllers
     {
         private readonly IEmployeeService _service;
         private readonly IEmployeePhotoService _photos;
-        public EmployeeController(IEmployeeService service, IEmployeePhotoService photos) { _service = service; _photos = photos; }
+        private readonly IOnboardingService _onboarding;
+        public EmployeeController(IEmployeeService service, IEmployeePhotoService photos, IOnboardingService onboarding) { _service = service; _photos = photos; _onboarding = onboarding; }
 
         private IActionResult? Refuse() =>
             User.IsSchoolAdmin() ? null : this.Forbidden("Only a School Admin can manage employees.");
@@ -67,8 +68,12 @@ namespace smss_api.Controllers
 
         // POST api/Employee
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] EmployeeRequest request, CancellationToken ct) =>
-            Refuse() ?? Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
+        public async Task<IActionResult> Create([FromBody] EmployeeRequest request, CancellationToken ct)
+        {
+            if (Refuse() is { } refused) return refused;
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
+            return Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
+        }
 
         // PUT api/Employee/{employeeId}
         [HttpPut("{employeeId:length(1,20)}")]

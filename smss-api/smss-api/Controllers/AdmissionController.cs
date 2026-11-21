@@ -19,10 +19,12 @@ namespace smss_api.Controllers
     {
         private readonly IAdmissionService _service;
         private readonly IAdmissionDocumentService _documents;
-        public AdmissionController(IAdmissionService service, IAdmissionDocumentService documents)
+        private readonly IOnboardingService _onboarding;
+        public AdmissionController(IAdmissionService service, IAdmissionDocumentService documents, IOnboardingService onboarding)
         {
             _service = service;
             _documents = documents;
+            _onboarding = onboarding;
         }
 
         // The routes carry {schoolId}, but it is never trusted: the caller can only reach their OWN school (the JWT
@@ -76,6 +78,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Submit(string schoolId, [FromBody] SubmitAdmissionRequestDto req, CancellationToken ct)
         {
             if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             return Reply(await _service.SubmitAsync(own, req, ct));
         }
 
@@ -129,6 +132,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Confirm(string schoolId, long admissionId, [FromBody] ConfirmAdmissionRequestDto req, CancellationToken ct)
         {
             if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             return Reply(await _service.ConfirmAdmissionAsync(own, admissionId, req, ct));
         }
 

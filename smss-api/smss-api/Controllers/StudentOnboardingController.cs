@@ -13,7 +13,8 @@ namespace smss_api.Controllers
     public class StudentOnboardingController : ControllerBase
     {
         private readonly IStudentOnboardingService _service;
-        public StudentOnboardingController(IStudentOnboardingService service) => _service = service;
+        private readonly IOnboardingService _onboarding;
+        public StudentOnboardingController(IStudentOnboardingService service, IOnboardingService onboarding) { _service = service; _onboarding = onboarding; }
 
         // The route carries {schoolId}, but it is never trusted: the caller can only reach their OWN school (the JWT
         // "school_id" claim) and the service is always called with the token's value. TODO: drop {schoolId} from the
@@ -28,6 +29,8 @@ namespace smss_api.Controllers
 
             // Creating a student straight in is a School Admin job (an Approved admission application becomes a student through Confirm Admission instead).
             if (!User.IsSchoolAdmin()) return Reject(403, "Only a School Admin can add a student directly.");
+
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
 
             long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId);
             var response = await _service.CreateDirectEntryAsync(own, request, ct, userId);

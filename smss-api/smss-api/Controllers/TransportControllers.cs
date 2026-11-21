@@ -17,7 +17,8 @@ namespace smss_api.Controllers
     public class TransportAreasController : ControllerBase
     {
         private readonly ITransportAreaService _service;
-        public TransportAreasController(ITransportAreaService service) => _service = service;
+        private readonly IOnboardingService _onboarding;
+        public TransportAreasController(ITransportAreaService service, IOnboardingService onboarding) { _service = service; _onboarding = onboarding; }
         private IActionResult Reply<T>(ApiResponse<T> r) => StatusCode(r.StatusCode, r);
 
         // GET api/TransportAreas?search=&status=All|Active|Inactive&page=1&pageSize=10
@@ -41,6 +42,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Create([FromBody] TransportAreaRequest request, CancellationToken ct)
         {
             if (!User.CanConfigureTransport()) return this.Forbidden("Only a School Admin can change transport areas.");
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             return Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
         }
 
@@ -67,7 +69,8 @@ namespace smss_api.Controllers
     public class VehiclesController : ControllerBase
     {
         private readonly IVehicleService _service;
-        public VehiclesController(IVehicleService service) => _service = service;
+        private readonly IOnboardingService _onboarding;
+        public VehiclesController(IVehicleService service, IOnboardingService onboarding) { _service = service; _onboarding = onboarding; }
         private IActionResult Reply<T>(ApiResponse<T> r) => StatusCode(r.StatusCode, r);
 
         // GET api/Vehicles/lookups   (vehicle types and ownerships)
@@ -99,6 +102,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Create([FromBody] VehicleRequest request, CancellationToken ct)
         {
             if (!User.CanConfigureTransport()) return this.Forbidden("Only a School Admin can change vehicles.");
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             return Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
         }
 
@@ -126,7 +130,8 @@ namespace smss_api.Controllers
     {
         private readonly IDriverService _service;
         private readonly IDriverPhotoService _photos;
-        public DriversController(IDriverService service, IDriverPhotoService photos) { _service = service; _photos = photos; }
+        private readonly IOnboardingService _onboarding;
+        public DriversController(IDriverService service, IDriverPhotoService photos, IOnboardingService onboarding) { _service = service; _photos = photos; _onboarding = onboarding; }
         private IActionResult Reply<T>(ApiResponse<T> r) => StatusCode(r.StatusCode, r);
 
         // GET api/Drivers/lookups   (the school's Active vehicles and Active areas, for the driver form)
@@ -170,6 +175,7 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Create([FromBody] DriverRequest request, CancellationToken ct)
         {
             if (!User.CanConfigureTransport()) return this.Forbidden("Only a School Admin can change drivers.");
+            if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             return Reply(await _service.CreateAsync(User.GetSchoolId(), request, ct));
         }
 
