@@ -407,3 +407,79 @@ Each stage ships one RUN-ME script (`Docs/smss-acad-sN-<name>-RUN-ME.sql`: heade
 
 ## H. Out of scope (confirm)
 Student promotion into the next year's classes, roll-number regeneration, fee-structure copying (fee setup already has its own per-year structures; a "copy fee structures" part can be added to the transition later), subject teachers beyond the timetable, a 7-day week, and any mobile write screens.
+
+---
+
+## I. Addendum (decisions after review): demo-only data, and several timetables per section
+
+### I.1 Changes to the earlier plan
+- **The software is not live and holds only demo schools (APS, GHS, LAS).** The expand-then-contract and "old build keeps working" rules in sections D, F and G are dropped:
+  a migration may add `NOT NULL` columns and the final constraints directly, after backfilling the demo schools. Every migration is still a RUN-ME file in `Docs/`:
+  one transaction, no psql meta-commands, a pre-check that lists offenders and raises before anything changes, a header with backup and rollback notes, and a verification
+  block that compares before/after counts and raises (rolling everything back) on a mismatch. A second run prints `ALREADY MIGRATED`.
+- Decisions taken: Q1 section = class + section name, capacity per year on the offering. Q2 closing a year blocks configuration, attendance, enrolments, homework and
+  timetable edits, allows fee payments, voids, receipts and reads; a School Admin can reopen; the current year can never be closed. Q3 a teacher may be class teacher of
+  several sections (with a confirm). Q4 no overlap among Active years only; no ordering rule. Q5 section-level add/remove subject overrides stay (later stage). Q6 several
+  timetables per section (below), several schedules per class and per day, no database teacher clock-time exclusion yet. Q7 Monday to Saturday. Q8 promotion, roll
+  numbers and fee-structure copy are out of scope. Q9 a caller that sends no year gets the current year (with a log line). Q10 year copy merges by skip-if-exists, with a preview.
+
+### I.2 Several timetables per section (built in the timetable stage; S1 and S2 are compatible with it)
+
+**Model.** A new master-of-versions table, `tb_timetables`: one row per timetable of a **section offering in a year**.
+
+| Column | Notes |
+|---|---|
+| `timetable_id` BIGINT identity PK | |
+| `school_id`, `academic_year_id`, `class_id`, `section_id` | composite FK `(academic_year_id, section_id) -> tb_academic_year_sections` (S2) and `(section_id, class_id) -> tb_sections`, so a timetable can exist only for a section that is offered in that year |
+| `timetable_name` VARCHAR(80) NN | `UNIQUE (academic_year_id, section_id, timetable_name)` |
+| `schedule_id` BIGINT NN | the bell schedule (S4) its entries use |
+| `state` VARCHAR(8) NN | `CHECK IN ('DRAFT','ACTIVE','ARCHIVED')` |
+| `is_active` BOOLEAN NN | `CHECK (is_active = (state = 'ACTIVE'))`; kept as a real column only so entries can reference it (see below) |
+| `ever_active` BOOLEAN NN DEFAULT false | set true at the first activation, never reset; `CHECK (NOT is_active OR ever_active)` |
+| `first_activated_at`, `activated_by`, `deactivated_at` | audit of the history |
+| audit columns | as everywhere |
+
+- **Exactly one ACTIVE timetable per section per year:** `CREATE UNIQUE INDEX uq_tb_tt_one_active ON tb_timetables (academic_year_id, section_id) WHERE is_active`.
+- **Activate** = one transaction under the per-school advisory lock: the old active one is set `ARCHIVED` (`is_active=false`), the new one `ACTIVE` (`is_active=true`, `ever_active=true`).
+  The previous timetable stays as history. **Delete** is allowed only for a timetable with `ever_active = false` (a draft that never went live); anything that was ever
+  active is archived, never deleted. Enforced by the service and by `ON DELETE RESTRICT` from a history table; the verification block asserts it.
+- **Drafts never block anything.** Only ACTIVE timetables take part in clash checks.
+
+**How teacher double-booking stays impossible in the database among active timetables.** A unique index cannot look at another table, and a partial index cannot say
+"where the owning timetable is active". So the entry carries a mirror of the flag, and the database itself keeps the mirror honest:
+
+1. `tb_timetables` gets `UNIQUE (timetable_id, is_active)`.
+2. `tb_timetable_entries` gets `timetable_id BIGINT NOT NULL` and `tt_is_active BOOLEAN NOT NULL`, with
+   `FOREIGN KEY (timetable_id, tt_is_active) REFERENCES tb_timetables (timetable_id, is_active) ON UPDATE CASCADE`.
+   An entry therefore **cannot** carry a flag different from its timetable's, and when activation flips `tb_timetables.is_active` the database cascades the flip to every
+   entry of that timetable in the same statement. Application code never writes `tt_is_active`.
+3. Teacher uniqueness: `CREATE UNIQUE INDEX uq_tb_tte_teacher_active ON tb_timetable_entries (school_id, academic_year_id, employee_id, day_of_week, period_id) WHERE tt_is_active AND status_id = <Active> AND employee_id IS NOT NULL`.
+   Two ACTIVE timetables cannot both place the same teacher in the same day and period, whatever the section; drafts and archived ones are outside the index.
+4. Section slot uniqueness is **per timetable**: `UNIQUE (timetable_id, day_of_week, period_id) WHERE status_id = <Active>`. Plus the one-active-per-section index above, so a
+   section has one slot occupant at a time in the live view.
+5. Activating a timetable whose teacher is already busy in another active timetable makes the cascade fail on the unique index; the service checks first and answers with a
+   readable 409 listing the conflicts, and the index is the backstop for a race (the lock makes a race impossible within one school anyway).
+
+Why this and not triggers or a view: it needs no trigger code, the foreign key makes the mirror impossible to forge, the cascade makes activation one `UPDATE`, and the
+index is the same shape as the one that exists today (`uq_tb_tte_teacher_one_active_per_period`), so the existing 540 and 541 demo rows migrate with a mechanical change.
+Cross-schedule clock-time overlap stays a service check (Q6).
+
+**Teacher on a slot is optional.** `employee_id` becomes nullable and a slot with no teacher is allowed; entries copied without a teacher carry `needs_teacher = true`. The
+activation answer includes the warning count of slots without a teacher. Index 3 ignores null teachers.
+
+**"Apply this timetable to other sections of the class".** For each chosen section (offered in the same year, same class) a **new independent timetable** is created
+(name from the request, status DRAFT), with the same day, period and subject for every slot. The teacher is copied only when that teacher is free (no ACTIVE slot of theirs
+at that day and period); otherwise the slot is created with no teacher and `needs_teacher = true`. Never overwrites an existing timetable (a name clash on the target section
+returns a skip with a reason). One transaction per request under the advisory lock; returns per section `{created, slotsCopied, slotsNeedingTeacher}`.
+
+**Readers.** The teacher dashboard, `Timetable/my`, `Timetable/student/my`, homework and assessment "does this teacher teach this section and subject" checks, mobile and
+the student/parent view read **only** `tt_is_active` entries. They keep their response shapes. Editing an active timetable re-runs the teacher clash check for the touched slot.
+
+**Backfill (what existing rows become).** For every (year, section) that has at least one existing timetable entry (Active or Inactive history), one timetable is created:
+name `Timetable <year name>`, schedule = the school's default schedule, `state = ACTIVE`, `ever_active = true`; **all** existing entries of that section and year (including
+their Inactive history rows) are attached to it, with `tt_is_active = true`. Sections with no entries get no timetable. Counts the verification block checks: timetables =
+distinct (year, section) of existing entries (APS 3 sections / GHS 15 / LAS 15 in the scratch copy), and every entry has a timetable; entry counts are unchanged
+(26 / 540 / 541).
+
+**Compatibility with S1 and S2.** S2's `tb_academic_year_sections (academic_year_id, section_id)` unique key is exactly what `tb_timetables` references; years are never deleted;
+closing a year (S1) blocks timetable create/edit/activate through the same guard helper. Nothing in S1/S2 names a column the timetable work would have to rename.
