@@ -1,0 +1,78 @@
+<div class="assign">
+  <h3>Which schedule does each class follow in this year?</h3>
+  <p class="hint">
+    Every class follows <strong>{{ defaultName() }}</strong> on every day unless you add a line. A line can name a class, a day, or both; the most specific line wins.
+    Example: <em>every class, Saturday</em> follows a short schedule.
+  </p>
+
+  @if (loading()) {
+    <p class="note" aria-busy="true">Loading this year's schedules…</p>
+  } @else if (failed()) {
+    <div class="note">
+      <p>This year's schedules could not be loaded.</p>
+      <app-button variant="secondary" (click)="load(yearId())">Try again</app-button>
+    </div>
+  } @else if (data(); as d) {
+    @if (locked()) {
+      <p class="notice"><app-icon name="lock" [size]="16" />This academic year is closed, so its schedules can't be changed.</p>
+    }
+    @if (d.schedules.length === 0) {
+      <p class="note">There is no bell schedule yet. Create one above first.</p>
+    } @else {
+      @if (onlyOneSchedule() && rows().length === 0) {
+        <p class="note">There is only one schedule, so every class and day follows it. Create another schedule above to use different timings.</p>
+      }
+      @if (rows().length) {
+        <table class="rows">
+          <thead><tr><th>Class</th><th>Day</th><th>Follows</th><th></th></tr></thead>
+          <tbody>
+            @for (r of rows(); track $index) {
+              <tr [attr.data-row]="$index" [class.dup]="isDuplicate(r)">
+                <td>
+                  <select data-class [value]="r.classId" [disabled]="locked() || saving()" (change)="patch($index, { classId: $any($event.target).value })" aria-label="Class">
+                    <option value="">Every class</option>
+                    @for (c of d.classes; track c.classId) {
+                      <option [value]="c.classId">{{ c.className }}</option>
+                    }
+                  </select>
+                </td>
+                <td>
+                  <select data-day [value]="r.day" [disabled]="locked() || saving()" (change)="patch($index, { day: $any($event.target).value })" aria-label="Day">
+                    <option value="">Every day</option>
+                    @for (n of days; track $index) {
+                      <option [value]="$index + 1">{{ n }}</option>
+                    }
+                  </select>
+                </td>
+                <td>
+                  <select data-schedule [value]="r.scheduleId" [disabled]="locked() || saving()" (change)="patch($index, { scheduleId: $any($event.target).value })" aria-label="Schedule">
+                    @for (s of d.schedules; track s.scheduleId) {
+                      <option [value]="s.scheduleId">{{ s.scheduleName }}{{ s.isDefault ? ' (default)' : '' }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="x">
+                  @if (!locked()) {
+                    <button type="button" class="link danger" (click)="remove($index)">Remove</button>
+                  }
+                  @if (isDuplicate(r)) {
+                    <span class="err">Same class and day twice</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+
+      <div class="footer">
+        @if (dirty()) {
+          <span class="unsaved"><app-icon name="circle-alert" [size]="16" />Unsaved changes</span>
+        }
+        <app-button variant="secondary" size="sm" [disabled]="locked() || saving() || d.schedules.length === 0" (click)="add()">Add a line</app-button>
+        <app-button variant="secondary" [disabled]="saving() || !dirty()" (click)="reset()">Reset</app-button>
+        <app-button [disabled]="locked() || saving() || !dirty() || duplicates().size > 0" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</app-button>
+      </div>
+    }
+  }
+</div>

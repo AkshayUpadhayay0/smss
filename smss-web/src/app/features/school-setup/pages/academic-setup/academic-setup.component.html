@@ -34,9 +34,17 @@
     <div class="tabs" role="tablist" aria-label="Academic setup">
       <button type="button" role="tab" class="tab" data-tab="classes" [class.active]="tab() === 'classes'" [attr.aria-selected]="tab() === 'classes'" (click)="tab.set('classes')">Classes and sections</button>
       <button type="button" role="tab" class="tab" data-tab="subjects" [class.active]="tab() === 'subjects'" [attr.aria-selected]="tab() === 'subjects'" (click)="tab.set('subjects')">Subjects</button>
+      <button type="button" role="tab" class="tab" data-tab="schedules" [class.active]="tab() === 'schedules'" [attr.aria-selected]="tab() === 'schedules'" (click)="tab.set('schedules')">Periods and schedules</button>
     </div>
 
-    @if (tab() === 'subjects') {
+    @if (tab() === 'schedules') {
+      <app-card>
+        <app-schedule-manager [readOnly]="false" />
+      </app-card>
+      <app-card>
+        <app-schedule-assignments [yearId]="+yearControl.value" [readOnly]="readOnly()" />
+      </app-card>
+    } @else if (tab() === 'subjects') {
       <app-card>
         @if (loading()) {
           <p class="status-note" aria-busy="true">Loading this year…</p>

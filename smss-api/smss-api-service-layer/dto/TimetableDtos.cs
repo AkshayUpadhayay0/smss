@@ -66,7 +66,16 @@ namespace smss_api_service_layer.dto
     public class TimetablePeriodDto
     {
         public long PeriodId { get; set; }
+        /// <summary>0 for a break.</summary>
         public int PeriodNumber { get; set; }
+        /// <summary>PERIOD or BREAK. A break can never hold a lesson.</summary>
+        public string SlotType { get; set; } = "PERIOD";
+        public string? Label { get; set; }
+        public long ScheduleId { get; set; }
+        /// <summary>Shown when the grid mixes more than one schedule.</summary>
+        public string? ScheduleName { get; set; }
+        /// <summary>The days (1 = Monday .. 6 = Saturday) this slot applies to for the class; a class that follows another schedule on some day has no slot there.</summary>
+        public List<int> Days { get; set; } = new() { 1, 2, 3, 4, 5, 6 };
         public TimeOnly StartTime { get; set; }
         public TimeOnly EndTime { get; set; }
     }
@@ -82,6 +91,8 @@ namespace smss_api_service_layer.dto
         public int DayOfWeek { get; set; }
         /// <summary>null = nothing scheduled in this period on this day.</summary>
         public TimetableEntryDto? Entry { get; set; }
+        /// <summary>False when this slot is not part of the schedule the class follows on this day (nothing can be assigned there).</summary>
+        public bool Applies { get; set; } = true;
     }
 
     public class TimetableRowDto

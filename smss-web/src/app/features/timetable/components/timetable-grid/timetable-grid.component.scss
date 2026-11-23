@@ -38,6 +38,26 @@
   }
 }
 
+.break .num {
+  font-style: italic;
+}
+
+.cell.na {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.35;
+  min-height: 68px;
+}
+
+.cell.break-cell-body {
+  background: var(--color-surface-muted);
+  border-style: dashed;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  color: var(--color-text-muted);
+}
+
 .cell {
   display: flex;
   flex-direction: column;

@@ -29,13 +29,17 @@ export const shortTime = (t: string): string => t.slice(0, 5);
         <tbody>
           @for (row of grid().rows; track row.period.periodId) {
             <tr>
-              <th scope="row" class="period-head">
-                <span class="num">Period {{ row.period.periodNumber }}</span>
-                <span class="time">{{ time(row.period.startTime) }} – {{ time(row.period.endTime) }}</span>
+              <th scope="row" class="period-head" [class.break]="isBreak(row)">
+                <span class="num">{{ isBreak(row) ? (row.period.label || 'Break') : 'Period ' + row.period.periodNumber }}</span>
+                <span class="time">{{ time(row.period.startTime) }} – {{ time(row.period.endTime) }}@if (row.period.scheduleName) { · {{ row.period.scheduleName }} }</span>
               </th>
               @for (cell of row.cells; track cell.dayOfWeek) {
-                <td>
-                  @if (selectable()) {
+                <td [class.break-cell]="isBreak(row) && cell.applies !== false">
+                  @if (isBreak(row) && cell.applies !== false) {
+                    <div class="cell static break-cell-body" data-break><span class="free">{{ row.period.label || 'Break' }}</span></div>
+                  } @else if (cell.applies === false) {
+                    <div class="cell static na" data-na aria-hidden="true"><span class="free"> </span></div>
+                  } @else if (selectable()) {
                     <button type="button" class="cell" [class.empty]="!cell.entry" (click)="cellClick.emit({ row, cell })" [attr.aria-label]="label(row, cell)">
                       <ng-container *ngTemplateOutlet="body; context: { $implicit: cell }" />
                     </button>
@@ -71,6 +75,9 @@ export class TimetableGridComponent {
   readonly cellClick = output<{ row: TimetableRow; cell: TimetableCell }>();
 
   protected readonly time = shortTime;
+  protected isBreak(row: TimetableRow): boolean {
+    return row.period.slotType === 'BREAK';
+  }
 
   protected label(row: TimetableRow, cell: TimetableCell): string {
     const day = this.grid().days.find((d) => d.dayOfWeek === cell.dayOfWeek)?.name ?? '';

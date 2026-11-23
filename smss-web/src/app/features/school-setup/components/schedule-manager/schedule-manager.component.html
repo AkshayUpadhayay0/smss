@@ -1,0 +1,140 @@
+<div class="manager">
+  <p class="hint">
+    A <strong>bell schedule</strong> is a set of periods and breaks with their times. Most schools need only the default one. Add another (for example a short Saturday
+    or a winter timing) and assign it to classes and days below. Slots stay in clock-time order, two slots of one schedule can't overlap, and a break never holds a lesson.
+  </p>
+
+  @if (loading()) {
+    <p class="note" aria-busy="true">Loading the bell schedules…</p>
+  } @else if (failed()) {
+    <div class="note">
+      <p>The bell schedules could not be loaded.</p>
+      <app-button variant="secondary" (click)="load()">Try again</app-button>
+    </div>
+  } @else {
+    @if (!readOnly()) {
+      <div class="new">
+        <label>
+          <span>New schedule</span>
+          <input type="text" maxlength="60" placeholder="e.g. Saturday" data-new-name [value]="newName()" (input)="newName.set($any($event.target).value)" [disabled]="busy()" />
+        </label>
+        @if (hasSchedules()) {
+          <label>
+            <span>Copy slots from</span>
+            <select data-copy [value]="copyFrom()" (change)="copyFrom.set($any($event.target).value)" [disabled]="busy()">
+              <option value="">Start empty</option>
+              @for (s of schedules(); track s.scheduleId) {
+                <option [value]="s.scheduleId">{{ s.scheduleName }}</option>
+              }
+            </select>
+          </label>
+        }
+        <app-button [disabled]="busy() || !newName().trim()" (click)="create()">Create schedule</app-button>
+      </div>
+    }
+
+    @if (!hasSchedules()) {
+      <p class="note">No bell schedule yet. Create the first one (it becomes the default), then add its periods.</p>
+    }
+
+    @for (s of schedules(); track s.scheduleId) {
+      <section class="sched" [attr.data-schedule]="s.scheduleId" [class.default]="s.isDefault">
+        <header>
+          @if (renaming() === s.scheduleId) {
+            <input type="text" maxlength="60" class="rename" [value]="renameText()" (input)="renameText.set($any($event.target).value)" aria-label="Schedule name" />
+            <app-button size="sm" [disabled]="busy() || !renameText().trim()" (click)="saveRename(s)">Save</app-button>
+            <app-button size="sm" variant="secondary" (click)="renaming.set(null)">Cancel</app-button>
+          } @else {
+            <h3>{{ s.scheduleName }}</h3>
+            @if (s.isDefault) {
+              <span class="tag primary">Default</span>
+            }
+            <span class="tag">{{ s.slots.length }} {{ s.slots.length === 1 ? 'slot' : 'slots' }}</span>
+            @if (s.assignments > 0) {
+              <span class="tag">{{ s.assignments }} assigned</span>
+            }
+            <span class="spacer"></span>
+            @if (!readOnly()) {
+              <app-button size="sm" variant="secondary" (click)="startRename(s)">Rename</app-button>
+              @if (!s.isDefault) {
+                <app-button size="sm" variant="secondary" [disabled]="busy()" (click)="makeDefault(s)">Make default</app-button>
+              }
+              <app-button size="sm" variant="secondary" [disabled]="busy() || !!s.deleteBlockedReason" [title]="s.deleteBlockedReason ?? 'Delete this schedule'" (click)="remove(s)">Delete</app-button>
+            }
+          }
+        </header>
+
+        @if (s.slots.length) {
+          <table class="slots">
+            <thead>
+              <tr><th>Slot</th><th>Time</th><th>Type</th><th>Status</th>@if (!readOnly()) { <th class="actions">Actions</th> }</tr>
+            </thead>
+            <tbody>
+              @for (slot of s.slots; track slot.periodId) {
+                <tr [class.off]="!slot.isActive" [class.break]="slot.slotType === 'BREAK'" [attr.data-slot]="slot.periodId">
+                  <td class="name">{{ name(slot) }}</td>
+                  <td>{{ time(slot.startTime) }} – {{ time(slot.endTime) }}</td>
+                  <td>{{ slot.slotType === 'BREAK' ? 'Break' : 'Period' }}</td>
+                  <td>
+                    <span class="tag" [class.ok]="slot.isActive">{{ slot.isActive ? 'Active' : 'Inactive' }}</span>
+                    @if (slot.activeEntryCount > 0) {
+                      <span class="tag lock" [title]="slot.activeEntryCount + ' timetable entries use this slot'"><app-icon name="lock" [size]="12" />In use</span>
+                    }
+                  </td>
+                  @if (!readOnly()) {
+                    <td class="actions">
+                      <button type="button" class="link" (click)="openEdit(s, slot)">Edit</button>
+                      <button type="button" class="link" (click)="toggle(s, slot)">{{ slot.isActive ? 'Deactivate' : 'Activate' }}</button>
+                      <button type="button" class="link danger" (click)="removeSlot(s, slot)">Delete</button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="note">No periods yet. Add the first one below.</p>
+        }
+
+        @if (!readOnly()) {
+          @if (formFor() === s.scheduleId) {
+            <div class="slot-form" data-slot-form>
+              <label>
+                <span>Type</span>
+                <select data-slot-type [value]="form().slotType" (change)="patch({ slotType: $any($event.target).value })">
+                  <option value="PERIOD">Period</option>
+                  <option value="BREAK">Break</option>
+                </select>
+              </label>
+              @if (form().slotType === 'PERIOD') {
+                <label>
+                  <span>Number</span>
+                  <input type="text" inputmode="numeric" maxlength="2" data-slot-number [value]="form().periodNumber" (input)="patch({ periodNumber: $any($event.target).value })" />
+                </label>
+              }
+              <label>
+                <span>{{ form().slotType === 'BREAK' ? 'Label' : 'Label (optional)' }}</span>
+                <input type="text" maxlength="30" data-slot-label [placeholder]="form().slotType === 'BREAK' ? 'Lunch' : ''" [value]="form().label" (input)="patch({ label: $any($event.target).value })" />
+              </label>
+              <label>
+                <span>Start</span>
+                <input type="time" data-slot-start [value]="form().startTime" (input)="patch({ startTime: $any($event.target).value })" />
+              </label>
+              <label>
+                <span>End</span>
+                <input type="time" data-slot-end [value]="form().endTime" (input)="patch({ endTime: $any($event.target).value })" />
+              </label>
+              <app-button [disabled]="busy() || !!formError()" (click)="saveSlot(s)">{{ editing() != null ? 'Save slot' : 'Add slot' }}</app-button>
+              <app-button variant="secondary" (click)="closeForm()">Cancel</app-button>
+              @if (formError()) {
+                <span class="err">{{ formError() }}</span>
+              }
+            </div>
+          } @else {
+            <div class="add"><app-button size="sm" variant="secondary" (click)="openAdd(s)">Add period or break</app-button></div>
+          }
+        }
+      </section>
+    }
+  }
+</div>

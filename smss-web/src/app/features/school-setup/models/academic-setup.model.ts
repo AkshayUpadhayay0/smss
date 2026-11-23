@@ -106,3 +106,62 @@ export interface SubjectDraft {
   mapped: Set<number>;
   sections: { sectionId: number; sectionName: string; extra: Set<number>; notTaught: Set<number> }[];
 }
+
+// ---------------- S4: bell schedules and which schedule a class follows on which day (mirrors ScheduleDto / YearSchedulesDto)
+
+export interface Schedule {
+  scheduleId: number;
+  scheduleName: string;
+  isDefault: boolean;
+  slots: ScheduleSlot[];
+  assignments: number;
+  timetableEntries: number;
+  /** Null = it can be deleted; otherwise why not. */
+  deleteBlockedReason?: string | null;
+}
+
+export interface ScheduleSlot {
+  periodId: number;
+  slotType: 'PERIOD' | 'BREAK';
+  periodNumber?: number | null;
+  label?: string | null;
+  /** "HH:mm:ss" */
+  startTime: string;
+  endTime: string;
+  slotOrder: number;
+  isActive: boolean;
+  /** Active timetable entries on this slot (a slot in use can't be deactivated, deleted or turned into a break). */
+  activeEntryCount: number;
+}
+
+export interface ScheduleSlotRequest {
+  slotType: 'PERIOD' | 'BREAK';
+  periodNumber: number | null;
+  label: string | null;
+  startTime: string;
+  endTime: string;
+}
+
+export interface YearSchedules {
+  academicYearId: number;
+  yearName: string;
+  isClosed: boolean;
+  defaultScheduleId?: number | null;
+  schedules: { scheduleId: number; scheduleName: string; isDefault: boolean }[];
+  classes: { classId: number; className: string }[];
+  rows: ScheduleAssignmentRow[];
+}
+
+export interface ScheduleAssignmentRow {
+  /** Null = every class the year offers. */
+  classId: number | null;
+  className?: string | null;
+  /** Null = every day; 1 = Monday .. 6 = Saturday. */
+  dayOfWeek: number | null;
+  scheduleId: number;
+  scheduleName?: string;
+}
+
+export interface SaveYearSchedulesRequest {
+  rows: { classId: number | null; dayOfWeek: number | null; scheduleId: number }[];
+}

@@ -43,6 +43,15 @@ namespace smss_api_service_layer.service
                 if (ctx.Error != null) return Result<TimetableEntryDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
                 var (activeId, inactiveId, section, day, period) = (ctx.ActiveId, ctx.InactiveId, ctx.Section!, ctx.Day, ctx.Period!);
 
+                // S4: a break can never hold a lesson (the database refuses it too), and the period must be a slot of the schedule this class follows on this day
+                if (period.SlotType != SlotTypes.Period) return Result<TimetableEntryDto>(400, $"{period.SlotLabel ?? "This slot"} is a break, so no lesson can be placed in it.", null);
+                var followed = await FollowedScheduleAsync(schoolId, req.AcademicYearId!.Value, section.ClassId, day, ct);
+                if (followed != null && followed != period.ScheduleId)
+                {
+                    var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
+                    return Result<TimetableEntryDto>(400, $"Period {period.PeriodNumber} belongs to the schedule \"{names.GetValueOrDefault(period.ScheduleId)}\", but {section.ClassName} follows \"{names.GetValueOrDefault(followed.Value)}\" on {ScheduleResolver.DayNames[day - 1]}. Choose a period of \"{names.GetValueOrDefault(followed.Value)}\".", null);
+                }
+
                 var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, req.AcademicYearId!.Value, section.SectionId, activeId, ct);
                 if (subject == null || subject.StatusId != activeId) return Result<TimetableEntryDto>(400, "The selected subject was not found for your school.", null);
                 if (!subject.MappedToClass)
@@ -154,9 +163,17 @@ namespace smss_api_service_layer.service
                 var (year, error) = await YearAsync(schoolId, academicYearId, ct);
                 if (year == null) return Result<TimetableGridDto>(error!.Value.Code, error.Value.Message, null);
 
-                var periods = await _repo.GetActivePeriodsAsync(schoolId, activeId.Value, ct);
+                var slots = await _repo.GetActiveSlotsAsync(schoolId, activeId.Value, ct);
                 var entries = await _repo.GetSectionEntriesAsync(schoolId, year.AcademicYearId, sectionId, activeId.Value, ct);
-                var grid = BuildGrid(year, "section", periods, entries);
+                // S4: the slots of the schedule this class follows on each day (the default schedule everywhere unless the year assigns another)
+                var assignments = await _repo.GetYearScheduleRowsAsync(schoolId, year.AcademicYearId, ct);
+                var defaultId = await _repo.GetDefaultScheduleIdAsync(schoolId, ct);
+                var perDay = Enumerable.Range(1, 6).ToDictionary(d => d, d => ScheduleResolver.Resolve(assignments, section.ClassId, d, defaultId));
+                var used = perDay.Values.Where(v => v != null).Select(v => v!.Value).ToHashSet();
+                var slotById = slots.ToDictionary(p => p.PeriodId);
+                used.UnionWith(entries.Where(e => slotById.ContainsKey(e.Entry.PeriodId)).Select(e => slotById[e.Entry.PeriodId].ScheduleId));   // never hide a lesson that exists
+                var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
+                var grid = BuildGrid(year, "section", slots.Where(p => used.Contains(p.ScheduleId)).ToList(), entries, names, (p, d) => perDay[d] == p.ScheduleId, used.Count > 1);
                 grid.SectionId = section.SectionId; grid.ClassId = section.ClassId; grid.ClassName = section.ClassName; grid.SectionName = section.SectionName;
                 return Result(200, "Successfully fetched", grid);
             }
@@ -222,12 +239,22 @@ namespace smss_api_service_layer.service
             var (year, error) = await YearAsync(schoolId, academicYearId, ct);
             if (year == null) return Result<TimetableGridDto>(error!.Value.Code, error.Value.Message, null);
 
-            var periods = await _repo.GetActivePeriodsAsync(schoolId, activeId.Value, ct);
+            var slots = await _repo.GetActiveSlotsAsync(schoolId, activeId.Value, ct);
             var entries = await _repo.GetTeacherEntriesAsync(schoolId, year.AcademicYearId, employeeId, activeId.Value, ct);
-            var grid = BuildGrid(year, "teacher", periods, entries);
+            // the default schedule's slots, plus the schedules the teacher's lessons sit on
+            var defaultId = await _repo.GetDefaultScheduleIdAsync(schoolId, ct);
+            var slotById = slots.ToDictionary(p => p.PeriodId);
+            var used = entries.Where(e => slotById.ContainsKey(e.Entry.PeriodId)).Select(e => slotById[e.Entry.PeriodId].ScheduleId).ToHashSet();
+            if (defaultId != null) used.Add(defaultId.Value);
+            var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
+            var grid = BuildGrid(year, "teacher", slots.Where(p => used.Contains(p.ScheduleId)).ToList(), entries, names, (_, _) => true, used.Count > 1);
             grid.EmployeeId = teacher.EmployeeId; grid.EmployeeName = TeacherName(teacher);
             return Result(200, "Successfully fetched", grid);
         }
+
+        /// <summary>The schedule a class follows on a day of a year: the year's assignment, else the school's default (null when the school has no schedule).</summary>
+        private async Task<long?> FollowedScheduleAsync(string schoolId, long academicYearId, long classId, int day, CancellationToken ct) =>
+            ScheduleResolver.Resolve(await _repo.GetYearScheduleRowsAsync(schoolId, academicYearId, ct), classId, day, await _repo.GetDefaultScheduleIdAsync(schoolId, ct));
 
         /// <summary>The year asked for, or the school's current one (the year containing today).</summary>
         private async Task<(YearRef? Year, (int Code, string Message)? Error)> YearAsync(string schoolId, long? academicYearId, CancellationToken ct)
@@ -238,8 +265,10 @@ namespace smss_api_service_layer.service
         }
 
         /// <summary>Every active period x Monday..Saturday, with the entry in each cell or none.</summary>
-        private static TimetableGridDto BuildGrid(YearRef year, string scope, List<TbPeriod> periods, List<TtEntryRow> entries)
+        private static TimetableGridDto BuildGrid(YearRef year, string scope, List<TbPeriod> periods, List<TtEntryRow> entries, IReadOnlyDictionary<long, string> scheduleNames, Func<TbPeriod, int, bool> applies, bool mixed)
         {
+            // one schedule: its own order (the classic grid); several: by clock time
+            periods = mixed ? periods.OrderBy(p => p.StartTime).ThenBy(p => p.SlotOrder).ToList() : periods.OrderBy(p => p.SlotOrder).ToList();
             var byCell = entries.GroupBy(e => (e.Entry.PeriodId, e.Entry.DayOfWeek)).ToDictionary(g => g.Key, g => g.OrderBy(e => e.Entry.TimetableEntryId).First());
             return new TimetableGridDto
             {
@@ -247,8 +276,13 @@ namespace smss_api_service_layer.service
                 Days = DayNames.Select((n, i) => new TimetableDayDto { DayOfWeek = i + 1, Name = n }).ToList(),
                 Rows = periods.Select(p => new TimetableRowDto
                 {
-                    Period = new TimetablePeriodDto { PeriodId = p.PeriodId, PeriodNumber = p.PeriodNumber, StartTime = p.StartTime, EndTime = p.EndTime },
-                    Cells = Enumerable.Range(1, 6).Select(d => new TimetableCellDto { DayOfWeek = d, Entry = byCell.TryGetValue((p.PeriodId, (short)d), out var e) ? ToDto(e) : null }).ToList()
+                    Period = new TimetablePeriodDto
+                    {
+                        PeriodId = p.PeriodId, PeriodNumber = p.PeriodNumber ?? 0, SlotType = p.SlotType, Label = p.SlotLabel, ScheduleId = p.ScheduleId,
+                        ScheduleName = mixed ? scheduleNames.GetValueOrDefault(p.ScheduleId) : null, StartTime = p.StartTime, EndTime = p.EndTime,
+                        Days = Enumerable.Range(1, 6).Where(d => applies(p, d)).ToList()
+                    },
+                    Cells = Enumerable.Range(1, 6).Select(d => new TimetableCellDto { DayOfWeek = d, Applies = applies(p, d), Entry = byCell.TryGetValue((p.PeriodId, (short)d), out var e) ? ToDto(e) : null }).ToList()
                 }).ToList()
             };
         }

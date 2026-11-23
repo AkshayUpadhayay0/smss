@@ -27,6 +27,13 @@ namespace smss_api_db_layer.@interface
         Task<SectionRef?> GetSectionAsync(string schoolId, long sectionId, CancellationToken ct);
         Task<TbPeriod?> GetPeriodAsync(string schoolId, long periodId, CancellationToken ct);
         Task<List<TbPeriod>> GetActivePeriodsAsync(string schoolId, int activeStatusId, CancellationToken ct);
+        /// <summary>Every Active slot (periods AND breaks) of every schedule of the school, in clock-time order.</summary>
+        Task<List<TbPeriod>> GetActiveSlotsAsync(string schoolId, int activeStatusId, CancellationToken ct);
+        /// <summary>The school's default schedule id (null when it has none yet).</summary>
+        Task<long?> GetDefaultScheduleIdAsync(string schoolId, CancellationToken ct);
+        Task<Dictionary<long, string>> GetScheduleNamesAsync(string schoolId, CancellationToken ct);
+        /// <summary>The year's (class, day, schedule) assignments; a null class / day means every.</summary>
+        Task<List<(long? ClassId, short? Day, long ScheduleId)>> GetYearScheduleRowsAsync(string schoolId, long academicYearId, CancellationToken ct);
 
         /// <summary>The subject (null when it isn't one of this school's), and whether the SECTION is taught it in that academic year (the effective subjects: class mapping - REMOVE + ADD).</summary>
         Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);

@@ -38,10 +38,25 @@ export interface TimetableEntry {
 export interface TimetableCell {
   dayOfWeek: number;
   entry: TimetableEntry | null;
+  /** False when the slot is not part of the schedule the class follows on this day (nothing can be assigned there). */
+  applies?: boolean;
 }
 
 export interface TimetableRow {
-  period: { periodId: number; periodNumber: number; startTime: string; endTime: string };
+  period: {
+    periodId: number;
+    /** 0 for a break. */
+    periodNumber: number;
+    startTime: string;
+    endTime: string;
+    /** PERIOD or BREAK (a break never holds a lesson). */
+    slotType?: 'PERIOD' | 'BREAK';
+    label?: string | null;
+    scheduleId?: number;
+    /** Shown only when the grid mixes several schedules. */
+    scheduleName?: string | null;
+    days?: number[];
+  };
   cells: TimetableCell[];
 }
 

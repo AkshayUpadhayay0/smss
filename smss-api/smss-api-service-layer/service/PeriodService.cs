@@ -11,7 +11,7 @@ namespace smss_api_service_layer.service
 {
     public class PeriodService : IPeriodService
     {
-        private const string NumberConstraint = "uq_tb_periods_school_number";
+        private const string NumberConstraint = "uq_tb_periods_schedule_number";
 
         private readonly IPeriodRepository _repo;
         private readonly ILogger<PeriodService> _logger;
@@ -48,9 +48,11 @@ namespace smss_api_service_layer.service
                 if (overlap != null) return Result<PeriodDto>(409, $"These times overlap period {overlap}.", null);
 
                 var now = DateTime.UtcNow;
-                var p = new TbPeriod { SchoolId = schoolId, PeriodNumber = number, StartTime = req.StartTime.Value, EndTime = req.EndTime.Value, StatusId = activeId.Value, CreatedAt = now, UpdatedAt = now };
+                var schedule = await _repo.EnsureDefaultScheduleAsync(schoolId, activeId.Value, ct);   // the classic Periods screen works on the default schedule
+                var p = new TbPeriod { SchoolId = schoolId, ScheduleId = schedule.ScheduleId, SlotType = SlotTypes.Period, PeriodNumber = number, SlotOrder = (short)(2000 + number), StartTime = req.StartTime.Value, EndTime = req.EndTime.Value, StatusId = activeId.Value, CreatedAt = now, UpdatedAt = now };
                 await _repo.AddAsync(p, ct);
                 await _repo.SaveChangesAsync(ct);
+                await _repo.ResequenceAsync(schoolId, schedule.ScheduleId, ct);   // slots stay in clock-time order
                 return await RowAsync(schoolId, p.PeriodId, activeId.Value, 201, "Period created.", ct);
             }
             catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.ConstraintName == NumberConstraint)
@@ -69,6 +71,7 @@ namespace smss_api_service_layer.service
                 if (activeId == null) return ConfigError<PeriodDto>();
                 var p = await _repo.GetForUpdateAsync(schoolId, periodId, ct);
                 if (p == null) return Result<PeriodDto>(404, "Period not found.", null);
+                if (!await IsOnDefaultScheduleAsync(schoolId, p, ct)) return Result<PeriodDto>(409, OtherScheduleMessage, null);
 
                 var number = (short)req.PeriodNumber!.Value;
                 if (req.EndTime <= req.StartTime) return Result<PeriodDto>(400, "The end time must be after the start time.", null);
@@ -84,6 +87,7 @@ namespace smss_api_service_layer.service
                 p.EndTime = req.EndTime!.Value;
                 p.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync(ct);
+                await _repo.ResequenceAsync(schoolId, p.ScheduleId, ct);
                 return await RowAsync(schoolId, periodId, activeId.Value, 200, "Period updated.", ct);
             }
             catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.ConstraintName == NumberConstraint)
@@ -103,6 +107,7 @@ namespace smss_api_service_layer.service
                 if (activeId == null || inactiveId == null) return ConfigError<PeriodDto>();
                 var p = await _repo.GetForUpdateAsync(schoolId, periodId, ct);
                 if (p == null) return Result<PeriodDto>(404, "Period not found.", null);
+                if (!await IsOnDefaultScheduleAsync(schoolId, p, ct)) return Result<PeriodDto>(409, OtherScheduleMessage, null);
 
                 if (p.StatusId == activeId)
                 {
@@ -123,6 +128,11 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<PeriodDto>(ex, "toggling a period"); }
         }
 
+        private const string OtherScheduleMessage = "This period belongs to another bell schedule. Change it under Academic Setup, Schedules.";
+
+        private async Task<bool> IsOnDefaultScheduleAsync(string schoolId, TbPeriod p, CancellationToken ct) =>
+            p.SlotType == SlotTypes.Period && (await _repo.GetDefaultScheduleAsync(schoolId, ct))?.ScheduleId == p.ScheduleId;
+
         private async Task<ApiResponse<PeriodDto>> RowAsync(string schoolId, long periodId, int activeId, int code, string message, CancellationToken ct)
         {
             var row = await _repo.GetRowAsync(schoolId, periodId, activeId, ct);
@@ -131,7 +141,7 @@ namespace smss_api_service_layer.service
 
         private static PeriodDto ToDto(PeriodListRow r) => new()
         {
-            PeriodId = r.Period.PeriodId, PeriodNumber = r.Period.PeriodNumber, StartTime = r.Period.StartTime, EndTime = r.Period.EndTime, StatusName = r.StatusName, ActiveEntryCount = r.ActiveEntryCount
+            PeriodId = r.Period.PeriodId, PeriodNumber = r.Period.PeriodNumber ?? 0, StartTime = r.Period.StartTime, EndTime = r.Period.EndTime, StatusName = r.StatusName, ActiveEntryCount = r.ActiveEntryCount
         };
 
         private ApiResponse<T> ConfigError<T>()

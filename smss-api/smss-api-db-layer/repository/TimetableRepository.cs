@@ -44,7 +44,20 @@ namespace smss_api_db_layer.repository
             _db.Periods.AsNoTracking().Where(p => p.SchoolId == schoolId && p.PeriodId == periodId).FirstOrDefaultAsync(ct);
 
         public async Task<List<TbPeriod>> GetActivePeriodsAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
-            (await _db.Periods.AsNoTracking().Where(p => p.SchoolId == schoolId && p.StatusId == activeStatusId).ToListAsync(ct)).OrderBy(p => p.PeriodNumber).ToList();
+            (await _db.Periods.AsNoTracking().Where(p => p.SchoolId == schoolId && p.StatusId == activeStatusId && p.SlotType == SlotTypes.Period).ToListAsync(ct)).OrderBy(p => p.PeriodNumber).ToList();
+
+        public async Task<List<TbPeriod>> GetActiveSlotsAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
+            (await _db.Periods.AsNoTracking().Where(p => p.SchoolId == schoolId && p.StatusId == activeStatusId).ToListAsync(ct)).OrderBy(p => p.StartTime).ThenBy(p => p.SlotOrder).ToList();
+
+        public async Task<long?> GetDefaultScheduleIdAsync(string schoolId, CancellationToken ct) =>
+            await _db.PeriodSchedules.AsNoTracking().Where(d => d.SchoolId == schoolId && d.IsDefault).Select(d => (long?)d.ScheduleId).FirstOrDefaultAsync(ct);
+
+        public Task<Dictionary<long, string>> GetScheduleNamesAsync(string schoolId, CancellationToken ct) =>
+            _db.PeriodSchedules.AsNoTracking().Where(d => d.SchoolId == schoolId).ToDictionaryAsync(d => d.ScheduleId, d => d.ScheduleName, ct);
+
+        public async Task<List<(long? ClassId, short? Day, long ScheduleId)>> GetYearScheduleRowsAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            (await _db.AcademicYearSchedules.AsNoTracking().Where(a => a.SchoolId == schoolId && a.AcademicYearId == academicYearId).ToListAsync(ct))
+                .Select(a => (a.ClassId, a.DayOfWeek, a.ScheduleId)).ToList();
 
         public Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct) =>
             _db.Subjects.AsNoTracking().Where(s => s.SchoolId == schoolId && s.SubjectId == subjectId)
@@ -87,7 +100,7 @@ namespace smss_api_db_layer.repository
              join s in _db.Sections.AsNoTracking() on e.SectionId equals s.SectionId
              join sub in _db.Subjects.AsNoTracking() on e.SubjectId equals sub.SubjectId
              join p in _db.Periods.AsNoTracking() on e.PeriodId equals p.PeriodId
-             select new TtConflictRow(c.ClassName, s.SectionName, sub.SubjectName, p.PeriodNumber)).FirstOrDefaultAsync(ct);
+             select new TtConflictRow(c.ClassName, s.SectionName, sub.SubjectName, p.PeriodNumber ?? 0)).FirstOrDefaultAsync(ct);
 
         public async Task AddAsync(TbTimetableEntry entry, CancellationToken ct) => await _db.TimetableEntries.AddAsync(entry, ct);
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
@@ -100,7 +113,7 @@ namespace smss_api_db_layer.repository
             join emp in _db.Employees.AsNoTracking() on e.EmployeeId equals emp.EmployeeId
             join p in _db.Periods.AsNoTracking() on e.PeriodId equals p.PeriodId
             select new TtEntryRow(e, c.ClassName, s.SectionName, sub.SubjectName, sub.SubjectCode,
-                emp.FirstName + " " + (emp.MiddleName == null ? "" : emp.MiddleName + " ") + emp.LastName, p.PeriodNumber);
+                emp.FirstName + " " + (emp.MiddleName == null ? "" : emp.MiddleName + " ") + emp.LastName, p.PeriodNumber ?? 0);
 
         public Task<TtEntryRow?> GetEntryRowAsync(string schoolId, long entryId, CancellationToken ct) =>
             Rows(_db.TimetableEntries.AsNoTracking().Where(e => e.SchoolId == schoolId && e.TimetableEntryId == entryId)).FirstOrDefaultAsync(ct);

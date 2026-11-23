@@ -16,7 +16,8 @@ namespace smss_api.Controllers
     {
         private readonly IAcademicSetupService _service;
         private readonly ISubjectSetupService _subjects;
-        public AcademicSetupController(IAcademicSetupService service, ISubjectSetupService subjects) { _service = service; _subjects = subjects; }
+        private readonly IPeriodScheduleService _schedules;
+        public AcademicSetupController(IAcademicSetupService service, ISubjectSetupService subjects, IPeriodScheduleService schedules) { _service = service; _subjects = subjects; _schedules = schedules; }
 
         // GET api/AcademicSetup/years/5/classes
         [HttpGet("years/{yearId:long}/classes")]
@@ -34,6 +35,26 @@ namespace smss_api.Controllers
             if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change the academic setup.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var response = await _service.SaveOfferingAsync(User.GetSchoolId(), userId, yearId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // S4: which bell schedule each class follows on each day of the year (the schedules themselves are under /api/PeriodSchedules)
+        // GET api/AcademicSetup/years/5/schedules
+        [HttpGet("years/{yearId:long}/schedules")]
+        public async Task<IActionResult> GetSchedules(long yearId, CancellationToken ct)
+        {
+            if (!User.CanViewAcademicSetup()) return this.Forbidden("Only a School Admin or Principal can see the academic setup.");
+            var response = await _schedules.GetYearAsync(User.GetSchoolId(), yearId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT api/AcademicSetup/years/5/schedules   body { rows: [ { classId?, dayOfWeek?, scheduleId } ] }  = the WHOLE set (empty = everything follows the default schedule)
+        [HttpPut("years/{yearId:long}/schedules")]
+        public async Task<IActionResult> SaveSchedules(long yearId, [FromBody] SaveYearSchedulesRequest request, CancellationToken ct)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change the academic setup.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _schedules.SaveYearAsync(User.GetSchoolId(), userId, yearId, request, ct);
             return StatusCode(response.StatusCode, response);
         }
 

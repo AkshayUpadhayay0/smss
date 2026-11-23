@@ -96,6 +96,8 @@ namespace smss_api_db_layer.context
         public DbSet<TbPushNotificationLog> PushNotificationLog { get; set; } = null!;
         public DbSet<TbSchoolReportCardSettings> SchoolReportCardSettings { get; set; } = null!;
         public DbSet<TbPeriod> Periods { get; set; } = null!;
+        public DbSet<TbPeriodSchedule> PeriodSchedules { get; set; } = null!;
+        public DbSet<TbAcademicYearSchedule> AcademicYearSchedules { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
         public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;
         public DbSet<TbHomework> Homework { get; set; } = null!;
