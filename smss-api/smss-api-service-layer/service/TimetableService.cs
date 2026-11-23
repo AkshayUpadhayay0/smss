@@ -43,10 +43,10 @@ namespace smss_api_service_layer.service
                 if (ctx.Error != null) return Result<TimetableEntryDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
                 var (activeId, inactiveId, section, day, period) = (ctx.ActiveId, ctx.InactiveId, ctx.Section!, ctx.Day, ctx.Period!);
 
-                var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, section.ClassId, activeId, ct);
+                var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, req.AcademicYearId!.Value, section.SectionId, activeId, ct);
                 if (subject == null || subject.StatusId != activeId) return Result<TimetableEntryDto>(400, "The selected subject was not found for your school.", null);
                 if (!subject.MappedToClass)
-                    return Result<TimetableEntryDto>(400, $"{subject.Name} is not taught in {section.ClassName}. Add it to the class under Class-Subject Mapping first.", null);
+                    return Result<TimetableEntryDto>(400, $"{subject.Name} is not taught in {section.ClassName} - {section.SectionName} in this academic year. Add it under Academic Setup (subjects) first.", null);
 
                 var employeeId = req.EmployeeId!.Trim();
                 var teacher = await _repo.GetTeacherAsync(schoolId, employeeId, ct);
@@ -119,7 +119,7 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------------------------------------------------------- reads
-        public async Task<ApiResponse<TimetableLookupsDto>> GetLookupsAsync(string? schoolId, long sectionId, CancellationToken ct)
+        public async Task<ApiResponse<TimetableLookupsDto>> GetLookupsAsync(string? schoolId, long sectionId, long? academicYearId, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<TimetableLookupsDto>(400, TenantMessages.NoSchool, null);
             try
@@ -129,7 +129,9 @@ namespace smss_api_service_layer.service
                 var section = await _repo.GetSectionAsync(schoolId, sectionId, ct);
                 if (section == null) return Result<TimetableLookupsDto>(404, "Section not found.", null);
 
-                var subjects = await _repo.GetSubjectsOfClassAsync(schoolId, section.ClassId, activeId.Value, ct);
+                var (year, yearError) = await YearAsync(schoolId, academicYearId, ct);
+                if (year == null) return Result<TimetableLookupsDto>(yearError!.Value.Code, yearError.Value.Message, null);
+                var subjects = await _repo.GetSubjectsOfSectionAsync(schoolId, year.AcademicYearId, section.SectionId, activeId.Value, ct);
                 var teachers = await _repo.GetTeachersAsync(schoolId, activeId.Value, ct);
                 return Result(200, "Successfully fetched", new TimetableLookupsDto
                 {

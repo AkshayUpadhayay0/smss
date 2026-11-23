@@ -31,7 +31,20 @@
       }
     </app-card>
 
-    @if (loading()) {
+    <div class="tabs" role="tablist" aria-label="Academic setup">
+      <button type="button" role="tab" class="tab" data-tab="classes" [class.active]="tab() === 'classes'" [attr.aria-selected]="tab() === 'classes'" (click)="tab.set('classes')">Classes and sections</button>
+      <button type="button" role="tab" class="tab" data-tab="subjects" [class.active]="tab() === 'subjects'" [attr.aria-selected]="tab() === 'subjects'" (click)="tab.set('subjects')">Subjects</button>
+    </div>
+
+    @if (tab() === 'subjects') {
+      <app-card>
+        @if (loading()) {
+          <p class="status-note" aria-busy="true">Loading this year…</p>
+        } @else {
+          <app-subject-setup [yearId]="+yearControl.value" [classes]="offeredClassList()" [readOnly]="readOnly()" />
+        }
+      </app-card>
+    } @else if (loading()) {
       <app-card><p class="status-note" aria-busy="true">Loading this year's classes…</p></app-card>
     } @else if (loadFailed()) {
       <app-card>

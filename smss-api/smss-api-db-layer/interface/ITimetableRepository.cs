@@ -28,9 +28,10 @@ namespace smss_api_db_layer.@interface
         Task<TbPeriod?> GetPeriodAsync(string schoolId, long periodId, CancellationToken ct);
         Task<List<TbPeriod>> GetActivePeriodsAsync(string schoolId, int activeStatusId, CancellationToken ct);
 
-        /// <summary>The subject (null when it isn't one of this school's), and whether the class studies it (an Active class-subject mapping).</summary>
-        Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long classId, int activeStatusId, CancellationToken ct);
-        Task<List<TtSubjectRow>> GetSubjectsOfClassAsync(string schoolId, long classId, int activeStatusId, CancellationToken ct);
+        /// <summary>The subject (null when it isn't one of this school's), and whether the SECTION is taught it in that academic year (the effective subjects: class mapping - REMOVE + ADD).</summary>
+        Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
+        /// <summary>The Active subjects the section is taught in that academic year.</summary>
+        Task<List<TtSubjectRow>> GetSubjectsOfSectionAsync(string schoolId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
         Task<TtTeacherRow?> GetTeacherAsync(string schoolId, string employeeId, CancellationToken ct);
         /// <summary>Employees who can teach: Active record, Teaching, employment status that still works here.</summary>
         Task<List<TtTeacherRow>> GetTeachersAsync(string schoolId, int activeStatusId, CancellationToken ct);

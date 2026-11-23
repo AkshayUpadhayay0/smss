@@ -15,7 +15,8 @@ namespace smss_api.Controllers
     public class AcademicSetupController : ControllerBase
     {
         private readonly IAcademicSetupService _service;
-        public AcademicSetupController(IAcademicSetupService service) => _service = service;
+        private readonly ISubjectSetupService _subjects;
+        public AcademicSetupController(IAcademicSetupService service, ISubjectSetupService subjects) { _service = service; _subjects = subjects; }
 
         // GET api/AcademicSetup/years/5/classes
         [HttpGet("years/{yearId:long}/classes")]
@@ -33,6 +34,26 @@ namespace smss_api.Controllers
             if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change the academic setup.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var response = await _service.SaveOfferingAsync(User.GetSchoolId(), userId, yearId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // S3: the subjects of one class in one year, and the per-section exceptions
+        // GET api/AcademicSetup/years/5/classes/7/subjects
+        [HttpGet("years/{yearId:long}/classes/{classId:long}/subjects")]
+        public async Task<IActionResult> GetSubjects(long yearId, long classId, CancellationToken ct)
+        {
+            if (!User.CanViewAcademicSetup()) return this.Forbidden("Only a School Admin or Principal can see the academic setup.");
+            var response = await _subjects.GetAsync(User.GetSchoolId(), yearId, classId, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // PUT api/AcademicSetup/years/5/classes/7/subjects   body { subjectIds: [], sections: [ { sectionId, extraSubjectIds: [], notTaughtSubjectIds: [] } ] }  = the WHOLE set
+        [HttpPut("years/{yearId:long}/classes/{classId:long}/subjects")]
+        public async Task<IActionResult> SaveSubjects(long yearId, long classId, [FromBody] SaveYearClassSubjectsRequest request, CancellationToken ct)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change the academic setup.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _subjects.SaveAsync(User.GetSchoolId(), userId, yearId, classId, request, ct);
             return StatusCode(response.StatusCode, response);
         }
     }

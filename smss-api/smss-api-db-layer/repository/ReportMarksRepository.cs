@@ -60,8 +60,8 @@ namespace smss_api_db_layer.repository
         }
 
         // ------------------------------------------------------------------ eligibility inputs
-        public Task<bool> IsMappedAsync(string schoolId, long classId, long subjectId, int activeStatusId, CancellationToken ct) =>
-            _db.ClassSubjects.AsNoTracking().AnyAsync(m => m.SchoolId == schoolId && m.ClassId == classId && m.SubjectId == subjectId && m.StatusId == activeStatusId, ct);
+        public Task<bool> IsMappedAsync(string schoolId, long academicYearId, long sectionId, long subjectId, CancellationToken ct) =>
+            _db.EffectiveSubjects(schoolId, academicYearId).AnyAsync(v => v.SectionId == sectionId && v.SubjectId == subjectId, ct);
 
         public async Task<HashSet<long>> ClassTeacherSectionIdsAsync(string schoolId, string employeeId, long academicYearId, int activeStatusId, CancellationToken ct) =>
             (await _db.ClassTeacherAssignments.AsNoTracking()
@@ -194,9 +194,9 @@ namespace smss_api_db_layer.repository
                     select new { ts.TermId, ts.SectionId, ts.Status, ts.LockedAt, ts.UnlockReason }).ToListAsync(ct))
             .Select(t => new TermSectionSummary(t.TermId, t.SectionId, t.Status, t.LockedAt, t.UnlockReason)).ToList();
 
-        public async Task<HashSet<MappedPair>> GetMappedPairsAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
-            (await _db.ClassSubjects.AsNoTracking().Where(m => m.SchoolId == schoolId && m.StatusId == activeStatusId).Select(m => new { m.ClassId, m.SubjectId }).ToListAsync(ct))
-            .Select(m => new MappedPair(m.ClassId, m.SubjectId)).ToHashSet();
+        public async Task<HashSet<MappedPair>> GetMappedPairsAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            (await _db.EffectiveSubjects(schoolId, academicYearId).Select(v => new { v.SectionId, v.SubjectId }).ToListAsync(ct))
+            .Select(m => new MappedPair(m.SectionId, m.SubjectId)).ToHashSet();
 
         public async Task<Dictionary<long, int>> GetSkillCountsAsync(string schoolId, long academicYearId, CancellationToken ct) =>
             await (from k in _db.ReportSubjectSkills.AsNoTracking()

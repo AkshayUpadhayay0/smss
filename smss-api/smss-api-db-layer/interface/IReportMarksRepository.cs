@@ -23,7 +23,8 @@ namespace smss_api_db_layer.@interface
 
     public record StatusSummary(long ExamSubjectId, long SectionId, string Status, int Version);
     public record TermSectionSummary(long TermId, long SectionId, string Status, DateTime? LockedAt, string? UnlockReason);
-    public record MappedPair(long ClassId, long SubjectId);
+    /// <summary>A subject a SECTION is taught in the year (effective subjects).</summary>
+    public record MappedPair(long SectionId, long SubjectId);
 
     /// <summary>A scheme's structure for one class: terms, exams and the exam subjects, flattened.</summary>
     public record StructureRow(long TermId, string TermName, short TermSequence, DateOnly TermStart, DateOnly TermEnd, long ExamId, string ExamName, short ExamSequence,
@@ -61,7 +62,7 @@ namespace smss_api_db_layer.@interface
         Task<List<BandInfo>> GetBandsAsync(string schoolId, IReadOnlyCollection<long> scaleIds, CancellationToken ct);
 
         // eligibility inputs
-        Task<bool> IsMappedAsync(string schoolId, long classId, long subjectId, int activeStatusId, CancellationToken ct);
+        Task<bool> IsMappedAsync(string schoolId, long academicYearId, long sectionId, long subjectId, CancellationToken ct);
         Task<HashSet<long>> ClassTeacherSectionIdsAsync(string schoolId, string employeeId, long academicYearId, int activeStatusId, CancellationToken ct);
         Task<HashSet<(long SectionId, long SubjectId)>> TeachingPairsAsync(string schoolId, string employeeId, long academicYearId, int activeStatusId, CancellationToken ct);
 
@@ -84,7 +85,7 @@ namespace smss_api_db_layer.@interface
         Task<List<ContextRow>> GetContextRowsAsync(string schoolId, long academicYearId, int activeStatusId, CancellationToken ct);
         Task<List<StatusSummary>> GetStatusesForYearAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<List<TermSectionSummary>> GetTermSectionsForYearAsync(string schoolId, long academicYearId, CancellationToken ct);
-        Task<HashSet<MappedPair>> GetMappedPairsAsync(string schoolId, int activeStatusId, CancellationToken ct);
+        Task<HashSet<MappedPair>> GetMappedPairsAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<Dictionary<long, int>> GetSkillCountsAsync(string schoolId, long academicYearId, CancellationToken ct);
 
         // class review

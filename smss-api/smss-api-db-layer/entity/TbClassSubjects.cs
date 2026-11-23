@@ -13,6 +13,7 @@ namespace smss_api_db_layer.entity
         public long ClassSubjectId { get; set; }
 
         [Column("school_id")] public string SchoolId { get; set; } = null!;
+        [Column("academic_year_id")] public long AcademicYearId { get; set; }
         [Column("class_id")] public long ClassId { get; set; }
         [Column("subject_id")] public long SubjectId { get; set; }
         [Column("status_id")] public int? StatusId { get; set; }

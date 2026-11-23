@@ -37,8 +37,8 @@ export class TimetableService {
   }
 
   // ---- timetable
-  lookups(sectionId: number): Observable<TimetableLookups> {
-    return this.api.get<TimetableLookups>(`${BASE}/lookups`, { sectionId });
+  lookups(sectionId: number, academicYearId?: number): Observable<TimetableLookups> {
+    return this.api.get<TimetableLookups>(`${BASE}/lookups`, academicYearId != null ? { sectionId, academicYearId } : { sectionId });
   }
 
   classGrid(sectionId: number, academicYearId?: number): Observable<TimetableGrid> {

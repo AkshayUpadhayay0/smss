@@ -292,10 +292,10 @@ namespace smss_api_service_layer.service
             if (section == null) return Fail(400, "The selected section was not found for your school.");
             if (classId != null && classId != section.ClassId) return Fail(400, "The selected section does not belong to the selected class.");
             if (section.SectionStatusId != activeId || section.ClassStatusId != activeId) return Fail(400, "The selected section (or its class) is inactive.");
-            var subject = await _repo.GetSubjectAsync(schoolId, subjectId, section.ClassId, activeId, ct);
+            var subject = await _repo.GetSubjectAsync(schoolId, subjectId, academicYearId, section.SectionId, activeId, ct);
             if (subject == null || subject.StatusId != activeId) return Fail(400, "The selected subject was not found for your school.");
             if (!subject.MappedToClass)
-                return Fail(400, $"{subject.SubjectName} is not taught in {section.ClassName}. Add it to the class under Class-Subject Mapping first.");
+                return Fail(400, $"{subject.SubjectName} is not taught in {section.ClassName} - {section.SectionName} in this academic year. Add it under Academic Setup (subjects) first.");
             var year = await _repo.GetYearAsync(schoolId, academicYearId, ct);
             if (year == null) return Fail(400, "The selected academic year was not found for your school.");
             if (!caller.IsSchoolAdmin && (string.IsNullOrEmpty(ownerId) || !await _timetable.IsTeachingSectionSubjectAsync(schoolId, ownerId, section.SectionId, subject.SubjectId, year.AcademicYearId, ct)))

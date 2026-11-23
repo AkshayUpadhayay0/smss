@@ -41,6 +41,9 @@ namespace smss_api_db_layer.context
         public DbSet<TbAcademicYears> AcademicYears { get; set; } = null!;
         public DbSet<TbAcademicYearClass> AcademicYearClasses { get; set; } = null!;
         public DbSet<TbAcademicYearSection> AcademicYearSections { get; set; } = null!;
+        public DbSet<TbSectionSubjectOverride> SectionSubjectOverrides { get; set; } = null!;
+        /// <summary>Read-only view: the subjects each section is taught in each year (class mapping - REMOVE + ADD).</summary>
+        public DbSet<SectionEffectiveSubject> SectionEffectiveSubjects { get; set; } = null!;
         public DbSet<TbClasses> Classes { get; set; } = null!;
         public DbSet<TbSections> Sections { get; set; } = null!;
         public DbSet<TbClassSubjects> ClassSubjects { get; set; } = null!;
@@ -151,6 +154,7 @@ namespace smss_api_db_layer.context
         protected override void OnModelCreating(ModelBuilder modelBuilder) 
         { 
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<SectionEffectiveSubject>().HasNoKey().ToView("vw_section_effective_subjects", "public");
             // Report card setup: composite keys
             modelBuilder.Entity<TbReportSchemeClass>().HasKey(x => new { x.SchemeId, x.ClassId });
             modelBuilder.Entity<TbReportExamClassDate>().HasKey(x => new { x.ExamId, x.ClassId }); 

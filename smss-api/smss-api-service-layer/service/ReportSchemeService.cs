@@ -273,7 +273,7 @@ namespace smss_api_service_layer.service
                 if (g == null || g.Scheme.StatusId != active.Value) return Result<SchemeDto>(404, "Report scheme not found.", null);
                 var items = req.Subjects!;
                 var classIds = g.Classes.Select(c => c.ClassId).ToList();
-                var mapped = (await _repo.MappedSubjectsAsync(schoolId, classIds, active.Value, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
+                var mapped = (await _repo.MappedSubjectsAsync(schoolId, g.Scheme.AcademicYearId, classIds, active.Value, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
                 var classNames = await _repo.ClassNamesAsync(schoolId, classIds, active.Value, ct);
                 var subjectNames = await _repo.SubjectNamesAsync(schoolId, items.Select(i => i.SubjectId!.Value).Distinct().ToList(), ct);
                 foreach (var i in items)
@@ -486,7 +486,7 @@ namespace smss_api_service_layer.service
                     examRows.AddRange(preset.Terms[i].Exams.Select((e, j) => new TbReportExam { TermId = termRows[i].TermId, SchemeId = sid, SchoolId = schoolId, ExamName = e.Name, Sequence = (short)(j + 1), DefaultMaxMarks = e.Max, WeightPoints = e.Weight }));
                 _repo.AddRange(examRows);
 
-                var mapped = await _repo.MappedSubjectsAsync(schoolId, classIds, active.Value, ct);
+                var mapped = await _repo.MappedSubjectsAsync(schoolId, year.AcademicYearId, classIds, active.Value, ct);
                 var subjectRows = new List<TbReportSchemeSubject>();
                 var warnings = new List<string>();
                 foreach (var c in classIds)
@@ -540,7 +540,7 @@ namespace smss_api_service_layer.service
                 var yearShift = year.StartDate.Year - srcYear.StartDate.Year;   // whole calendar years, so 31 March stays 31 March (a leap year would move it by a day)
                 DateOnly Move(DateOnly d) { var m = sameYear ? d : d.AddYears(yearShift); return m < year.StartDate ? year.StartDate : m > year.EndDate ? year.EndDate : m; }
 
-                var mapped = (await _repo.MappedSubjectsAsync(schoolId, classIds, active.Value, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
+                var mapped = (await _repo.MappedSubjectsAsync(schoolId, year.AcademicYearId, classIds, active.Value, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 var now = DateTime.UtcNow;
                 var scheme = new TbReportScheme
@@ -678,7 +678,7 @@ namespace smss_api_service_layer.service
             var w = dto.Warnings;
             if (g.Classes.Count == 0) w.Add("No classes yet: choose the classes this scheme is for.");
             if (g.Terms.Count == 0) w.Add("No terms or exams yet.");
-            var mapped = (await _repo.MappedSubjectsAsync(schoolId, g.Classes.Select(c => c.ClassId).ToList(), activeId, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
+            var mapped = (await _repo.MappedSubjectsAsync(schoolId, g.Scheme.AcademicYearId, g.Classes.Select(c => c.ClassId).ToList(), activeId, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
             foreach (var c in g.Classes)
             {
                 var subs = g.Subjects.Where(s => s.ClassId == c.ClassId).ToList();

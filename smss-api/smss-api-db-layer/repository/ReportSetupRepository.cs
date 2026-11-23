@@ -69,13 +69,13 @@ namespace smss_api_db_layer.repository
             return await _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && ids.Contains(c.ClassId) && c.StatusId == activeStatusId).ToDictionaryAsync(c => c.ClassId, c => c.ClassName, ct);
         }
 
-        public async Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct)
+        public async Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct)
         {
             var ids = classIds.ToArray();
             return await (
                 from m in _db.ClassSubjects.AsNoTracking()
                 join s in _db.Subjects.AsNoTracking() on m.SubjectId equals s.SubjectId
-                where m.SchoolId == schoolId && s.SchoolId == schoolId && ids.Contains(m.ClassId) && m.StatusId == activeStatusId && s.StatusId == activeStatusId
+                where m.SchoolId == schoolId && s.SchoolId == schoolId && m.AcademicYearId == academicYearId && ids.Contains(m.ClassId) && m.StatusId == activeStatusId && s.StatusId == activeStatusId
                 orderby s.SubjectName
                 select new MappedSubject(m.ClassId, s.SubjectId, s.SubjectName)).ToListAsync(ct);
         }

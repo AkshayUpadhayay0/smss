@@ -44,7 +44,7 @@ namespace smss_api_db_layer.@interface
         // lookups that already exist elsewhere in the project (read-only)
         Task<TbAcademicYears?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<Dictionary<long, string>> ClassNamesAsync(string schoolId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct);
-        Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct);
+        Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct);
         Task<Dictionary<long, string>> SubjectNamesAsync(string schoolId, IReadOnlyCollection<long> subjectIds, CancellationToken ct);
         Task<Dictionary<long, string>> ScaleNamesAsync(string schoolId, IReadOnlyCollection<long> scaleIds, CancellationToken ct);
 

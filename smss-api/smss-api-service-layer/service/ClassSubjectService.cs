@@ -18,22 +18,26 @@ namespace smss_api_service_layer.service
         private const string DuplicateMessage = "This subject is already mapped to this class.";
 
         private readonly IClassSubjectRepository _repo;
+        private readonly ISubjectSetupService _setup;
         private readonly ILogger<ClassSubjectService> _logger;
 
-        public ClassSubjectService(IClassSubjectRepository repo, ILogger<ClassSubjectService> logger)
+        public ClassSubjectService(IClassSubjectRepository repo, ISubjectSetupService setup, ILogger<ClassSubjectService> logger)
         {
             _repo = repo;
+            _setup = setup;
             _logger = logger;
         }
 
-        public async Task<ApiResponse<object>> GetByClassAsync(string? schoolId, long? classId)
+        public async Task<ApiResponse<object>> GetByClassAsync(string? schoolId, long? classId, long? academicYearId)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             if (classId == null || classId <= 0) return Fail(400, "classId is required.");
             try
             {
                 if (await _repo.GetClassAsync(schoolId, classId.Value) == null) return Fail(400, InvalidClassMessage);
-                var rows = await _repo.GetByClassAsync(schoolId, classId.Value);
+                var (year, error) = await ResolveYearAsync(schoolId, academicYearId, ct: default);
+                if (year == null) return error!;
+                var rows = await _repo.GetByClassAsync(schoolId, classId.Value, year.AcademicYearId);
                 return Ok(200, "Successfully fetched", rows.Select(ToResponse).ToList());
             }
             catch (Exception ex) { return Error(ex, "fetching class subjects"); }
@@ -61,19 +65,19 @@ namespace smss_api_service_layer.service
                 // The DB would accept another school's ids, so these checks are what keep tenants apart
                 if (await _repo.GetClassAsync(schoolId, classId) == null) return Fail(400, InvalidClassMessage);
                 if (await _repo.CountSubjectsAsync(schoolId, new[] { subjectId }) != 1) return Fail(400, InvalidSubjectMessage);
-                if (await _repo.ExistsAsync(classId, subjectId)) return Fail(409, DuplicateMessage);
+                var (year, error) = await ResolveYearAsync(schoolId, req.AcademicYearId, ct: default);
+                if (year == null) return error!;
+                if (year.ClosedAt != null) return Fail(409, ClosedYear.Message);
+                if (await _repo.ExistsAsync(year.AcademicYearId, classId, subjectId)) return Fail(409, DuplicateMessage);
 
-                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
-                if (activeId == null) return ConfigError("Active status missing from lut_status");
+                // the same save as Academic Setup (offering check, lock, transaction): the class's current subjects plus this one
+                var current = (await _repo.GetByClassAsync(schoolId, classId, year.AcademicYearId)).Select(r => r.Mapping.SubjectId).ToList();
+                var saved = await _setup.SaveAsync(schoolId, null, year.AcademicYearId, classId, KeepingOverrides(await _setup.GetAsync(schoolId, year.AcademicYearId, classId, default), current.Append(subjectId).ToList()), default);
+                if (!saved.Status) return Fail(saved.StatusCode, saved.Message);
 
-                var entity = NewMapping(schoolId, classId, subjectId, activeId.Value, DateTime.UtcNow);
-                await _repo.AddAsync(entity);
-                await _repo.SaveChangesAsync();
-
-                var row = await _repo.GetWithNamesByIdAsync(schoolId, entity.ClassSubjectId);
-                return row == null ? Fail(404, "Class-subject mapping not found") : Ok(201, "Subject mapped to class successfully", ToResponse(row));
+                var entity = (await _repo.GetByClassAsync(schoolId, classId, year.AcademicYearId)).FirstOrDefault(r => r.Mapping.SubjectId == subjectId);
+                return entity == null ? Fail(404, "Class-subject mapping not found") : Ok(201, "Subject mapped to class successfully", ToResponse(entity));
             }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, DuplicateMessage); }
             catch (Exception ex) { return Error(ex, "mapping subject to class"); }
         }
 
@@ -85,15 +89,19 @@ namespace smss_api_service_layer.service
                 var entity = await _repo.GetByIdAsync(schoolId, id);
                 if (entity == null) return Fail(404, "Class-subject mapping not found");
 
-                _repo.Remove(entity);
-                await _repo.SaveChangesAsync();
+                var year = await _repo.GetYearAsync(schoolId, entity.AcademicYearId, default);
+                if (year == null) return Fail(404, "Class-subject mapping not found");
+                if (year.ClosedAt != null) return Fail(409, ClosedYear.Message);
+                var current = (await _repo.GetByClassAsync(schoolId, entity.ClassId, entity.AcademicYearId)).Select(r => r.Mapping.SubjectId).Where(x => x != entity.SubjectId).ToList();
+                var saved = await _setup.SaveAsync(schoolId, null, entity.AcademicYearId, entity.ClassId, KeepingOverrides(await _setup.GetAsync(schoolId, entity.AcademicYearId, entity.ClassId, default), current), default);
+                if (!saved.Status) return Fail(saved.StatusCode, saved.Message);
                 return Ok(200, "Subject removed from class successfully", new { });
             }
             catch (Exception ex) { return Error(ex, "removing class subject"); }
         }
 
-        // Replaces the class's whole subject set: adds the missing pairs, deletes the ones no longer listed.
-        // One SaveChanges = one transaction, so a failure leaves the class exactly as it was.
+        // Replaces the class's whole subject set for the year (the section exceptions are kept where they still make sense).
+        // Same rules as Academic Setup: closed year 409, the class must be offered, a subject that something uses can't be removed (409 with counts).
         public async Task<ApiResponse<object>> BulkSetAsync(string? schoolId, BulkSetClassSubjectsRequest req)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
@@ -107,45 +115,50 @@ namespace smss_api_service_layer.service
                 if (wanted.Count > 0 && await _repo.CountSubjectsAsync(schoolId, wanted) != wanted.Count)
                     return Fail(400, InvalidSubjectMessage);
 
-                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
-                if (activeId == null) return ConfigError("Active status missing from lut_status");
+                var (year, error) = await ResolveYearAsync(schoolId, req.AcademicYearId, ct: default);
+                if (year == null) return error!;
+                var saved = await _setup.SaveAsync(schoolId, null, year.AcademicYearId, classId, KeepingOverrides(await _setup.GetAsync(schoolId, year.AcademicYearId, classId, default), wanted), default);
+                if (!saved.Status) return Fail(saved.StatusCode, saved.Message);
 
-                var existing = await _repo.GetTrackedByClassAsync(schoolId, classId);
-                var now = DateTime.UtcNow;
-
-                _repo.RemoveRange(existing.Where(m => !wanted.Contains(m.SubjectId)));
-                var already = existing.Select(m => m.SubjectId).ToHashSet();
-                foreach (var subjectId in wanted.Where(id => !already.Contains(id)))   // pairs already mapped are left alone
-                    await _repo.AddAsync(NewMapping(schoolId, classId, subjectId, activeId.Value, now));
-
-                await _repo.SaveChangesAsync();
-
-                var rows = await _repo.GetByClassAsync(schoolId, classId);
+                var rows = await _repo.GetByClassAsync(schoolId, classId, year.AcademicYearId);
                 return Ok(200, "Class subjects saved successfully", rows.Select(ToResponse).ToList());
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
-            {
-                // Another request mapped the same pair at the same moment; nothing was saved here
-                return Fail(409, "The class's subjects were changed by someone else. Please reload and try again.");
             }
             catch (Exception ex) { return Error(ex, "saving class subjects"); }
         }
 
-        // ---------------- helpers ----------------
-        private static TbClassSubjects NewMapping(string schoolId, long classId, long subjectId, int activeId, DateTime now) => new()
+        /// <summary>The year asked for, else the school's CURRENT one (Q9: callers without a year get the current year, with a log line).</summary>
+        private async Task<(TbAcademicYears? Year, ApiResponse<object>? Error)> ResolveYearAsync(string schoolId, long? academicYearId, CancellationToken ct)
         {
-            SchoolId = schoolId,
-            ClassId = classId,
-            SubjectId = subjectId,
-            StatusId = activeId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            if (academicYearId != null)
+            {
+                var y = await _repo.GetYearAsync(schoolId, academicYearId.Value, ct);
+                return y == null ? (null, Fail(400, "The selected academic year was not found for your school.")) : (y, null);
+            }
+            var current = await _repo.GetCurrentYearAsync(schoolId, ct);
+            if (current == null) return (null, Fail(409, "The school has no current academic year, so choose an academic year."));
+            _logger.LogInformation("Class-subject call without an academic year: defaulted to the current year {YearId} of school {SchoolId}", current.AcademicYearId, schoolId);
+            return (current, null);
+        }
 
+        /// <summary>A save request with the new subject list and the year's current section exceptions, minus the ones the new list makes meaningless.</summary>
+        private static SaveYearClassSubjectsRequest KeepingOverrides(ApiResponse<YearClassSubjectsDto> now, List<long> subjectIds)
+        {
+            var keep = subjectIds.ToHashSet();
+            var sections = (now.Data?.Sections ?? new()).Select(s => new SectionSubjectOverrideRequest
+            {
+                SectionId = s.SectionId,
+                ExtraSubjectIds = s.ExtraSubjectIds.Where(x => !keep.Contains(x)).ToList(),
+                NotTaughtSubjectIds = s.NotTaughtSubjectIds.Where(x => keep.Contains(x)).ToList()
+            }).Where(s => s.ExtraSubjectIds.Count + s.NotTaughtSubjectIds.Count > 0).ToList();
+            return new SaveYearClassSubjectsRequest { SubjectIds = subjectIds.Distinct().ToList(), Sections = sections };
+        }
+
+        // ---------------- helpers ----------------
         private static ClassSubjectResponse ToResponse(ClassSubjectWithNames r) => new()
         {
             ClassSubjectId = r.Mapping.ClassSubjectId,
             SchoolId = r.Mapping.SchoolId,
+            AcademicYearId = r.Mapping.AcademicYearId,
             ClassId = r.Mapping.ClassId,
             ClassName = r.ClassName,
             SubjectId = r.Mapping.SubjectId,

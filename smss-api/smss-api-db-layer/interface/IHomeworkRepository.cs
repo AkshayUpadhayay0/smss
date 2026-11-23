@@ -3,7 +3,7 @@ using smss_api_db_layer.entity;
 namespace smss_api_db_layer.@interface
 {
     public record HomeworkTeacherRow(string EmployeeId, string FirstName, string? MiddleName, string LastName, int StatusId, string EmployeeType, bool EmploymentBlocksLogin);
-    /// <summary>MappedToClass: the subject is mapped to the class in Class-Subject Mapping with an Active mapping.</summary>
+    /// <summary>MappedToClass: the section is taught the subject in the academic year (class mapping - REMOVE + ADD, Active).</summary>
     public record HomeworkSubjectRow(long SubjectId, string SubjectName, int? StatusId, bool MappedToClass);
     public record HomeworkSchoolRow(string SchoolCode);
 
@@ -30,7 +30,7 @@ namespace smss_api_db_layer.@interface
         Task<YearRef?> GetYearContainingAsync(string schoolId, DateOnly date, CancellationToken ct);
         Task<YearRef?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<SectionRef?> GetSectionAsync(string schoolId, long sectionId, CancellationToken ct);
-        Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long classId, int activeStatusId, CancellationToken ct);
+        Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
         Task<HomeworkTeacherRow?> GetEmployeeAsync(string schoolId, string employeeId, CancellationToken ct);
         /// <summary>The section an Active student is enrolled in (Active enrollment) for the year, or null.</summary>
         Task<long?> GetStudentSectionAsync(string schoolId, string studentId, long academicYearId, int activeStatusId, CancellationToken ct);

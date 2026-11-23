@@ -86,7 +86,7 @@ export class SlotModalComponent implements OnInit {
     const t = this.target();
     const cur = t.current;
     if (cur) this.form.patchValue({ subjectId: String(cur.subjectId), employeeId: cur.employeeId, roomNo: cur.roomNo ?? '' });
-    this.service.lookups(t.sectionId).subscribe({
+    this.service.lookups(t.sectionId, t.academicYearId).subscribe({
       next: (l) => this.lookups.set(l),
       error: () => this.closed.emit(), // already toasted by the interceptor
     });

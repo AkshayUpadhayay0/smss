@@ -1,0 +1,111 @@
+<div class="subjects">
+  <div class="bar">
+    <app-select label="Class" [options]="classOptions()" [formControl]="classControl" />
+    <p class="hint">
+      Choose the subjects this class is taught <strong>in this academic year</strong>. If one section differs, open it below and mark the few exceptions.
+      Timetable, homework, class tests and report cards only offer these subjects.
+    </p>
+  </div>
+
+  @if (classes().length === 0) {
+    <p class="note">No class is offered in this year yet. Offer classes on the <strong>Classes and sections</strong> tab first.</p>
+  } @else if (loading()) {
+    <p class="note" aria-busy="true">Loading the subjects…</p>
+  } @else if (loadFailed()) {
+    <div class="note">
+      <p>The subjects could not be loaded.</p>
+      <app-button variant="secondary" (click)="load(+classControl.value)">Try again</app-button>
+    </div>
+  } @else if (noSubjectsAtAll()) {
+    <p class="note">There are no subjects yet. Add them under School Setup → Subject, then come back.</p>
+  } @else if (data(); as d) {
+    @if (locked()) {
+      <p class="notice"><app-icon name="lock" [size]="16" />This academic year is closed, so its subjects can't be changed.</p>
+    }
+    <p class="summary" data-summary>{{ draft().mapped.size }} {{ draft().mapped.size === 1 ? 'subject' : 'subjects' }} for {{ d.className }} in {{ d.yearName }}</p>
+
+    <ul class="grid" data-subjects>
+      @for (s of subjects(); track s.subjectId) {
+        <li [attr.data-subject]="s.subjectId" [class.on]="draft().mapped.has(s.subjectId)">
+          <label class="check">
+            <input
+              type="checkbox"
+              [checked]="draft().mapped.has(s.subjectId)"
+              [disabled]="locked() || saving() || (!draft().mapped.has(s.subjectId) && !s.isActive) || (draft().mapped.has(s.subjectId) && inUse(s.subjectId))"
+              (change)="toggleClassSubject(s.subjectId, $any($event.target).checked)"
+            />
+            <span class="name">{{ s.subjectName }}</span>
+            @if (!s.isActive) {
+              <span class="tag">Inactive</span>
+            }
+            @if (s.inUse > 0) {
+              <span class="tag lock" [title]="'In use: ' + s.inUseText"><app-icon name="lock" [size]="12" />In use</span>
+            }
+          </label>
+          @if (s.inUseText) {
+            <small class="use">{{ s.inUseText }}</small>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (d.sections.length) {
+      <h3 class="sub">Sections that differ from the class</h3>
+      <ul class="sections">
+        @for (sec of d.sections; track sec.sectionId) {
+          <li [attr.data-sec]="sec.sectionId">
+            <details>
+              <summary>
+                <span class="name">Section {{ sec.sectionName }}</span>
+                <span class="tag">{{ sectionCount(sec.sectionId) }} {{ sectionCount(sec.sectionId) === 1 ? 'subject' : 'subjects' }}</span>
+              </summary>
+              <div class="two">
+                <fieldset>
+                  <legend>Also taught here</legend>
+                  @for (s of subjects(); track s.subjectId) {
+                    @if (!draft().mapped.has(s.subjectId) && s.isActive) {
+                      <label class="check">
+                        <input type="checkbox" [attr.data-extra]="s.subjectId" [checked]="isExtra(sec.sectionId, s.subjectId)" [disabled]="locked() || saving()"
+                          (change)="toggleException(sec.sectionId, s.subjectId, 'extra', $any($event.target).checked)" />
+                        <span class="name">{{ s.subjectName }}</span>
+                      </label>
+                    }
+                  } @empty {
+                    <small class="use">Every subject is already taught by the class.</small>
+                  }
+                </fieldset>
+                <fieldset>
+                  <legend>Not taught here</legend>
+                  @for (s of subjects(); track s.subjectId) {
+                    @if (draft().mapped.has(s.subjectId)) {
+                      <label class="check">
+                        <input type="checkbox" [attr.data-not]="s.subjectId" [checked]="isNotTaught(sec.sectionId, s.subjectId)" [disabled]="locked() || saving() || (!isNotTaught(sec.sectionId, s.subjectId) && inUseInSection(sec.sectionId, s.subjectId))"
+                          (change)="toggleException(sec.sectionId, s.subjectId, 'notTaught', $any($event.target).checked)" />
+                        <span class="name">{{ s.subjectName }}</span>
+                        @if (inUseInSection(sec.sectionId, s.subjectId)) {
+                          <span class="tag lock"><app-icon name="lock" [size]="12" />In use</span>
+                        }
+                      </label>
+                    }
+                  } @empty {
+                    <small class="use">Choose the class's subjects above first.</small>
+                  }
+                </fieldset>
+              </div>
+            </details>
+          </li>
+        }
+      </ul>
+    } @else if (d.classOffered) {
+      <p class="note">This class has no sections offered in this year.</p>
+    }
+
+    <div class="footer">
+      @if (dirty()) {
+        <span class="unsaved"><app-icon name="circle-alert" [size]="16" />Unsaved changes</span>
+      }
+      <app-button variant="secondary" [disabled]="saving() || !dirty()" (click)="reset()">Reset</app-button>
+      <app-button [disabled]="locked() || saving() || !dirty() || !d.classOffered" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</app-button>
+    </div>
+  }
+</div>

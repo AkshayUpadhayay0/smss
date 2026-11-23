@@ -29,6 +29,28 @@
   }
 }
 
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+
+  .tab {
+    padding: var(--space-3) var(--space-4);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font: inherit;
+    font-weight: var(--weight-medium);
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &.active {
+      color: var(--color-primary-700, var(--color-primary));
+      border-bottom-color: var(--color-primary);
+    }
+  }
+}
+
 .notice {
   display: flex;
   align-items: center;

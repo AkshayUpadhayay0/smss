@@ -44,10 +44,10 @@ namespace smss_api_db_layer.repository
              where s.SchoolId == schoolId && c.SchoolId == schoolId && s.SectionId == sectionId
              select new SectionRef(s.SectionId, s.ClassId, s.SectionName, c.ClassName, c.SequenceOrder, s.StatusId, c.StatusId)).FirstOrDefaultAsync(ct);
 
-        public Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long classId, int activeStatusId, CancellationToken ct) =>
+        public Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct) =>
             _db.Subjects.AsNoTracking().Where(s => s.SchoolId == schoolId && s.SubjectId == subjectId)
                 .Select(s => new HomeworkSubjectRow(s.SubjectId, s.SubjectName, s.StatusId,
-                    _db.ClassSubjects.Any(m => m.SchoolId == schoolId && m.ClassId == classId && m.SubjectId == s.SubjectId && m.StatusId == activeStatusId))).FirstOrDefaultAsync(ct);
+                    _db.SectionEffectiveSubjects.Any(v => v.SchoolId == schoolId && v.AcademicYearId == academicYearId && v.SectionId == sectionId && v.SubjectId == s.SubjectId))).FirstOrDefaultAsync(ct);
 
         public Task<HomeworkTeacherRow?> GetEmployeeAsync(string schoolId, string employeeId, CancellationToken ct) =>
             _db.Employees.AsNoTracking().Where(e => e.SchoolId == schoolId && e.EmployeeId == employeeId)

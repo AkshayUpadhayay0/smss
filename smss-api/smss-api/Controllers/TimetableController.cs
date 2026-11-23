@@ -36,13 +36,13 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Unassign([FromBody] UnassignTimetableRequest request, CancellationToken ct) =>
             Refuse() ?? Reply(await _service.UnassignAsync(User.GetSchoolId(), request, ct));
 
-        // GET api/Timetable/lookups?sectionId=3   (the subjects the section's class studies + the people who can teach, for the assign dialog)
+        // GET api/Timetable/lookups?sectionId=3&academicYearId=   (the subjects the section is taught in that year + the people who can teach, for the assign dialog)
         [HttpGet("lookups")]
-        public async Task<IActionResult> Lookups([FromQuery] long? sectionId, CancellationToken ct)
+        public async Task<IActionResult> Lookups([FromQuery] long? sectionId, [FromQuery] long? academicYearId, CancellationToken ct)
         {
             if (Refuse() is { } refused) return refused;
             if (sectionId is null or <= 0) return StatusCode(400, new ApiResponse<object> { Status = false, StatusCode = 400, Message = "sectionId is required.", Data = null });
-            return Reply(await _service.GetLookupsAsync(User.GetSchoolId(), sectionId.Value, ct));
+            return Reply(await _service.GetLookupsAsync(User.GetSchoolId(), sectionId.Value, academicYearId, ct));
         }
 
         // GET api/Timetable/class/{sectionId}?academicYearId=   (the full weekly grid of a section; the year defaults to the current one)

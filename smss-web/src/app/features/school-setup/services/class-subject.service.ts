@@ -19,12 +19,13 @@ export interface ClassSubject {
 export class ClassSubjectService {
   private readonly api = inject(ApiService);
 
-  listByClass(classId: number): Observable<ClassSubject[]> {
-    return this.api.get<ClassSubject[]>(BASE, { classId }).pipe(map((rows) => rows ?? []));
+  /** The class's subjects in one academic year (omitted = the school's current year). */
+  listByClass(classId: number, academicYearId?: number): Observable<ClassSubject[]> {
+    return this.api.get<ClassSubject[]>(BASE, academicYearId != null ? { classId, academicYearId } : { classId }).pipe(map((rows) => rows ?? []));
   }
 
   /** Replaces the class's whole subject set: adds the missing pairs, removes the ones no longer listed. */
-  setSubjects(classId: number, subjectIds: number[]): Observable<ClassSubject[]> {
-    return this.api.post<ClassSubject[]>(`${BASE}/bulk`, { classId, subjectIds }).pipe(map((rows) => rows ?? []));
+  setSubjects(classId: number, subjectIds: number[], academicYearId?: number): Observable<ClassSubject[]> {
+    return this.api.post<ClassSubject[]>(`${BASE}/bulk`, academicYearId != null ? { classId, subjectIds, academicYearId } : { classId, subjectIds }).pipe(map((rows) => rows ?? []));
   }
 }

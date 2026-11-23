@@ -46,16 +46,16 @@ namespace smss_api_db_layer.repository
         public async Task<List<TbPeriod>> GetActivePeriodsAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
             (await _db.Periods.AsNoTracking().Where(p => p.SchoolId == schoolId && p.StatusId == activeStatusId).ToListAsync(ct)).OrderBy(p => p.PeriodNumber).ToList();
 
-        public Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long classId, int activeStatusId, CancellationToken ct) =>
+        public Task<TtSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct) =>
             _db.Subjects.AsNoTracking().Where(s => s.SchoolId == schoolId && s.SubjectId == subjectId)
                 .Select(s => new TtSubjectRow(s.SubjectId, s.SubjectName, s.SubjectCode, s.StatusId,
-                    _db.ClassSubjects.Any(m => m.SchoolId == schoolId && m.ClassId == classId && m.SubjectId == s.SubjectId && m.StatusId == activeStatusId))).FirstOrDefaultAsync(ct);
+                    _db.SectionEffectiveSubjects.Any(v => v.SchoolId == schoolId && v.AcademicYearId == academicYearId && v.SectionId == sectionId && v.SubjectId == s.SubjectId))).FirstOrDefaultAsync(ct);
 
-        public async Task<List<TtSubjectRow>> GetSubjectsOfClassAsync(string schoolId, long classId, int activeStatusId, CancellationToken ct)
+        public async Task<List<TtSubjectRow>> GetSubjectsOfSectionAsync(string schoolId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct)
         {
-            var rows = await (from m in _db.ClassSubjects.AsNoTracking()
-                              join s in _db.Subjects.AsNoTracking() on m.SubjectId equals s.SubjectId
-                              where m.SchoolId == schoolId && s.SchoolId == schoolId && m.ClassId == classId && m.StatusId == activeStatusId && s.StatusId == activeStatusId
+            var rows = await (from v in _db.SectionEffectiveSubjects.AsNoTracking()
+                              join s in _db.Subjects.AsNoTracking() on v.SubjectId equals s.SubjectId
+                              where v.SchoolId == schoolId && s.SchoolId == schoolId && v.AcademicYearId == academicYearId && v.SectionId == sectionId && s.StatusId == activeStatusId
                               select new TtSubjectRow(s.SubjectId, s.SubjectName, s.SubjectCode, s.StatusId, true)).ToListAsync(ct);
             return rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }

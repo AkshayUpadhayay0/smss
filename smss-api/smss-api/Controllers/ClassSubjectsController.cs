@@ -15,11 +15,11 @@ namespace smss_api.Controllers
         private readonly IClassSubjectService _service;
         public ClassSubjectsController(IClassSubjectService service) => _service = service;
 
-        // GET api/ClassSubjects?classId=5   (classId is required)
+        // GET api/ClassSubjects?classId=5&academicYearId=   (classId is required; the year defaults to the current one)
         [HttpGet]
-        public async Task<IActionResult> GetByClass([FromQuery] long? classId)
+        public async Task<IActionResult> GetByClass([FromQuery] long? classId, [FromQuery] long? academicYearId)
         {
-            var response = await _service.GetByClassAsync(User.GetSchoolId(), classId);
+            var response = await _service.GetByClassAsync(User.GetSchoolId(), classId, academicYearId);
             return StatusCode(response.StatusCode, response);
         }
 

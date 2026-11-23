@@ -8,6 +8,7 @@ import { AcademicYear } from '../../models/academic-year.model';
 import { ClassDraft, SaveYearOfferingRequest, SectionDraft, YearOffering } from '../../models/academic-setup.model';
 import { AcademicSetupService } from '../../services/academic-setup.service';
 import { AcademicYearService } from '../../services/academic-year.service';
+import { SubjectSetupComponent } from '../../components/subject-setup/subject-setup.component';
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -58,7 +59,7 @@ export function toRequest(drafts: ClassDraft[]): SaveYearOfferingRequest {
  */
 @Component({
   selector: 'app-academic-setup',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SubjectSetupComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './academic-setup.component.scss',
   templateUrl: './academic-setup.component.html',
@@ -80,7 +81,10 @@ export class AcademicSetupComponent implements OnInit {
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
 
+  protected readonly tab = signal<'classes' | 'subjects'>('classes');
   protected readonly offering = signal<YearOffering | null>(null);
+  /** The classes the year offers, as last SAVED (the subjects tab works on these). */
+  protected readonly offeredClassList = computed(() => (this.offering()?.classes ?? []).filter((c) => c.offered).map((c) => ({ classId: c.classId, className: c.className })));
   protected readonly draft = signal<ClassDraft[]>([]);
   private readonly savedKey = signal('');
 

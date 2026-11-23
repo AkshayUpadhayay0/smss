@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { SaveYearOfferingRequest, YearOffering } from '../models/academic-setup.model';
+import { SaveYearClassSubjectsRequest, SaveYearOfferingRequest, YearClassSubjects, YearOffering } from '../models/academic-setup.model';
 
 const BASE = '/api/AcademicSetup';
 
@@ -18,5 +18,15 @@ export class AcademicSetupService {
   /** Replaces the year's WHOLE offered set; anything not listed is withdrawn (refused while it is in use). */
   saveOffering(academicYearId: number, request: SaveYearOfferingRequest): Observable<YearOffering> {
     return this.api.put<YearOffering>(`${BASE}/years/${academicYearId}/classes`, request);
+  }
+
+  /** The subjects one class is taught in one year, with the per-section exceptions and what is in use. */
+  getClassSubjects(academicYearId: number, classId: number): Observable<YearClassSubjects> {
+    return this.api.get<YearClassSubjects>(`${BASE}/years/${academicYearId}/classes/${classId}/subjects`);
+  }
+
+  /** Replaces the class's WHOLE subject set for the year and its sections' exceptions (refused while a removed subject is in use). */
+  saveClassSubjects(academicYearId: number, classId: number, request: SaveYearClassSubjectsRequest): Observable<YearClassSubjects> {
+    return this.api.put<YearClassSubjects>(`${BASE}/years/${academicYearId}/classes/${classId}/subjects`, request);
   }
 }

@@ -12,6 +12,9 @@ namespace smss_api_service_layer.dto
         [Required(ErrorMessage = "Subject is required.")]
         [Range(1, long.MaxValue, ErrorMessage = "Subject is required.")]
         public long? SubjectId { get; set; }
+
+        /// <summary>The academic year; omitted = the school's current year.</summary>
+        public long? AcademicYearId { get; set; }
     }
 
     // The full set of subjects the class should have afterwards (empty = remove them all)
@@ -23,12 +26,16 @@ namespace smss_api_service_layer.dto
 
         [Required(ErrorMessage = "Subject list is required (it may be empty).")]
         public List<long>? SubjectIds { get; set; }
+
+        /// <summary>The academic year; omitted = the school's current year.</summary>
+        public long? AcademicYearId { get; set; }
     }
 
     public class ClassSubjectResponse
     {
         public long ClassSubjectId { get; set; }
         public string SchoolId { get; set; } = null!;
+        public long AcademicYearId { get; set; }
         public long ClassId { get; set; }
         public string ClassName { get; set; } = null!;
         public long SubjectId { get; set; }

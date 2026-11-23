@@ -38,7 +38,7 @@ namespace smss_api_service_layer.helper
             var employeeId = caller.IsAdmin ? null : await EmployeeIdAsync(schoolId, caller, activeId, ct);
             var classTeacher = employeeId != null && (await _repo.ClassTeacherSectionIdsAsync(schoolId, employeeId, academicYearId, activeId, ct)).Contains(sectionId);
             var teaches = employeeId != null && subjectId != null && (await _repo.TeachingPairsAsync(schoolId, employeeId, academicYearId, activeId, ct)).Contains((sectionId, subjectId.Value));
-            var mapped = subjectId == null || await _repo.IsMappedAsync(schoolId, classId, subjectId.Value, activeId, ct);
+            var mapped = subjectId == null || await _repo.IsMappedAsync(schoolId, academicYearId, sectionId, subjectId.Value, ct);
             return new ReportRights(caller.IsAdmin, caller.IsPrincipal, classTeacher, teaches, mapped);
         }
     }

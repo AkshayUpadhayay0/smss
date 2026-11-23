@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.context
 {
@@ -26,6 +27,16 @@ namespace smss_api_db_layer.context
         // whose service must refuse writes into a closed year. Fee payments and voids do NOT use it (they stay open).
         public static Task<bool> IsYearClosedAsync(this dbContext db, string schoolId, long academicYearId, CancellationToken ct) =>
             db.AcademicYears.AsNoTracking().AnyAsync(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId && y.ClosedAt != null, ct);
+
+        // ---- S3 subjects per class per year. ONE definition of what a section is taught (class mapping - REMOVE + ADD): the view vw_section_effective_subjects. ----
+
+        /// <summary>The subjects of every section of the school in one year: class mapping minus REMOVE overrides plus ADD overrides (Active, offered sections only).</summary>
+        public static IQueryable<SectionEffectiveSubject> EffectiveSubjects(this dbContext db, string schoolId, long academicYearId) =>
+            db.SectionEffectiveSubjects.AsNoTracking().Where(v => v.SchoolId == schoolId && v.AcademicYearId == academicYearId);
+
+        /// <summary>The class-level mapping of one year (Active rows only), for readers that work per class (report schemes).</summary>
+        public static IQueryable<TbClassSubjects> ClassMapping(this dbContext db, string schoolId, long academicYearId, int activeStatusId) =>
+            db.ClassSubjects.AsNoTracking().Where(m => m.SchoolId == schoolId && m.AcademicYearId == academicYearId && m.StatusId == activeStatusId);
 
         // ---- S2 offerings: which classes / sections exist in a year. The masters (tb_classes, tb_sections) never change here. ----
 

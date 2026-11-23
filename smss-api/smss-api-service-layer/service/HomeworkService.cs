@@ -58,16 +58,15 @@ namespace smss_api_service_layer.service
                 var section = await _repo.GetSectionAsync(schoolId, req.SectionId!.Value, ct);
                 if (section == null) return Result<HomeworkDto>(400, "The selected section was not found for your school.", null);
                 if (section.SectionStatusId != activeId || section.ClassStatusId != activeId) return Result<HomeworkDto>(400, "The selected section (or its class) is inactive.", null);
-                var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, section.ClassId, activeId.Value, ct);
-                if (subject == null || subject.StatusId != activeId) return Result<HomeworkDto>(400, "The selected subject was not found for your school.", null);
-                // the same rule the Timetable enforces: a class can't be given homework in a subject it doesn't take. Everyone goes through it, a School Admin included.
-                if (!subject.MappedToClass)
-                    return Result<HomeworkDto>(400, $"{subject.SubjectName} is not taught in {section.ClassName}. Add it to the class under Class-Subject Mapping first.", null);
-
                 var year = req.AcademicYearId != null ? await _repo.GetYearAsync(schoolId, req.AcademicYearId.Value, ct) : await _repo.GetYearContainingAsync(schoolId, assigned, ct);
                 if (year == null)
                     return Result<HomeworkDto>(400, req.AcademicYearId != null ? "The selected academic year was not found for your school." : "No academic year covers the assigned date. Choose an academic year.", null);
                 if (await _repo.IsYearClosedAsync(schoolId, year.AcademicYearId, ct)) return Result<HomeworkDto>(409, ClosedYear.Message, null);
+                var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, year.AcademicYearId, section.SectionId, activeId.Value, ct);
+                if (subject == null || subject.StatusId != activeId) return Result<HomeworkDto>(400, "The selected subject was not found for your school.", null);
+                // the same rule the Timetable enforces: a section can't be given homework in a subject it isn't taught that year. Everyone goes through it, a School Admin included.
+                if (!subject.MappedToClass)
+                    return Result<HomeworkDto>(400, $"{subject.SubjectName} is not taught in {section.ClassName} - {section.SectionName} in {year.YearName}. Add it under Academic Setup (subjects) first.", null);
 
                 // a Teacher may only set homework for a section + subject the Timetable gives them; a School Admin bypasses this
                 if (!caller.IsSchoolAdmin && !await _timetable.IsTeachingSectionSubjectAsync(schoolId, owner.EmployeeId, section.SectionId, subject.SubjectId, year.AcademicYearId, ct))

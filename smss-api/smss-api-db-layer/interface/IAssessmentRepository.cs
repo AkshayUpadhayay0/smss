@@ -36,8 +36,8 @@ namespace smss_api_db_layer.@interface
         Task<YearRef?> GetYearContainingAsync(string schoolId, DateOnly date, CancellationToken ct);
         Task<YearRef?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<SectionRef?> GetSectionAsync(string schoolId, long sectionId, CancellationToken ct);
-        /// <summary>The subject with whether it is mapped (Active) to the class in Class-Subject Mapping.</summary>
-        Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long classId, int activeStatusId, CancellationToken ct);
+        /// <summary>The subject with whether the section is taught it in the academic year (effective subjects).</summary>
+        Task<HomeworkSubjectRow?> GetSubjectAsync(string schoolId, long subjectId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
         Task<HomeworkTeacherRow?> GetEmployeeAsync(string schoolId, string employeeId, CancellationToken ct);
         Task<List<AssessmentTypeRow>> GetTypesAsync(CancellationToken ct);
         Task<AssessmentTypeRow?> GetTypeAsync(long assessmentTypeId, CancellationToken ct);

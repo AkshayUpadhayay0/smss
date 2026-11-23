@@ -42,6 +42,7 @@ builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IAcademicYearService, AcademicYearService>();
 builder.Services.AddScoped<IAcademicSetupRepository, AcademicSetupRepository>();
 builder.Services.AddScoped<IAcademicSetupService, AcademicSetupService>();
+builder.Services.AddScoped<ISubjectSetupService, SubjectSetupService>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();

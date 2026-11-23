@@ -73,7 +73,7 @@ export class SchemeSubjectsComponent implements OnInit {
   ngOnInit(): void {
     const s = this.scheme();
     if (s.classes.length === 0) { this.loading.set(false); return; }
-    forkJoin(s.classes.map((c) => this.mapping.listByClass(c.classId)))
+    forkJoin(s.classes.map((c) => this.mapping.listByClass(c.classId, s.academicYearId)))
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (all) => this.groups.set(s.classes.map((c, i) => {

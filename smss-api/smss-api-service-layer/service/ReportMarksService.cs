@@ -44,7 +44,7 @@ namespace smss_api_service_layer.service
                 var statuses = (await _repo.GetStatusesForYearAsync(schoolId, year.AcademicYearId, ct)).ToDictionary(s => (s.ExamSubjectId, s.SectionId));
                 var locks = (await _repo.GetTermSectionsForYearAsync(schoolId, year.AcademicYearId, ct)).Where(t => t.Status == "LOCKED").Select(t => (t.TermId, t.SectionId)).ToHashSet();
                 var skillCounts = await _repo.GetSkillCountsAsync(schoolId, year.AcademicYearId, ct);
-                var mapped = await _repo.GetMappedPairsAsync(schoolId, active.Value, ct);
+                var mapped = await _repo.GetMappedPairsAsync(schoolId, year.AcademicYearId, ct);
 
                 HashSet<long> classTeacherOf = new(); HashSet<(long SectionId, long SubjectId)> teaches = new();
                 if (!caller.IsAdmin)
@@ -62,7 +62,7 @@ namespace smss_api_service_layer.service
                                       .ThenBy(r => r.TermSequence).ThenBy(r => r.ExamSequence).ThenBy(r => r.DisplayOrder).ThenBy(r => r.SubjectName, StringComparer.OrdinalIgnoreCase))
                 {
                     var isClassTeacher = classTeacherOf.Contains(r.SectionId);
-                    var rights = new ReportRights(caller.IsAdmin, caller.IsPrincipal, isClassTeacher, teaches.Contains((r.SectionId, r.SubjectId)), mapped.Contains(new MappedPair(r.ClassId, r.SubjectId)));
+                    var rights = new ReportRights(caller.IsAdmin, caller.IsPrincipal, isClassTeacher, teaches.Contains((r.SectionId, r.SubjectId)), mapped.Contains(new MappedPair(r.SectionId, r.SubjectId)));
                     if (!rights.CanView) continue;
                     statuses.TryGetValue((r.ExamSubjectId, r.SectionId), out var st);
                     list.Add(new MarksContextRowDto
