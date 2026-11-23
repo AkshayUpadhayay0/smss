@@ -15,6 +15,8 @@ export interface SlotTarget {
   periodId: number;
   periodNumber: number;
   current: TimetableEntry | null;
+  /** S6: write into THIS timetable (a draft, the active one ...). Without it the section's active timetable is used (the original behaviour). */
+  timetableId?: number;
 }
 
 /** Assign (or change, or clear) the subject, teacher and room of one cell of a section's timetable. */
@@ -26,7 +28,7 @@ export interface SlotTarget {
     <app-modal [title]="title()" [dismissible]="!busy()" (closed)="closed.emit()">
       <form class="form" [formGroup]="form" (ngSubmit)="save()" novalidate>
         <app-select label="Subject" [required]="true" placeholder="Select subject…" [options]="subjectOptions()" formControlName="subjectId" [errorText]="error('subjectId')" />
-        <app-select label="Teacher" [required]="true" placeholder="Select teacher…" [options]="teacherOptions()" formControlName="employeeId" [errorText]="error('employeeId')" />
+        <app-select label="Teacher" [required]="!target().timetableId" placeholder="{{ target().timetableId ? 'No teacher yet' : 'Select teacher…' }}" [options]="teacherOptions()" formControlName="employeeId" [errorText]="error('employeeId')" />
         <app-input label="Room" placeholder="Optional, e.g. 101" formControlName="roomNo" [errorText]="error('roomNo')" />
         @if (lookups() && lookups()!.subjects.length === 0) {
           <p class="hint">This class has no subjects yet. Add them under School Setup → Class-Subject Mapping.</p>
@@ -78,12 +80,13 @@ export class SlotModalComponent implements OnInit {
 
   protected readonly form = new FormGroup({
     subjectId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    employeeId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    employeeId: new FormControl('', { nonNullable: true }),
     roomNo: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(50)] }),
   });
 
   ngOnInit(): void {
     const t = this.target();
+    if (!t.timetableId) this.form.controls.employeeId.addValidators(Validators.required);   // the original screen still needs a teacher; a version may leave it empty
     const cur = t.current;
     if (cur) this.form.patchValue({ subjectId: String(cur.subjectId), employeeId: cur.employeeId, roomNo: cur.roomNo ?? '' });
     this.service.lookups(t.sectionId, t.academicYearId).subscribe({
@@ -109,16 +112,11 @@ export class SlotModalComponent implements OnInit {
     const t = this.target();
     const v = this.form.getRawValue();
     this.busy.set(true);
-    this.service
-      .assign({
-        academicYearId: t.academicYearId,
-        sectionId: t.sectionId,
-        dayOfWeek: t.dayOfWeek,
-        periodId: t.periodId,
-        subjectId: Number(v.subjectId),
-        employeeId: v.employeeId,
-        roomNo: v.roomNo.trim() === '' ? null : v.roomNo.trim(),
-      })
+    const room = v.roomNo.trim() === '' ? null : v.roomNo.trim();
+    const call = t.timetableId
+      ? this.service.assignSlot(t.timetableId, { dayOfWeek: t.dayOfWeek, periodId: t.periodId, subjectId: Number(v.subjectId), employeeId: v.employeeId === '' ? null : v.employeeId, roomNo: room })
+      : this.service.assign({ academicYearId: t.academicYearId, sectionId: t.sectionId, dayOfWeek: t.dayOfWeek, periodId: t.periodId, subjectId: Number(v.subjectId), employeeId: v.employeeId, roomNo: room });
+    call
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => {
@@ -134,8 +132,9 @@ export class SlotModalComponent implements OnInit {
     if (this.busy()) return;
     const t = this.target();
     this.busy.set(true);
-    this.service
-      .unassign({ academicYearId: t.academicYearId, sectionId: t.sectionId, dayOfWeek: t.dayOfWeek, periodId: t.periodId })
+    (t.timetableId
+      ? this.service.unassignSlot(t.timetableId, t.dayOfWeek, t.periodId)
+      : this.service.unassign({ academicYearId: t.academicYearId, sectionId: t.sectionId, dayOfWeek: t.dayOfWeek, periodId: t.periodId }))
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => {

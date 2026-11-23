@@ -6,7 +6,12 @@ namespace smss_api_db_layer.@interface
     public record TtSubjectRow(long SubjectId, string Name, string? Code, int? StatusId, bool MappedToClass);
     public record TtTeacherRow(string EmployeeId, string FirstName, string? MiddleName, string LastName, string EmployeeType, int StatusId, bool EmploymentBlocksLogin, string DesignationName);
     public record TtEntryRow(TbTimetableEntry Entry, string ClassName, string SectionName, string SubjectName, string? SubjectCode, string EmployeeName, short PeriodNumber);
-    public record TtConflictRow(string ClassName, string SectionName, string SubjectName, short PeriodNumber);
+    public record TtConflictRow(string ClassName, string SectionName, string SubjectName, short PeriodNumber, string? TimetableName = null);
+    /// <summary>One timetable of a section for the list screen, with its counts.</summary>
+    public record TimetableListRow(TbTimetable Timetable, string ScheduleName, int Slots, int NeedsTeacher, string? ActivatedByName, string? CreatedByName);
+    /// <summary>A teacher's Active booking in an ACTIVE timetable (what a clash message names).</summary>
+    public record TeacherBookingRow(string EmployeeId, short DayOfWeek, long PeriodId, short PeriodNumber, string ClassName, string SectionName, string SubjectName, string TimetableName, long TimetableId);
+    public record OfferedSectionRow(long SectionId, string SectionName, int? StatusId);
 
     // Every method takes the school id: another school's timetable can never be reached through this repository.
     public interface ITimetableRepository
@@ -43,10 +48,38 @@ namespace smss_api_db_layer.@interface
         /// <summary>Employees who can teach: Active record, Teaching, employment status that still works here.</summary>
         Task<List<TtTeacherRow>> GetTeachersAsync(string schoolId, int activeStatusId, CancellationToken ct);
 
-        /// <summary>The Active entry of a slot, TRACKED (to replace it).</summary>
-        Task<TbTimetableEntry?> GetActiveSlotForUpdateAsync(string schoolId, long academicYearId, long sectionId, short dayOfWeek, long periodId, int activeStatusId, CancellationToken ct);
-        /// <summary>This teacher's Active entry in the same year / weekday / period in ANOTHER section, or null.</summary>
-        Task<TtConflictRow?> FindTeacherConflictAsync(string schoolId, long academicYearId, string employeeId, short dayOfWeek, long periodId, long exceptSectionId, int activeStatusId, CancellationToken ct);
+        /// <summary>The Active entry of a slot of ONE timetable, TRACKED (to replace it).</summary>
+        Task<TbTimetableEntry?> GetActiveSlotForUpdateAsync(string schoolId, long timetableId, short dayOfWeek, long periodId, int activeStatusId, CancellationToken ct);
+        /// <summary>This teacher's Active entry in the same year / weekday / period in ANOTHER ACTIVE timetable, or null.</summary>
+        Task<TtConflictRow?> FindTeacherConflictAsync(string schoolId, long academicYearId, string employeeId, short dayOfWeek, long periodId, long exceptTimetableId, int activeStatusId, CancellationToken ct);
+
+        // ---- S6: timetable versions
+        /// <summary>The per-school academic-setup lock (transaction scoped): activation, archive, apply and every entry edit queue up on it.</summary>
+        Task LockSchoolAsync(string schoolId, CancellationToken ct);
+        Task<TbTimetable?> GetTimetableAsync(string schoolId, long timetableId, CancellationToken ct);
+        /// <summary>TRACKED.</summary>
+        Task<TbTimetable?> GetTimetableForUpdateAsync(string schoolId, long timetableId, CancellationToken ct);
+        Task<TbTimetable?> GetActiveTimetableAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        /// <summary>TRACKED.</summary>
+        Task<TbTimetable?> GetActiveTimetableForUpdateAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        Task<List<TimetableListRow>> ListTimetablesAsync(string schoolId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct);
+        Task<bool> TimetableNameTakenAsync(string schoolId, long academicYearId, long sectionId, string name, long? exceptTimetableId, CancellationToken ct);
+        Task AddTimetableAsync(TbTimetable timetable, CancellationToken ct);
+        void RemoveTimetable(TbTimetable timetable);
+        /// <summary>Every entry (any status) of a timetable, TRACKED.</summary>
+        Task<List<TbTimetableEntry>> GetTimetableEntriesForUpdateAsync(string schoolId, long timetableId, CancellationToken ct);
+        void RemoveEntries(IEnumerable<TbTimetableEntry> entries);
+        /// <summary>The Active-status entries of one timetable (any state) with names, for the editor grid and validation.</summary>
+        Task<List<TtEntryRow>> GetTimetableRowsAsync(string schoolId, long timetableId, int activeStatusId, CancellationToken ct);
+        /// <summary>Active bookings of these teachers in ACTIVE timetables of the year, other than the given timetable.</summary>
+        Task<List<TeacherBookingRow>> GetActiveBookingsAsync(string schoolId, long academicYearId, IReadOnlyCollection<string> employeeIds, IReadOnlyCollection<long> exceptTimetableIds, int activeStatusId, CancellationToken ct);
+        /// <summary>The Active sections of the class that the year offers.</summary>
+        Task<List<OfferedSectionRow>> GetOfferedSectionsOfClassAsync(string schoolId, long academicYearId, long classId, CancellationToken ct);
+        Task<HashSet<long>> GetEffectiveSubjectIdsAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        Task<Dictionary<long, TbPeriod>> GetSlotsByIdsAsync(string schoolId, IReadOnlyCollection<long> periodIds, CancellationToken ct);
+        Task<Dictionary<string, TtTeacherRow>> GetTeachersByIdsAsync(string schoolId, IReadOnlyCollection<string> employeeIds, CancellationToken ct);
+        Task<Dictionary<long, string>> GetSubjectNamesAsync(string schoolId, CancellationToken ct);
+        Task<string?> GetUserDisplayNameAsync(string schoolId, long userId, CancellationToken ct);
         Task AddAsync(TbTimetableEntry entry, CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);
 

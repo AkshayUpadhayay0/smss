@@ -134,7 +134,8 @@ namespace smss_api_tests
 
             // a lesson on a break: refused; a lesson on a period: accepted; a period with a lesson cannot become a break
             var lunch = SlotId(db, w.Regular, null, "BREAK");
-            string Entry(long period, int day) => $"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, {day}, {period}, {w.Maths}, '{w.Teacher}', {Active})";
+            string Entry(long period, int day) => $"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id{TtKit.Cols}) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, {day}, {period}, {w.Maths}, '{w.Teacher}', {Active}{TtKit.Vals(w.Year, w.SecA)})";
+            TtKit.Ensure(db, w.School, w.Year, w.ClassA, w.SecA);
             Expect(PostgresErrorCodes.ForeignKeyViolation, () => db.Exec(Entry(lunch, 1)));
             var p1 = SlotId(db, w.Regular, 1);
             db.Exec(Entry(p1, 1));
@@ -180,7 +181,8 @@ namespace smss_api_tests
 
             // a slot in use
             var p1 = SlotId(db, w.Regular, 1);
-            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, 1, {p1}, {w.Maths}, '{w.Teacher}', {Active})");
+            TtKit.Ensure(db, w.School, w.Year, w.ClassA, w.SecA);
+            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id{TtKit.Cols}) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, 1, {p1}, {w.Maths}, '{w.Teacher}', {Active}{TtKit.Vals(w.Year, w.SecA)})");
             Assert.Equal(409, (await svc.ToggleSlotAsync(w.School, w.Regular, p1, default)).StatusCode);
             Assert.Equal(409, (await svc.DeleteSlotAsync(w.School, w.Regular, p1, default)).StatusCode);
             var toBreak = await svc.UpdateSlotAsync(w.School, w.Regular, p1, Slot("BREAK", null, "09:00", "09:45", "Assembly"), default);
@@ -217,7 +219,8 @@ namespace smss_api_tests
             Assert.Equal(409, assigned.StatusCode);
             Assert.Contains("assigned", assigned.Message);
             db.Exec($"delete from tb_academic_year_schedules where school_id='{w.School}'");
-            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, 1, {SlotId(db, w.Short, 1)}, {w.Maths}, '{w.Teacher}', {Active})");
+            TtKit.Ensure(db, w.School, w.Year, w.ClassA, w.SecA);
+            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id{TtKit.Cols}) values ('{w.School}', {w.Year}, {w.ClassA}, {w.SecA}, 1, {SlotId(db, w.Short, 1)}, {w.Maths}, '{w.Teacher}', {Active}{TtKit.Vals(w.Year, w.SecA)})");
             Assert.Equal(409, (await svc.DeleteAsync(w.School, w.Short, default)).StatusCode);
             Assert.Equal(200, (await svc.DeleteAsync(w.School, copy.ScheduleId, default)).StatusCode);
             Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_periods where schedule_id={copy.ScheduleId}"));

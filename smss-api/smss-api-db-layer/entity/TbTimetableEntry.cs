@@ -23,7 +23,13 @@ namespace smss_api_db_layer.entity
         [Column("day_of_week")] public short DayOfWeek { get; set; }
         [Column("period_id")] public long PeriodId { get; set; }
         [Column("subject_id")] public long SubjectId { get; set; }
-        [Column("employee_id")][StringLength(20)] public string EmployeeId { get; set; } = null!;
+        /// <summary>Null for a slot copied without a teacher (S6): it carries <see cref="NeedsTeacher"/>.</summary>
+        [Column("employee_id")][StringLength(20)] public string? EmployeeId { get; set; }
+        /// <summary>The timetable (version) this slot belongs to (S6).</summary>
+        [Column("timetable_id")] public long TimetableId { get; set; }
+        /// <summary>MIRROR of the timetable's is_active. Set from the timetable at insert only; the database refuses a wrong value and cascades every later flip.</summary>
+        [Column("tt_is_active")] public bool TtIsActive { get; set; }
+        [Column("needs_teacher")] public bool NeedsTeacher { get; set; }
         [Column("room_no")][StringLength(50)] public string? RoomNo { get; set; }
         [Column("status_id")] public int StatusId { get; set; }
         [Column("assigned_by")] public long? AssignedBy { get; set; }

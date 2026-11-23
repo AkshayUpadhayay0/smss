@@ -14,6 +14,8 @@ namespace smss_api_service_layer.@interface
         /// <summary>Assign or reassign a slot in ONE transaction: the old Active entry (if any) is deactivated and the new one inserted. A teacher can't be in two sections at once.</summary>
         Task<ApiResponse<TimetableEntryDto>> AssignAsync(string? schoolId, long assignedByUserId, AssignTimetableRequest req, CancellationToken ct);
         Task<ApiResponse<TimetableEntryDto>> UnassignAsync(string? schoolId, UnassignTimetableRequest req, CancellationToken ct);
+        /// <summary>The grid of ONE timetable of a section, whatever its state (the editor of a draft, the view of an archived version).</summary>
+        Task<ApiResponse<TimetableGridDto>> GetTimetableGridAsync(string? schoolId, long timetableId, CancellationToken ct);
         Task<ApiResponse<TimetableLookupsDto>> GetLookupsAsync(string? schoolId, long sectionId, long? academicYearId, CancellationToken ct);
         /// <summary>The weekly grid of a section (year defaults to the school's current one).</summary>
         Task<ApiResponse<TimetableGridDto>> GetClassGridAsync(string? schoolId, long sectionId, long? academicYearId, CancellationToken ct);

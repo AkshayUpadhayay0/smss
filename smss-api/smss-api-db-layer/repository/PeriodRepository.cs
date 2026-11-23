@@ -135,7 +135,7 @@ UPDATE public.tb_periods p SET slot_order = r.rn::smallint FROM ranked r WHERE p
         public Task<List<EntryScheduleUse>> EntryScheduleUseAsync(string schoolId, long academicYearId, int activeStatusId, CancellationToken ct) =>
             (from e in _db.TimetableEntries.AsNoTracking()
              join p in _db.Periods.AsNoTracking() on e.PeriodId equals p.PeriodId
-             where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId
+             where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId && e.TtIsActive   // the live (ACTIVE) timetables only: a draft never blocks
              group e by new { e.ClassId, e.DayOfWeek, p.ScheduleId } into g
              select new EntryScheduleUse(g.Key.ClassId, g.Key.DayOfWeek, g.Key.ScheduleId, g.Count())).ToListAsync(ct);
 

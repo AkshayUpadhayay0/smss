@@ -70,7 +70,7 @@ namespace smss_api_db_layer.repository
 
         public async Task<HashSet<(long SectionId, long SubjectId)>> TeachingPairsAsync(string schoolId, string employeeId, long academicYearId, int activeStatusId, CancellationToken ct) =>
             (await _db.TimetableEntries.AsNoTracking()
-                .Where(e => e.SchoolId == schoolId && e.EmployeeId == employeeId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId)
+                .Where(e => e.SchoolId == schoolId && e.EmployeeId == employeeId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId && e.TtIsActive)   // the ACTIVE timetable only
                 .Select(e => new { e.SectionId, e.SubjectId }).Distinct().ToListAsync(ct)).Select(e => (e.SectionId, e.SubjectId)).ToHashSet();
 
         // ------------------------------------------------------------------ roster and entries

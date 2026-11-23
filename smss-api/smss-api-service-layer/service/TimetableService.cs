@@ -17,12 +17,18 @@ namespace smss_api_service_layer.service
 
         private readonly ITimetableRepository _repo;
         private readonly ILogger<TimetableService> _logger;
+        private readonly TimetableVersionService _versions;
 
-        public TimetableService(ITimetableRepository repo, ILogger<TimetableService> logger)
+        public TimetableService(ITimetableRepository repo, ILogger<TimetableService> logger, TimetableVersionService versions)
         {
             _repo = repo;
             _logger = logger;
+            _versions = versions;
         }
+
+        /// <summary>Convenience for callers (and tests) that build the service by hand: the version service is created over the same repository.</summary>
+        public TimetableService(ITimetableRepository repo, ILogger<TimetableService> logger)
+            : this(repo, logger, new TimetableVersionService(repo, Microsoft.Extensions.Logging.Abstractions.NullLogger<TimetableVersionService>.Instance)) { }
 
         // ---------------------------------------------------------------- reuse: is this teacher teaching this subject to this section?
         public async Task<bool> IsTeachingSectionSubjectAsync(string? schoolId, string employeeId, long sectionId, long subjectId, long academicYearId, CancellationToken ct)
@@ -34,6 +40,7 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------------------------------------------------------- assign / reassign / unassign
+        // The original endpoints act on the section's ACTIVE timetable (created as "Regular timetable" when the section has none yet). Versions have their own endpoints.
         public async Task<ApiResponse<TimetableEntryDto>> AssignAsync(string? schoolId, long assignedByUserId, AssignTimetableRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<TimetableEntryDto>(400, TenantMessages.NoSchool, null);
@@ -41,67 +48,10 @@ namespace smss_api_service_layer.service
             {
                 var ctx = await ResolveAsync(schoolId, req.AcademicYearId!.Value, req.SectionId!.Value, req.ClassId, req.DayOfWeek!.Value, req.PeriodId!.Value, ct, requireActiveSection: true);
                 if (ctx.Error != null) return Result<TimetableEntryDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
-                var (activeId, inactiveId, section, day, period) = (ctx.ActiveId, ctx.InactiveId, ctx.Section!, ctx.Day, ctx.Period!);
-
-                // S4: a break can never hold a lesson (the database refuses it too), and the period must be a slot of the schedule this class follows on this day
-                if (period.SlotType != SlotTypes.Period) return Result<TimetableEntryDto>(400, $"{period.SlotLabel ?? "This slot"} is a break, so no lesson can be placed in it.", null);
-                var followed = await FollowedScheduleAsync(schoolId, req.AcademicYearId!.Value, section.ClassId, day, ct);
-                if (followed != null && followed != period.ScheduleId)
-                {
-                    var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
-                    return Result<TimetableEntryDto>(400, $"Period {period.PeriodNumber} belongs to the schedule \"{names.GetValueOrDefault(period.ScheduleId)}\", but {section.ClassName} follows \"{names.GetValueOrDefault(followed.Value)}\" on {ScheduleResolver.DayNames[day - 1]}. Choose a period of \"{names.GetValueOrDefault(followed.Value)}\".", null);
-                }
-
-                var subject = await _repo.GetSubjectAsync(schoolId, req.SubjectId!.Value, req.AcademicYearId!.Value, section.SectionId, activeId, ct);
-                if (subject == null || subject.StatusId != activeId) return Result<TimetableEntryDto>(400, "The selected subject was not found for your school.", null);
-                if (!subject.MappedToClass)
-                    return Result<TimetableEntryDto>(400, $"{subject.Name} is not taught in {section.ClassName} - {section.SectionName} in this academic year. Add it under Academic Setup (subjects) first.", null);
-
-                var employeeId = req.EmployeeId!.Trim();
-                var teacher = await _repo.GetTeacherAsync(schoolId, employeeId, ct);
-                if (teacher == null) return Result<TimetableEntryDto>(400, "The selected teacher was not found for your school.", null);
-                if (teacher.StatusId != activeId || teacher.EmployeeType != EmployeeTypes.Teaching || teacher.EmploymentBlocksLogin)
-                    return Result<TimetableEntryDto>(400, "This employee can't be given a timetable slot. They need an active record, employee type Teaching, and an employment status that still works at the school.", null);
-
-                var room = string.IsNullOrWhiteSpace(req.RoomNo) ? null : req.RoomNo.Trim();
-                long entryId;
-                await using (var tx = await _repo.BeginTransactionAsync(ct))
-                {
-                    await _repo.LockSlotAsync(schoolId, req.AcademicYearId.Value, day, period.PeriodId, ct);   // everything that could clash on this day + period queues up
-
-                    // a teacher can't be in two places at once: another section at the same day + period in the same year
-                    var clash = await _repo.FindTeacherConflictAsync(schoolId, req.AcademicYearId.Value, employeeId, day, period.PeriodId, section.SectionId, activeId, ct);
-                    if (clash != null)
-                        return Result<TimetableEntryDto>(409, $"{TeacherName(teacher)} is already teaching {clash.ClassName} - {clash.SectionName} ({clash.SubjectName}) on {DayNames[day - 1]}, period {clash.PeriodNumber}.", null);
-
-                    var current = await _repo.GetActiveSlotForUpdateAsync(schoolId, req.AcademicYearId.Value, section.SectionId, day, period.PeriodId, activeId, ct);
-                    if (current != null && current.SubjectId == subject.SubjectId && current.EmployeeId == employeeId && string.Equals(current.RoomNo ?? "", room ?? "", StringComparison.Ordinal))
-                        return await RowAsync(schoolId, current.TimetableEntryId, 200, "This slot already has exactly these details.", ct);
-
-                    var now = DateTime.UtcNow;
-                    if (current != null)
-                    {
-                        // history, not deletion: the old entry stays, marked Inactive. Saved first, so the one-active-slot / one-booking-per-teacher indexes are never violated.
-                        current.StatusId = inactiveId;
-                        current.UpdatedAt = now;
-                        await _repo.SaveChangesAsync(ct);
-                    }
-                    var next = new TbTimetableEntry
-                    {
-                        SchoolId = schoolId, AcademicYearId = req.AcademicYearId.Value, ClassId = section.ClassId, SectionId = section.SectionId, DayOfWeek = day, PeriodId = period.PeriodId,
-                        SubjectId = subject.SubjectId, EmployeeId = employeeId, RoomNo = room, StatusId = activeId, AssignedBy = assignedByUserId, CreatedAt = now, UpdatedAt = now
-                    };
-                    await _repo.AddAsync(next, ct);
-                    await _repo.SaveChangesAsync(ct);
-                    await tx.CommitAsync(ct);
-                    entryId = next.TimetableEntryId;
-                }
-                return await RowAsync(schoolId, entryId, 200, "Timetable slot saved.", ct);
-            }
-            catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.ConstraintName is SlotIndex or TeacherIndex)
-            {
-                // the database's one-active-slot / one-booking-per-teacher rule caught a race the lock did not (should not happen)
-                return Result<TimetableEntryDto>(409, "This slot or this teacher's period was just changed by someone else. Please refresh and try again.", null);
+                var (tt, error) = await _versions.ActiveOrNewAsync(schoolId, assignedByUserId, req.AcademicYearId.Value, ctx.Section!.SectionId, ct);
+                if (tt == null) return Result<TimetableEntryDto>(500, error ?? "Something went wrong. Please try again later.", null);
+                return await _versions.AssignAsync(schoolId, assignedByUserId, tt.TimetableId,
+                    new AssignSlotRequest { DayOfWeek = ctx.Day, PeriodId = req.PeriodId, SubjectId = req.SubjectId, EmployeeId = req.EmployeeId, RoomNo = req.RoomNo }, ct);
             }
             catch (Exception ex) { return Error<TimetableEntryDto>(ex, "assigning a timetable slot"); }
         }
@@ -113,16 +63,9 @@ namespace smss_api_service_layer.service
             {
                 var ctx = await ResolveAsync(schoolId, req.AcademicYearId!.Value, req.SectionId!.Value, null, req.DayOfWeek!.Value, req.PeriodId!.Value, ct, requireActiveSection: false);
                 if (ctx.Error != null) return Result<TimetableEntryDto>(ctx.Error.Value.Code, ctx.Error.Value.Message, null);
-
-                await using var tx = await _repo.BeginTransactionAsync(ct);
-                await _repo.LockSlotAsync(schoolId, req.AcademicYearId.Value, ctx.Day, ctx.Period!.PeriodId, ct);
-                var current = await _repo.GetActiveSlotForUpdateAsync(schoolId, req.AcademicYearId.Value, req.SectionId.Value, ctx.Day, ctx.Period.PeriodId, ctx.ActiveId, ct);
-                if (current == null) return Result<TimetableEntryDto>(404, "There is nothing scheduled in this slot.", null);
-                current.StatusId = ctx.InactiveId;
-                current.UpdatedAt = DateTime.UtcNow;
-                await _repo.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
-                return await RowAsync(schoolId, current.TimetableEntryId, 200, "Timetable slot cleared.", ct);
+                var tt = await _repo.GetActiveTimetableAsync(schoolId, req.AcademicYearId.Value, req.SectionId.Value, ct);
+                if (tt == null) return Result<TimetableEntryDto>(404, "There is nothing scheduled in this slot.", null);
+                return await _versions.UnassignAsync(schoolId, 0, tt.TimetableId, new UnassignSlotRequest { DayOfWeek = ctx.Day, PeriodId = req.PeriodId }, ct);
             }
             catch (Exception ex) { return Error<TimetableEntryDto>(ex, "clearing a timetable slot"); }
         }
@@ -163,21 +106,51 @@ namespace smss_api_service_layer.service
                 var (year, error) = await YearAsync(schoolId, academicYearId, ct);
                 if (year == null) return Result<TimetableGridDto>(error!.Value.Code, error.Value.Message, null);
 
-                var slots = await _repo.GetActiveSlotsAsync(schoolId, activeId.Value, ct);
+                // the ACTIVE timetable of the section: drafts and archived versions never show here
                 var entries = await _repo.GetSectionEntriesAsync(schoolId, year.AcademicYearId, sectionId, activeId.Value, ct);
-                // S4: the slots of the schedule this class follows on each day (the default schedule everywhere unless the year assigns another)
-                var assignments = await _repo.GetYearScheduleRowsAsync(schoolId, year.AcademicYearId, ct);
-                var defaultId = await _repo.GetDefaultScheduleIdAsync(schoolId, ct);
-                var perDay = Enumerable.Range(1, 6).ToDictionary(d => d, d => ScheduleResolver.Resolve(assignments, section.ClassId, d, defaultId));
-                var used = perDay.Values.Where(v => v != null).Select(v => v!.Value).ToHashSet();
-                var slotById = slots.ToDictionary(p => p.PeriodId);
-                used.UnionWith(entries.Where(e => slotById.ContainsKey(e.Entry.PeriodId)).Select(e => slotById[e.Entry.PeriodId].ScheduleId));   // never hide a lesson that exists
-                var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
-                var grid = BuildGrid(year, "section", slots.Where(p => used.Contains(p.ScheduleId)).ToList(), entries, names, (p, d) => perDay[d] == p.ScheduleId, used.Count > 1);
-                grid.SectionId = section.SectionId; grid.ClassId = section.ClassId; grid.ClassName = section.ClassName; grid.SectionName = section.SectionName;
+                var grid = await SectionGridAsync(schoolId, activeId.Value, year, section, entries, ct);
+                var active = await _repo.GetActiveTimetableAsync(schoolId, year.AcademicYearId, sectionId, ct);
+                if (active != null) { grid.TimetableId = active.TimetableId; grid.TimetableName = active.TimetableName; grid.TimetableState = active.State; }
                 return Result(200, "Successfully fetched", grid);
             }
             catch (Exception ex) { return Error<TimetableGridDto>(ex, "fetching a section timetable"); }
+        }
+
+        /// <summary>The grid of ONE timetable (any state): the editor of a draft or the view of an archived version.</summary>
+        public async Task<ApiResponse<TimetableGridDto>> GetTimetableGridAsync(string? schoolId, long timetableId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<TimetableGridDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+                if (activeId == null) return ConfigError<TimetableGridDto>();
+                var tt = await _repo.GetTimetableAsync(schoolId, timetableId, ct);
+                if (tt == null) return Result<TimetableGridDto>(404, "Timetable not found.", null);
+                var year = await _repo.GetYearAsync(schoolId, tt.AcademicYearId, ct);
+                var section = await _repo.GetSectionAsync(schoolId, tt.SectionId, ct);
+                if (year == null || section == null) return Result<TimetableGridDto>(404, "Timetable not found.", null);
+                var entries = await _repo.GetTimetableRowsAsync(schoolId, tt.TimetableId, activeId.Value, ct);
+                var grid = await SectionGridAsync(schoolId, activeId.Value, year, section, entries, ct);
+                grid.TimetableId = tt.TimetableId; grid.TimetableName = tt.TimetableName; grid.TimetableState = tt.State;
+                return Result(200, "Successfully fetched", grid);
+            }
+            catch (Exception ex) { return Error<TimetableGridDto>(ex, "fetching a timetable"); }
+        }
+
+        private async Task<TimetableGridDto> SectionGridAsync(string schoolId, int activeId, YearRef year, SectionRef section, List<TtEntryRow> entries, CancellationToken ct)
+        {
+            var slots = await _repo.GetActiveSlotsAsync(schoolId, activeId, ct);
+            // S4: the slots of the schedule this class follows on each day (the default schedule everywhere unless the year assigns another)
+            var assignments = await _repo.GetYearScheduleRowsAsync(schoolId, year.AcademicYearId, ct);
+            var defaultId = await _repo.GetDefaultScheduleIdAsync(schoolId, ct);
+            var perDay = Enumerable.Range(1, 6).ToDictionary(d => d, d => ScheduleResolver.Resolve(assignments, section.ClassId, d, defaultId));
+            var used = perDay.Values.Where(v => v != null).Select(v => v!.Value).ToHashSet();
+            var slotById = slots.ToDictionary(p => p.PeriodId);
+            used.UnionWith(entries.Where(e => slotById.ContainsKey(e.Entry.PeriodId)).Select(e => slotById[e.Entry.PeriodId].ScheduleId));   // never hide a lesson that exists
+            var names = await _repo.GetScheduleNamesAsync(schoolId, ct);
+            var grid = BuildGrid(year, "section", slots.Where(p => used.Contains(p.ScheduleId)).ToList(), entries, names, (p, d) => perDay[d] == p.ScheduleId, used.Count > 1);
+            grid.SectionId = section.SectionId; grid.ClassId = section.ClassId; grid.ClassName = section.ClassName; grid.SectionName = section.SectionName;
+            return grid;
         }
 
         public async Task<ApiResponse<TimetableGridDto>> GetTeacherGridAsync(string? schoolId, long callerUserId, bool callerIsSchoolAdmin, string employeeId, long? academicYearId, CancellationToken ct)
@@ -323,7 +296,7 @@ namespace smss_api_service_layer.service
         {
             TimetableEntryId = r.Entry.TimetableEntryId, AcademicYearId = r.Entry.AcademicYearId, ClassId = r.Entry.ClassId, ClassName = r.ClassName, SectionId = r.Entry.SectionId, SectionName = r.SectionName,
             DayOfWeek = r.Entry.DayOfWeek, PeriodId = r.Entry.PeriodId, PeriodNumber = r.PeriodNumber, SubjectId = r.Entry.SubjectId, SubjectName = r.SubjectName, SubjectCode = r.SubjectCode,
-            EmployeeId = r.Entry.EmployeeId, EmployeeName = r.EmployeeName, RoomNo = r.Entry.RoomNo
+            EmployeeId = r.Entry.EmployeeId ?? "", EmployeeName = r.EmployeeName, RoomNo = r.Entry.RoomNo, NeedsTeacher = r.Entry.NeedsTeacher, TimetableId = r.Entry.TimetableId
         };
 
         private static string TeacherName(TtTeacherRow t) => string.Join(' ', new[] { t.FirstName, t.MiddleName, t.LastName }.Where(p => !string.IsNullOrWhiteSpace(p)));

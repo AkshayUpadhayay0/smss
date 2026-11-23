@@ -61,6 +61,10 @@ namespace smss_api_service_layer.dto
         public string EmployeeId { get; set; } = null!;
         public string EmployeeName { get; set; } = null!;
         public string? RoomNo { get; set; }
+        /// <summary>S6: the slot was copied without a teacher and still needs one (EmployeeId is empty).</summary>
+        public bool NeedsTeacher { get; set; }
+        /// <summary>S6: the timetable (version) this slot belongs to.</summary>
+        public long TimetableId { get; set; }
     }
 
     public class TimetablePeriodDto
@@ -115,6 +119,11 @@ namespace smss_api_service_layer.dto
         public string? SectionName { get; set; }
         public string? EmployeeId { get; set; }
         public string? EmployeeName { get; set; }
+        /// <summary>S6: which timetable this grid shows (a section's grid is its ACTIVE one unless a version was asked for).</summary>
+        public long? TimetableId { get; set; }
+        public string? TimetableName { get; set; }
+        /// <summary>DRAFT, ACTIVE or ARCHIVED; null for a teacher grid or a section with no timetable yet.</summary>
+        public string? TimetableState { get; set; }
         public List<TimetableDayDto> Days { get; set; } = new();
         public List<TimetableRowDto> Rows { get; set; } = new();
         public int EntryCount { get; set; }

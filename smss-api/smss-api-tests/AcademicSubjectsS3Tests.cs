@@ -236,7 +236,8 @@ namespace smss_api_tests
             var emp = TeacherOf(db, w.School);
             var schedule = db.Scalar<long>($"insert into tb_period_schedules (school_id, schedule_name, is_default, status_id) values ('{w.School}', 'Regular', true, {Active}) returning schedule_id");   // S4: a period is a slot of a schedule
             var period = db.Scalar<long>($"insert into tb_periods (school_id, schedule_id, period_number, slot_order, start_time, end_time, status_id) values ('{w.School}', {schedule}, 1, 1, '09:00', '09:45', {Active}) returning period_id");
-            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id) values ('{w.School}', {w.Y1}, {w.Cls}, {w.SecA}, 1, {period}, {w.Sci}, '{emp}', {Active})");
+            TtKit.Ensure(db, w.School, w.Y1, w.Cls, w.SecA);
+            db.Exec($"insert into tb_timetable_entries (school_id, academic_year_id, class_id, section_id, day_of_week, period_id, subject_id, employee_id, status_id{TtKit.Cols}) values ('{w.School}', {w.Y1}, {w.Cls}, {w.SecA}, 1, {period}, {w.Sci}, '{emp}', {Active}{TtKit.Vals(w.Y1, w.SecA)})");
             db.Exec($"insert into tb_homework (school_id, academic_year_id, class_id, section_id, subject_id, employee_id, title, assigned_date, due_date, status_id) values ('{w.School}', {w.Y1}, {w.Cls}, {w.SecA}, {w.Sci}, '{emp}', 'Ch 1', '2026-08-01', '2026-08-03', {Active}), ('{w.School}', {w.Y1}, {w.Cls}, {w.SecA}, {w.Sci}, '{emp}', 'Ch 2', '2026-08-02', '2026-08-04', {Active})");
 
             var svc = Setup(db);

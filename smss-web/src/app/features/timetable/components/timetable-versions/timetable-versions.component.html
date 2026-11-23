@@ -1,0 +1,160 @@
+<div class="tv">
+  <div class="head">
+    <div>
+      <h3>Timetables of this section</h3>
+      <p class="hint">
+        One timetable is <strong>Active</strong>: it is the one teachers, students and parents see. Work on a <strong>Draft</strong> without disturbing it, then activate it.
+        The old active one is kept as history.
+      </p>
+    </div>
+    @if (!readOnly()) {
+      <app-button size="sm" data-new (click)="openCreate(null)"><app-icon name="plus" [size]="16" />New timetable</app-button>
+    }
+  </div>
+
+  @if (readOnly()) {
+    <p class="notice"><app-icon name="lock" [size]="16" />This academic year is closed, so its timetables can't be changed.</p>
+  }
+
+  @if (versions().length === 0) {
+    <p class="note">This section has no timetable yet. Create the first one{{ readOnly() ? '' : ' above' }}.</p>
+  } @else {
+    <div class="scroll">
+      <table class="list">
+        <thead><tr><th>Name</th><th>Status</th><th>Schedule</th><th>Slots</th><th>Last changed</th><th class="x">Actions</th></tr></thead>
+        <tbody>
+          @for (t of versions(); track t.timetableId) {
+            <tr [attr.data-tt]="t.timetableId" [class.sel]="t.timetableId === selectedId()" [class.live]="t.isActive">
+              <td class="name">
+                <button type="button" class="open" data-open (click)="picked.emit(t.timetableId)">{{ t.timetableName }}</button>
+              </td>
+              <td>
+                <span class="badge" [attr.data-state]="t.state">{{ label(t.state) }}</span>
+                @if (t.needsTeacherCount > 0) { <span class="chip warn" [title]="t.needsTeacherCount + ' slots have no teacher yet'">{{ t.needsTeacherCount }} need a teacher</span> }
+              </td>
+              <td>{{ t.scheduleName }}</td>
+              <td>{{ t.slotCount }}</td>
+              <td>{{ when(t.updatedAt) }}@if (t.isActive && t.activatedByName) { <small>active since {{ when(t.activatedAt) }} by {{ t.activatedByName }}</small> }</td>
+              <td class="x">
+                <button type="button" class="link" (click)="openCheck(t)">Check</button>
+                @if (!readOnly()) {
+                  @if (can(t).activate) { <button type="button" class="link strong" data-activate (click)="activate(t)">Activate</button> }
+                  <button type="button" class="link" data-clone (click)="openCreate(t)">Copy</button>
+                  <button type="button" class="link" (click)="openRename(t)">Rename</button>
+                  @if (canApply()) { <button type="button" class="link" data-apply (click)="openApply(t)">Apply to other sections</button> }
+                  @if (can(t).archive) { <button type="button" class="link" data-archive (click)="archive(t)">Archive</button> }
+                  @if (can(t).restore) { <button type="button" class="link" data-restore (click)="restore(t)">Restore</button> }
+                  @if (can(t).remove) { <button type="button" class="link danger" data-delete (click)="remove(t)">Delete</button> }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!hasActive()) {
+      <p class="notice"><app-icon name="circle-alert" [size]="16" />No timetable is active, so this section shows an empty timetable to everyone. Activate one.</p>
+    }
+  }
+
+  @if (dialog() === 'create' || dialog() === 'rename') {
+    <app-modal [title]="dialog() === 'rename' ? 'Rename timetable' : target() ? 'Copy timetable' : 'New timetable'" [dismissible]="!busy()" (closed)="close()">
+      <div class="form" data-dialog>
+        <label>
+          <span>Name</span>
+          <input type="text" maxlength="80" data-name [value]="name()" (input)="name.set($any($event.target).value)" placeholder="For example: Term 2 timetable" />
+        </label>
+        @if (dialog() === 'create') {
+          <label>
+            <span>Start from</span>
+            <select data-clone-from [value]="cloneFrom()" (change)="cloneFrom.set($any($event.target).value)">
+              <option value="">A blank timetable</option>
+              @for (v of versions(); track v.timetableId) {
+                <option [value]="v.timetableId">A copy of "{{ v.timetableName }}" ({{ label(v.state) }})</option>
+              }
+            </select>
+          </label>
+          <p class="hint">A new timetable is a draft: nobody sees it until you activate it.</p>
+        }
+      </div>
+      <ng-container modal-footer>
+        <app-button variant="secondary" [disabled]="busy()" (click)="close()">Cancel</app-button>
+        <app-button [disabled]="busy() || !name().trim()" (click)="save()">{{ busy() ? 'Saving…' : dialog() === 'rename' ? 'Rename' : 'Create draft' }}</app-button>
+      </ng-container>
+    </app-modal>
+  }
+
+  @if (dialog() === 'check') {
+    <app-modal [title]="'Check: ' + target()!.timetableName" (closed)="close()">
+      <div data-check class="check">
+        @if (checking()) {
+          <p class="note" aria-busy="true">Checking every slot…</p>
+        } @else if (validation(); as v) {
+          <p class="verdict" [class.ok]="v.canActivate" data-verdict>
+            {{ v.canActivate ? 'No problems: this timetable can be activated.' : v.errors.length + ' problem' + (v.errors.length === 1 ? '' : 's') + ' to fix before it can be activated.' }}
+            Nothing was changed by checking.
+          </p>
+          @if (v.errors.length) {
+            <ul class="problems errors">
+              @for (e of v.errors; track $index) { <li data-error><app-icon name="circle-alert" [size]="14" />{{ e.message }}</li> }
+            </ul>
+          }
+          @if (v.warnings.length) {
+            <p class="sub">{{ v.slotsWithoutTeacher }} slot{{ v.slotsWithoutTeacher === 1 ? '' : 's' }} without a teacher (allowed):</p>
+            <ul class="problems">
+              @for (w of v.warnings; track $index) { <li data-warning>{{ w.message }}</li> }
+            </ul>
+          }
+        }
+      </div>
+      <ng-container modal-footer>
+        <app-button variant="secondary" (click)="close()">Close</app-button>
+      </ng-container>
+    </app-modal>
+  }
+
+  @if (dialog() === 'apply') {
+    <app-modal [title]="'Apply \'' + target()!.timetableName + '\' to other sections'" [dismissible]="!busy()" (closed)="close()">
+      <div class="form" data-apply-dialog>
+        <p class="hint">
+          Creates a <strong>new draft</strong> for each section you choose, with the same days, periods and subjects. A teacher is copied only where they are free;
+          otherwise the slot is left without a teacher. Nothing that already exists is overwritten.
+        </p>
+        <fieldset>
+          <legend>Sections of the same class</legend>
+          @for (s of siblings(); track s.sectionId) {
+            <label class="check"><input type="checkbox" [attr.data-pick]="s.sectionId" [checked]="picks().includes(s.sectionId)" (change)="togglePick(s.sectionId, $any($event.target).checked)" /> Section {{ s.sectionName }}</label>
+          } @empty {
+            <small>This class has no other section in this year.</small>
+          }
+        </fieldset>
+        <label>
+          <span>Name of the new timetables</span>
+          <input type="text" maxlength="80" data-apply-name [value]="applyName()" (input)="applyName.set($any($event.target).value); preview.set(null)" />
+        </label>
+        @if (preview(); as p) {
+          <div class="preview" data-preview>
+            <strong>Preview (nothing is saved yet)</strong>
+            @for (s of p.sections; track s.sectionId) {
+              <div class="pv" [attr.data-pv]="s.sectionId" [class.skip]="!!s.skipReason">
+                <b>Section {{ s.sectionName }}</b>
+                @if (s.skipReason) {
+                  <span>Skipped: {{ s.skipReason }}</span>
+                } @else {
+                  <span>{{ s.slotsCopied }} slot{{ s.slotsCopied === 1 ? '' : 's' }} copied, {{ s.slotsNeedingTeacher }} without a teacher{{ s.slotsSkipped ? ', ' + s.slotsSkipped + ' left out' : '' }}</span>
+                  @for (n of s.needsTeacher; track $index) { <small>{{ days[n.dayOfWeek - 1] }}, period {{ n.periodNumber }} ({{ n.subjectName }}): {{ n.reason }}</small> }
+                  @for (n of s.skipped; track $index) { <small>{{ days[n.dayOfWeek - 1] }}, period {{ n.periodNumber }}: left out. {{ n.reason }}</small> }
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <ng-container modal-footer>
+        <app-button variant="secondary" [disabled]="busy()" (click)="close()">Cancel</app-button>
+        <app-button variant="secondary" data-preview-btn [disabled]="busy() || picks().length === 0" (click)="runPreview()">Preview</app-button>
+        <app-button data-apply-btn [disabled]="busy() || !preview() || createdCount() === 0" (click)="runApply()">{{ busy() ? 'Creating…' : 'Create ' + createdCount() + ' draft' + (createdCount() === 1 ? '' : 's') }}</app-button>
+      </ng-container>
+    </app-modal>
+  }
+</div>

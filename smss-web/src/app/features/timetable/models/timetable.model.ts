@@ -33,6 +33,9 @@ export interface TimetableEntry {
   employeeId: string;
   employeeName: string;
   roomNo?: string | null;
+  /** The slot was copied without a teacher and still needs one. */
+  needsTeacher?: boolean;
+  timetableId?: number;
 }
 
 export interface TimetableCell {
@@ -70,6 +73,10 @@ export interface TimetableGrid {
   sectionName?: string | null;
   employeeId?: string | null;
   employeeName?: string | null;
+  /** Which timetable (version) this grid shows. */
+  timetableId?: number | null;
+  timetableName?: string | null;
+  timetableState?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | null;
   days: { dayOfWeek: number; name: string }[];
   rows: TimetableRow[];
   entryCount: number;
@@ -95,4 +102,88 @@ export interface UnassignTimetableRequest {
   sectionId: number;
   dayOfWeek: number;
   periodId: number;
+}
+
+// ---------------- S6: timetable versions (mirrors TimetableSummaryDto and friends)
+
+export interface TimetableSummary {
+  timetableId: number;
+  academicYearId: number;
+  classId: number;
+  sectionId: number;
+  timetableName: string;
+  scheduleId: number;
+  scheduleName: string;
+  state: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  isActive: boolean;
+  /** Was active at some time: archived, never deleted. */
+  everActive: boolean;
+  slotCount: number;
+  needsTeacherCount: number;
+  createdAt: string;
+  updatedAt: string;
+  activatedAt?: string | null;
+  activatedByName?: string | null;
+  createdByName?: string | null;
+  canDelete: boolean;
+}
+
+export interface TimetableProblem {
+  severity: 'ERROR' | 'WARNING';
+  code: string;
+  message: string;
+  dayOfWeek?: number | null;
+  periodId?: number | null;
+}
+
+export interface TimetableValidation {
+  timetableId: number;
+  timetableName: string;
+  canActivate: boolean;
+  slotCount: number;
+  slotsWithoutTeacher: number;
+  errors: TimetableProblem[];
+  warnings: TimetableProblem[];
+}
+
+export interface TimetableActivation {
+  timetable: TimetableSummary;
+  previousTimetableName?: string | null;
+  slotsWithoutTeacher: number;
+}
+
+export interface ApplySlotNote {
+  dayOfWeek: number;
+  periodNumber: number;
+  subjectName: string;
+  reason: string;
+}
+
+export interface ApplySectionResult {
+  sectionId: number;
+  sectionName: string;
+  created: boolean;
+  timetableId?: number | null;
+  timetableName: string;
+  skipReason?: string | null;
+  slotsCopied: number;
+  slotsNeedingTeacher: number;
+  slotsSkipped: number;
+  needsTeacher: ApplySlotNote[];
+  skipped: ApplySlotNote[];
+}
+
+export interface ApplyResult {
+  sourceTimetableId: number;
+  preview: boolean;
+  sections: ApplySectionResult[];
+}
+
+export interface AssignSlotRequest {
+  dayOfWeek: number;
+  periodId: number;
+  subjectId: number;
+  /** Optional here: a slot without a teacher is flagged "needs a teacher". */
+  employeeId: string | null;
+  roomNo: string | null;
 }

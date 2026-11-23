@@ -127,6 +127,8 @@ builder.Services.AddScoped<IFeePaymentService, FeePaymentService>();
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<TimetableVersionService>();
+builder.Services.AddScoped<ITimetableVersionService>(sp => sp.GetRequiredService<TimetableVersionService>());
 builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<ISchoolEventRepository, SchoolEventRepository>();
 builder.Services.AddScoped<ISchoolEventService, SchoolEventService>();
