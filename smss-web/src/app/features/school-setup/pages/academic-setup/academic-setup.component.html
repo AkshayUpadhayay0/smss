@@ -26,6 +26,12 @@
           students each section can hold. A year with students in a class or section can't drop it.
         </p>
       </div>
+      @if (lastCopy(); as c) {
+        <p class="notice info" data-last-copy>
+          <app-icon name="copy" [size]="16" />
+          Last copy: setup copied from {{ c.sourceYearName }} on {{ c.finishedAt | date: 'dd MMM yyyy' }}{{ c.runByName ? ' by ' + c.runByName : '' }} ({{ c.status === 'FAILED' ? 'it failed, nothing was copied' : lastCopyTotal() === 0 ? 'nothing new' : lastCopyTotal() + ' rows added' }}).
+        </p>
+      }
       @if (readOnly()) {
         <p class="notice info"><app-icon name="lock" [size]="16" />This academic year is closed, so its classes and sections can't be changed. Reopen it under School Setup → Academic Year.</p>
       }

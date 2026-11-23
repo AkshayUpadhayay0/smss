@@ -100,6 +100,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbAcademicYearSchedule> AcademicYearSchedules { get; set; } = null!;
         public DbSet<TbTimetableEntry> TimetableEntries { get; set; } = null!;
         public DbSet<TbTimetable> Timetables { get; set; } = null!;
+        public DbSet<TbYearCopyLog> YearCopyLogs { get; set; } = null!;
         public DbSet<TbAdmissionApplicationDocument> AdmissionApplicationDocuments { get; set; } = null!;
         public DbSet<TbHomework> Homework { get; set; } = null!;
         // Inventory & Stock (Stage 1)

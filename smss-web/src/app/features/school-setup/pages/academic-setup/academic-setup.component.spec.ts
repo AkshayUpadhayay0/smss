@@ -54,13 +54,14 @@ describe('AcademicSetupComponent', () => {
   const box = (sel: string) => root().querySelector(sel + ' input[type=checkbox]') as HTMLInputElement;
   const button = (label: string) => Array.from(root().querySelectorAll('app-button')).find((b) => b.textContent?.trim() === label)!.querySelector('button') as HTMLButtonElement;
 
-  async function open(o: YearOffering) {
+  async function open(o: YearOffering, log: unknown[] = []) {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AcademicSetupComponent);
     fixture.detectChanges();
     http.expectOne(`${API}/api/AcademicYear`).flush(envelope(YEARS));
     fixture.detectChanges();
+    http.expectOne(`${API}/api/AcademicSetup/years/7/copy-log`).flush(envelope(log));   // the last copy into this year (a note only)
     http.expectOne(`${API}/api/AcademicSetup/years/7/classes`).flush(envelope(o));   // the CURRENT year is the default
     await fixture.whenStable();
     fixture.detectChanges();
@@ -73,6 +74,17 @@ describe('AcademicSetupComponent', () => {
     expect(root().querySelector('[data-summary]')?.textContent).toContain('2 classes, 2 sections offered');
     expect(box('[data-class="1"]').checked).toBe(true);
     expect(button('Save').disabled).toBe(true);   // nothing changed yet
+  });
+
+  it('shows the last copy into the year when there is one', async () => {
+    await open(offering(), [{ copyId: 1, sourceYearId: 6, sourceYearName: '2025-26', targetYearId: 7, parts: ['SUBJECTS'], status: 'COMPLETED', runByName: 'Admin', startedAt: '2026-11-23T10:00:00Z', finishedAt: '2026-11-23T10:00:05Z', result: [{ part: 'SUBJECTS', label: 'Subjects', created: 12, details: [], skippedExisting: 0, skipped: [], skippedWithReason: 0, notes: [] }] }]);
+    expect(root().querySelector('[data-last-copy]')?.textContent).toContain('copied from 2025-26');
+    expect(root().querySelector('[data-last-copy]')?.textContent).toContain('12 rows added');
+  });
+
+  it('shows no copy note when nothing was ever copied', async () => {
+    await open(offering());
+    expect(root().querySelector('[data-last-copy]')).toBeNull();
   });
 
   it('unticking a class that is not in use withdraws its sections and Save sends the whole set', async () => {

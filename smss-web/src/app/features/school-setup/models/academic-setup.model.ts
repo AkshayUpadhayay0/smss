@@ -215,3 +215,47 @@ export interface AssignClassTeacherRequest {
   reason: string | null;
   confirmMultipleSections: boolean;
 }
+
+// ---------------- S7: copy configuration from another academic year (mirrors YearCopyResultDto / YearCopyLogDto)
+
+export type CopyPart = 'CLASSES_SECTIONS' | 'SUBJECTS' | 'SCHEDULES' | 'CLASS_TEACHERS' | 'TIMETABLE';
+
+export interface YearCopyCount { kind: string; count: number }
+
+export interface YearCopySkip { reason: string; count: number; examples: string[] }
+
+export interface YearCopyPart {
+  part: CopyPart;
+  label: string;
+  /** Rows created (in a preview: that WOULD be created). */
+  created: number;
+  details: YearCopyCount[];
+  skippedExisting: number;
+  skipped: YearCopySkip[];
+  skippedWithReason: number;
+  notes: YearCopyCount[];
+}
+
+export interface YearCopyResult {
+  sourceYearId: number;
+  sourceYearName: string;
+  targetYearId: number;
+  targetYearName: string;
+  preview: boolean;
+  copyId?: number | null;
+  parts: YearCopyPart[];
+}
+
+export interface YearCopyLog {
+  copyId: number;
+  sourceYearId: number;
+  sourceYearName: string;
+  targetYearId: number;
+  parts: string[];
+  status: 'COMPLETED' | 'FAILED';
+  errorNote?: string | null;
+  runByName?: string | null;
+  startedAt: string;
+  finishedAt: string;
+  result: YearCopyPart[];
+}

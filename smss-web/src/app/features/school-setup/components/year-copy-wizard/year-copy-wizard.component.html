@@ -1,0 +1,93 @@
+<app-modal [title]="'Copy configuration into ' + target().yearName" [dismissible]="!busy()" (closed)="closed.emit()">
+  <div class="wiz" data-wizard>
+    <ol class="steps" aria-label="Steps">
+      <li [class.on]="step() === 'choose'" [class.past]="step() !== 'choose'">1 Choose</li>
+      <li [class.on]="step() === 'preview'" [class.past]="step() === 'done'">2 Preview</li>
+      <li [class.on]="step() === 'done'">3 Done</li>
+    </ol>
+
+    @if (step() === 'choose') {
+      <p class="hint">
+        Start {{ target().yearName }} from the setup of an earlier year. Only <strong>adds</strong> what is missing: nothing already set up here is changed or deleted, the earlier year is not touched,
+        and students, fees and attendance are never copied.
+      </p>
+      <label class="field">
+        <span>Copy from</span>
+        <select data-source [value]="effectiveSource()" (change)="sourceId.set($any($event.target).value)">
+          @for (y of sources(); track y.academicYearId) {
+            <option [value]="y.academicYearId" [selected]="y.academicYearId + '' === effectiveSource()">{{ y.yearName }}{{ y.isCurrent ? ' (current)' : '' }}{{ y.isClosed ? ' (closed)' : '' }}</option>
+          }
+        </select>
+      </label>
+      <fieldset class="parts">
+        <legend>What to copy</legend>
+        @for (c of choices; track c.part) {
+          <label class="check">
+            <input type="checkbox" [attr.data-part]="c.part" [checked]="has(c.part)" (change)="toggle(c.part, $any($event.target).checked)" />
+            <span><strong>{{ c.label }}</strong><small>{{ c.hint }}</small></span>
+          </label>
+        }
+      </fieldset>
+      <p class="hint small">The parts are applied in this order. A part only copies what the year already offers (or what an earlier part adds), so tick the earlier parts too if this year has none yet.</p>
+    }
+
+    @if (step() === 'preview' && result(); as r) {
+      <p class="verdict" data-verdict>
+        <app-icon name="circle-alert" [size]="16" />
+        Preview from {{ r.sourceYearName }} into {{ r.targetYearName }}: <strong>{{ rows(willCreate()) }}</strong> would be added. Nothing has been saved yet.
+      </p>
+      <div class="scroll">
+        <table class="pv" data-preview>
+          <thead><tr><th>Part</th><th>Will add</th><th>Already there</th><th>Left out</th></tr></thead>
+          <tbody>
+            @for (p of r.parts; track p.part) {
+              <tr [attr.data-pv]="p.part">
+                <td class="name">{{ p.label }}</td>
+                <td>
+                  <strong>{{ p.created }}</strong>
+                  @for (d of p.details; track d.kind) { <small>{{ d.count }} {{ d.kind }}</small> }
+                  @for (n of p.notes; track n.kind) { <small class="note">{{ n.count }} {{ n.kind }}</small> }
+                </td>
+                <td>{{ p.skippedExisting }}</td>
+                <td>
+                  {{ p.skippedWithReason }}
+                  @for (s of p.skipped; track s.reason) {
+                    <small [title]="s.examples.join(', ')">{{ s.count }}: {{ s.reason }}</small>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (step() === 'done' && result(); as r) {
+      <p class="verdict ok" data-done>
+        <app-icon name="circle-check" [size]="16" />
+        {{ willCreate() === 0 ? 'Nothing new: ' + r.targetYearName + ' already had everything you chose.' : rows(willCreate()) + ' added to ' + r.targetYearName + '.' }}
+        Running the same copy again adds nothing.
+      </p>
+      <ul class="done">
+        @for (p of r.parts; track p.part) { <li>{{ p.label }}: {{ rows(p.created) }}@if (p.skippedExisting) { , {{ p.skippedExisting }} already there }</li> }
+      </ul>
+      <p class="hint small">Timetables were copied as drafts. Open the Timetable page to check and activate them.</p>
+    }
+  </div>
+
+  <ng-container modal-footer>
+    @switch (step()) {
+      @case ('choose') {
+        <app-button variant="secondary" [disabled]="busy()" (click)="closed.emit()">Not now</app-button>
+        <app-button data-preview-btn [disabled]="!canPreview()" (click)="runPreview()">{{ busy() ? 'Checking…' : 'Preview' }}</app-button>
+      }
+      @case ('preview') {
+        <app-button variant="secondary" [disabled]="busy()" (click)="back()">Back</app-button>
+        <app-button data-copy-btn [disabled]="busy()" (click)="run()">{{ busy() ? 'Copying…' : willCreate() === 0 ? 'Nothing to copy, close' : 'Copy now' }}</app-button>
+      }
+      @case ('done') {
+        <app-button (click)="closed.emit()">Close</app-button>
+      }
+    }
+  </ng-container>
+</app-modal>

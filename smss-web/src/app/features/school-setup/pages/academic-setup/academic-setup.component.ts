@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -5,7 +6,7 @@ import { finalize } from 'rxjs';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { AcademicYear } from '../../models/academic-year.model';
-import { ClassDraft, SaveYearOfferingRequest, SectionDraft, YearOffering } from '../../models/academic-setup.model';
+import { ClassDraft, SaveYearOfferingRequest, SectionDraft, YearCopyLog, YearOffering } from '../../models/academic-setup.model';
 import { AcademicSetupService } from '../../services/academic-setup.service';
 import { AcademicYearService } from '../../services/academic-year.service';
 import { ClassTeacherSetupComponent } from '../../components/class-teacher-setup/class-teacher-setup.component';
@@ -62,7 +63,7 @@ export function toRequest(drafts: ClassDraft[]): SaveYearOfferingRequest {
  */
 @Component({
   selector: 'app-academic-setup',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, ClassTeacherSetupComponent, IconComponent, PageHeaderComponent, ScheduleAssignmentsComponent, ScheduleManagerComponent, SelectComponent, SubjectSetupComponent],
+  imports: [DatePipe, ReactiveFormsModule, ButtonComponent, CardComponent, ClassTeacherSetupComponent, IconComponent, PageHeaderComponent, ScheduleAssignmentsComponent, ScheduleManagerComponent, SelectComponent, SubjectSetupComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './academic-setup.component.scss',
   templateUrl: './academic-setup.component.html',
@@ -121,7 +122,13 @@ export class AcademicSetupComponent implements OnInit {
     });
   }
 
+  /** The latest copy of another year's setup into the year in view (S7), or null. */
+  protected readonly lastCopy = signal<YearCopyLog | null>(null);
+  protected readonly lastCopyTotal = computed(() => this.lastCopy()?.result.reduce((n, p) => n + p.created, 0) ?? 0);
+
   protected loadOffering(yearId: number): void {
+    this.lastCopy.set(null);
+    this.setup.copyLog(yearId).subscribe({ next: (l) => this.lastCopy.set(l?.[0] ?? null), error: () => undefined });   // a note only: a failure is not worth a message
     this.loading.set(true);
     this.loadFailed.set(false);
     this.setup.getOffering(yearId).pipe(finalize(() => this.loading.set(false))).subscribe({

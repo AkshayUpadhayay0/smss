@@ -17,7 +17,8 @@ namespace smss_api.Controllers
         private readonly IAcademicSetupService _service;
         private readonly ISubjectSetupService _subjects;
         private readonly IPeriodScheduleService _schedules;
-        public AcademicSetupController(IAcademicSetupService service, ISubjectSetupService subjects, IPeriodScheduleService schedules) { _service = service; _subjects = subjects; _schedules = schedules; }
+        private readonly IYearCopyService _copy;
+        public AcademicSetupController(IAcademicSetupService service, ISubjectSetupService subjects, IPeriodScheduleService schedules, IYearCopyService copy) { _service = service; _subjects = subjects; _schedules = schedules; _copy = copy; }
 
         // GET api/AcademicSetup/years/5/classes
         [HttpGet("years/{yearId:long}/classes")]
@@ -35,6 +36,35 @@ namespace smss_api.Controllers
             if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can change the academic setup.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var response = await _service.SaveOfferingAsync(User.GetSchoolId(), userId, yearId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // S7: copy configuration from another year into this one (School Admin). Preview writes nothing; apply needs confirm = true and writes one log row.
+        // POST api/AcademicSetup/years/9/copy-from/5/preview   body { parts: ["CLASSES_SECTIONS","SUBJECTS","SCHEDULES","CLASS_TEACHERS","TIMETABLE"] }
+        [HttpPost("years/{targetYearId:long}/copy-from/{sourceYearId:long}/preview")]
+        public async Task<IActionResult> CopyPreview(long targetYearId, long sourceYearId, [FromBody] YearCopyRequest request, CancellationToken ct)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can copy the academic setup.");
+            var response = await _copy.PreviewAsync(User.GetSchoolId(), targetYearId, sourceYearId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/AcademicSetup/years/9/copy-from/5/apply   body { parts: [...], confirm: true }
+        [HttpPost("years/{targetYearId:long}/copy-from/{sourceYearId:long}/apply")]
+        public async Task<IActionResult> CopyApply(long targetYearId, long sourceYearId, [FromBody] YearCopyRequest request, CancellationToken ct)
+        {
+            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can copy the academic setup.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _copy.ApplyAsync(User.GetSchoolId(), userId, targetYearId, sourceYearId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/AcademicSetup/years/9/copy-log   (the latest copy runs into this year)
+        [HttpGet("years/{targetYearId:long}/copy-log")]
+        public async Task<IActionResult> CopyLog(long targetYearId, CancellationToken ct)
+        {
+            if (!User.CanViewAcademicSetup()) return this.Forbidden("Only a School Admin or Principal can see the academic setup.");
+            var response = await _copy.GetLogAsync(User.GetSchoolId(), targetYearId, ct);
             return StatusCode(response.StatusCode, response);
         }
 

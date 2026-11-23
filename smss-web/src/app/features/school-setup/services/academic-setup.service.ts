@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { SaveYearClassSubjectsRequest, SaveYearOfferingRequest, SaveYearSchedulesRequest, YearClassSubjects, YearOffering, YearSchedules } from '../models/academic-setup.model';
+import { CopyPart, SaveYearClassSubjectsRequest, SaveYearOfferingRequest, SaveYearSchedulesRequest, YearClassSubjects, YearCopyLog, YearCopyResult, YearOffering, YearSchedules } from '../models/academic-setup.model';
 
 const BASE = '/api/AcademicSetup';
 
@@ -18,6 +18,20 @@ export class AcademicSetupService {
   /** Replaces the year's WHOLE offered set; anything not listed is withdrawn (refused while it is in use). */
   saveOffering(academicYearId: number, request: SaveYearOfferingRequest): Observable<YearOffering> {
     return this.api.put<YearOffering>(`${BASE}/years/${academicYearId}/classes`, request);
+  }
+
+  /** S7: what copying configuration from another year WOULD do. Nothing is saved. */
+  previewCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[]): Observable<YearCopyResult> {
+    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/preview`, { parts });
+  }
+
+  /** S7: runs the copy (skip-if-exists: nothing existing is changed or deleted) and writes one log row. */
+  applyCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[]): Observable<YearCopyResult> {
+    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/apply`, { parts, confirm: true });
+  }
+
+  copyLog(targetYearId: number): Observable<YearCopyLog[]> {
+    return this.api.get<YearCopyLog[]>(`${BASE}/years/${targetYearId}/copy-log`);
   }
 
   /** Which bell schedule each class follows on each day of the year (an empty list = everything follows the default schedule). */

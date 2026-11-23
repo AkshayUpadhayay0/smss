@@ -24,6 +24,11 @@
       <app-button variant="secondary" size="sm" aria-label="Edit" title="Edit" (click)="openEdit(row)">
         <app-icon name="pencil" [size]="14" />
       </app-button>
+      @if (row.isActive && !row.isClosed) {
+        <app-button variant="secondary" size="sm" data-copy-config (click)="openCopy(row)">
+          <app-icon name="copy" [size]="14" />Copy setup
+        </app-button>
+      }
       @if (row.isActive && !row.isCurrent && !row.isClosed) {
         <app-button variant="secondary" size="sm" [disabled]="busyId() === row.academicYearId" (click)="setCurrent(row)">
           <app-icon name="star" [size]="14" />Set as Current
@@ -64,5 +69,9 @@
 </app-card>
 
 @if (modal(); as m) {
-  <app-academic-year-form-modal [year]="m.year" (saved)="onSaved()" (closed)="modal.set(null)" />
+  <app-academic-year-form-modal [year]="m.year" (saved)="onSaved($event)" (closed)="modal.set(null)" />
+}
+
+@if (copyTarget(); as t) {
+  <app-year-copy-wizard [target]="t" [years]="years()" (closed)="copyTarget.set(null)" (done)="load()" />
 }
