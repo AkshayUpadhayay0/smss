@@ -38,19 +38,36 @@ namespace smss_api_service_layer.service
                     return Result<ClassTeacherAssignmentDto>(400, "This employee can't be a class teacher. They need an active record, employee type Teaching, and an active login with the Teacher role.", null);
 
                 long assignmentId;
+                var reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim();
                 await using (var tx = await _repo.BeginTransactionAsync(ct))
                 {
-                    await _repo.LockSectionYearAsync(schoolId, req.AcademicYearId.Value, section.SectionId, ct);   // one change per section-year at a time
+                    await _repo.LockSchoolAsync(schoolId, ct);   // the per-school academic-setup lock: one change at a time
 
+                    // the year may have been closed while we waited for the lock
+                    if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId.Value, ct)) return Result<ClassTeacherAssignmentDto>(409, ClosedYear.Message, null);
                     var current = await _repo.GetActiveForUpdateAsync(schoolId, req.AcademicYearId.Value, section.SectionId, activeId, ct);
                     if (current != null && current.EmployeeId == employeeId)
                         return await RowAsync(schoolId, current.AssignmentId, 200, "This employee is already the class teacher of this section.", ct);
 
+                    // Q3: a teacher may be class teacher of several sections, but only knowingly
+                    var others = await _repo.GetOtherCurrentSectionsAsync(schoolId, req.AcademicYearId.Value, employeeId, section.SectionId, activeId, ct);
+                    if (others.Count > 0 && !req.ConfirmMultipleSections)
+                        return Result<ClassTeacherAssignmentDto>(409, $"This teacher is already the class teacher of {string.Join(", ", others)} in this year. Confirm to make them class teacher of {section.ClassName} - {section.SectionName} as well (Academic Setup, Class teachers).", null);
+
+                    // the new row starts today (or the year's first day for a year that has not begun), and never before the row it replaces started
+                    var range = await _repo.GetYearRangeAsync(schoolId, req.AcademicYearId.Value, ct);
+                    var from = SchoolClock.Today();
+                    if (range != null && from < range.Value.Start) from = range.Value.Start;
+                    if (current != null && from < current.EffectiveFrom) from = current.EffectiveFrom;
+
                     var now = DateTime.UtcNow;
                     if (current != null)
                     {
-                        // history, not deletion: the old row stays, marked Inactive. Saved first, so the one-active unique index is never violated.
+                        // history, not deletion: the old row stays, closed today (Inactive + effective_to). Saved first, so the one-active unique index is never violated.
                         current.StatusId = inactiveId;
+                        current.EffectiveTo = from;
+                        current.EndedBy = assignedByUserId;
+                        current.EndReason = reason;
                         current.UpdatedAt = now;
                         await _repo.SaveChangesAsync(ct);
                     }
@@ -58,7 +75,7 @@ namespace smss_api_service_layer.service
                     var next = new TbClassTeacherAssignment
                     {
                         SchoolId = schoolId, AcademicYearId = req.AcademicYearId.Value, ClassId = section.ClassId, SectionId = section.SectionId,
-                        EmployeeId = employeeId, StatusId = activeId, AssignedBy = assignedByUserId, CreatedAt = now, UpdatedAt = now
+                        EmployeeId = employeeId, StatusId = activeId, AssignedBy = assignedByUserId, EffectiveFrom = from, AssignReason = reason, CreatedAt = now, UpdatedAt = now
                     };
                     await _repo.AddAsync(next, ct);
                     await _repo.SaveChangesAsync(ct);
@@ -66,6 +83,10 @@ namespace smss_api_service_layer.service
                     assignmentId = next.AssignmentId;
                 }
                 return await RowAsync(schoolId, assignmentId, 200, "Class teacher assigned.", ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
+            {
+                return Result<ClassTeacherAssignmentDto>(409, "This section's class teacher history would overlap. Please refresh and try again.", null);
             }
             catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.ConstraintName == ActiveIndex)
             {
@@ -75,7 +96,7 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { return Error<ClassTeacherAssignmentDto>(ex, "assigning a class teacher"); }
         }
 
-        public async Task<ApiResponse<ClassTeacherAssignmentDto>> UnassignAsync(string? schoolId, UnassignClassTeacherRequest req, CancellationToken ct)
+        public async Task<ApiResponse<ClassTeacherAssignmentDto>> UnassignAsync(string? schoolId, long userId, UnassignClassTeacherRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<ClassTeacherAssignmentDto>(400, TenantMessages.NoSchool, null);
             try
@@ -85,10 +106,16 @@ namespace smss_api_service_layer.service
                 if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId.Value, ct)) return Result<ClassTeacherAssignmentDto>(409, ClosedYear.Message, null);
 
                 await using var tx = await _repo.BeginTransactionAsync(ct);
-                await _repo.LockSectionYearAsync(schoolId, req.AcademicYearId.Value, req.SectionId.Value, ct);
+                await _repo.LockSchoolAsync(schoolId, ct);
+                if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId.Value, ct)) return Result<ClassTeacherAssignmentDto>(409, ClosedYear.Message, null);
                 var current = await _repo.GetActiveForUpdateAsync(schoolId, req.AcademicYearId.Value, req.SectionId.Value, ctx.ActiveId, ct);
                 if (current == null) return Result<ClassTeacherAssignmentDto>(404, "This section has no class teacher to remove.", null);
+                var end = SchoolClock.Today();
+                if (end < current.EffectiveFrom) end = current.EffectiveFrom;
                 current.StatusId = ctx.InactiveId;
+                current.EffectiveTo = end;
+                current.EndedBy = userId;
+                current.EndReason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim();
                 current.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -125,7 +152,7 @@ namespace smss_api_service_layer.service
                 var sections = rows.Select(r => new ClassTeacherSectionDto
                 {
                     ClassId = r.ClassId, ClassName = r.ClassName, SectionId = r.SectionId, SectionName = r.SectionName,
-                    AssignmentId = r.AssignmentId, EmployeeId = r.EmployeeId, EmployeeName = r.EmployeeName, HasClassTeacher = r.AssignmentId != null
+                    AssignmentId = r.AssignmentId, EmployeeId = r.EmployeeId, EmployeeName = r.EmployeeName, HasClassTeacher = r.AssignmentId != null, EffectiveFrom = r.EffectiveFrom
                 }).ToList();
                 return Result(200, "Successfully fetched", new ClassTeacherListDto
                 {
@@ -237,7 +264,9 @@ namespace smss_api_service_layer.service
         {
             AssignmentId = r.Assignment.AssignmentId, AcademicYearId = r.Assignment.AcademicYearId, ClassId = r.Assignment.ClassId, ClassName = r.ClassName,
             SectionId = r.Assignment.SectionId, SectionName = r.SectionName, EmployeeId = r.Assignment.EmployeeId, EmployeeName = r.EmployeeName,
-            StatusName = r.StatusName, AssignedAt = r.Assignment.CreatedAt, UpdatedAt = r.Assignment.UpdatedAt
+            StatusName = r.StatusName, AssignedAt = r.Assignment.CreatedAt, UpdatedAt = r.Assignment.UpdatedAt,
+            EffectiveFrom = r.Assignment.EffectiveFrom, EffectiveTo = r.Assignment.EffectiveTo, AssignReason = r.Assignment.AssignReason,
+            AssignedByName = r.AssignedByName, EndedByName = r.EndedByName, EndReason = r.Assignment.EndReason
         };
 
         private ApiResponse<T> ConfigError<T>()

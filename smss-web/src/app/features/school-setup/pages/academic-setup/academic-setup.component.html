@@ -34,10 +34,15 @@
     <div class="tabs" role="tablist" aria-label="Academic setup">
       <button type="button" role="tab" class="tab" data-tab="classes" [class.active]="tab() === 'classes'" [attr.aria-selected]="tab() === 'classes'" (click)="tab.set('classes')">Classes and sections</button>
       <button type="button" role="tab" class="tab" data-tab="subjects" [class.active]="tab() === 'subjects'" [attr.aria-selected]="tab() === 'subjects'" (click)="tab.set('subjects')">Subjects</button>
+      <button type="button" role="tab" class="tab" data-tab="teachers" [class.active]="tab() === 'teachers'" [attr.aria-selected]="tab() === 'teachers'" (click)="tab.set('teachers')">Class teachers</button>
       <button type="button" role="tab" class="tab" data-tab="schedules" [class.active]="tab() === 'schedules'" [attr.aria-selected]="tab() === 'schedules'" (click)="tab.set('schedules')">Periods and schedules</button>
     </div>
 
-    @if (tab() === 'schedules') {
+    @if (tab() === 'teachers') {
+      <app-card>
+        <app-class-teacher-setup [yearId]="+yearControl.value" [readOnly]="readOnly()" />
+      </app-card>
+    } @else if (tab() === 'schedules') {
       <app-card>
         <app-schedule-manager [readOnly]="false" (changed)="scheduleVersion.update(v => v + 1)" />
       </app-card>

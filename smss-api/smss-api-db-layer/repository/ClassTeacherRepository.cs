@@ -14,11 +14,25 @@ namespace smss_api_db_layer.repository
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
-        public async Task LockSectionYearAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct)
+        public async Task LockSchoolAsync(string schoolId, CancellationToken ct)
         {
-            var key = $"class-teacher:{schoolId}:{academicYearId}:{sectionId}";
+            var key = "acad-setup:" + schoolId;
             await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
         }
+
+        public async Task<(DateOnly Start, DateOnly End)?> GetYearRangeAsync(string schoolId, long academicYearId, CancellationToken ct)
+        {
+            var y = await _db.AcademicYears.AsNoTracking().Where(x => x.SchoolId == schoolId && x.AcademicYearId == academicYearId).Select(x => new { x.StartDate, x.EndDate }).FirstOrDefaultAsync(ct);
+            return y == null ? null : (y.StartDate, y.EndDate);
+        }
+
+        public async Task<List<string>> GetOtherCurrentSectionsAsync(string schoolId, long academicYearId, string employeeId, long exceptSectionId, int activeStatusId, CancellationToken ct) =>
+            await (from a in _db.ClassTeacherAssignments.AsNoTracking()
+                   join c in _db.Classes.AsNoTracking() on a.ClassId equals c.ClassId
+                   join s in _db.Sections.AsNoTracking() on a.SectionId equals s.SectionId
+                   where a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.EmployeeId == employeeId && a.StatusId == activeStatusId && a.SectionId != exceptSectionId
+                   orderby c.SequenceOrder, s.SectionName
+                   select c.ClassName + " - " + s.SectionName).ToListAsync(ct);
 
         public Task<int?> GetStatusIdByNameAsync(string statusName, string statusType, CancellationToken ct) =>
             _db.LutStatus.AsNoTracking().Where(s => s.Sname == statusName && s.Stype == statusType).Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);
@@ -69,7 +83,9 @@ namespace smss_api_db_layer.repository
             join s in _db.Sections.AsNoTracking() on a.SectionId equals s.SectionId
             join e in _db.Employees.AsNoTracking() on a.EmployeeId equals e.EmployeeId
             join st in _db.LutStatus.AsNoTracking() on a.StatusId equals st.Sid
-            select new AssignmentRow(a, c.ClassName, s.SectionName, e.FirstName + " " + (e.MiddleName == null ? "" : e.MiddleName + " ") + e.LastName, st.Sname);
+            select new AssignmentRow(a, c.ClassName, s.SectionName, e.FirstName + " " + (e.MiddleName == null ? "" : e.MiddleName + " ") + e.LastName, st.Sname,
+                _db.Users.Where(u => u.UserId == a.AssignedBy).Select(u => u.DisplayName).FirstOrDefault(),
+                _db.Users.Where(u => u.UserId == a.EndedBy).Select(u => u.DisplayName).FirstOrDefault());
 
         public Task<AssignmentRow?> GetAssignmentRowAsync(string schoolId, long assignmentId, CancellationToken ct) =>
             Rows(_db.ClassTeacherAssignments.AsNoTracking().Where(a => a.SchoolId == schoolId && a.AssignmentId == assignmentId)).FirstOrDefaultAsync(ct);
@@ -96,16 +112,17 @@ namespace smss_api_db_layer.repository
                 {
                     s.SectionId, s.ClassId, s.SectionName, c.ClassName, c.SequenceOrder,
                     AssignmentId = a == null ? (long?)null : a.AssignmentId,
+                    From = a == null ? (DateOnly?)null : a.EffectiveFrom,
                     EmployeeId = e == null ? null : e.EmployeeId,
                     Name = e == null ? null : e.FirstName + " " + (e.MiddleName == null ? "" : e.MiddleName + " ") + e.LastName
                 }).ToListAsync(ct);
-            return rows.Select(r => new SectionAssignmentRow(r.SectionId, r.ClassId, r.SectionName, r.ClassName, r.SequenceOrder, r.AssignmentId, r.EmployeeId, r.Name)).ToList();
+            return rows.Select(r => new SectionAssignmentRow(r.SectionId, r.ClassId, r.SectionName, r.ClassName, r.SequenceOrder, r.AssignmentId, r.EmployeeId, r.Name, r.From)).ToList();
         }
 
         public async Task<List<AssignmentRow>> GetHistoryAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct)
         {
             var rows = await Rows(_db.ClassTeacherAssignments.AsNoTracking().Where(a => a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.SectionId == sectionId)).ToListAsync(ct);
-            return rows.OrderByDescending(r => r.Assignment.AssignmentId).ToList();   // newest first
+            return rows.OrderByDescending(r => r.Assignment.EffectiveFrom).ThenByDescending(r => r.Assignment.AssignmentId).ToList();   // newest first
         }
 
         public Task<string?> GetUserLoginIdAsync(string schoolId, long userId, CancellationToken ct) =>

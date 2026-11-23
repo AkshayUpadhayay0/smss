@@ -165,3 +165,53 @@ export interface ScheduleAssignmentRow {
 export interface SaveYearSchedulesRequest {
   rows: { classId: number | null; dayOfWeek: number | null; scheduleId: number }[];
 }
+
+// ---------------- S5: class teachers with history (mirrors ClassTeacherListDto / ClassTeacherAssignmentDto)
+
+export interface ClassTeacherList {
+  academicYearId: number;
+  academicYearName: string;
+  sections: ClassTeacherSection[];
+  unassignedCount: number;
+}
+
+export interface ClassTeacherSection {
+  classId: number;
+  className: string;
+  sectionId: number;
+  sectionName: string;
+  assignmentId?: number | null;
+  employeeId?: string | null;
+  employeeName?: string | null;
+  hasClassTeacher: boolean;
+  /** "yyyy-MM-dd": the day the current teacher started. */
+  effectiveFrom?: string | null;
+}
+
+export interface EligibleTeacher {
+  employeeId: string;
+  fullName: string;
+  designationName: string;
+}
+
+export interface ClassTeacherAssignment {
+  assignmentId: number;
+  employeeId: string;
+  employeeName: string;
+  statusName: string;
+  effectiveFrom: string;
+  /** Null = still current. */
+  effectiveTo?: string | null;
+  assignReason?: string | null;
+  assignedByName?: string | null;
+  endedByName?: string | null;
+  endReason?: string | null;
+}
+
+export interface AssignClassTeacherRequest {
+  academicYearId: number;
+  sectionId: number;
+  employeeId: string;
+  reason: string | null;
+  confirmMultipleSections: boolean;
+}

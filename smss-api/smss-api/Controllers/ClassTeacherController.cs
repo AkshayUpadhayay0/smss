@@ -22,7 +22,7 @@ namespace smss_api.Controllers
         private IActionResult BadRequestMessage(string message) =>
             StatusCode(400, new ApiResponse<object> { Status = false, StatusCode = 400, Message = message, Data = null });
 
-        // POST api/ClassTeacher/assign   Body: { academicYearId, classId?, sectionId, employeeId }
+        // POST api/ClassTeacher/assign   Body: { academicYearId, classId?, sectionId, employeeId, reason?, confirmMultipleSections? }
         // Assigns, or reassigns: the previous Active row is deactivated and the new one inserted in ONE transaction.
         [HttpPost("assign")]
         public async Task<IActionResult> Assign([FromBody] AssignClassTeacherRequest request, CancellationToken ct)
@@ -34,8 +34,12 @@ namespace smss_api.Controllers
 
         // POST api/ClassTeacher/unassign   Body: { academicYearId, sectionId }   (POST, not DELETE: the row is kept as history)
         [HttpPost("unassign")]
-        public async Task<IActionResult> Unassign([FromBody] UnassignClassTeacherRequest request, CancellationToken ct) =>
-            Refuse() ?? Reply(await _service.UnassignAsync(User.GetSchoolId(), request, ct));
+        public async Task<IActionResult> Unassign([FromBody] UnassignClassTeacherRequest request, CancellationToken ct)
+        {
+            if (Refuse() is { } refused) return refused;
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            return Reply(await _service.UnassignAsync(User.GetSchoolId(), userId, request, ct));
+        }
 
         // GET api/ClassTeacher/current?academicYearId=1&classId=2&sectionId=3   (classId optional)
         [HttpGet("current")]

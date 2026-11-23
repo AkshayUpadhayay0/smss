@@ -1,0 +1,116 @@
+<div class="ct">
+  <p class="hint">
+    The <strong>class teacher</strong> of each section for this academic year. Changing the teacher keeps the old one in the history (with the date and the reason); nothing is
+    deleted. A teacher may be class teacher of more than one section, but you will be asked to confirm it.
+  </p>
+
+  @if (loading()) {
+    <p class="note" aria-busy="true">Loading the class teachers…</p>
+  } @else if (failed()) {
+    <div class="note">
+      <p>The class teachers could not be loaded.</p>
+      <app-button variant="secondary" (click)="load(yearId())">Try again</app-button>
+    </div>
+  } @else if (data(); as d) {
+    @if (locked()) {
+      <p class="notice"><app-icon name="lock" [size]="16" />This academic year is closed, so its class teachers can't be changed. The history can still be read.</p>
+    }
+    <p class="summary" data-summary>{{ sections().length - d.unassignedCount }} of {{ sections().length }} sections have a class teacher</p>
+
+    @if (sections().length === 0) {
+      <p class="note">No section is offered in this year yet. Offer classes and sections first.</p>
+    } @else {
+      <table class="rows">
+        <thead><tr><th>Class</th><th>Section</th><th>Class teacher</th><th>Since</th><th class="x">Actions</th></tr></thead>
+        <tbody>
+          @for (s of sections(); track s.sectionId) {
+            <tr [attr.data-section]="s.sectionId">
+              <td>{{ s.className }}</td>
+              <td>{{ s.sectionName }}</td>
+              <td [attr.data-teacher]="s.employeeId ?? ''">
+                @if (s.hasClassTeacher) { {{ s.employeeName }} } @else { <span class="none">Not assigned</span> }
+              </td>
+              <td>{{ s.hasClassTeacher ? day(s.effectiveFrom) : '' }}</td>
+              <td class="x">
+                @if (!locked()) {
+                  <button type="button" class="link" data-assign (click)="open('assign', s)">{{ s.hasClassTeacher ? 'Change' : 'Assign' }}</button>
+                  @if (s.hasClassTeacher) {
+                    <button type="button" class="link danger" data-remove (click)="open('remove', s)">Remove</button>
+                  }
+                }
+                <button type="button" class="link" data-history (click)="open('history', s)">History</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  }
+
+  @if (mode() === 'assign' || mode() === 'remove') {
+    <app-modal [title]="(mode() === 'remove' ? 'Remove class teacher: ' : 'Class teacher: ') + target()!.className + ' - ' + target()!.sectionName" [dismissible]="!busy()" (closed)="close()">
+      <div class="form" data-dialog>
+        @if (mode() === 'assign') {
+          <label>
+            <span>Teacher</span>
+            <select data-pick [value]="pick()" (change)="pick.set($any($event.target).value); confirmMultiple.set(false)">
+              <option value="">Choose a teacher…</option>
+              @for (t of teachers(); track t.employeeId) {
+                <option [value]="t.employeeId">{{ t.fullName }} ({{ t.employeeId }})</option>
+              }
+            </select>
+          </label>
+          @if (others().length) {
+            <div class="warn" data-warning>
+              <app-icon name="circle-alert" [size]="16" />
+              <div>
+                <p>This teacher is already the class teacher of <strong>{{ others().join(', ') }}</strong> in this year.</p>
+                <label class="check"><input type="checkbox" data-confirm [checked]="confirmMultiple()" (change)="confirmMultiple.set($any($event.target).checked)" /> Yes, make them class teacher of this section as well</label>
+              </div>
+            </div>
+          }
+        } @else {
+          <p>{{ target()!.employeeName }} will no longer be the class teacher of this section. The history keeps them.</p>
+        }
+        <label>
+          <span>Reason (optional)</span>
+          <textarea data-reason rows="2" maxlength="250" [value]="reason()" (input)="reason.set($any($event.target).value)" placeholder="For example: on leave, new session"></textarea>
+        </label>
+      </div>
+      <ng-container modal-footer>
+        <app-button variant="secondary" [disabled]="busy()" (click)="close()">Cancel</app-button>
+        <app-button [disabled]="!canSave()" (click)="save()">{{ busy() ? 'Saving…' : mode() === 'remove' ? 'Remove' : 'Save' }}</app-button>
+      </ng-container>
+    </app-modal>
+  }
+
+  @if (mode() === 'history') {
+    <app-modal [title]="'History: ' + target()!.className + ' - ' + target()!.sectionName" (closed)="close()">
+      <div data-history-dialog>
+        @if (historyLoading()) {
+          <p class="note" aria-busy="true">Loading…</p>
+        } @else if (history().length === 0) {
+          <p class="note">No class teacher was ever assigned to this section in this year.</p>
+        } @else {
+          <ol class="timeline">
+            @for (h of history(); track h.assignmentId) {
+              <li [class.current]="!h.effectiveTo" data-entry>
+                <strong>{{ h.employeeName }}</strong>
+                <span class="tag" [class.ok]="!h.effectiveTo">{{ h.effectiveTo ? 'Past' : 'Current' }}</span>
+                <small>{{ range(h) }}</small>
+                @if (h.assignReason) { <small>Assigned: {{ h.assignReason }}@if (h.assignedByName) { (by {{ h.assignedByName }}) }</small> }
+                @else if (h.assignedByName) { <small>Assigned by {{ h.assignedByName }}</small> }
+                @if (h.effectiveTo) {
+                  <small>Ended@if (h.endReason) {: {{ h.endReason }}}@if (h.endedByName) { (by {{ h.endedByName }}) }</small>
+                }
+              </li>
+            }
+          </ol>
+        }
+      </div>
+      <ng-container modal-footer>
+        <app-button variant="secondary" (click)="close()">Close</app-button>
+      </ng-container>
+    </app-modal>
+  }
+</div>

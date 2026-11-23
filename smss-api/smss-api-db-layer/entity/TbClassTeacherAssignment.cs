@@ -23,6 +23,13 @@ namespace smss_api_db_layer.entity
         [Column("status_id")] public int StatusId { get; set; }
         /// <summary>tb_users.user_id of the School Admin who made the assignment, from the token.</summary>
         [Column("assigned_by")] public long? AssignedBy { get; set; }
+        /// <summary>First day this person is the class teacher (S5).</summary>
+        [Column("effective_from")] public DateOnly EffectiveFrom { get; set; }
+        /// <summary>Null while current; the day it ended otherwise. Half-open: the next row may start on this very day.</summary>
+        [Column("effective_to")] public DateOnly? EffectiveTo { get; set; }
+        [Column("assign_reason")][StringLength(250)] public string? AssignReason { get; set; }
+        [Column("ended_by")] public long? EndedBy { get; set; }
+        [Column("end_reason")][StringLength(250)] public string? EndReason { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }

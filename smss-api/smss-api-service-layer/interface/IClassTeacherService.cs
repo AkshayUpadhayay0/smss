@@ -7,7 +7,7 @@ namespace smss_api_service_layer.@interface
     {
         /// <summary>Assign or reassign in ONE transaction: the previous Active row (if any) is deactivated and the new one inserted.</summary>
         Task<ApiResponse<ClassTeacherAssignmentDto>> AssignAsync(string? schoolId, long assignedByUserId, AssignClassTeacherRequest req, CancellationToken ct);
-        Task<ApiResponse<ClassTeacherAssignmentDto>> UnassignAsync(string? schoolId, UnassignClassTeacherRequest req, CancellationToken ct);
+        Task<ApiResponse<ClassTeacherAssignmentDto>> UnassignAsync(string? schoolId, long userId, UnassignClassTeacherRequest req, CancellationToken ct);
         /// <summary>The current class teacher of a section for a year (Data is null when there is none).</summary>
         Task<ApiResponse<ClassTeacherAssignmentDto>> GetCurrentAsync(string? schoolId, long academicYearId, long? classId, long sectionId, CancellationToken ct);
         Task<ApiResponse<ClassTeacherListDto>> ListAsync(string? schoolId, long academicYearId, CancellationToken ct);

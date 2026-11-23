@@ -9,12 +9,17 @@ namespace smss_api_service_layer.dto
         public long? ClassId { get; set; }
         [Required(ErrorMessage = "Section is required.")] public long? SectionId { get; set; }
         [Required(ErrorMessage = "Employee is required."), StringLength(20)] public string? EmployeeId { get; set; }
+        /// <summary>Why (optional, shown in the history).</summary>
+        [StringLength(250, ErrorMessage = "The reason can be at most 250 characters.")] public string? Reason { get; set; }
+        /// <summary>Must be true when this teacher is already class teacher of another section of the year (Q3); the answer then lists those sections.</summary>
+        public bool ConfirmMultipleSections { get; set; }
     }
 
     public class UnassignClassTeacherRequest
     {
         [Required(ErrorMessage = "Academic year is required.")] public long? AcademicYearId { get; set; }
         [Required(ErrorMessage = "Section is required.")] public long? SectionId { get; set; }
+        [StringLength(250, ErrorMessage = "The reason can be at most 250 characters.")] public string? Reason { get; set; }
     }
 
     public class ClassTeacherAssignmentDto
@@ -31,6 +36,13 @@ namespace smss_api_service_layer.dto
         public string StatusName { get; set; } = null!;
         public DateTime AssignedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public DateOnly EffectiveFrom { get; set; }
+        /// <summary>Null = still current.</summary>
+        public DateOnly? EffectiveTo { get; set; }
+        public string? AssignReason { get; set; }
+        public string? AssignedByName { get; set; }
+        public string? EndedByName { get; set; }
+        public string? EndReason { get; set; }
     }
 
     public class ClassTeacherSectionDto
@@ -43,6 +55,8 @@ namespace smss_api_service_layer.dto
         public string? EmployeeId { get; set; }
         public string? EmployeeName { get; set; }
         public bool HasClassTeacher { get; set; }
+        /// <summary>The day the current teacher started (null when none).</summary>
+        public DateOnly? EffectiveFrom { get; set; }
     }
 
     /// <summary>Every active section with its class teacher for one academic year: the admin screen's data.</summary>

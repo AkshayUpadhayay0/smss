@@ -5,9 +5,9 @@ namespace smss_api_db_layer.@interface
 {
     public record YearRef(long AcademicYearId, string YearName);
     public record SectionRef(long SectionId, long ClassId, string SectionName, string ClassName, short ClassSequenceOrder, int? SectionStatusId, int? ClassStatusId);
-    public record AssignmentRow(TbClassTeacherAssignment Assignment, string ClassName, string SectionName, string EmployeeName, string StatusName);
+    public record AssignmentRow(TbClassTeacherAssignment Assignment, string ClassName, string SectionName, string EmployeeName, string StatusName, string? AssignedByName = null, string? EndedByName = null);
     public record SectionAssignmentRow(long SectionId, long ClassId, string SectionName, string ClassName, short ClassSequenceOrder,
-        long? AssignmentId, string? EmployeeId, string? EmployeeName);
+        long? AssignmentId, string? EmployeeId, string? EmployeeName, DateOnly? EffectiveFrom = null);
     public record EligibleTeacherRow(string EmployeeId, string FirstName, string? MiddleName, string LastName, string DesignationName);
 
     // Every method takes the school id: another school's sections, employees and assignments can never be reached through this repository.
@@ -17,8 +17,12 @@ namespace smss_api_db_layer.@interface
         Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct);
 
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
-        /// <summary>Transaction-scoped lock for one section-year, so two assign / reassign calls on it queue up instead of racing.</summary>
-        Task LockSectionYearAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        /// <summary>Transaction-scoped PER-SCHOOL academic-setup lock (the same one the other setup saves take), so two assign / reassign calls queue up instead of racing.</summary>
+        Task LockSchoolAsync(string schoolId, CancellationToken ct);
+        /// <summary>First and last day of the year.</summary>
+        Task<(DateOnly Start, DateOnly End)?> GetYearRangeAsync(string schoolId, long academicYearId, CancellationToken ct);
+        /// <summary>"Class - Section" of every OTHER section of that year the employee is the current class teacher of.</summary>
+        Task<List<string>> GetOtherCurrentSectionsAsync(string schoolId, long academicYearId, string employeeId, long exceptSectionId, int activeStatusId, CancellationToken ct);
 
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType, CancellationToken ct);
         Task<YearRef?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);

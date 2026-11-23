@@ -217,7 +217,7 @@ namespace smss_api_tests
             foreach (var (name, r) in new (string, (bool Status, int Code, string Message))[]
             {
                 ("class teacher assign", await Pack(teachers.AssignAsync(School, 1, Ct(), default))),
-                ("class teacher unassign", await Pack(teachers.UnassignAsync(School, new UnassignClassTeacherRequest { AcademicYearId = covering.AcademicYearId, SectionId = section }, default))),
+                ("class teacher unassign", await Pack(teachers.UnassignAsync(School, TaxDb.UserA, new UnassignClassTeacherRequest { AcademicYearId = covering.AcademicYearId, SectionId = section }, default))),
                 ("timetable assign", await Pack(timetable.AssignAsync(School, 1, Tt(), default))),
                 ("timetable unassign", await Pack(timetable.UnassignAsync(School, new UnassignTimetableRequest { AcademicYearId = covering.AcademicYearId, SectionId = section, DayOfWeek = 1, PeriodId = 1 }, default))),
                 ("attendance submit", await Pack(attendance.SubmitAsync(School, 1, true, At(), default))),

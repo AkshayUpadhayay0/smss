@@ -56,7 +56,7 @@ namespace smss_api_tests
             using (var c = new NpgsqlConnection(admin.ConnectionString))
             {
                 c.Open();
-                using var cmd = new NpgsqlCommand($"CREATE DATABASE \"{_name}\" TEMPLATE \"{template}\"", c);
+                using var cmd = new NpgsqlCommand($"CREATE DATABASE \"{_name}\" TEMPLATE \"{template}\"", c) { CommandTimeout = 300 };   // many tests clone the template at once: the default 30 s is not always enough
                 cmd.ExecuteNonQuery();
             }
             Conn = new NpgsqlConnectionStringBuilder(Server!) { Database = _name, MaxPoolSize = 30 }.ConnectionString;
@@ -68,7 +68,7 @@ namespace smss_api_tests
             var admin = new NpgsqlConnectionStringBuilder(Server!) { Database = "postgres", Pooling = false };
             using var c = new NpgsqlConnection(admin.ConnectionString);
             c.Open();
-            using var cmd = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{_name}\" WITH (FORCE)", c);
+            using var cmd = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{_name}\" WITH (FORCE)", c) { CommandTimeout = 300 };
             cmd.ExecuteNonQuery();
         }
 
