@@ -83,6 +83,8 @@ export class AcademicSetupComponent implements OnInit {
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
 
+  /** Bumped whenever the schedule manager changes something, so the assignments below reload their choices. */
+  protected readonly scheduleVersion = signal(0);
   protected readonly tab = signal<'classes' | 'subjects' | 'schedules'>('classes');
   protected readonly offering = signal<YearOffering | null>(null);
   /** The classes the year offers, as last SAVED (the subjects tab works on these). */

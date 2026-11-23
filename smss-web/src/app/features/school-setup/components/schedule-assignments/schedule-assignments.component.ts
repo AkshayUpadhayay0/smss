@@ -50,6 +50,8 @@ export class ScheduleAssignmentsComponent {
 
   readonly yearId = input.required<number>();
   readonly readOnly = input(false);
+  /** Bumped by the parent when the schedules changed: the choices are loaded again. */
+  readonly refresh = input(0);
 
   protected readonly days = DAY_NAMES;
   protected readonly loading = signal(false);
@@ -68,6 +70,7 @@ export class ScheduleAssignmentsComponent {
   constructor() {
     effect(() => {
       const id = this.yearId();
+      this.refresh();
       untracked(() => this.load(id));
     });
   }

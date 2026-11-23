@@ -39,10 +39,10 @@
 
     @if (tab() === 'schedules') {
       <app-card>
-        <app-schedule-manager [readOnly]="false" />
+        <app-schedule-manager [readOnly]="false" (changed)="scheduleVersion.update(v => v + 1)" />
       </app-card>
       <app-card>
-        <app-schedule-assignments [yearId]="+yearControl.value" [readOnly]="readOnly()" />
+        <app-schedule-assignments [yearId]="+yearControl.value" [readOnly]="readOnly()" [refresh]="scheduleVersion()" />
       </app-card>
     } @else if (tab() === 'subjects') {
       <app-card>

@@ -98,6 +98,19 @@ describe('ScheduleAssignmentsComponent', () => {
     expect(button('Save').disabled).toBe(true);
   });
 
+  it('loads its choices again when the schedules above change', async () => {
+    await open(year({ schedules: [] }));
+    expect(root().textContent).toContain('no bell schedule yet');
+    fixture.componentRef.setInput('refresh', 1);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    http.expectOne(URL).flush(envelope(year()));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root().textContent).not.toContain('no bell schedule yet');
+    expect(button('Add a line')).toBeTruthy();
+  });
+
   it('with only one schedule it explains there is nothing to assign yet', async () => {
     await open(year({ schedules: [{ scheduleId: 5, scheduleName: 'Regular', isDefault: true }] }));
     expect(root().textContent).toContain('only one schedule');

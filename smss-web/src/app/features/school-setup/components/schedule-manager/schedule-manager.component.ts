@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -64,6 +64,8 @@ export class ScheduleManagerComponent implements OnInit {
   private readonly confirm = inject(ConfirmDialogService);
 
   readonly readOnly = input(false);
+  /** Something about the schedules changed (so the year assignments below should reload their choices). */
+  readonly changed = output<void>();
 
   protected readonly schedules = signal<Schedule[]>([]);
   protected readonly loading = signal(true);
@@ -92,13 +94,14 @@ export class ScheduleManagerComponent implements OnInit {
     this.loading.set(true);
     this.failed.set(false);
     this.api.list().pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (list) => this.schedules.set(list),
+      next: (list) => { this.schedules.set(list); this.changed.emit(); },
       error: () => this.failed.set(true),   // already toasted by the interceptor
     });
   }
 
   private replace(updated: Schedule): void {
     this.schedules.update((list) => list.map((s) => (s.scheduleId === updated.scheduleId ? updated : s)));
+    this.changed.emit();
   }
 
   // ---------------- schedules
