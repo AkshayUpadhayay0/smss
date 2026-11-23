@@ -28,13 +28,13 @@
               <td class="name">
                 <button type="button" class="open" data-open (click)="picked.emit(t.timetableId)">{{ t.timetableName }}</button>
               </td>
-              <td>
+              <td data-label="Status">
                 <span class="badge" [attr.data-state]="t.state">{{ label(t.state) }}</span>
                 @if (t.needsTeacherCount > 0) { <span class="chip warn" [title]="t.needsTeacherCount + ' slots have no teacher yet'">{{ t.needsTeacherCount }} need a teacher</span> }
               </td>
-              <td>{{ t.scheduleName }}</td>
-              <td>{{ t.slotCount }}</td>
-              <td>{{ when(t.updatedAt) }}@if (t.isActive && t.activatedByName) { <small>active since {{ when(t.activatedAt) }} by {{ t.activatedByName }}</small> }</td>
+              <td data-label="Schedule">{{ t.scheduleName }}</td>
+              <td data-label="Slots">{{ t.slotCount }}</td>
+              <td data-label="Last changed">{{ when(t.updatedAt) }}@if (t.isActive && t.activatedByName) { <small>active since {{ when(t.activatedAt) }} by {{ t.activatedByName }}</small> }</td>
               <td class="x">
                 <button type="button" class="link" (click)="openCheck(t)">Check</button>
                 @if (!readOnly()) {
