@@ -546,7 +546,7 @@ namespace smss_api_tests
             var repo = new NotificationRepository(ctx);
             Assert.True(await repo.TryLockSchoolRunAsync(SchoolA, default));
             // while held, the context's own connection is the one holding it: same backend pid as the server reports for the lock
-            Assert.Equal(await BackendPid(ctx), db.Scalar<int>("select pid from pg_locks where locktype = 'advisory' and granted limit 1"));
+            Assert.Equal(await BackendPid(ctx), db.Scalar<int>("select pid from pg_locks where locktype = 'advisory' and granted and database = (select oid from pg_database where datname = current_database()) limit 1"));   // THIS test's database only: pg_locks is cluster-wide and parallel tests hold advisory locks in theirs
             Assert.Equal(1, AdvisoryLocks(db));
             Assert.False(await new NotificationRepository(db.Ctx()).TryLockSchoolRunAsync(SchoolA, default));       // another session is refused
             Assert.True(await repo.UnlockSchoolRunAsync(SchoolA));                                                   // unlock found the lock on that same connection
