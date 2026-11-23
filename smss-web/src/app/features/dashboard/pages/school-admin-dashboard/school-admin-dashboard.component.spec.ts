@@ -8,7 +8,7 @@ import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { SchoolAdminDashboard } from '../../models/school-admin-dashboard.model';
-import { dashboard } from '../../utils/school-admin-dashboard-format.spec';
+import { dashboard } from '../../utils/school-admin-dashboard.testing';
 import { SchoolAdminDashboardComponent } from './school-admin-dashboard.component';
 
 const URL = `${environment.apiUrl}/api/Dashboard/school-admin`;
