@@ -4,13 +4,13 @@ using smss_api_db_layer.entity;
 namespace smss_api_db_layer.@interface
 {
     public record LeaveTypeRow(long LeaveTypeId, string TypeName, string TypeCode, bool AppliesToEmployee, bool AppliesToStudent, bool IsActive);
-    public record LeaveEmployeeRow(string EmployeeId, string FirstName, string? MiddleName, string LastName, int StatusId, bool EmploymentBlocksLogin);
-    public record LeaveStudentRow(string StudentId, string FirstName, string? MiddleName, string LastName, int StatusId);
+    public record LeaveEmployeeRow(string EmployeeId, string FirstName, string? MiddleName, string? LastName, int StatusId, bool EmploymentBlocksLogin);
+    public record LeaveStudentRow(string StudentId, string FirstName, string? MiddleName, string? LastName, int StatusId);
     public record LeaveApprovedRange(DateOnly FromDate, DateOnly ToDate, string TypeName);
 
     /// <summary>A request with everything the list / detail needs. Student rows fill the class / section of their CURRENT enrollment.</summary>
     public record LeaveRow(
-        long LeaveRequestId, string PersonId, string FirstName, string? MiddleName, string LastName,
+        long LeaveRequestId, string PersonId, string FirstName, string? MiddleName, string? LastName,
         long LeaveTypeId, string LeaveTypeName, DateOnly FromDate, DateOnly ToDate, string Reason, string Status,
         long AppliedBy, string? AppliedByName, DateTime AppliedAt, long? ApprovedBy, string? ApprovedByName, DateTime? ApprovedAt, string? DecisionReason,
         long? SectionId, string? ClassName, string? SectionName);

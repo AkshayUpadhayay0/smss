@@ -110,7 +110,7 @@ namespace smss_api_service_layer.service
                             AdmissionNumber = number,
                             FirstName = req.FirstName.Trim(),
                             MiddleName = Clean(req.MiddleName),
-                            LastName = req.LastName.Trim(),
+                            LastName = Clean(req.LastName),   // optional: a blank is stored as null
                             DateOfBirth = req.DateOfBirth,
                             GenderId = req.GenderId,
                             BloodGroupId = req.BloodGroupId,

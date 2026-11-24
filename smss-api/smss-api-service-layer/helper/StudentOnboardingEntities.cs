@@ -19,7 +19,7 @@ namespace smss_api_service_layer.helper
         public string AdmissionNumber { get; init; } = null!;
         public string FirstName { get; init; } = null!;
         public string? MiddleName { get; init; }
-        public string LastName { get; init; } = null!;
+        public string? LastName { get; init; }
         public DateTime DateOfBirth { get; init; }
         public int? GenderId { get; init; }
         public int? BloodGroupId { get; init; }

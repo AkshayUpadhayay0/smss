@@ -90,6 +90,17 @@ describe('ExistingStudentFormComponent charge-fees-from', () => {
     expect(cmp()['form'].controls.chargeFrom.value).toBe(todayIso());
   });
 
+  it('the last name is optional: only the first name is mandatory, and a blank last name is sent as null', () => {
+    open();
+    cmp()['form'].patchValue({ ...VALID, lastName: '' });
+    expect(cmp()['form'].controls.lastName.valid).toBe(true);
+    cmp()['submit']();
+    const [req] = post();
+    expect(req.request.body.lastName).toBeNull();
+    cmp()['form'].patchValue({ firstName: '' });
+    expect(cmp()['form'].controls.firstName.valid).toBe(false);   // the first name still is
+  });
+
   it('a normal save sends today as chargeFrom with no back-dating confirmation', () => {
     open();
     cmp()['form'].patchValue(VALID);

@@ -27,7 +27,7 @@ namespace smss_api_service_layer.dto
 
         [Required, MaxLength(100)] public string FirstName { get; set; } = null!;
         [MaxLength(100)] public string? MiddleName { get; set; }
-        [Required, MaxLength(100)] public string LastName { get; set; } = null!;
+        [MaxLength(100)] public string? LastName { get; set; }   // optional: only the first name is mandatory (a blank becomes null)
         [Required] public DateTime DateOfBirth { get; set; }
 
         public int? GenderId { get; set; }

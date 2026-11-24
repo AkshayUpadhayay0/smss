@@ -13,7 +13,7 @@ namespace smss_api_service_layer.dto
         public long? AdmissionTypeId { get; set; }
         [Required, MaxLength(100)] public string ApplicantFirstName { get; set; } = null!;
         [MaxLength(100)] public string? ApplicantMiddleName { get; set; }
-        [Required, MaxLength(100)] public string ApplicantLastName { get; set; } = null!;
+        [MaxLength(100)] public string? ApplicantLastName { get; set; }   // optional: only the first name is mandatory (a blank becomes null)
         [Required] public DateTime DateOfBirth { get; set; }
         public int? GenderId { get; set; }
         public int? BloodGroupId { get; set; }
@@ -107,7 +107,7 @@ namespace smss_api_service_layer.dto
 
         public string ApplicantFirstName { get; set; } = null!;
         public string? ApplicantMiddleName { get; set; }
-        public string ApplicantLastName { get; set; } = null!;
+        public string? ApplicantLastName { get; set; }
         public DateTime DateOfBirth { get; set; }
         public int? GenderId { get; set; }
         public string? GenderName { get; set; }

@@ -84,7 +84,7 @@ namespace smss_api_service_layer.service
             public int? GenderId;
             public DateTime? Dob;
             public DateTime? AdmDate;            // the optional admission date; null = the start of the current academic year (as before)
-            public string First = "", Last = "";
+            public string First = ""; public string? Last;
             public string? Middle, Adm, Roll, Address;
             public List<Guardian> Guardians = new();
         }
@@ -320,7 +320,7 @@ namespace smss_api_service_layer.service
             {
                 var phones = r.Guardians.Select(g => g.Mobile).ToHashSet();
                 var hit = people.FirstOrDefault(p => p.DateOfBirth.Date == r.Dob!.Value.Date && Norm(p.FirstName) == Norm(r.First) && Norm(p.LastName) == Norm(r.Last) && p.GuardianMobiles.Any(phones.Contains));
-                if (hit != null) r.Warnings.Add($"Looks like a student already in the school ({hit.FirstName} {hit.LastName}, {hit.StudentId}): same name, date of birth and guardian phone.");
+                if (hit != null) r.Warnings.Add($"Looks like a student already in the school ({string.Join(' ', new[] { hit.FirstName, hit.LastName }.Where(n => !string.IsNullOrWhiteSpace(n)))}, {hit.StudentId}): same name, date of birth and guardian phone.");
             }
             foreach (var grp in v.Rows.Where(r => r.Dob != null && r.Guardians.Count > 0).GroupBy(r => (Norm(r.First), Norm(r.Last), r.Dob!.Value.Date)).Where(g => g.Count() > 1))
             {
@@ -366,14 +366,12 @@ namespace smss_api_service_layer.service
             if (fullName.Length == 0) Err("Full name is required.");
             else
             {
+                // only the first name is mandatory: "Asha" is a first name; "Asha Rawat" has a last name; anything between the two is the middle name
                 var parts = fullName.Split(' ');
-                if (parts.Length < 2) Err("Enter the first and the last name (for example Asha Rawat).");
-                else
-                {
-                    r.First = parts[0]; r.Last = parts[^1];
-                    r.Middle = parts.Length > 2 ? string.Join(' ', parts[1..^1]) : null;
-                    if (r.First.Length > 100 || r.Last.Length > 100 || (r.Middle?.Length ?? 0) > 100) Err("A name part is longer than 100 characters.");
-                }
+                r.First = parts[0];
+                r.Last = parts.Length > 1 ? parts[^1] : null;
+                r.Middle = parts.Length > 2 ? string.Join(' ', parts[1..^1]) : null;
+                if (r.First.Length > 100 || (r.Last?.Length ?? 0) > 100 || (r.Middle?.Length ?? 0) > 100) Err("A name part is longer than 100 characters.");
             }
 
             // ---- gender
@@ -635,7 +633,7 @@ namespace smss_api_service_layer.service
                 ("Fill the Students sheet, one student per row, starting at row 2. Do not rename or move the header row. Save as Excel Workbook (.xlsx).", false),
                 ("", false),
                 ("Required columns", true),
-                ("Full name (first and last name), Gender, Date of birth, Class, Section, and at least one of Father / Mother / Guardian with BOTH a name and a phone.", false),
+                ("Full name (the first name is required; a last name is optional), Gender, Date of birth, Class, Section, and at least one of Father / Mother / Guardian with BOTH a name and a phone.", false),
                 ("", false),
                 ("Formats", true),
                 ("Date of birth: dd/mm/yyyy, for example 27/08/2015 (a real Excel date also works).", false),
@@ -679,7 +677,7 @@ namespace smss_api_service_layer.service
         private static byte[] Save(XLWorkbook wb) { using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray(); }
 
         // ============================================================================ small helpers
-        private static string Norm(string s) => Spaces.Replace(s ?? "", " ").Trim().ToLowerInvariant();
+        private static string Norm(string? s) => Spaces.Replace(s ?? "", " ").Trim().ToLowerInvariant();
         private static string Clip(string s) => s.Length > 40 ? s[..40] + "…" : s;
         private static string RowList(IEnumerable<int> rows) => string.Join(", ", rows.OrderBy(x => x).Take(8)) + (rows.Count() > 8 ? ", …" : "");
 

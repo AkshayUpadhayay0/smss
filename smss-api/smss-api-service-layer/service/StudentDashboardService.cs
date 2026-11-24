@@ -122,7 +122,7 @@ namespace smss_api_service_layer.service
         }
 
         /// <summary>The profile card: the student's own record plus the class / section / roll number of the grid's year (or, with no grid, the current / latest enrollment).</summary>
-        private async Task<DashboardProfileDto> ProfileAsync(string schoolId, string studentId, string first, string? middle, string last, string admissionNumber, string? photo, long? yearId, CancellationToken ct)
+        private async Task<DashboardProfileDto> ProfileAsync(string schoolId, string studentId, string first, string? middle, string? last, string admissionNumber, string? photo, long? yearId, CancellationToken ct)
         {
             var enrollments = await _students.GetEnrollmentsAsync(schoolId, studentId, ct);
             var enrollment = yearId != null

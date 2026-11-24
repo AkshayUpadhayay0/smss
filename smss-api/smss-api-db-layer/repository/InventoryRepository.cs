@@ -342,7 +342,7 @@ namespace smss_api_db_layer.repository
                         .Select(e => new InvRecipientRow { Id = e.EmployeeId, Name = (e.FirstName + " " + e.LastName).Trim(), Detail = e.EmployeeType }).FirstOrDefaultAsync(ct);
                 case "STUDENT":
                     return await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && s.StudentId == recipientId && s.StatusId == activeStatusId)
-                        .Select(s => new InvRecipientRow { Id = s.StudentId, Name = (s.FirstName + " " + s.LastName).Trim(), Detail = s.AdmissionNumber }).FirstOrDefaultAsync(ct);
+                        .Select(s => new InvRecipientRow { Id = s.StudentId, Name = (s.FirstName + (s.LastName == null ? "" : " " + s.LastName)).Trim(), Detail = s.AdmissionNumber }).FirstOrDefaultAsync(ct);
                 case "DEPARTMENT":
                     if (!long.TryParse(recipientId, out var depId)) return null;
                     return await _db.EmployeeDepartments.AsNoTracking().Where(d => d.SchoolId == schoolId && d.DepartmentId == depId && d.StatusId == activeStatusId)
@@ -367,9 +367,9 @@ namespace smss_api_db_layer.repository
                 case "STUDENT":
                 {
                     var s = _db.Students.AsNoTracking().Where(x => x.SchoolId == schoolId && x.StatusId == activeStatusId);
-                    if (pat != null) s = s.Where(x => EF.Functions.ILike(x.FirstName + " " + x.LastName, pat) || EF.Functions.ILike(x.StudentId, pat) || EF.Functions.ILike(x.AdmissionNumber, pat));
+                    if (pat != null) s = s.Where(x => EF.Functions.ILike(x.FirstName + (x.LastName == null ? "" : " " + x.LastName), pat) || EF.Functions.ILike(x.StudentId, pat) || EF.Functions.ILike(x.AdmissionNumber, pat));
                     return await s.OrderBy(x => x.FirstName).ThenBy(x => x.StudentId).Take(cap)
-                        .Select(x => new InvRecipientRow { Id = x.StudentId, Name = (x.FirstName + " " + x.LastName).Trim(), Detail = x.AdmissionNumber }).ToListAsync(ct);
+                        .Select(x => new InvRecipientRow { Id = x.StudentId, Name = (x.FirstName + (x.LastName == null ? "" : " " + x.LastName)).Trim(), Detail = x.AdmissionNumber }).ToListAsync(ct);
                 }
                 case "DEPARTMENT":
                 {

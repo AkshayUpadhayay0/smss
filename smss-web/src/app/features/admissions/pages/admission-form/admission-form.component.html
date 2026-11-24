@@ -7,7 +7,7 @@
     <div class="grid">
       <app-input label="First name" [required]="true" formControlName="applicantFirstName" [errorText]="err('applicantFirstName')" />
       <app-input label="Middle name" formControlName="applicantMiddleName" [errorText]="err('applicantMiddleName')" />
-      <app-input label="Last name" [required]="true" formControlName="applicantLastName" [errorText]="err('applicantLastName')" />
+      <app-input label="Last name" formControlName="applicantLastName" [errorText]="err('applicantLastName')" />
       <app-input label="Date of birth" type="date" [required]="true" formControlName="dateOfBirth" [errorText]="err('dateOfBirth')" />
       <app-select label="Gender" placeholder="Select…" [options]="genderOptions()" formControlName="genderId" />
       <app-select label="Blood group" placeholder="Select…" [options]="bloodGroupOptions()" formControlName="bloodGroupId" />

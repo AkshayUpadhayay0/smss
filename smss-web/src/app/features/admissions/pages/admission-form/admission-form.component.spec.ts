@@ -95,6 +95,18 @@ describe('AdmissionFormComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/admissions', 12]);
   });
 
+  it('the last name is optional: an application with only a first name is valid and posts the last name as null', () => {
+    open();
+    answer();
+    const form = cmp()['form'];
+    form.patchValue({ applicantFirstName: 'Anil', applicantLastName: '   ', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianName: 'Gita', guardianRelationship: 'MOTHER', guardianMobileNumber: '9876543210' });
+    expect(form.controls.applicantLastName.valid).toBe(true);
+    cmp()['submit']();
+    const post = http.expectOne(`${API}/api/Admission/S/submit`);
+    expect(post.request.body.applicantLastName).toBeNull();
+    post.flush(env({ ...DETAIL('APPLICATION_SUBMITTED'), admissionId: 13, applicationNumber: 'ADM20260013' }, 201));
+  });
+
   it('edit mode loads the application into the form (its own academic year, not the current one) and the Aadhaar box stays empty with the masked number as a hint', () => {
     open('7');
     answer({ '/api/Admission/S/7': DETAIL('UNDER_REVIEW') });

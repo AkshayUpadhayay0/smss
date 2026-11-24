@@ -58,7 +58,8 @@ export interface AdmissionDetail extends Admission {
   warnings?: string[];
   applicantFirstName: string;
   applicantMiddleName?: string | null;
-  applicantLastName: string;
+  /** Optional: only the first name is mandatory. */
+  applicantLastName?: string | null;
   dateOfBirth: string;
   genderId?: number | null;
   genderName?: string | null;
@@ -97,7 +98,7 @@ export interface SubmitAdmissionRequest {
   admissionTypeId: number;
   applicantFirstName: string;
   applicantMiddleName: string | null;
-  applicantLastName: string;
+  applicantLastName: string | null;
   dateOfBirth: string; // yyyy-MM-dd
   genderId: number | null;
   bloodGroupId: number | null;

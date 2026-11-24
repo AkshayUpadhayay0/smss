@@ -17,7 +17,7 @@ namespace smss_api_db_layer.entity
         [Column("admission_type_id")] public long AdmissionTypeId { get; set; }
         [Column("applicant_first_name")] public string ApplicantFirstName { get; set; } = null!;
         [Column("applicant_middle_name")] public string? ApplicantMiddleName { get; set; }
-        [Column("applicant_last_name")] public string ApplicantLastName { get; set; } = null!;
+        [Column("applicant_last_name")] public string? ApplicantLastName { get; set; }
         [Column("date_of_birth", TypeName = "date")] public DateTime DateOfBirth { get; set; }
         [Column("gender_id")] public int? GenderId { get; set; }
         [Column("blood_group_id")] public int? BloodGroupId { get; set; }

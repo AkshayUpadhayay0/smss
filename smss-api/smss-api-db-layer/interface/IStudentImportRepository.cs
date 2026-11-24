@@ -8,7 +8,7 @@ namespace smss_api_db_layer.@interface
     public record ImportGenderRow(int GenderId, string GenderName, string GenderCode);
     public record ImportRollRow(long SectionId, string RollNumber);
     /// <summary>An existing student with the mobile numbers of their guardians, for the "possible duplicate person" warning.</summary>
-    public record ImportPersonRow(string StudentId, string FirstName, string LastName, DateTime DateOfBirth, IReadOnlyList<string> GuardianMobiles);
+    public record ImportPersonRow(string StudentId, string FirstName, string? LastName, DateTime DateOfBirth, IReadOnlyList<string> GuardianMobiles);
 
     /// <summary>Set-based reads and one bulk write for the student Excel import: a fixed number of queries however many rows the file has.</summary>
     public interface IStudentImportRepository

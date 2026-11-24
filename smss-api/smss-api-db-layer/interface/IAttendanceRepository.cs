@@ -5,14 +5,14 @@ namespace smss_api_db_layer.@interface
 {
     public record AttendanceYearRow(long AcademicYearId, string YearName, DateOnly StartDate, DateOnly EndDate);
     public record AttendanceStatusRow(long Id, string Code, string Name);
-    public record RosterStudentRow(string StudentId, string FirstName, string? MiddleName, string LastName, string? RollNumber);
+    public record RosterStudentRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber);
     public record EnrollmentRef(long SectionId, DateOnly EnrollmentDate);
     public record MarkRow(TbStudentAttendance Mark, string StatusCode, string StatusName, string? MarkedByName, string? CorrectedByName);
-    public record StudentRef(string StudentId, string FirstName, string? MiddleName, string LastName);
+    public record StudentRef(string StudentId, string FirstName, string? MiddleName, string? LastName);
     public record StudentDayRow(DateOnly Date, long SectionId, string ClassName, string SectionName, string StatusCode, string StatusName, DateTime? CorrectedAt, string? CorrectionReason);
     public record UnmarkedSectionRow(long SectionId, long ClassId, string ClassName, string SectionName, int RosterCount, string? ClassTeacherId, string? ClassTeacherName);
     /// <summary>One enrollment of the section for the year (any status) with the student's own status, for the monthly report.</summary>
-    public record ReportRosterRow(string StudentId, string FirstName, string? MiddleName, string LastName, string? RollNumber, DateOnly EnrollmentDate, int EnrollmentStatusId, int StudentStatusId);
+    public record ReportRosterRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, DateOnly EnrollmentDate, int EnrollmentStatusId, int StudentStatusId);
     /// <summary>One mark of the section: who, which day, and the status code (PRESENT / ABSENT).</summary>
     public record MonthMarkRow(string StudentId, DateOnly Date, string StatusCode);
     /// <summary>A Holiday calendar event (Active) overlapping the month.</summary>

@@ -96,7 +96,7 @@ namespace smss_api_service_layer.helper
             };
         }
 
-        private static string FullName(string first, string? middle, string last) =>
+        private static string FullName(string first, string? middle, string? last) =>
             string.Join(' ', new[] { first, middle, last }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
     }
 }

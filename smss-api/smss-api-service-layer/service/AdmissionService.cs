@@ -92,7 +92,7 @@ namespace smss_api_service_layer.service
             e.AdmissionTypeId = req.AdmissionTypeId!.Value;   // always filled in by Submit / Update before this runs
             e.ApplicantFirstName = req.ApplicantFirstName.Trim();
             e.ApplicantMiddleName = Clean(req.ApplicantMiddleName);
-            e.ApplicantLastName = req.ApplicantLastName.Trim();
+            e.ApplicantLastName = Clean(req.ApplicantLastName);   // optional: a blank is stored as null
             e.DateOfBirth = req.DateOfBirth.Date;
             e.GenderId = req.GenderId;
             e.BloodGroupId = req.BloodGroupId;

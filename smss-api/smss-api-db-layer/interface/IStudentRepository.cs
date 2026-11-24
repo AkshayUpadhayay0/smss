@@ -3,7 +3,7 @@ using smss_api_db_layer.entity;
 namespace smss_api_db_layer.@interface
 {
     /// <summary>One student of a class-section for a year (enrollment fields included).</summary>
-    public record StudentListRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
+    public record StudentListRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string? LastName,
         string? RollNumber, int? GenderId, int StatusId, long EnrollmentId, string? ProfilePhotoUrl);
 
     /// <summary>One student's installments for one academic year, added up (see IStudentRepository.GetFeeAggregatesAsync).</summary>

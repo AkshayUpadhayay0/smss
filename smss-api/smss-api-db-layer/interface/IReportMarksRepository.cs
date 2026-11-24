@@ -10,7 +10,7 @@ namespace smss_api_db_layer.@interface
         long SchemeSubjectId, long SubjectId, string SubjectName, string? LabelOverride, short DisplayOrder, long ClassId, string ClassName, string EntryMode, decimal? MaxMarks);
 
     public record SectionInfo(long SectionId, long ClassId, string ClassName, string SectionName);
-    public record RosterStudent(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName, string? RollNumber);
+    public record RosterStudent(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string? LastName, string? RollNumber);
     public record SkillInfo(long SkillId, long SchemeSubjectId, string Name, short Sequence);
     public record BandInfo(long GradeScaleId, string Code, string Label, short Sequence);
     public record EntryCountRow(long ExamSubjectId, string State, int Count);

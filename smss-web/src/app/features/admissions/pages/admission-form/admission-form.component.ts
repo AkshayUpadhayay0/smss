@@ -59,7 +59,7 @@ export class AdmissionFormComponent implements OnInit {
     // Applicant
     applicantFirstName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(100)] }),
     applicantMiddleName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),
-    applicantLastName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(100)] }),
+    applicantLastName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),   // optional: only the first name is mandatory
     dateOfBirth: new FormControl('', { nonNullable: true, validators: [Validators.required, pastDate] }),
     genderId: new FormControl('', { nonNullable: true }),
     bloodGroupId: new FormControl('', { nonNullable: true }),
@@ -146,7 +146,7 @@ export class AdmissionFormComponent implements OnInit {
     this.keptType.set({ label: `${a.admissionTypeName || 'Current type'} (inactive)`, value: String(a.admissionTypeId) });   // only shown when it is no longer in the active list
     this.form.patchValue(
       {
-        applicantFirstName: a.applicantFirstName, applicantMiddleName: s(a.applicantMiddleName), applicantLastName: a.applicantLastName, dateOfBirth: a.dateOfBirth.slice(0, 10),
+        applicantFirstName: a.applicantFirstName, applicantMiddleName: s(a.applicantMiddleName), applicantLastName: s(a.applicantLastName), dateOfBirth: a.dateOfBirth.slice(0, 10),
         genderId: s(a.genderId), bloodGroupId: s(a.bloodGroupId), studentCategoryId: s(a.studentCategoryId), studentNationId: s(a.studentNationId),
         academicYearId: s(a.academicYearId), appliedClassId: s(a.appliedClassId), admissionTypeId: s(a.admissionTypeId), previousSchool: s(a.previousSchool),
         email: s(a.email), mobileNumber: s(a.mobileNumber), addressLine1: s(a.addressLine1), addressLine2: s(a.addressLine2), pincode: s(a.pincode),
@@ -303,7 +303,7 @@ export class AdmissionFormComponent implements OnInit {
       admissionTypeId: Number(v.admissionTypeId),
       applicantFirstName: v.applicantFirstName.trim(),
       applicantMiddleName: str(v.applicantMiddleName),
-      applicantLastName: v.applicantLastName.trim(),
+      applicantLastName: str(v.applicantLastName),
       dateOfBirth: v.dateOfBirth,
       genderId: num(v.genderId),
       bloodGroupId: num(v.bloodGroupId),

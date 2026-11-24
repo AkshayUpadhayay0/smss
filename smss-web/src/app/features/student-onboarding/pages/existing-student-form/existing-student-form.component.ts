@@ -71,7 +71,7 @@ export class ExistingStudentFormComponent implements OnInit {
     // Student
     firstName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(100)] }),
     middleName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),
-    lastName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(100)] }),
+    lastName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] }),   // optional: only the first name is mandatory
     dateOfBirth: new FormControl('', { nonNullable: true, validators: [Validators.required, pastDate] }),
     genderId: new FormControl('', { nonNullable: true }),
     bloodGroupId: new FormControl('', { nonNullable: true }),
@@ -247,7 +247,7 @@ export class ExistingStudentFormComponent implements OnInit {
       rollNumber: str(v.rollNumber),
       firstName: v.firstName.trim(),
       middleName: str(v.middleName),
-      lastName: v.lastName.trim(),
+      lastName: str(v.lastName),
       dateOfBirth: v.dateOfBirth,
       genderId: num(v.genderId),
       bloodGroupId: num(v.bloodGroupId),

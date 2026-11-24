@@ -7,7 +7,7 @@ namespace smss_api_db_layer.@interface
     public record IdCardYearRow(long AcademicYearId, string YearName);
 
     /// <summary>One student's enrollment for the current year, with everything a card shows. Status ids are raw; the service compares them to "Active".</summary>
-    public record IdCardStudentRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string LastName,
+    public record IdCardStudentRow(string StudentId, string AdmissionNumber, string FirstName, string? MiddleName, string? LastName,
         string? RollNumber, string? ProfilePhotoUrl, int StudentStatusId, int EnrollmentStatusId, string ClassName, string SectionName,
         DateTime DateOfBirth, int? BloodGroupId, string? MobileNumber, string? AddressLine1, string? AddressLine2, int? CountryId, int? StateId, int? DistrictId, int? CityId, string? Pincode);
 

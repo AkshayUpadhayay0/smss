@@ -12,7 +12,7 @@ namespace smss_api_db_layer.@interface
         int StudentCount, int AbsentCount);
 
     /// <summary>One stored mark with the student's name (and roll number in the test's academic year).</summary>
-    public record AssessmentMarkRow(string StudentId, string FirstName, string? MiddleName, string LastName, string? RollNumber, decimal? ObtainedMarks, bool IsAbsent);
+    public record AssessmentMarkRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, decimal? ObtainedMarks, bool IsAbsent);
 
     /// <summary>A student's own result in one test.</summary>
     public record StudentResultRow(long AssessmentId, string Title, string TypeName, string SubjectName, DateOnly TestDate, decimal MaxMarks, decimal? ObtainedMarks, bool IsAbsent);

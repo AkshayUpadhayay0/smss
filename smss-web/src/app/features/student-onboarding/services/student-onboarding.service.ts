@@ -16,7 +16,8 @@ export interface DirectStudentEntryRequest {
   rollNumber: string | null;
   firstName: string;
   middleName: string | null;
-  lastName: string;
+  /** Optional: only the first name is mandatory. */
+  lastName: string | null;
   dateOfBirth: string;
   genderId: number | null;
   bloodGroupId: number | null;
