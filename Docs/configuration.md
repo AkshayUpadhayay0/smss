@@ -7,6 +7,8 @@ The committed `smss-api/smss-api/appsettings.json` holds **no secrets**. Every s
 
 If a required setting is missing, empty, or still a placeholder (`CHANGE_ME…`, `<…>`), the API **refuses to start** and the error names the setting (never its value). Secrets are never logged.
 
+> **Stage S (24 Nov 2026):** the file had been re-filled with real values on 15 Nov (commits `2908b0d`, `0b1bd12`) and pushed. `ConnectionStrings:DefaultConnection`, `Jwt:Key` and `Email:SenderAppPassword` are empty again, `.gitignore` covers more secret file patterns, and `TrackedConfigHasNoSecretsTests` fails the test run if a committed `appsettings*.json` ever holds a value under a secret-looking key. **Every value that was ever in history is exposed, including the ones now in your user-secrets: rotate the database password, the Gmail app password, the JWT key AND `Bootstrap:SuperAdminSetupKey`, then store the NEW values in user-secrets.** History is not rewritten (decision: option A, rotate only).
+
 > **Upgrading from an older checkout:** earlier versions of `appsettings.json` carried a real database password and JWT key. Both are now empty in the file, so the API will not start until you provide them (user-secrets in Development, environment variables in Production, see below). Anything that was ever committed must be treated as exposed: rotate it (see *Rotating a secret*).
 
 ## Settings
@@ -64,6 +66,35 @@ Cors__AllowedOrigins__0=https://your-site
 ```
 
 Do **not** set `Bootstrap__Enabled=true` except for the moment you create the very first Super Admin, with `Bootstrap__SuperAdminSetupKey` set; switch it off again afterwards.
+
+## Server checklist (Production)
+
+**Environment variables the API needs** (`__` stands for `:`; values are never in git):
+
+| Variable | Required | Secret |
+|---|---|---|
+| `ASPNETCORE_ENVIRONMENT` = `Production` | yes | no |
+| `ConnectionStrings__DefaultConnection` | yes | **yes** |
+| `Jwt__Key` (32+ characters) | yes | **yes** |
+| `Jwt__Issuer` = `smss-api`, `Jwt__Audience` = `smss-web` | yes (committed defaults are fine) | no |
+| `Email__SenderEmail`, `Email__SenderAppPassword` | yes outside Development | password: **yes** |
+| `Email__LoginUrl` (and `Email__SenderName`, `Email__SmtpHost`, `Email__SmtpPort` if they differ) | yes | no |
+| `Cors__AllowedOrigins__0` (`__1`, ...) | yes (the API refuses to start without one) | no |
+| `ForwardedHeaders__KnownProxies__0` (or `KnownNetworks__0`) | yes behind a proxy / load balancer | no |
+| `FileStorage__RootPath`, `FileStorage__PrivateRootPath` | recommended (persistent folders) | no |
+| `Firebase__CredentialsPath` (path to a secret file), `Firebase__DryRun` (`true` until real pushes are wanted) | for push notifications | the file: **yes** |
+| `Bootstrap__Enabled` = `false` (leave `Bootstrap__SuperAdminSetupKey` unset) | yes | the key: **yes** |
+| `AllowedHosts` | recommended | no |
+| `WhatsApp__Enabled`, `WhatsApp__Sender` (`Log` or `Cloud`), `WhatsApp__AccessToken`, `WhatsApp__PhoneNumberId`, `WhatsApp__BusinessAccountId`, `WhatsApp__ApiVersion`, `WhatsApp__AppSecret`, `WhatsApp__WebhookVerifyToken`, and one `WhatsApp__Template__<name>` per approved template | **planned (guardian stages), not read by the API yet**; default is the log-only sender | AccessToken, AppSecret, WebhookVerifyToken: **yes** |
+
+The tuning settings (rate limits, `LoginThrottle__*`, `PartnerSchools__*`, `TransportLive__*`) have safe defaults in the committed file; see `Docs/DEPLOY-CHECKLIST.md` section 2.
+
+**Deploy order:**
+1. Set / rotate the environment variables on the server FIRST (at least the secret ones above). Do not deploy the blanked config before this: with `Production` and a blank secret the API refuses to start.
+2. Deploy the new build with the blanked `appsettings.json`.
+3. Restart the API. It must start, and `/api/...` must answer; if it stops with "missing settings", the message names the setting (never a value).
+4. Rotating the JWT key ends open access tokens; users are silently re-issued from their refresh token (see *Rotating a secret*).
+5. Confirm `Bootstrap__Enabled` is `false` and that the old values no longer work.
 
 ## Rotating a secret
 

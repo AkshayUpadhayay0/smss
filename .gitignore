@@ -42,3 +42,14 @@ Docs/smss-db*.sql
 # Firebase service-account keys (never commit; the API reads the path from Firebase:CredentialsPath / env Firebase__CredentialsPath)
 *firebase*adminsdk*.json
 firebase-service-account*.json
+
+# Stage S: more secret file patterns (certificates, keys, per-environment settings, service-account files)
+appsettings.Production.json
+appsettings.*.local.json
+appsettings.Staging.json
+*.pfx
+*.p12
+*.pem
+*.key
+*service-account*.json
+**/secrets.json
