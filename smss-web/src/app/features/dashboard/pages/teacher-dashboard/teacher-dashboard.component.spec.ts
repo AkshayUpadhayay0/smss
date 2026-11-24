@@ -186,4 +186,15 @@ describe('TeacherDashboardComponent', () => {
     open((req) => req.flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' }));
     expect(text()).toContain('Your dashboard could not be loaded.');
   });
+
+  it('says which academic year it shows (the year in session)', () => {
+    openWith(dashboard({ academicYearId: 7, academicYearName: '2026-27' }));
+    expect(text()).toContain('academic year 2026-27');
+  });
+
+  it('without a year in session it still says nothing wrong', () => {
+    openWith(dashboard({ academicYearId: null, academicYearName: null }));
+    expect(text()).toContain('Here is your classroom at a glance.');
+    expect(text()).not.toContain('academic year');
+  });
 });

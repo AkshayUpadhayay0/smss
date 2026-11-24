@@ -65,6 +65,7 @@ describe('DashboardPageComponent', () => {
   it('gives the Principal their own dashboard (one PrincipalDashboard request, no placeholder)', () => {
     const { fixture, http } = open(['Principal']);
     http.expectOne(`${environment.apiUrl}/api/PrincipalDashboard/summary`);
+    http.expectOne(`${environment.apiUrl}/api/AcademicYear`);   // the dashboard's year selector
     expect(fixture.nativeElement.querySelector('app-principal-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).toBeNull();
@@ -82,6 +83,7 @@ describe('DashboardPageComponent', () => {
   it('gives the Accountant their own dashboard (one AccountantDashboard request, no placeholder)', () => {
     const { fixture, http } = open(['Accountant']);
     http.expectOne(`${environment.apiUrl}/api/AccountantDashboard/summary`);
+    http.expectOne(`${environment.apiUrl}/api/AcademicYear`);   // the dashboard's year selector
     expect(fixture.nativeElement.querySelector('app-accountant-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
     http.verify();
@@ -98,6 +100,7 @@ describe('DashboardPageComponent', () => {
   it('keeps the Principal dashboard for an account that is both a Principal and Admission Staff', () => {
     const { fixture, http } = open(['Principal', 'Admission Staff']);
     http.expectOne(`${environment.apiUrl}/api/PrincipalDashboard/summary`);
+    http.expectOne(`${environment.apiUrl}/api/AcademicYear`);   // the dashboard's year selector
     expect(fixture.nativeElement.querySelector('app-admission-dashboard')).toBeNull();
     http.verify();
   });

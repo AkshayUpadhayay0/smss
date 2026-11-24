@@ -6,6 +6,9 @@
   <app-card><p class="note" role="alert">Your dashboard could not be loaded.</p></app-card>
 } @else {
   @let d = data()!;
+  @if (d.viewingNote) {
+    <app-card><p class="note" role="status" data-note="year">{{ d.viewingNote }}</p></app-card>
+  }
   <div class="grid">
     <!-- profile + the three small stat cards -->
     <section class="card profile s6" aria-label="Profile">

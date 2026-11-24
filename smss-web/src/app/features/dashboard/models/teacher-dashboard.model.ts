@@ -25,6 +25,9 @@ export type TeacherDashboardPart = 'classTeacherOf' | 'subjectsTaught' | 'totalS
 export interface TeacherDashboard {
   today: string;
   profile: TeacherProfile;
+  /** The academic year shown: the year that CONTAINS today (the year in session), whatever year the school has flagged as current. Null when no year covers today. */
+  academicYearId?: number | null;
+  academicYearName?: string | null;
   /** Empty = not a class teacher. */
   classTeacherOf: TeacherSection[];
   subjectsTaught: string[];

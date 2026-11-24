@@ -11,9 +11,9 @@ namespace smss_api_service_layer.dto
 
     public class AccountantDashboardStatsDto
     {
-        /// <summary>Active payments received today (India date). 0 on a day nobody has paid yet.</summary>
+        /// <summary>CASH received today (India date) on payments that are not voided, whatever year's installments they paid: all-years cash, not a year figure. 0 on a day nobody has paid yet.</summary>
         public decimal? CollectedToday { get; set; }
-        /// <summary>The Fee dashboard's collection figure for the current India calendar month (the last bar of the chart).</summary>
+        /// <summary>CASH received in the current India calendar month, summed over every year's installments (the last bar of the chart): all-years cash, not a year figure.</summary>
         public decimal? CollectedThisMonth { get; set; }
         public decimal? Outstanding { get; set; }
         public int? OverdueCount { get; set; }
@@ -38,8 +38,16 @@ namespace smss_api_service_layer.dto
     public class AccountantDashboardDto
     {
         public DateOnly Today { get; set; }
+        /// <summary>The academic year being VIEWED: it decides the DUES figures (outstanding, overdue, upcoming). The cash figures are always all-years cash.</summary>
         public long? AcademicYearId { get; set; }
         public string? AcademicYearName { get; set; }
+        public bool AcademicYearIsCurrent { get; set; }
+        public bool AcademicYearIsClosed { get; set; }
+        public string? CurrentYearName { get; set; }
+        /// <summary>A sentence saying which year is shown when it is not simply the current one; null otherwise.</summary>
+        public string? ViewingNote { get; set; }
+        /// <summary>False = the viewed year has no fee items: the dues figures are null and the client says "No fee structure yet".</summary>
+        public bool HasFeeSetup { get; set; }
         public AccountantDashboardStatsDto Stats { get; set; } = new();
         /// <summary>The last 6 calendar months, oldest first, this month last, zero-filled. Empty when the fees part is unavailable.</summary>
         public List<FeeCollectionMonthDto> CollectionTrend { get; set; } = new();

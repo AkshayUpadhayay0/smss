@@ -8,7 +8,8 @@ import { AccountantDashboard } from '../models/accountant-dashboard.model';
 export class AccountantDashboardService {
   private readonly api = inject(ApiService);
 
-  summary(): Observable<AccountantDashboard> {
-    return this.api.get<AccountantDashboard>('/api/AccountantDashboard/summary');
+  /** academicYearId omitted = the school's current year. It only chooses which year's DUES are shown. */
+  summary(academicYearId?: number): Observable<AccountantDashboard> {
+    return this.api.get<AccountantDashboard>('/api/AccountantDashboard/summary', academicYearId ? { academicYearId } : undefined);
   }
 }

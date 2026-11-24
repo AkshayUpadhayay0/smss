@@ -3,9 +3,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
+import { historyYearOptions } from '../../../../core/utils/history-options';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectOption, TableColumn, TableComponent } from '../../../../shared/components';
+import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { publishedLabel } from '../../../notices/utils/notice-format';
 import { ChartHostComponent } from '../../components/chart/chart.component';
+import { DashboardYearBarComponent } from '../../components/dashboard-year-bar/dashboard-year-bar.component';
 import { AccountantDashboard } from '../../models/accountant-dashboard.model';
 import { AccountantDashboardService } from '../../services/accountant-dashboard.service';
 import { buildAccountantStats } from '../../utils/accountant-dashboard-format';
@@ -26,13 +29,14 @@ interface PaymentRow {
  */
 @Component({
   selector: 'app-accountant-dashboard',
-  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableComponent, ChartHostComponent],
+  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableComponent, ChartHostComponent, DashboardYearBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../school-dashboard/school-dashboard.component.scss',
   templateUrl: './accountant-dashboard.component.html',
 })
 export class AccountantDashboardComponent implements OnInit {
   private readonly service = inject(AccountantDashboardService);
+  private readonly yearService = inject(AcademicYearService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly colors = readChartColors();
 
@@ -45,6 +49,9 @@ export class AccountantDashboardComponent implements OnInit {
     { key: 'paidOn', label: 'Paid on' },
   ];
 
+  /** Every year of the school: the dashboard can LOOK at any of them (the dues cards follow it). This never changes the school's current year. */
+  protected readonly yearOptions = signal<SelectOption[]>([]);
+  protected readonly selectedYear = computed(() => String(this.data()?.academicYearId ?? ''));
   protected readonly data = signal<AccountantDashboard | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
@@ -69,18 +76,22 @@ export class AccountantDashboardComponent implements OnInit {
 
   protected readonly subtitle = computed(() => {
     const year = this.data()?.academicYearName;
-    return year ? `Fee collection at a glance · academic year ${year}` : 'Fee collection at a glance';
+    return year ? `Fee collection at a glance · dues for academic year ${year}` : 'Fee collection at a glance';
   });
 
   ngOnInit(): void {
+    this.yearService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (years) => this.yearOptions.set(historyYearOptions(years)),
+      error: () => undefined,   // the dashboard still works on the current year without the selector
+    });
     this.load();
   }
 
-  protected load(): void {
+  protected load(academicYearId?: number): void {
     this.loading.set(true);
     this.loadFailed.set(false);
     this.service
-      .summary()
+      .summary(academicYearId)
       .pipe(
         finalize(() => this.loading.set(false)),
         takeUntilDestroyed(this.destroyRef),

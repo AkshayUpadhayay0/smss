@@ -15,12 +15,12 @@ namespace smss_api.Controllers
         private readonly IAccountantDashboardService _service;
         public AccountantDashboardController(IAccountantDashboardService service) => _service = service;
 
-        // GET api/AccountantDashboard/summary
+        // GET api/AccountantDashboard/summary?academicYearId=   (the year to VIEW for the dues figures; omitted = the current year)
         [HttpGet("summary")]
-        public async Task<IActionResult> Summary(CancellationToken ct)
+        public async Task<IActionResult> Summary([FromQuery] long? academicYearId, CancellationToken ct)
         {
             if (!User.IsAccountant()) return this.Forbidden("Only the Accountant can see the Accountant dashboard.");
-            var response = await _service.GetSummaryAsync(User.GetSchoolId(), ct);
+            var response = await _service.GetSummaryAsync(User.GetSchoolId(), academicYearId, ct);
             return StatusCode(response.StatusCode, response);
         }
     }

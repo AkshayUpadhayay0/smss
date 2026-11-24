@@ -25,7 +25,7 @@ namespace smss_api_service_layer.service
             _fees = fees; _repo = repo; _years = years; _logger = logger;
         }
 
-        public async Task<ApiResponse<AccountantDashboardDto>> GetSummaryAsync(string? schoolId, CancellationToken ct)
+        public async Task<ApiResponse<AccountantDashboardDto>> GetSummaryAsync(string? schoolId, long? academicYearId, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
             try
@@ -51,7 +51,9 @@ namespace smss_api_service_layer.service
                 }
                 catch (Exception ex) { Down(AccountantDashboardParts.Payments, dto, ex); }
 
-                await FillFeesAsync(schoolId, today, dto, ct);
+                var choice = await DashboardYears.ResolveAsync(_years, schoolId, academicYearId, today, ct);
+                if (choice.NotFound) return Result(404, "Academic year not found.", null);
+                await FillFeesAsync(schoolId, today, choice, dto, ct);
                 return Result(200, "Successfully fetched", dto);
             }
             catch (Exception ex)
@@ -61,20 +63,23 @@ namespace smss_api_service_layer.service
             }
         }
 
-        private async Task FillFeesAsync(string schoolId, DateOnly today, AccountantDashboardDto dto, CancellationToken ct)
+        private async Task FillFeesAsync(string schoolId, DateOnly today, DashboardYearChoice choice, AccountantDashboardDto dto, CancellationToken ct)
         {
             try
             {
-                var year = await _repo.GetYearContainingAsync(schoolId, today, ct);
-                if (year == null) { Down(AccountantDashboardParts.Fees, dto, null, "no academic year contains today"); return; }
+                var year = choice.Viewed;
+                if (year == null) { Down(AccountantDashboardParts.Fees, dto, null, "the school has no academic year"); return; }
                 var yearId = year.AcademicYearId;
                 dto.AcademicYearId = yearId;
                 dto.AcademicYearName = year.YearName;
+                dto.AcademicYearIsCurrent = year.IsCurrent; dto.AcademicYearIsClosed = year.IsClosed;
+                dto.CurrentYearName = choice.Current?.YearName; dto.ViewingNote = DashboardYears.ViewingNote(choice);
+                dto.HasFeeSetup = await _years.HasFeeItemsAsync(schoolId, yearId, ct);
 
                 var current = await _fees.GetDashboardAsync(schoolId, yearId, null, null, UpcomingDays, true, ct);
                 if (!current.Status || current.Data == null) { Down(AccountantDashboardParts.Fees, dto, null, $"{current.StatusCode}: {current.Message}"); return; }
 
-                // The six-month window can reach back into the previous academic year, whose payments the current year's dashboard does not hold: add any other year it touches.
+                // The cash trend is the last six months of money received whatever year it was for: every year the window touches, plus the viewed year's own figures.
                 var months = SchoolDashboardService.LastMonths(today);
                 var dashboards = new List<FeeDashboardDto> { current.Data };
                 foreach (var span in await _years.GetYearsOverlappingAsync(schoolId, months[0], months[^1].AddMonths(1).AddDays(-1), ct))
@@ -87,12 +92,15 @@ namespace smss_api_service_layer.service
 
                 var d = current.Data;
                 dto.CollectionTrend = SchoolDashboardService.FeeTrend(months, dashboards);
-                dto.Stats.CollectedThisMonth = dto.CollectionTrend[^1].Amount;
-                dto.Stats.Outstanding = d.TotalOutstanding;
-                dto.Stats.OverdueCount = d.OverdueCount;
-                dto.Stats.OverdueAmount = d.OverdueAmount;
-                dto.Stats.UpcomingCount = d.UpcomingCount;
-                dto.Stats.UpcomingAmount = d.UpcomingAmount;
+                dto.Stats.CollectedThisMonth = dto.CollectionTrend[^1].Amount;   // cash, all years
+                if (dto.HasFeeSetup)   // the dues figures are the VIEWED year's; a year without fee items has none (not zeros)
+                {
+                    dto.Stats.Outstanding = d.TotalOutstanding;
+                    dto.Stats.OverdueCount = d.OverdueCount;
+                    dto.Stats.OverdueAmount = d.OverdueAmount;
+                    dto.Stats.UpcomingCount = d.UpcomingCount;
+                    dto.Stats.UpcomingAmount = d.UpcomingAmount;
+                }
             }
             catch (Exception ex)
             {

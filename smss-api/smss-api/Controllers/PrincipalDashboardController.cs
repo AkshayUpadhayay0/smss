@@ -16,13 +16,13 @@ namespace smss_api.Controllers
         private readonly IPrincipalDashboardService _service;
         public PrincipalDashboardController(IPrincipalDashboardService service) => _service = service;
 
-        // GET api/PrincipalDashboard/summary
+        // GET api/PrincipalDashboard/summary?academicYearId=   (the year to VIEW; omitted = the current year)
         [HttpGet("summary")]
-        public async Task<IActionResult> Summary(CancellationToken ct)
+        public async Task<IActionResult> Summary([FromQuery] long? academicYearId, CancellationToken ct)
         {
             if (!User.IsPrincipal()) return this.Forbidden("Only the Principal can see the Principal dashboard.");
             if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
-            var response = await _service.GetSummaryAsync(User.GetSchoolId(), userId, ct);
+            var response = await _service.GetSummaryAsync(User.GetSchoolId(), userId, academicYearId, ct);
             return StatusCode(response.StatusCode, response);
         }
     }

@@ -15,13 +15,6 @@ namespace smss_api_db_layer.repository
                 .Where(p => p.SchoolId == schoolId && p.Status == Active && p.PaymentDate >= fromUtc && p.PaymentDate < toExclusiveUtc)
                 .SumAsync(p => (decimal?)p.FeeAmount, ct) ?? 0m;   // CASH fee collected: after any concession, and tax is not fee income; same as the Fee Dashboard
 
-        public async Task<AccountantYearRow?> GetYearContainingAsync(string schoolId, DateOnly date, CancellationToken ct)
-        {
-            var y = await _db.AcademicYears.AsNoTracking().Where(a => a.SchoolId == schoolId && a.StartDate <= date && a.EndDate >= date)
-                .OrderByDescending(a => a.IsCurrent).ThenByDescending(a => a.StartDate).Select(a => new { a.AcademicYearId, a.YearName }).FirstOrDefaultAsync(ct);
-            return y == null ? null : new AccountantYearRow(y.AcademicYearId, y.YearName);
-        }
-
         public async Task<List<AccountantPaymentRow>> GetRecentPaymentsAsync(string schoolId, int take, CancellationToken ct)
         {
             var rows = await (from p in _db.FeePayments.AsNoTracking()

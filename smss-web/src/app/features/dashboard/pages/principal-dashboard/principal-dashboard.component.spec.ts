@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
@@ -11,6 +12,8 @@ import { PrincipalDashboard } from '../../models/principal-dashboard.model';
 import { PrincipalDashboardComponent } from './principal-dashboard.component';
 
 const URL = `${environment.apiUrl}/api/PrincipalDashboard/summary`;
+const YEARS = `${environment.apiUrl}/api/AcademicYear`;
+const year = (id: number, name: string, over: Record<string, unknown> = {}) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent: false, statusName: 'Active', isClosed: false, ...over });
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 @Component({ selector: 'app-chart', changeDetection: ChangeDetectionStrategy.OnPush, template: '<span class="chart-stub"></span>' })
@@ -23,7 +26,7 @@ const day = (i: number) => `2026-11-${String(i + 1).padStart(2, '0')}`;
 
 function principalDashboard(over: Partial<PrincipalDashboard> = {}): PrincipalDashboard {
   return {
-    today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27',
+    today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27', academicYearIsCurrent: true, academicYearIsClosed: false, currentYearName: '2026-27', viewingNote: null, hasFeeSetup: true,
     stats: { totalStudents: 420, totalStaff: 31, attendanceMarkedToday: 400, attendancePresentToday: 372, attendancePercentToday: 93, feeTotalDue: 1000000, feeCollected: 650000, feeOutstanding: 350000 },
     attendanceTrend: Array.from({ length: 14 }, (_, i) => ({ date: day(i), marked: 50, present: 45, presentPercent: 90 as number | null })),
     alerts: { pendingEmployeeLeaves: 3, admissionsToDecide: 2, admissionsAwaitingReview: 0 },
@@ -51,6 +54,7 @@ describe('PrincipalDashboardComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PrincipalDashboardComponent);
     fixture.detectChanges();
+    http.match(YEARS).forEach((r) => r.flush(env([year(6, '2025-26', { isClosed: true }), year(7, '2026-27', { isCurrent: true })])));
   }
   function open(d: PrincipalDashboard): void {
     create();
@@ -131,5 +135,38 @@ describe('PrincipalDashboardComponent', () => {
     fixture.detectChanges();
     expect(text()).toContain('could not be loaded');
     expect([...el().querySelectorAll('button')].some((b) => b.textContent?.includes('Try again'))).toBe(true);
+  });
+
+  it('lists every year in the selector (closed ones marked) and shows the year on screen as selected', () => {
+    open(principalDashboard());
+    const bar = fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance;
+    expect(bar.options().map((o: { label: string }) => o.label)).toEqual(['2025-26 (closed, read-only)', '2026-27 (current)']);
+    expect(bar.selected()).toBe('7');
+    expect(el().querySelector('[data-note="viewing"]')).toBeNull();   // the current year needs no note
+  });
+
+  it('choosing another year asks the endpoint for that year and says which year is shown; the current year is not changed', () => {
+    open(principalDashboard());
+    fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance.yearChange.emit(6);
+    const req = http.expectOne((r) => r.url === URL);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('academicYearId')).toBe('6');
+    req.flush(env(principalDashboard({ academicYearId: 6, academicYearName: '2025-26', academicYearIsCurrent: false, viewingNote: 'You are viewing 2025-26 (closed, read-only). The school\'s current year is 2026-27.' })));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-note="viewing"]')!.textContent).toContain('You are viewing 2025-26');
+    expect(text()).toContain('academic year 2025-26');
+  });
+
+  it('a year without fee items says "No fee structure yet" on the fee cards, not zeros, and still shows the head counts', () => {
+    open(principalDashboard({ hasFeeSetup: false, stats: { ...principalDashboard().stats, feeTotalDue: null, feeCollected: null, feeOutstanding: null } }));
+    for (const id of ['collected', 'outstanding', 'rate']) expect(card(id).textContent).toContain('No fee structure yet');
+    expect(card('students').textContent).toContain('420');
+    expect(card('students').textContent).toContain('Enrolled in 2026-27');
+  });
+
+  it('the fee card is called Fees received, for the viewed year', () => {
+    open(principalDashboard());
+    expect(card('collected').textContent).toContain('Fees received');
+    expect(card('collected').textContent).toContain('For 2026-27');
   });
 });

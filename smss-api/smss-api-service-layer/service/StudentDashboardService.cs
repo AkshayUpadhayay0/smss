@@ -19,10 +19,11 @@ namespace smss_api_service_layer.service
         private readonly ITimetableService _timetable;
         private readonly IAssessmentService _assessments;
         private readonly IStudentLeaveService _leave;
+        private readonly ISchoolDashboardRepository _years;
         private readonly ILogger<StudentDashboardService> _logger;
 
         public StudentDashboardService(IStudentRepository students, IAttendanceService attendance, ISchoolEventService events, INoticeService notices,
-            ITimetableService timetable, IAssessmentService assessments, IStudentLeaveService leave, ILogger<StudentDashboardService> logger)
+            ITimetableService timetable, IAssessmentService assessments, IStudentLeaveService leave, ISchoolDashboardRepository years, ILogger<StudentDashboardService> logger)
         {
             _students = students;
             _attendance = attendance;
@@ -31,6 +32,7 @@ namespace smss_api_service_layer.service
             _timetable = timetable;
             _assessments = assessments;
             _leave = leave;
+            _years = years;
             _logger = logger;
         }
 
@@ -46,19 +48,33 @@ namespace smss_api_service_layer.service
 
                 // One DbContext per request, so these run one after another. Every part but the profile degrades to empty rather than failing the page.
                 var today = SchoolClock.Today();
-                var grid = Part(await _timetable.GetStudentMyGridAsync(schoolId, callerUserId, ct), "timetable", allowedMissing: 404);
-                var attendance = Part(await _attendance.GetOwnYearAsync(schoolId, callerUserId, ct), "attendance");
+                // The year in session (the one whose dates contain today) when the student is enrolled in it; otherwise (promoted ahead of the calendar, or no year covers today)
+                // the student's LATEST enrolment year, read-only: no timetable, attendance or marks of a year they are not in, instead of a "not enrolled" error.
+                var todayYear = await _years.YearContainingAsync(schoolId, today, ct);
+                var enrollments = await _students.GetEnrollmentsAsync(schoolId, student.StudentId, ct);
+                var enrolledToday = todayYear != null && enrollments.Any(e => e.AcademicYearId == todayYear.AcademicYearId);
+                var readOnly = !enrolledToday;
+                var latest = readOnly ? enrollments.OrderByDescending(e => e.AcademicYearStart).ThenByDescending(e => e.EnrollmentId).FirstOrDefault() : null;
+                var grid = readOnly ? null : Part(await _timetable.GetStudentMyGridAsync(schoolId, callerUserId, ct), "timetable", allowedMissing: 404);
+                var attendance = readOnly ? null : Part(await _attendance.GetOwnYearAsync(schoolId, callerUserId, ct), "attendance");
                 var eventsCount = Part(await _events.CountUpcomingInYearAsync(schoolId, ct), "events count");
                 var unread = Part(await _notices.GetUnreadCountAsync(schoolId, new NoticeCaller(callerUserId, false, false), ct), "unread notices");
                 var notices = Part(await _notices.GetMyAsync(schoolId, new NoticeCaller(callerUserId, false, false), false, null, null, ct), "notices");
                 var upcoming = Part(await _events.GetUpcomingAsync(schoolId, RecentCount, ct), "upcoming events");
-                var results = Part(await _assessments.GetStudentMyAsync(schoolId, new AssessmentCaller(callerUserId, false, false, true), null, null, ct), "results");
+                var results = readOnly ? null : Part(await _assessments.GetStudentMyAsync(schoolId, new AssessmentCaller(callerUserId, false, false, true), null, null, ct), "results");
                 var leave = Part(await _leave.GetMyAsync(schoolId, callerUserId, null, null, null, ct), "leave");
 
+                var shownYear = readOnly ? latest?.AcademicYearName : todayYear?.YearName;
                 var dto = new StudentDashboardDto
                 {
                     Today = today,
-                    Profile = await ProfileAsync(schoolId, student.StudentId, student.FirstName, student.MiddleName, student.LastName, student.AdmissionNumber, student.ProfilePhotoUrl, grid?.AcademicYearId, ct),
+                    AcademicYearName = shownYear,
+                    IsReadOnlyYear = readOnly,
+                    ViewingNote = !readOnly ? null
+                        : latest == null ? "You are not enrolled in a class yet."
+                        : todayYear == null ? $"No academic year covers today. Showing {latest.AcademicYearName}."
+                        : $"You are not enrolled in {todayYear.YearName} yet. Showing {latest.AcademicYearName}.",
+                    Profile = await ProfileAsync(schoolId, student.StudentId, student.FirstName, student.MiddleName, student.LastName, student.AdmissionNumber, student.ProfilePhotoUrl, readOnly ? latest?.AcademicYearId : todayYear?.AcademicYearId, ct),
                     Attendance = attendance == null ? null : new DashboardAttendanceDto
                     {
                         PresentCount = attendance.Summary.ByStatus.GetValueOrDefault(PresentCode),

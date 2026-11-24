@@ -48,7 +48,10 @@ export class TeacherDashboardComponent implements OnInit {
     const name = this.data()?.profile.fullName.split(' ')[0];
     return name ? `Welcome Back, ${name}!` : 'Welcome Back!';
   });
-  protected readonly subtitle = computed(() => 'Here is your classroom at a glance.');
+  protected readonly subtitle = computed(() => {
+    const year = this.data()?.academicYearName;
+    return year ? `Here is your classroom at a glance · academic year ${year}` : 'Here is your classroom at a glance.';
+  });
   protected readonly badge = computed(() => this.data()?.profile.designationName ?? null);
 
   protected readonly stats = computed(() => {

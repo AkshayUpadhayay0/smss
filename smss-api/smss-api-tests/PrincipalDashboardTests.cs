@@ -13,13 +13,20 @@ namespace smss_api_tests
     {
         private const string School = "SCH1";
 
-        private static PrincipalDashboardService Service(Dictionary<string, object?>? attendance = null, Dictionary<string, object?>? employees = null, Dictionary<string, object?>? fees = null,
+        private static Dictionary<string, object?> Merge(Dictionary<string, object?> defaults, Dictionary<string, object?>? over)
+        {
+            if (over != null) foreach (var kv in over) defaults[kv.Key] = kv.Value;
+            return defaults;
+        }
+
+        private static readonly DashboardYearRow Year1 = new(1, "2026-27", new DateOnly(2026, 4, 1), new DateOnly(2027, 3, 31), true, false);
+
+        private static PrincipalDashboardService Service(Dictionary<string, object?>? employees = null, Dictionary<string, object?>? fees = null,
             Dictionary<string, object?>? leave = null, Dictionary<string, object?>? admissions = null, Dictionary<string, object?>? results = null, Dictionary<string, object?>? events = null,
             Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null)
         {
             var today = smss_api_service_layer.helper.SchoolClock.Today();
             return new PrincipalDashboardService(
-                Fake.Of<IAttendanceService>(attendance ?? new() { ["GetMySectionsAsync"] = Fake.Ok(new MySectionsDto { AcademicYearId = 1, AcademicYearName = "2026-27", Sections = new() { new() { RosterCount = 30 }, new() { RosterCount = 25 } } }) }),
                 Fake.Of<IFeeReportService>(fees ?? new() { ["GetDashboardAsync"] = Fake.Ok(new FeeDashboardDto { TotalDue = 100000m, TotalCollected = 60000m, TotalOutstanding = 40000m }) }),
                 Fake.Of<IEmployeeService>(employees ?? new() { ["ListAsync"] = Fake.Ok(new EmployeePagedDto { Total = 12 }) }),
                 Fake.Of<IEmployeeLeaveService>(leave ?? new() { ["ListAsync"] = Fake.Ok(new List<EmployeeLeaveDto> { new(), new(), new() }) }),
@@ -39,14 +46,18 @@ namespace smss_api_tests
                 {
                     ["ListAsync"] = Fake.Ok(Enumerable.Range(1, 8).Select(i => new NoticeDto { NoticeId = i, Title = "N" + i, Audience = "ALL", PublishedAt = new DateTime(2026, 10, i, 0, 0, 0, DateTimeKind.Utc) }).ToList())
                 }),
-                Fake.Of<ISchoolDashboardRepository>(repo ?? new() { ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow> { new(today, 50, 45), new(today.AddDays(-1), 40, 30) } }),
+                Fake.Of<ISchoolDashboardRepository>(Merge(new()
+                {
+                    ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow> { new(today, 50, 45), new(today.AddDays(-1), 40, 30) },
+                    ["CurrentYearAsync"] = Year1, ["EnrolledStudentsAsync"] = 55, ["HasFeeItemsAsync"] = true,
+                }, repo)),
                 NullLogger<PrincipalDashboardService>.Instance);
         }
 
         [Fact]
         public async Task The_figures_come_from_the_existing_services()
         {
-            var r = await Service().GetSummaryAsync(School, 5, default);
+            var r = await Service().GetSummaryAsync(School, 5, null, default);
             Assert.Equal(200, r.StatusCode);
             var d = r.Data!;
             Assert.Empty(d.PartsUnavailable);
@@ -64,7 +75,7 @@ namespace smss_api_tests
         [Fact]
         public async Task The_latest_five_results_and_notices_come_newest_first()
         {
-            var d = (await Service().GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await Service().GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Equal(new long[] { 7, 6, 5, 4, 3 }, d.RecentPublications.Select(p => p.PublicationId));
             Assert.Equal(new long[] { 8, 7, 6, 5, 4 }, d.RecentNotices.Select(n => n.NoticeId));
             Assert.Equal(2, d.UpcomingEvents.Count);
@@ -73,7 +84,7 @@ namespace smss_api_tests
         [Fact]
         public async Task A_service_that_throws_only_marks_its_own_part()
         {
-            var d = (await Service(fees: new() { ["GetDashboardAsync"] = new InvalidOperationException("db down") }).GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await Service(fees: new() { ["GetDashboardAsync"] = new InvalidOperationException("db down") }).GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Equal(new[] { "fees" }, d.PartsUnavailable);
             Assert.Null(d.Stats.FeeCollected);
             Assert.Equal(55, d.Stats.TotalStudents);
@@ -83,7 +94,7 @@ namespace smss_api_tests
         public async Task A_failed_response_from_one_service_only_marks_that_part()
         {
             var fail = new Dictionary<string, object?>();   // nothing configured: the stand-in answers with a failed ApiResponse
-            var d = (await Service(fees: fail, leave: fail, results: fail).GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await Service(fees: fail, leave: fail, results: fail).GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Equal(new[] { "fees", "employeeLeave", "results" }.OrderBy(x => x), d.PartsUnavailable.OrderBy(x => x));
             Assert.Null(d.Stats.FeeCollected); Assert.Null(d.Stats.FeeOutstanding); Assert.Null(d.Alerts.PendingEmployeeLeaves);
             Assert.Empty(d.RecentPublications);
@@ -94,7 +105,7 @@ namespace smss_api_tests
         [Fact]
         public async Task A_failing_attendance_query_marks_attendance_unavailable_and_blanks_its_numbers()
         {
-            var d = (await Service(repo: new() { ["GetAttendanceByDayAsync"] = new InvalidOperationException("boom") }).GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await Service(repo: new() { ["GetAttendanceByDayAsync"] = new InvalidOperationException("boom") }).GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Contains("attendance", d.PartsUnavailable);
             Assert.Null(d.Stats.AttendancePercentToday); Assert.Null(d.Stats.AttendanceMarkedToday);
             Assert.Empty(d.AttendanceTrend);
@@ -108,7 +119,7 @@ namespace smss_api_tests
                 leave: new() { ["ListAsync"] = Fake.Ok(new List<EmployeeLeaveDto>()) }, admissions: new() { ["GetAllAsync"] = Fake.Ok(new List<AdmissionResponseDto>()) },
                 results: new() { ["ListAsync"] = Fake.Ok(new List<PublicationDto>()) }, events: new() { ["GetUpcomingAsync"] = Fake.Ok(new List<SchoolEventDto>()) },
                 notices: new() { ["ListAsync"] = Fake.Ok(new List<NoticeDto>()) }, repo: new() { ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow>() });
-            var d = (await empty.GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await empty.GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
             Assert.Equal((0, 0, 0), (d.Alerts.PendingEmployeeLeaves, d.Alerts.AdmissionsToDecide, d.Alerts.AdmissionsAwaitingReview));
             Assert.Empty(d.RecentPublications); Assert.Empty(d.UpcomingEvents); Assert.Empty(d.RecentNotices);
@@ -120,7 +131,7 @@ namespace smss_api_tests
         [Fact]
         public async Task No_academic_year_for_today_makes_the_students_and_fees_unavailable()
         {
-            var d = (await Service(attendance: new()).GetSummaryAsync(School, 5, default)).Data!;
+            var d = (await Service(repo: new() { ["CurrentYearAsync"] = null, ["YearContainingAsync"] = null }).GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Contains("students", d.PartsUnavailable); Assert.Contains("fees", d.PartsUnavailable);
             Assert.Null(d.Stats.TotalStudents); Assert.Null(d.Stats.FeeCollected);
         }
@@ -128,8 +139,8 @@ namespace smss_api_tests
         [Fact]
         public async Task A_caller_without_a_school_gets_400()
         {
-            Assert.Equal(400, (await Service().GetSummaryAsync(null, 5, default)).StatusCode);
-            Assert.Equal(400, (await Service().GetSummaryAsync("  ", 5, default)).StatusCode);
+            Assert.Equal(400, (await Service().GetSummaryAsync(null, 5, null, default)).StatusCode);
+            Assert.Equal(400, (await Service().GetSummaryAsync("  ", 5, null, default)).StatusCode);
         }
 
         [Fact]
@@ -137,7 +148,7 @@ namespace smss_api_tests
         {
             string? seenSchool = null; bool? canManage = null;
             var svc = Service(fees: new() { ["GetDashboardAsync"] = new Func<object?[], object?>(a => { seenSchool = (string?)a[0]; canManage = (bool)a[5]!; return Fake.Ok(new FeeDashboardDto()); }) });
-            await svc.GetSummaryAsync("SCH-X", 5, default);
+            await svc.GetSummaryAsync("SCH-X", 5, null, default);
             Assert.Equal("SCH-X", seenSchool);
             Assert.False(canManage);
         }
@@ -156,22 +167,22 @@ namespace smss_api_tests
         public async Task Only_the_Principal_gets_the_dashboard(string role, int expected)
         {
             var (c, svc) = Controller(Fake.User(School, 5, role));
-            Assert.Equal(expected, Fake.Code(await c.Summary(default)));
+            Assert.Equal(expected, Fake.Code(await c.Summary(null, default)));
             Assert.Equal(expected == 200, svc.Calls.Contains("GetSummaryAsync"));   // a refused role never reaches the service
         }
 
         [Fact]
         public async Task A_principal_who_is_also_something_else_still_gets_it_and_a_user_with_no_role_does_not()
         {
-            Assert.Equal(200, Fake.Code(await Controller(Fake.User(School, 5, "Principal", "Teacher")).C.Summary(default)));
-            Assert.Equal(403, Fake.Code(await Controller(Fake.User(School, 5)).C.Summary(default)));
+            Assert.Equal(200, Fake.Code(await Controller(Fake.User(School, 5, "Principal", "Teacher")).C.Summary(null, default)));
+            Assert.Equal(403, Fake.Code(await Controller(Fake.User(School, 5)).C.Summary(null, default)));
         }
 
         [Fact]
         public async Task A_token_without_a_user_id_is_unauthorized()
         {
             var user = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Principal") }, "test"));
-            Assert.Equal(401, Fake.Code(await Controller(user).C.Summary(default)));
+            Assert.Equal(401, Fake.Code(await Controller(user).C.Summary(null, default)));
         }
 
         [Fact]

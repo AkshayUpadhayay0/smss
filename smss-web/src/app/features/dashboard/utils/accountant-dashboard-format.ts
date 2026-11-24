@@ -13,9 +13,15 @@ const monthName = (ymd: string): string => new Date(`${ymd.slice(0, 7)}-01T00:00
  */
 export function buildAccountantStats(d: AccountantDashboard): DashStatCard[] {
   const s = d.stats;
+  // the viewed year has no fee items at all: its dues are not zero, there is nothing to count
+  const noFees = (id: string, label: string, tone: 'warning' | 'danger' | 'info'): DashStatCard => ({
+    id, label, value: 'No fee structure yet', note: d.academicYearName ? `Nothing is assigned for ${d.academicYearName}` : 'No academic year', link: '/fee-reports/class', tone, unavailable: false,
+  });
+  const dues = !d.hasFeeSetup && !down(d, 'fees');
   return [
-    statCard({ id: 'today', label: 'Collected today', value: formatInr(s.collectedToday ?? 0), note: 'Payments received today', link: '/fee-dashboard', tone: 'success' }, down(d, 'collectedToday') || s.collectedToday == null),
-    statCard({ id: 'month', label: 'Collected this month', value: formatInr(s.collectedThisMonth ?? 0), note: `In ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.collectedThisMonth == null),
+    statCard({ id: 'today', label: 'Cash collected today', value: formatInr(s.collectedToday ?? 0), note: 'All years, payments received today', link: '/fee-dashboard', tone: 'success' }, down(d, 'collectedToday') || s.collectedToday == null),
+    statCard({ id: 'month', label: 'Cash collected this month', value: formatInr(s.collectedThisMonth ?? 0), note: `All years, in ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.collectedThisMonth == null),
+    ...(dues ? [noFees('outstanding', 'Outstanding', 'warning'), noFees('overdue', 'Overdue', 'danger'), noFees('upcoming', `Due in the next ${s.upcomingDays} days`, 'info')] : [
     statCard({ id: 'outstanding', label: 'Outstanding', value: formatInr(s.outstanding ?? 0), note: d.academicYearName ? `Still to collect for ${d.academicYearName}` : 'Still to collect', link: '/fee-reports/class', tone: 'warning' }, down(d, 'fees') || s.outstanding == null),
     statCard(
       {
@@ -39,5 +45,6 @@ export function buildAccountantStats(d: AccountantDashboard): DashStatCard[] {
       },
       down(d, 'fees') || s.upcomingCount == null,
     ),
+    ]),
   ];
 }

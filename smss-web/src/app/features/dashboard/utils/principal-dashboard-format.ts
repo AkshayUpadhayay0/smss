@@ -16,8 +16,11 @@ export function collectionRate(collected: number, due: number): string {
 export function buildPrincipalStats(d: PrincipalDashboard): DashStatCard[] {
   const s = d.stats;
   const year = d.academicYearName;
+  const noFees = (id: string, label: string, tone: 'success' | 'warning' | 'primary'): DashStatCard => ({
+    id, label, value: 'No fee structure yet', note: year ? `Nothing is assigned for ${year}` : 'No academic year', link: '/fee-dashboard', tone, unavailable: false,
+  });
   return [
-    statCard({ id: 'students', label: 'Total students', value: String(s.totalStudents ?? 0), note: year ? `Active in ${year}` : 'Active students', link: null, tone: 'primary' }, down(d, 'students') || s.totalStudents == null),
+    statCard({ id: 'students', label: 'Total students', value: String(s.totalStudents ?? 0), note: year ? `Enrolled in ${year}` : 'Active students', link: null, tone: 'primary' }, down(d, 'students') || s.totalStudents == null),
     statCard({ id: 'staff', label: 'Total staff', value: String(s.totalStaff ?? 0), note: 'Active employees', link: null, tone: 'info' }, down(d, 'staff') || s.totalStaff == null),
     statCard(
       {
@@ -30,12 +33,14 @@ export function buildPrincipalStats(d: PrincipalDashboard): DashStatCard[] {
       },
       down(d, 'attendance'),
     ),
-    statCard({ id: 'collected', label: 'Fee collected', value: formatInr(s.feeCollected ?? 0), note: year ? `In ${year}` : 'This academic year', link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.feeCollected == null),
+    ...(!d.hasFeeSetup && !down(d, 'fees') ? [noFees('collected', 'Fees received', 'success'), noFees('outstanding', 'Fee outstanding', 'warning'), noFees('rate', 'Collection rate', 'primary')] : [
+    statCard({ id: 'collected', label: 'Fees received', value: formatInr(s.feeCollected ?? 0), note: year ? `For ${year}` : 'This academic year', link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.feeCollected == null),
     statCard({ id: 'outstanding', label: 'Fee outstanding', value: formatInr(s.feeOutstanding ?? 0), note: year ? `Still to collect for ${year}` : 'Still to collect', link: '/fee-dashboard', tone: 'warning' }, down(d, 'fees') || s.feeOutstanding == null),
     statCard(
       { id: 'rate', label: 'Collection rate', value: collectionRate(s.feeCollected ?? 0, s.feeTotalDue ?? 0), note: `of ${formatInr(s.feeTotalDue ?? 0)} billed`, link: '/fee-dashboard', tone: 'primary' },
       down(d, 'fees') || s.feeCollected == null || s.feeTotalDue == null,
     ),
+    ]),
   ];
 }
 

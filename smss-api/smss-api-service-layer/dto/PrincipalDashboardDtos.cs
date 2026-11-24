@@ -16,7 +16,7 @@ namespace smss_api_service_layer.dto
 
     public class PrincipalDashboardStatsDto
     {
-        /// <summary>Students on an Active roster of the school's active sections in the current academic year.</summary>
+        /// <summary>Active students with an Active enrolment in the VIEWED academic year.</summary>
         public int? TotalStudents { get; set; }
         /// <summary>Employees with an Active record.</summary>
         public int? TotalStaff { get; set; }
@@ -24,7 +24,7 @@ namespace smss_api_service_layer.dto
         public int? AttendancePresentToday { get; set; }
         /// <summary>Present / marked x 100, one decimal; null when nothing has been marked today.</summary>
         public decimal? AttendancePercentToday { get; set; }
-        /// <summary>The Fee dashboard's figures for the current academic year, read-only (the Principal has no drill-down or collection rights).</summary>
+        /// <summary>The Fee dashboard's figures for the VIEWED academic year, read-only (the Principal has no drill-down or collection rights). Null when the year has no fee items (see HasFeeSetup).</summary>
         public decimal? FeeTotalDue { get; set; }
         public decimal? FeeCollected { get; set; }
         public decimal? FeeOutstanding { get; set; }
@@ -58,8 +58,17 @@ namespace smss_api_service_layer.dto
     public class PrincipalDashboardDto
     {
         public DateOnly Today { get; set; }
+        /// <summary>The academic year being VIEWED (the one asked for, else the school's current year).</summary>
         public long? AcademicYearId { get; set; }
         public string? AcademicYearName { get; set; }
+        public bool AcademicYearIsCurrent { get; set; }
+        public bool AcademicYearIsClosed { get; set; }
+        /// <summary>The school's current year name, so the client can say "viewing 2027-28, current is 2026-27".</summary>
+        public string? CurrentYearName { get; set; }
+        /// <summary>A sentence saying which year is shown when it is not simply the current one; null otherwise.</summary>
+        public string? ViewingNote { get; set; }
+        /// <summary>False = the viewed year has no fee items: the fee figures are null and the client says "No fee structure yet" (they are not zeros).</summary>
+        public bool HasFeeSetup { get; set; }
         public PrincipalDashboardStatsDto Stats { get; set; } = new();
         /// <summary>The last 14 calendar days, oldest first, today last. Always 14 entries.</summary>
         public List<AttendanceTrendPointDto> AttendanceTrend { get; set; } = new();

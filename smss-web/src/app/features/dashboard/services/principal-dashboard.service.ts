@@ -8,7 +8,8 @@ import { PrincipalDashboard } from '../models/principal-dashboard.model';
 export class PrincipalDashboardService {
   private readonly api = inject(ApiService);
 
-  summary(): Observable<PrincipalDashboard> {
-    return this.api.get<PrincipalDashboard>('/api/PrincipalDashboard/summary');
+  /** academicYearId omitted = the school's current year. It only chooses what to LOOK at. */
+  summary(academicYearId?: number): Observable<PrincipalDashboard> {
+    return this.api.get<PrincipalDashboard>('/api/PrincipalDashboard/summary', academicYearId ? { academicYearId } : undefined);
   }
 }

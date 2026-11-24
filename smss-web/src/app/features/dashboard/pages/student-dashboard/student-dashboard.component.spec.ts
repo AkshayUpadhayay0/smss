@@ -157,4 +157,17 @@ describe('StudentDashboardComponent', () => {
     open((req) => req.flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' }));
     expect(text()).toContain('could not be loaded');
   });
+
+  it('says which academic year it shows', () => {
+    openWith(dashboard({ academicYearName: '2026-27', isReadOnlyYear: false, viewingNote: null }));
+    expect(text()).toContain('academic year 2026-27');
+    expect(el().querySelector('[data-note="year"]')).toBeNull();
+  });
+
+  it('a student promoted ahead of the calendar sees the latest year read-only with the note, not an error', () => {
+    openWith(dashboard({ academicYearName: '2027-28', isReadOnlyYear: true, viewingNote: 'You are not enrolled in 2026-27 yet. Showing 2027-28.', todayClasses: [], attendance: null }));
+    expect(el().querySelector('[data-note="year"]')!.textContent).toContain('You are not enrolled in 2026-27 yet. Showing 2027-28.');
+    expect(text()).toContain('academic year 2027-28');
+    expect(el().querySelector('[role="alert"]')).toBeNull();
+  });
 });

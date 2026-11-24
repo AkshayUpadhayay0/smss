@@ -43,6 +43,12 @@ export interface TodayClass {
 
 export interface StudentDashboard {
   profile: DashboardProfile;
+  /** The year shown: today's academic year when the student is enrolled in it, else their latest enrolment year (read-only). */
+  academicYearName?: string | null;
+  /** true = the student is not enrolled in today's year: only the profile of the latest year is shown. */
+  isReadOnlyYear?: boolean;
+  /** A sentence about it, e.g. "You are not enrolled in 2026-27 yet. Showing 2027-28."; null otherwise. */
+  viewingNote?: string | null;
   /** Null when the attendance part could not be loaded. */
   attendance?: DashboardAttendance | null;
   eventsCount: number;

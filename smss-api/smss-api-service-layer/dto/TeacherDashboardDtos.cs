@@ -38,6 +38,9 @@ namespace smss_api_service_layer.dto
     {
         public DateOnly Today { get; set; }
         public TeacherProfileDto Profile { get; set; } = null!;
+        /// <summary>The academic year this dashboard shows: the year that CONTAINS today (the teacher's timetable, class-teacher sections and attendance are for the year in session, whatever year the school has flagged as current). Null when no year covers today.</summary>
+        public long? AcademicYearId { get; set; }
+        public string? AcademicYearName { get; set; }
         /// <summary>Every section the teacher is the Active class teacher of this academic year; empty = not a class teacher.</summary>
         public List<TeacherSectionDto> ClassTeacherOf { get; set; } = new();
         /// <summary>Distinct subjects of the teacher's Active timetable entries, across every section they teach.</summary>

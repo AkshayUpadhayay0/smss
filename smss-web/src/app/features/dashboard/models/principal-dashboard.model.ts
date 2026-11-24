@@ -41,8 +41,17 @@ export interface DashboardPublication {
 
 export interface PrincipalDashboard {
   today: string;
+  /** The academic year being VIEWED (the one asked for, else the school's current year). */
   academicYearId: number | null;
   academicYearName: string | null;
+  academicYearIsCurrent: boolean;
+  academicYearIsClosed: boolean;
+  /** The school's current year name. */
+  currentYearName: string | null;
+  /** A sentence about the viewed year when it is not the current one; null otherwise. */
+  viewingNote: string | null;
+  /** false = the viewed year has no fee items: the fee figures are null and the page says "No fee structure yet". */
+  hasFeeSetup: boolean;
   stats: PrincipalDashboardStats;
   /** The last 14 days, oldest first. Empty when attendance is unavailable. */
   attendanceTrend: AttendanceTrendPoint[];

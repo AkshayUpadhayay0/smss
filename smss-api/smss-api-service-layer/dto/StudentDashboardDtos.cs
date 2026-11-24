@@ -50,6 +50,12 @@ namespace smss_api_service_layer.dto
     public class StudentDashboardDto
     {
         public DashboardProfileDto Profile { get; set; } = null!;
+        /// <summary>The academic year shown: the year that contains today when the student is enrolled in it, else their latest enrolment year (read-only).</summary>
+        public string? AcademicYearName { get; set; }
+        /// <summary>True when the student is not enrolled in today's academic year (promoted ahead of the calendar, or no year covers today): only the profile of the latest enrolment year is shown.</summary>
+        public bool IsReadOnlyYear { get; set; }
+        /// <summary>A sentence for the client when <see cref="IsReadOnlyYear"/>, e.g. "You are not enrolled in 2026-27 yet. Showing 2027-28."</summary>
+        public string? ViewingNote { get; set; }
         public DashboardAttendanceDto? Attendance { get; set; }
         /// <summary>Events from today to the end of the academic year.</summary>
         public int EventsCount { get; set; }

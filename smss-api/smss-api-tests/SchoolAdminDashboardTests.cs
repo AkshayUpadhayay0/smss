@@ -70,6 +70,11 @@ namespace smss_api_tests
         {
             public Task<List<SchoolAttendanceDayRow>> GetAttendanceByDayAsync(string s, DateOnly f, DateOnly t, string p, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<List<SchoolYearSpanRow>> GetYearsOverlappingAsync(string s, DateOnly f, DateOnly t, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<DashboardYearRow?> CurrentYearAsync(string s, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<DashboardYearRow?> YearAsync(string s, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<DashboardYearRow?> YearContainingAsync(string s, DateOnly d, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<int> EnrolledStudentsAsync(string s, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<bool> HasFeeItemsAsync(string s, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
         }
     }
 

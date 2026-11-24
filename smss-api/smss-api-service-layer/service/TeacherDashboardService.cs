@@ -65,6 +65,7 @@ namespace smss_api_service_layer.service
                 // One DbContext per request, so these run one after another. Each part is guarded on its own: a failure leaves that part empty / null and names it in PartsUnavailable.
                 var grid = Part(await _timetable.GetMyGridAsync(schoolId, callerUserId, null, ct), TeacherDashboardParts.Subjects, dto);
                 dto.SubjectsTaught = SubjectsTaught(grid);
+                if (grid != null) { dto.AcademicYearId = grid.AcademicYearId; dto.AcademicYearName = grid.AcademicYearName; }   // the year the page shows, said out loud
                 if (grid == null)
                 {
                     // without the academic year (nothing covers today) the class-teacher sections cannot be found either

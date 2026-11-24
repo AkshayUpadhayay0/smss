@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
@@ -11,6 +12,8 @@ import { AccountantDashboard } from '../../models/accountant-dashboard.model';
 import { AccountantDashboardComponent } from './accountant-dashboard.component';
 
 const URL = `${environment.apiUrl}/api/AccountantDashboard/summary`;
+const YEARS = `${environment.apiUrl}/api/AcademicYear`;
+const year = (id: number, name: string, over: Record<string, unknown> = {}) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent: false, statusName: 'Active', isClosed: false, ...over });
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 @Component({ selector: 'app-chart', changeDetection: ChangeDetectionStrategy.OnPush, template: '<span class="chart-stub"></span>' })
@@ -23,7 +26,7 @@ const months = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10
 
 function accountantDashboard(over: Partial<AccountantDashboard> = {}): AccountantDashboard {
   return {
-    today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27',
+    today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27', academicYearIsCurrent: true, academicYearIsClosed: false, currentYearName: '2026-27', viewingNote: null, hasFeeSetup: true,
     stats: { collectedToday: 2500, collectedThisMonth: 15000, outstanding: 40000, overdueCount: 6, overdueAmount: 12000, upcomingCount: 4, upcomingAmount: 8000, upcomingDays: 7 },
     collectionTrend: months.map((m, i) => ({ month: m, label: m, amount: i === 5 ? 15000 : 1000 * i })),
     recentPayments: [{ paymentId: 1, receiptNumber: 'RCP-2026-0001', studentId: 'DPS001ST001', studentName: 'Abhinav Kumar', amount: 5000, paymentMode: 'UPI', paymentDate: '2026-11-14T05:00:00Z' }],
@@ -47,6 +50,7 @@ describe('AccountantDashboardComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AccountantDashboardComponent);
     fixture.detectChanges();
+    http.match(YEARS).forEach((r) => r.flush(env([year(6, '2025-26', { isClosed: true }), year(7, '2026-27', { isCurrent: true })])));
   }
   function open(d: AccountantDashboard): void {
     create();
@@ -123,5 +127,30 @@ describe('AccountantDashboardComponent', () => {
     fixture.detectChanges();
     expect(text()).toContain('could not be loaded');
     expect([...el().querySelectorAll('button')].some((b) => b.textContent?.includes('Try again'))).toBe(true);
+  });
+
+  it('the cash cards are called cash and say all years; the dues cards follow the viewed year', () => {
+    open(accountantDashboard());
+    expect(card('today').textContent).toContain('Cash collected today');
+    expect(card('today').textContent).toContain('All years');
+    expect(card('month').textContent).toContain('Cash collected this month');
+    expect(card('outstanding').textContent).toContain('2026-27');
+  });
+
+  it('choosing another year asks for that year and says so; the cash cards stay what the server sent', () => {
+    open(accountantDashboard());
+    fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance.yearChange.emit(6);
+    const req = http.expectOne((r) => r.url === URL);
+    expect(req.request.params.get('academicYearId')).toBe('6');
+    req.flush(env(accountantDashboard({ academicYearId: 6, academicYearName: '2025-26', viewingNote: 'You are viewing 2025-26. The school\'s current year is 2026-27.' })));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-note="viewing"]')!.textContent).toContain('You are viewing 2025-26');
+    expect(card('today').textContent).toContain('Cash collected today');
+  });
+
+  it('a year without fee items shows No fee structure yet on the dues cards only, never on the cash cards', () => {
+    open(accountantDashboard({ hasFeeSetup: false, stats: { ...accountantDashboard().stats, outstanding: null, overdueCount: null, overdueAmount: null, upcomingCount: null, upcomingAmount: null } }));
+    for (const id of ['outstanding', 'overdue', 'upcoming']) expect(card(id).textContent).toContain('No fee structure yet');
+    for (const id of ['today', 'month']) expect(card(id).textContent).not.toContain('No fee structure yet');
   });
 });

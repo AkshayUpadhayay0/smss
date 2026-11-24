@@ -13,5 +13,17 @@ namespace smss_api_db_layer.@interface
 
         /// <summary>The school's academic years whose dates overlap fromDate..toDate, oldest first.</summary>
         Task<List<SchoolYearSpanRow>> GetYearsOverlappingAsync(string schoolId, DateOnly fromDate, DateOnly toDate, CancellationToken ct);
+
+        // ---- the year every dashboard shows (see DashboardYears): the school's CURRENT year, any year by id, and the year whose dates contain a day
+        /// <summary>The school's current (is_current and Active) academic year, or null.</summary>
+        Task<DashboardYearRow?> CurrentYearAsync(string schoolId, CancellationToken ct);
+        /// <summary>One of the school's own years by id (closed or not); null for another school's id.</summary>
+        Task<DashboardYearRow?> YearAsync(string schoolId, long academicYearId, CancellationToken ct);
+        /// <summary>The year whose dates contain <paramref name="date"/> (the current one first when years overlap), or null.</summary>
+        Task<DashboardYearRow?> YearContainingAsync(string schoolId, DateOnly date, CancellationToken ct);
+        /// <summary>Active students with an Active enrolment in the year.</summary>
+        Task<int> EnrolledStudentsAsync(string schoolId, long academicYearId, CancellationToken ct);
+        /// <summary>Does the year have any fee item at all (false = no fee structure was ever assigned in it)?</summary>
+        Task<bool> HasFeeItemsAsync(string schoolId, long academicYearId, CancellationToken ct);
     }
 }

@@ -24,6 +24,14 @@ namespace smss_api_tests
             };
         }
 
+        private static Dictionary<string, object?> Merge(Dictionary<string, object?> defaults, Dictionary<string, object?>? over)
+        {
+            if (over != null) foreach (var kv in over) defaults[kv.Key] = kv.Value;
+            return defaults;
+        }
+
+        private static readonly DashboardYearRow Year7 = new(7, "2026-27", new DateOnly(2026, 4, 1), new DateOnly(2027, 3, 31), true, false);
+
         private static AccountantDashboardService Service(Dictionary<string, object?>? fees = null, Dictionary<string, object?>? repo = null, Dictionary<string, object?>? years = null)
         {
             var today = SchoolClock.Today();
@@ -32,17 +40,16 @@ namespace smss_api_tests
                 Fake.Of<IAccountantDashboardRepository>(repo ?? new()
                 {
                     ["GetCollectedBetweenAsync"] = 2500m,
-                    ["GetYearContainingAsync"] = new AccountantYearRow(7, "2026-27"),
                     ["GetRecentPaymentsAsync"] = Enumerable.Range(1, 10).Select(i => new AccountantPaymentRow(i, "RCP-2026-000" + i, "S" + i, "Student " + i, 100m * i, "Cash", DateTime.UtcNow.AddHours(-i))).ToList(),
                 }),
-                Fake.Of<ISchoolDashboardRepository>(years ?? new() { ["GetYearsOverlappingAsync"] = new List<SchoolYearSpanRow>() }),
+                Fake.Of<ISchoolDashboardRepository>(Merge(new() { ["GetYearsOverlappingAsync"] = new List<SchoolYearSpanRow>(), ["CurrentYearAsync"] = Year7, ["HasFeeItemsAsync"] = true }, years)),
                 NullLogger<AccountantDashboardService>.Instance);
         }
 
         [Fact]
         public async Task The_figures_equal_the_fee_dashboard_and_the_payment_queries()
         {
-            var d = (await Service().GetSummaryAsync(School, default)).Data!;
+            var d = (await Service().GetSummaryAsync(School, null, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
             Assert.Equal(2500m, d.Stats.CollectedToday);
             Assert.Equal(15000m, d.Stats.CollectedThisMonth);
@@ -57,7 +64,7 @@ namespace smss_api_tests
         public async Task The_chart_is_exactly_six_months_oldest_first_this_month_last_and_zero_filled()
         {
             var today = SchoolClock.Today();
-            var d = (await Service().GetSummaryAsync(School, default)).Data!;
+            var d = (await Service().GetSummaryAsync(School, null, default)).Data!;
             Assert.Equal(6, d.CollectionTrend.Count);
             Assert.Equal(new DateOnly(today.Year, today.Month, 1), d.CollectionTrend[^1].Month);
             Assert.True(d.CollectionTrend.Zip(d.CollectionTrend.Skip(1), (a, b) => a.Month < b.Month).All(x => x));
@@ -75,7 +82,7 @@ namespace smss_api_tests
             var previous = new FeeDashboardDto { AcademicYearId = 6, CollectionByMonth = new() { new FeeCollectionMonthDto { Month = prevMonth, Amount = 700m, Label = "p" } } };
             var d = (await Service(
                 fees: new() { ["GetDashboardAsync"] = new Func<object?[], object?>(a => Fake.Ok((long)a[1]! == 7 ? current : previous)) },
-                years: new() { ["GetYearsOverlappingAsync"] = new List<SchoolYearSpanRow> { new(6, prevMonth.AddMonths(-9), prevMonth.AddDays(10)), new(7, prevMonth.AddDays(11), prevMonth.AddMonths(11)) } }).GetSummaryAsync(School, default)).Data!;
+                years: new() { ["GetYearsOverlappingAsync"] = new List<SchoolYearSpanRow> { new(6, prevMonth.AddMonths(-9), prevMonth.AddDays(10)), new(7, prevMonth.AddDays(11), prevMonth.AddMonths(11)) } }).GetSummaryAsync(School, null, default)).Data!;
             Assert.Equal(700m, d.CollectionTrend[^2].Amount);
             Assert.Equal(1000m, d.CollectionTrend[^1].Amount);
         }
@@ -83,7 +90,7 @@ namespace smss_api_tests
         [Fact]
         public async Task A_failing_fee_dashboard_marks_fees_unavailable_and_leaves_the_fee_numbers_null()
         {
-            var d = (await Service(fees: new()).GetSummaryAsync(School, default)).Data!;
+            var d = (await Service(fees: new()).GetSummaryAsync(School, null, default)).Data!;
             Assert.Equal(new[] { "fees" }, d.PartsUnavailable);
             Assert.Null(d.Stats.CollectedThisMonth); Assert.Null(d.Stats.Outstanding); Assert.Null(d.Stats.OverdueCount); Assert.Null(d.Stats.UpcomingCount);
             Assert.Empty(d.CollectionTrend);
@@ -98,8 +105,7 @@ namespace smss_api_tests
             var d = (await Service(repo: new()
             {
                 ["GetCollectedBetweenAsync"] = new InvalidOperationException("boom"), ["GetRecentPaymentsAsync"] = new InvalidOperationException("boom"),
-                ["GetYearContainingAsync"] = new AccountantYearRow(7, "2026-27"),
-            }).GetSummaryAsync(School, default)).Data!;
+            }).GetSummaryAsync(School, null, default)).Data!;
             Assert.Equal(new[] { "collectedToday", "payments" }, d.PartsUnavailable.OrderBy(x => x));
             Assert.Null(d.Stats.CollectedToday);
             Assert.Empty(d.RecentPayments);
@@ -109,7 +115,8 @@ namespace smss_api_tests
         [Fact]
         public async Task No_academic_year_for_today_makes_fees_unavailable_but_today_and_payments_still_show()
         {
-            var d = (await Service(repo: new() { ["GetCollectedBetweenAsync"] = 0m, ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>() }).GetSummaryAsync(School, default)).Data!;
+            var d = (await Service(repo: new() { ["GetCollectedBetweenAsync"] = 0m, ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>() },
+                years: new() { ["CurrentYearAsync"] = null, ["YearContainingAsync"] = null }).GetSummaryAsync(School, null, default)).Data!;
             Assert.Equal(new[] { "fees" }, d.PartsUnavailable);
             Assert.Equal(0m, d.Stats.CollectedToday);
         }
@@ -119,8 +126,8 @@ namespace smss_api_tests
         {
             var d = (await Service(repo: new()
             {
-                ["GetCollectedBetweenAsync"] = 0m, ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(), ["GetYearContainingAsync"] = new AccountantYearRow(7, "2026-27"),
-            }).GetSummaryAsync(School, default)).Data!;
+                ["GetCollectedBetweenAsync"] = 0m, ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(),
+            }).GetSummaryAsync(School, null, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
             Assert.Equal(0m, d.Stats.CollectedToday);
             Assert.Empty(d.RecentPayments);
@@ -133,9 +140,9 @@ namespace smss_api_tests
             var svc = Service(repo: new()
             {
                 ["GetCollectedBetweenAsync"] = new Func<object?[], object?>(a => { from = (DateTime)a[1]!; to = (DateTime)a[2]!; return 0m; }),
-                ["GetYearContainingAsync"] = new AccountantYearRow(7, "y"), ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(),
+                ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(),
             });
-            await svc.GetSummaryAsync(School, default);
+            await svc.GetSummaryAsync(School, null, default);
             var today = SchoolClock.Today();
             Assert.Equal(SchoolClock.StartOfDayUtc(today), from);
             Assert.Equal(SchoolClock.StartOfDayUtc(today.AddDays(1)), to);
@@ -148,10 +155,10 @@ namespace smss_api_tests
             await Service(repo: new()
             {
                 ["GetCollectedBetweenAsync"] = new Func<object?[], object?>(a => { seen = (string)a[0]!; return 0m; }),
-                ["GetYearContainingAsync"] = new AccountantYearRow(7, "y"), ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(),
-            }).GetSummaryAsync("SCH-X", default);
+                ["GetRecentPaymentsAsync"] = new List<AccountantPaymentRow>(),
+            }).GetSummaryAsync("SCH-X", null, default);
             Assert.Equal("SCH-X", seen);
-            Assert.Equal(400, (await Service().GetSummaryAsync(null, default)).StatusCode);
+            Assert.Equal(400, (await Service().GetSummaryAsync(null, null, default)).StatusCode);
         }
 
         // ---- authorization matrix ----
@@ -168,14 +175,14 @@ namespace smss_api_tests
         public async Task Only_the_Accountant_gets_the_dashboard(string role, int expected)
         {
             var (c, svc) = Controller(Fake.User(School, 5, role));
-            Assert.Equal(expected, Fake.Code(await c.Summary(default)));
+            Assert.Equal(expected, Fake.Code(await c.Summary(null, default)));
             Assert.Equal(expected == 200, svc.Calls.Contains("GetSummaryAsync"));
         }
 
         [Fact]
         public async Task A_user_with_no_role_is_refused()
         {
-            Assert.Equal(403, Fake.Code(await Controller(Fake.User(School, 5)).C.Summary(default)));
+            Assert.Equal(403, Fake.Code(await Controller(Fake.User(School, 5)).C.Summary(null, default)));
         }
 
         [Fact]

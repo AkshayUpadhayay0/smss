@@ -19,7 +19,6 @@ namespace smss_api_service_layer.service
         private const string AdmissionSubmitted = "APPLICATION_SUBMITTED";
         private const string AdmissionUnderReview = "UNDER_REVIEW";
 
-        private readonly IAttendanceService _attendance;
         private readonly IFeeReportService _fees;
         private readonly IEmployeeService _employees;
         private readonly IEmployeeLeaveService _employeeLeave;
@@ -30,14 +29,14 @@ namespace smss_api_service_layer.service
         private readonly ISchoolDashboardRepository _repo;
         private readonly ILogger<PrincipalDashboardService> _logger;
 
-        public PrincipalDashboardService(IAttendanceService attendance, IFeeReportService fees, IEmployeeService employees, IEmployeeLeaveService employeeLeave, IAdmissionService admissions,
+        public PrincipalDashboardService(IFeeReportService fees, IEmployeeService employees, IEmployeeLeaveService employeeLeave, IAdmissionService admissions,
             IReportResultService results, ISchoolEventService events, INoticeService notices, ISchoolDashboardRepository repo, ILogger<PrincipalDashboardService> logger)
         {
-            _attendance = attendance; _fees = fees; _employees = employees; _employeeLeave = employeeLeave; _admissions = admissions;
+            _fees = fees; _employees = employees; _employeeLeave = employeeLeave; _admissions = admissions;
             _results = results; _events = events; _notices = notices; _repo = repo; _logger = logger;
         }
 
-        public async Task<ApiResponse<PrincipalDashboardDto>> GetSummaryAsync(string? schoolId, long callerUserId, CancellationToken ct)
+        public async Task<ApiResponse<PrincipalDashboardDto>> GetSummaryAsync(string? schoolId, long callerUserId, long? academicYearId, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
             try
@@ -46,14 +45,20 @@ namespace smss_api_service_layer.service
                 var dto = new PrincipalDashboardDto { Today = today };
 
                 // One DbContext per request: the parts run one after another, each guarded on its own.
-                var sections = await Part(() => _attendance.GetMySectionsAsync(schoolId, callerUserId, true, ct), PrincipalDashboardParts.Students, dto);
-                var yearId = sections?.AcademicYearId;
-                if (sections != null)
+                // The year being VIEWED: the one asked for (404 for another school's), else the current-flagged year, else the year that contains today (see DashboardYears).
+                var choice = await DashboardYears.ResolveAsync(_repo, schoolId, academicYearId, today, ct);
+                if (choice.NotFound) return Result(404, "Academic year not found.", null);
+                var year = choice.Viewed;
+                var yearId = year?.AcademicYearId;
+                if (year != null)
                 {
-                    dto.AcademicYearId = sections.AcademicYearId;
-                    dto.AcademicYearName = sections.AcademicYearName;
-                    dto.Stats.TotalStudents = sections.Sections.Sum(s => s.RosterCount);
+                    dto.AcademicYearId = year.AcademicYearId; dto.AcademicYearName = year.YearName;
+                    dto.AcademicYearIsCurrent = year.IsCurrent; dto.AcademicYearIsClosed = year.IsClosed;
+                    dto.CurrentYearName = choice.Current?.YearName; dto.ViewingNote = DashboardYears.ViewingNote(choice);
+                    try { dto.Stats.TotalStudents = await _repo.EnrolledStudentsAsync(schoolId, year.AcademicYearId, ct); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Principal dashboard: could not count the enrolled students"); dto.PartsUnavailable.Add(PrincipalDashboardParts.Students); }
                 }
+                else dto.PartsUnavailable.Add(PrincipalDashboardParts.Students);
 
                 var staff = await Part(() => _employees.ListAsync(schoolId, null, null, null, null, null, StatusNames.Active, 1, 1, ct), PrincipalDashboardParts.Staff, dto);
                 dto.Stats.TotalStaff = staff?.Total;
@@ -63,8 +68,13 @@ namespace smss_api_service_layer.service
                 if (yearId == null) dto.PartsUnavailable.Add(PrincipalDashboardParts.Fees);   // the fee dashboard is per academic year
                 else
                 {
-                    var fee = await Part(() => _fees.GetDashboardAsync(schoolId, yearId.Value, null, null, FeeUpcomingDays, false, ct), PrincipalDashboardParts.Fees, dto);
-                    if (fee != null) { dto.Stats.FeeTotalDue = fee.TotalDue; dto.Stats.FeeCollected = fee.TotalCollected; dto.Stats.FeeOutstanding = fee.TotalOutstanding; }
+                    try { dto.HasFeeSetup = await _repo.HasFeeItemsAsync(schoolId, yearId.Value, ct); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Principal dashboard: could not check the fee setup"); dto.PartsUnavailable.Add(PrincipalDashboardParts.Fees); }
+                    if (dto.HasFeeSetup)
+                    {
+                        var fee = await Part(() => _fees.GetDashboardAsync(schoolId, yearId.Value, null, null, FeeUpcomingDays, false, ct), PrincipalDashboardParts.Fees, dto);
+                        if (fee != null) { dto.Stats.FeeTotalDue = fee.TotalDue; dto.Stats.FeeCollected = fee.TotalCollected; dto.Stats.FeeOutstanding = fee.TotalOutstanding; }
+                    }
                 }
 
                 var leave = await Part(() => _employeeLeave.ListAsync(schoolId, true, LeaveStatuses.Pending, null, ct), PrincipalDashboardParts.EmployeeLeave, dto);
