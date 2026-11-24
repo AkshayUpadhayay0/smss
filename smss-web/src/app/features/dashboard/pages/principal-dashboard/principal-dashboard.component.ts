@@ -12,7 +12,7 @@ import { ChartHostComponent } from '../../components/chart/chart.component';
 import { DashboardYearBarComponent } from '../../components/dashboard-year-bar/dashboard-year-bar.component';
 import { PrincipalDashboard } from '../../models/principal-dashboard.model';
 import { PrincipalDashboardService } from '../../services/principal-dashboard.service';
-import { attendanceTrendOptions } from '../../utils/school-dashboard-charts';
+import { attendanceTrendOptions } from '../../utils/role-dashboard-charts';
 import { buildPrincipalAlerts, buildPrincipalStats } from '../../utils/principal-dashboard-format';
 import { readChartColors } from '../../utils/super-admin-charts';
 
@@ -25,7 +25,7 @@ import { readChartColors } from '../../utils/super-admin-charts';
   selector: 'app-principal-dashboard',
   imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ChartHostComponent, DashboardYearBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../school-dashboard/school-dashboard.component.scss',
+  styleUrl: '../role-dashboard.scss',
   templateUrl: './principal-dashboard.component.html',
 })
 export class PrincipalDashboardComponent implements OnInit {

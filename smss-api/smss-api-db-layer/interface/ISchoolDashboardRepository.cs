@@ -4,8 +4,8 @@ namespace smss_api_db_layer.@interface
     public record SchoolAttendanceDayRow(DateOnly Date, int Marked, int Present);
     public record SchoolYearSpanRow(long AcademicYearId, DateOnly StartDate, DateOnly EndDate);
 
-    // Used by SchoolDashboardService only, and read-only. It holds the two figures no existing service can give the School Admin dashboard: attendance across
-    // the WHOLE school per day (Attendance only reads one section or one student at a time) and which academic years a date range touches. No new table.
+    // Read-only, used by the School Admin, Principal, Accountant and Student dashboards. It holds what no existing service can give them: attendance across the WHOLE school per day
+    // (Attendance only reads one section or one student at a time), which academic years a date range touches, and the year lookups every dashboard shares (see DashboardYears). No new table.
     public interface ISchoolDashboardRepository
     {
         /// <summary>Marks per day for fromDate..toDate (both included), school-wide, with how many are <paramref name="presentCode"/>. Days with no marks are absent from the list.</summary>

@@ -12,7 +12,7 @@ namespace smss_api_service_layer.service
     /// </summary>
     public class PrincipalDashboardService : IPrincipalDashboardService
     {
-        public const int AttendanceTrendDays = SchoolDashboardService.AttendanceTrendDays;
+        public const int AttendanceTrendDays = DashboardTrends.AttendanceTrendDays;
         public const int RecentRows = 5;
         private const int FeeUpcomingDays = 7;
         private const string PresentCode = "PRESENT";
@@ -121,7 +121,7 @@ namespace smss_api_service_layer.service
             try
             {
                 var rows = await _repo.GetAttendanceByDayAsync(schoolId, today.AddDays(-(AttendanceTrendDays - 1)), today, PresentCode, ct);
-                dto.AttendanceTrend = SchoolDashboardService.AttendanceTrend(today, rows);
+                dto.AttendanceTrend = DashboardTrends.AttendanceTrend(today, rows);
                 var last = dto.AttendanceTrend[^1];   // today, from the very same query, so the card and the chart can never disagree
                 dto.Stats.AttendanceMarkedToday = last.Marked;
                 dto.Stats.AttendancePresentToday = last.Present;

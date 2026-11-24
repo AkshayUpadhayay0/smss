@@ -33,7 +33,7 @@ Verified counts on the Nov dump: offerings APS 8/8, GHS 13/15, LAS 13/15; subjec
 
 ## Known gaps and follow-ups
 - Copy fee structures to a new year (most useful next task).
-- Optional hardening: database teacher clock-time exclusion across schedules; remove the default-current-year fallback; delete the unused old SchoolDashboardComponent and endpoint (confirm it is role-restricted meanwhile).
+- Optional hardening: database teacher clock-time exclusion across schedules; remove the default-current-year fallback. (The unused old School dashboard and its endpoint were deleted in Stage 1c.)
 - Not exercised: the FAILED copy-log path, a source year with several timetable versions per section, the mobile app on a device, the report card UI (API only).
 - The S7 preview table scrolls sideways at 390px instead of stacking.
 - Subscription billing counts enrolments in the current year, so setting a new current year changes the billed count (documented, unchanged).

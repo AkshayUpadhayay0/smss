@@ -1,4 +1,4 @@
-import { FeeCollectionMonth } from './school-dashboard.model';
+import { FeeCollectionMonth } from './dashboard-shared.model';
 
 /** GET /api/AccountantDashboard/summary (Accountant only). Mirrors AccountantDashboardDtos.cs. */
 

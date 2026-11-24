@@ -1,7 +1,7 @@
 import type { ApexOptions } from 'ng-apexcharts';
 import { formatInr } from '../../../core/utils/currency';
-import { AttendanceTrendPoint, FeeCollectionMonth } from '../models/school-dashboard.model';
-import { shortDay } from './school-dashboard-format';
+import { AttendanceTrendPoint, FeeCollectionMonth } from '../models/dashboard-shared.model';
+import { shortDay } from './dashboard-dates';
 import { ChartColors, FALLBACK_COLORS, compactInr, shortMonth } from './super-admin-charts';
 
 const BASE_CHART = { fontFamily: 'inherit', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 400 } };

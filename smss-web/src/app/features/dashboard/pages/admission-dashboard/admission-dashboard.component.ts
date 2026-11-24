@@ -16,7 +16,7 @@ import { buildAdmissionStats } from '../../utils/admission-dashboard-format';
   selector: 'app-admission-dashboard',
   imports: [RouterLink, ButtonComponent, CardComponent, PageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../school-dashboard/school-dashboard.component.scss',
+  styleUrl: '../role-dashboard.scss',
   templateUrl: './admission-dashboard.component.html',
 })
 export class AdmissionDashboardComponent implements OnInit {

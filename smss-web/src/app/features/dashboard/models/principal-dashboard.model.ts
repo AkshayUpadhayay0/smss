@@ -1,5 +1,5 @@
 import { SchoolEvent } from '../../calendar/models/calendar.model';
-import { AttendanceTrendPoint, DashboardNotice } from './school-dashboard.model';
+import { AttendanceTrendPoint, DashboardNotice } from './dashboard-shared.model';
 
 /** GET /api/PrincipalDashboard/summary (Principal only). Mirrors PrincipalDashboardDtos.cs. */
 

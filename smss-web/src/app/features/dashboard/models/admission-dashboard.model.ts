@@ -1,4 +1,4 @@
-import { DashboardAdmission } from './school-dashboard.model';
+import { DashboardAdmission } from './dashboard-shared.model';
 
 /** GET /api/AdmissionDashboard/summary (Admission Staff only). Mirrors AdmissionDashboardDtos.cs. */
 

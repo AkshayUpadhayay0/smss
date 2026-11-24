@@ -12,7 +12,7 @@ import { DashboardYearBarComponent } from '../../components/dashboard-year-bar/d
 import { AccountantDashboard } from '../../models/accountant-dashboard.model';
 import { AccountantDashboardService } from '../../services/accountant-dashboard.service';
 import { buildAccountantStats } from '../../utils/accountant-dashboard-format';
-import { feeCollectionOptions } from '../../utils/school-dashboard-charts';
+import { feeCollectionOptions } from '../../utils/role-dashboard-charts';
 import { readChartColors } from '../../utils/super-admin-charts';
 
 interface PaymentRow {
@@ -31,7 +31,7 @@ interface PaymentRow {
   selector: 'app-accountant-dashboard',
   imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableComponent, ChartHostComponent, DashboardYearBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../school-dashboard/school-dashboard.component.scss',
+  styleUrl: '../role-dashboard.scss',
   templateUrl: './accountant-dashboard.component.html',
 })
 export class AccountantDashboardComponent implements OnInit {

@@ -80,7 +80,7 @@ namespace smss_api_service_layer.service
                 if (!current.Status || current.Data == null) { Down(AccountantDashboardParts.Fees, dto, null, $"{current.StatusCode}: {current.Message}"); return; }
 
                 // The cash trend is the last six months of money received whatever year it was for: every year the window touches, plus the viewed year's own figures.
-                var months = SchoolDashboardService.LastMonths(today);
+                var months = DashboardTrends.LastMonths(today);
                 var dashboards = new List<FeeDashboardDto> { current.Data };
                 foreach (var span in await _years.GetYearsOverlappingAsync(schoolId, months[0], months[^1].AddMonths(1).AddDays(-1), ct))
                 {
@@ -91,7 +91,7 @@ namespace smss_api_service_layer.service
                 }
 
                 var d = current.Data;
-                dto.CollectionTrend = SchoolDashboardService.FeeTrend(months, dashboards);
+                dto.CollectionTrend = DashboardTrends.FeeTrend(months, dashboards);
                 dto.Stats.CollectedThisMonth = dto.CollectionTrend[^1].Amount;   // cash, all years
                 if (dto.HasFeeSetup)   // the dues figures are the VIEWED year's; a year without fee items has none (not zeros)
                 {

@@ -1406,7 +1406,7 @@ Backup `smss-db-before-dashboard-redesign.dump` taken first. No schema change (a
 
 Replaces the "This screen is coming soon" placeholder at `/dashboard` for a School Admin login — the last of the role dashboards left unbuilt (Student section 40, Teacher section 41, Super Admin sections 39/43 all preceded it). Same dashboard-as-aggregate-endpoint pattern throughout: one purpose-built endpoint composing existing services, no new tables.
 
-### `GET /api/SchoolDashboard/summary`
+### `GET /api/SchoolDashboard/summary`  (RETIRED 24 Nov 2026, Stage 1c: removed with its service, DTOs and web page; the School Admin dashboard is `GET /api/Dashboard/school-admin`)
 School Admin only (`IsSchoolAdmin`, not opened to Principal/Teacher/Accountant in this pass). Composes, scoped to the caller's school and current academic year:
 - Six stat cards: total active students (section rosters for the current year), total active employees (section 29), today's attendance % (section 31), fee collected this month and fee outstanding (both reusing the Fee Dashboard service, section 28), pending admissions (Submitted/Under Review, section 36) — each card links to its module.
 - Two trend series: a 14-day attendance line (a day with no marks is a gap, never a false 0%) and a 6-month fee collection bar chart (reusing the Fee Dashboard's existing month-by-month query).
