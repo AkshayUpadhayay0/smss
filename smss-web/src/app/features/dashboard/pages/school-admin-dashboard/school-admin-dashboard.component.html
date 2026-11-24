@@ -23,6 +23,10 @@
 } @else {
   @let d = data()!;
 
+  @if (d.whatsAppMissing) {
+    <p class="note" role="status" data-banner="whatsapp-missing"><app-icon name="info" [size]="16" /><span>Your school has no WhatsApp number yet. <a routerLink="/school-profile">Add it on the school profile</a> so parents can reach you.</span></p>
+  }
+
   <div class="year-bar">
     <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
     @if (viewingNote(); as note) {

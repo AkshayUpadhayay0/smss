@@ -76,7 +76,7 @@ describe('SchoolFormComponent', () => {
 
     /** A UDISE code, a name and the (mandatory) first contact, which the form pre-creates as primary. */
     function fillValid() {
-      cmp.form.patchValue({ schoolCode: '09010100101', schoolName: '  Green Valley  ' });
+      cmp.form.patchValue({ schoolCode: '09010100101', schoolName: '  Green Valley  ', whatsAppSameAsMobile: true });
       cmp.contacts.at(0).patchValue({ contactType: 'Principal', contactName: 'A. Sharma', email: 'a@example.com', mobileNumber: '9876543211' });
     }
 

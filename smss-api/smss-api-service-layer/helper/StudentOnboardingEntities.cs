@@ -9,6 +9,8 @@ namespace smss_api_service_layer.helper
         public string Relationship { get; init; } = null!;     // FATHER | MOTHER | GUARDIAN
         public string Mobile { get; init; } = null!;
         public string? Email { get; init; }
+        /// <summary>With the country code ("+919876543210").</summary>
+        public string? WhatsApp { get; init; }
     }
 
     /// <summary>Everything the rows of one onboarded student are built from. Strings are already trimmed / null-for-blank.</summary>
@@ -101,6 +103,7 @@ namespace smss_api_service_layer.helper
                     Relationship = g.Relationship,
                     MobileNumber = g.Mobile,
                     Email = g.Email,
+                    WhatsAppNumber = g.WhatsApp,
                     StatusId = i.ActiveStatusId,
                     CreatedAt = i.Now,
                     UpdatedAt = i.Now

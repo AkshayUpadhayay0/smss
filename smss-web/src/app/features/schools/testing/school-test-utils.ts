@@ -69,6 +69,7 @@ export function makeSchool(overrides: Partial<SchoolsListModel> = {}): SchoolsLi
     pincode: '110001',
     email: 'gv@example.com',
     mobileNumber: '9876543210',
+    whatsAppNumber: '+919876543210',
     website: null,
     schoolStatusId: 1,
     logoUrl: null,

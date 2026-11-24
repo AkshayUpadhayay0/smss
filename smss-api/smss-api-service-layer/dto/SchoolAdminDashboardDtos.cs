@@ -69,5 +69,7 @@ namespace smss_api_service_layer.dto
         public DashboardEmployeesDto Employees { get; set; } = new();
         /// <summary>Active vehicles. 0 = the school has no transport data: the client hides the card.</summary>
         public int ActiveVehicles { get; set; }
+        /// <summary>True when the school has no WhatsApp number on record: the page shows a prompt linking to the school profile. It never blocks anything.</summary>
+        public bool WhatsAppMissing { get; set; }
     }
 }

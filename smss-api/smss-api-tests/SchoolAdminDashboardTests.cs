@@ -64,6 +64,7 @@ namespace smss_api_tests
             public Task<int> NewAdmissionsAsync(string s, int a, DateOnly f, DateOnly t, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<DashboardEmployeeRow> EmployeesAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<int> ActiveVehiclesAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<bool> WhatsAppMissingAsync(string s, CancellationToken ct) => throw new InvalidOperationException("boom");
         }
 
         private sealed class ThrowingAttendance : ISchoolDashboardRepository

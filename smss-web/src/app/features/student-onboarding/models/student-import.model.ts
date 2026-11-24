@@ -19,6 +19,9 @@ export interface ImportRow {
   rollNumber: string;
   guardian: string;
   guardianMobile: string;
+  /** The primary guardian's WhatsApp number as it will be stored (with the country code), and email. */
+  guardianWhatsApp?: string;
+  guardianEmail?: string;
 }
 
 export interface ImportSummary {
@@ -26,6 +29,8 @@ export interface ImportSummary {
   ok: number;
   warnings: number;
   errors: number;
+  /** Rows that can be imported now (no error). A row with an error is skipped; the others still import. */
+  importable: number;
   canImport: boolean;
   maxRows: number;
 }
@@ -44,6 +49,9 @@ export interface ImportResult {
   imported: number;
   academicYearName: string;
   warningRows: number;
+  /** Rows with errors that were NOT imported (their sheet row numbers are in skippedRowNumbers). */
+  skippedRows?: number;
+  skippedRowNumbers?: number[];
   firstStudentId: string;
   lastStudentId: string;
   byClass: ImportClassCount[];

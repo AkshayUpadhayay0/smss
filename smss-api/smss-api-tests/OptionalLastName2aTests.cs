@@ -101,7 +101,7 @@ namespace smss_api_tests
                 var r = await onboarding.CreateDirectEntryAsync(A, new DirectStudentEntryRequestDto
                 {
                     AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = Y, ClassSectionId = section, FirstName = "Solo" + label, LastName = last, DateOfBirth = new DateTime(2018, 5, 5),
-                    GuardianName = "G", GuardianRelationship = "FATHER", GuardianMobileNumber = "9876543210",
+                    GuardianName = "G", GuardianRelationship = "FATHER", GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
                 }, default);
                 Assert.True(r.Status, r.Message);
                 Assert.Equal("Solo" + label, r.Data!.FullName);
@@ -114,9 +114,9 @@ namespace smss_api_tests
         {
             using var db = new TaxDb();
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, applicant_last_name, date_of_birth,
-                       guardian_name, guardian_relationship, guardian_mobile_number, application_date, status_id)
+                       guardian_name, guardian_relationship, guardian_mobile_number, guardian_email, guardian_whatsapp_number, application_date, status_id)
                        values ('{A}', 'ZZ2A-1', {Y}, (select min(class_id) from tb_classes where school_id='{A}'), (select min(admission_type_id) from lut_admission_type), 'Aarav', null, '2018-01-01',
-                       'G', 'FATHER', '9876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
+                       'G', 'FATHER', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
             var id = db.Scalar<long>("select admission_id from tb_admissions where application_number='ZZ2A-1'");
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
             var svc = new AdmissionService(new AdmissionRepository(db.Ctx()), Fake.Of<INotificationService>(), Fake.Of<IStudentFeeBillingService>(), NullLogger<AdmissionService>.Instance);
@@ -133,9 +133,13 @@ namespace smss_api_tests
         {
             using var wb = new XLWorkbook();
             var ws = wb.AddWorksheet("Students");
-            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone" };
+            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email" };
             for (var c = 0; c < headers.Length; c++) ws.Cell(1, c + 1).Value = headers[c];
-            for (var r = 0; r < rows.Length; r++) for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c];
+            for (var r = 0; r < rows.Length; r++)
+            {
+                var cells = rows[r].Length == 9 ? rows[r].Concat(new[] { "SAME", "guardian@example.com" }).ToArray() : rows[r];   // a 9-column row gets the two guardian columns filled in
+                for (var c = 0; c < cells.Length; c++) ws.Cell(r + 2, c + 1).Value = cells[c];
+            }
             using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
         }
 

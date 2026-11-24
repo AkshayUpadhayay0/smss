@@ -120,7 +120,8 @@
         <app-input label="Guardian name" [required]="true" formControlName="guardianName" [errorText]="err('guardianName')" />
         <app-select label="Relationship" [required]="true" placeholder="Select…" [options]="relationshipOptions" formControlName="guardianRelationship" [errorText]="err('guardianRelationship')" />
         <app-input label="Guardian mobile" type="tel" [required]="true" placeholder="10-digit mobile" formControlName="guardianMobileNumber" [errorText]="err('guardianMobileNumber')" />
-        <app-input label="Guardian email" type="email" prefixIcon="mail" formControlName="guardianEmail" [errorText]="err('guardianEmail')" />
+        <app-whatsapp-field label="Guardian WhatsApp" [number]="form.controls.guardianWhatsAppNumber" [same]="form.controls.guardianWhatsAppSameAsMobile" [error]="err('guardianWhatsAppNumber')" />
+        <app-input label="Guardian email" type="email" prefixIcon="mail" [required]="true" formControlName="guardianEmail" [errorText]="err('guardianEmail')" />
       </div>
     </app-card>
 

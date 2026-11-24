@@ -85,6 +85,7 @@ namespace smss_api_service_layer.service
                     Other = emp.Total - emp.Teachers - emp.Accountants - emp.AdmissionStaff - emp.Drivers,
                 };
                 dto.ActiveVehicles = await _repo.ActiveVehiclesAsync(schoolId, active, ct);
+                dto.WhatsAppMissing = await _repo.WhatsAppMissingAsync(schoolId, ct);
 
                 return Result(200, "Successfully fetched", dto);
             }

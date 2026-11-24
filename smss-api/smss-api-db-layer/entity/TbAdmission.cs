@@ -37,6 +37,8 @@ namespace smss_api_db_layer.entity
         [Column("guardian_relationship")] public string GuardianRelationship { get; set; } = null!;
         [Column("guardian_mobile_number")] public string GuardianMobileNumber { get; set; } = null!;
         [Column("guardian_email")] public string? GuardianEmail { get; set; }
+        /// <summary>The guardian's WhatsApp number WITH the country code; null on an application made before it was collected (Confirm needs it).</summary>
+        [Column("guardian_whatsapp_number")] public string? GuardianWhatsAppNumber { get; set; }
         [Column("application_date", TypeName = "date")] public DateTime ApplicationDate { get; set; }
         [Column("status_id")] public int StatusId { get; set; }
         [Column("reviewed_by")] public long? ReviewedBy { get; set; }

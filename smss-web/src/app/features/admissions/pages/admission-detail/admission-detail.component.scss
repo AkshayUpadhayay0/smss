@@ -127,3 +127,12 @@
   background: var(--color-primary-soft);
   color: var(--color-primary-800);
 }
+
+.contact-missing {
+  margin: var(--space-4) 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-warning-50, #fffbeb);
+  color: var(--color-warning-700, #b45309);
+  font-size: 0.875rem;
+}

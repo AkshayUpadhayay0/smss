@@ -1,5 +1,6 @@
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { SchoolsListModel, UpdateMySchoolProfileRequest } from '../../schools/models/school.model';
+import { whatsAppValidator } from '../../../core/utils/whatsapp';
 import { num, str } from '../../schools/utils/school-form';
 import {
   GSTIN_RE,
@@ -38,6 +39,9 @@ export function createProfileForm() {
     email: new FormControl('', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
     mobileNumber: new FormControl('', { nonNullable: true, validators: [mobileValidator] }),
     website: new FormControl('', { nonNullable: true, validators: [urlValidator, Validators.maxLength(200)] }),
+    // mandatory: the number, or the tick
+    whatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
+    whatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
   });
 }
 
@@ -65,6 +69,8 @@ export function profileToFormValue(s: SchoolsListModel) {
     email: toText(s.email),
     mobileNumber: toText(s.mobileNumber),
     website: toText(s.website),
+    whatsAppNumber: toText(s.whatsAppNumber),
+    whatsAppSameAsMobile: false,
   };
 }
 
@@ -89,5 +95,7 @@ export function toProfileRequest(form: ProfileForm): UpdateMySchoolProfileReques
     email: str(v.email),
     mobileNumber: str(v.mobileNumber),
     website: str(v.website),
+    whatsAppNumber: v.whatsAppSameAsMobile ? null : str(v.whatsAppNumber),
+    whatsAppSameAsMobile: v.whatsAppSameAsMobile,
   };
 }

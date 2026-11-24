@@ -101,8 +101,15 @@
           <div><dt>Name</dt><dd>{{ a.guardianName }}</dd></div>
           <div><dt>Relationship</dt><dd>{{ guardianRelationship() }}</dd></div>
           <div><dt>Mobile</dt><dd>{{ a.guardianMobileNumber }}</dd></div>
+          <div><dt>WhatsApp</dt><dd>{{ a.guardianWhatsAppNumber || '—' }}</dd></div>
           <div><dt>Email</dt><dd>{{ a.guardianEmail || '—' }}</dd></div>
         </dl>
+        @if (!a.guardianWhatsAppNumber || !a.guardianEmail) {
+          <p class="contact-missing" role="status" data-note="guardian-contact">
+            The guardian's {{ !a.guardianWhatsAppNumber && !a.guardianEmail ? 'WhatsApp number and email are' : !a.guardianWhatsAppNumber ? 'WhatsApp number is' : 'email is' }} missing.
+            Edit the application to add {{ !a.guardianWhatsAppNumber && !a.guardianEmail ? 'them' : 'it' }}: the application cannot be confirmed without {{ !a.guardianWhatsAppNumber && !a.guardianEmail ? 'them' : 'it' }}.
+          </p>
+        }
       </app-card>
 
       <app-admission-documents [admissionId]="a.admissionId" [locked]="documentsLocked()" />

@@ -1,5 +1,6 @@
-import { FormArray, FormControl, FormGroup, Validators } from '@angular/forms';
-import { CreateSchoolRequest, SchoolBase, SchoolContact, SchoolsListModel, UpdateSchoolRequest } from '../models/school.model';
+import { AbstractControl, FormArray, FormControl, FormGroup, Validators } from '@angular/forms';
+import { CreateSchoolRequest, SchoolBase, SchoolLocation, SchoolContact, SchoolsListModel, UpdateSchoolRequest } from '../models/school.model';
+import { whatsAppValidator } from '../../../core/utils/whatsapp';
 import {
   GSTIN_RE,
   PAN_RE,
@@ -12,6 +13,23 @@ import {
   primaryContactValidator,
   urlValidator,
 } from './school-validators';
+
+/** A decimal number inside [min, max]; blank is fine. */
+export function rangeValidator(min: number, max: number, label: string) {
+  return (c: AbstractControl): { [k: string]: string } | null => {
+    const raw = String(c.value ?? '').trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= min && n <= max ? null : { pattern: `${label} must be a number from ${min} to ${max}` };
+  };
+}
+
+/** Latitude and longitude go together: both filled or both empty. */
+export function locationValidator(g: AbstractControl): { [k: string]: boolean } | null {
+  const lat = String(g.get('latitude')?.value ?? '').trim();
+  const lon = String(g.get('longitude')?.value ?? '').trim();
+  return (lat === '') === (lon === '') ? null : { location: true };
+}
 
 /** All controls are strings (selects are string-typed); numbers are converted in the mappers below. */
 
@@ -59,9 +77,15 @@ export function createSchoolForm() {
     email: new FormControl('', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
     mobileNumber: new FormControl('', { nonNullable: true, validators: [mobileValidator] }),
     website: new FormControl('', { nonNullable: true, validators: [urlValidator, Validators.maxLength(200)] }),
+    // the school's WhatsApp number (or the tick) is mandatory
+    whatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
+    whatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
+    // the map position (Super Admin only): both or neither
+    latitude: new FormControl('', { nonNullable: true, validators: [rangeValidator(-90, 90, 'Latitude')] }),
+    longitude: new FormControl('', { nonNullable: true, validators: [rangeValidator(-180, 180, 'Longitude')] }),
 
     contacts: new FormArray<ContactGroup>([], { validators: [primaryContactValidator] }),
-  });
+  }, { validators: [locationValidator] });
 }
 
 export type SchoolForm = ReturnType<typeof createSchoolForm>;
@@ -91,6 +115,10 @@ export function schoolToFormValue(s: SchoolsListModel) {
     email: toText(s.email),
     mobileNumber: toText(s.mobileNumber),
     website: toText(s.website),
+    whatsAppNumber: toText(s.whatsAppNumber),
+    whatsAppSameAsMobile: false,
+    latitude: toText(s.latitude),
+    longitude: toText(s.longitude),
   };
 }
 
@@ -108,7 +136,7 @@ export const num = (v: string | null | undefined): number | null => {
 
 type FormValue = ReturnType<SchoolForm['getRawValue']>;
 
-function toBase(v: FormValue): SchoolBase {
+function toBase(v: FormValue): SchoolBase & SchoolLocation {
   return {
     schoolName: v.schoolName.trim(),
     schoolShortName: str(v.schoolShortName),
@@ -128,6 +156,10 @@ function toBase(v: FormValue): SchoolBase {
     email: str(v.email),
     mobileNumber: str(v.mobileNumber),
     website: str(v.website),
+    whatsAppNumber: v.whatsAppSameAsMobile ? null : str(v.whatsAppNumber),
+    whatsAppSameAsMobile: v.whatsAppSameAsMobile,
+    latitude: num(v.latitude),
+    longitude: num(v.longitude),
   };
 }
 

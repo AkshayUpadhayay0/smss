@@ -84,6 +84,9 @@ namespace smss_api_db_layer.repository
             return new DashboardEmployeeRow(groups.Sum(g => g.N), Of(1), Of(2), Of(3), Of(4));
         }
 
+        public Task<bool> WhatsAppMissingAsync(string schoolId, CancellationToken ct) =>
+            _db.Schools.AsNoTracking().AnyAsync(s => s.SchoolId == schoolId && (s.WhatsAppNumber == null || s.WhatsAppNumber == ""), ct);
+
         public Task<int> ActiveVehiclesAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
             _db.Vehicles.AsNoTracking().CountAsync(v => v.SchoolId == schoolId && v.StatusId == activeStatusId, ct);
     }

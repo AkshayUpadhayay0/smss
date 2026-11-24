@@ -7,7 +7,7 @@ import { ROLES } from '../../../../core/config/route-roles';
 import { AuthService } from '../../../../core/services/auth.service';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { ButtonComponent, IconComponent, InputComponent, SelectComponent, SelectOption } from '../../../../shared/components';
+import { ButtonComponent, IconComponent, InputComponent, SelectComponent, SelectOption, WhatsAppFieldComponent } from '../../../../shared/components';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { SchoolStats, SchoolsListModel } from '../../../schools/models/school.model';
 import { SchoolService } from '../../../schools/services/school.service';
@@ -25,7 +25,7 @@ const NO_LOGO_CHANGE: LogoChange = { file: null, remove: false };
  */
 @Component({
   selector: 'app-school-profile',
-  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent, SelectComponent, LogoUploadComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent, SelectComponent, LogoUploadComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-profile.component.scss',
   templateUrl: './school-profile.component.html',

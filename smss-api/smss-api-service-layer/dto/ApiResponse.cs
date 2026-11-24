@@ -49,6 +49,11 @@ namespace smss_api_service_layer.dto
         public string? Pincode { get; set; }
         public string? Email { get; set; }
         public string? MobileNumber { get; set; }
+        /// <summary>With the country code; null for a school registered before it was collected (the page asks for it).</summary>
+        public string? WhatsAppNumber { get; set; }
+        /// <summary>Set by the Super Admin only; read-only for the school.</summary>
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public string? Website { get; set; }
         public string? LogoUrl { get; set; }
         public int? SchoolStatusId { get; set; }

@@ -52,6 +52,10 @@ namespace smss_api_service_layer.service
                 if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId, ct)) return Result(409, ClosedYear.Message, null);
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result(400, "The selected class and section was not found for your school.", null);
+                // the primary guardian's WhatsApp number and email are mandatory (the controller's model validation says the same; this keeps every caller honest)
+                var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
+                              ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
+                if (contact != null) return Result(400, contact, null);
                 var target = EnrollmentTargetRules.Refusal(await _repo.CheckEnrollmentTargetAsync(schoolId, req.AcademicYearId, req.ClassSectionId, Clean(req.RollNumber), ct), Clean(req.RollNumber));
                 if (target is { } refused) return Result(refused.Code, refused.Message, null);
                 // "Charge fees from": checked BEFORE the student is saved, so a refusal creates nothing
@@ -124,7 +128,7 @@ namespace smss_api_service_layer.service
                             AcademicYearId = req.AcademicYearId,
                             ClassSectionId = req.ClassSectionId,
                             RollNumber = Clean(req.RollNumber),
-                            Guardians = new[] { new OnboardingGuardianInput { Name = req.GuardianName, Relationship = req.GuardianRelationship, Mobile = req.GuardianMobileNumber, Email = Clean(req.GuardianEmail) } },
+                            Guardians = new[] { new OnboardingGuardianInput { Name = req.GuardianName, Relationship = req.GuardianRelationship, Mobile = req.GuardianMobileNumber, WhatsApp = PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber), Email = Clean(req.GuardianEmail) } },
                             Now = now
                         });
                         var student = graph.Student;

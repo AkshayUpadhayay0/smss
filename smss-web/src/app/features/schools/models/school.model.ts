@@ -40,14 +40,23 @@ export interface SchoolBase {
   email?: string | null;
   mobileNumber?: string | null;
   website?: string | null;
+  /** The school's WhatsApp number as typed (10 digits or with the country code); null when "same as mobile number" is ticked. Mandatory on register and edit. */
+  whatsAppNumber?: string | null;
+  whatsAppSameAsMobile?: boolean;
 }
 
-export interface CreateSchoolRequest extends SchoolBase {
+/** The school's map position. Super Admin only: a School Admin's own-school request has no such members. Both set or both empty. */
+export interface SchoolLocation {
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface CreateSchoolRequest extends SchoolBase, SchoolLocation {
   schoolCode: string; // required on create only, immutable after
   contacts: SchoolContact[];
 }
 
-export interface UpdateSchoolRequest extends SchoolBase {
+export interface UpdateSchoolRequest extends SchoolBase, SchoolLocation {
   contacts: SchoolContact[]; // no schoolCode field
 }
 
@@ -60,9 +69,9 @@ export interface SchoolStats {
 }
 
 /** A School Admin editing their own school: no subscription, status, code, logo or contacts. */
-export type UpdateMySchoolProfileRequest = SchoolBase;
+export type UpdateMySchoolProfileRequest = SchoolBase;   // no latitude/longitude: only the Super Admin sets the map position
 
-export interface SchoolsListModel extends SchoolBase {
+export interface SchoolsListModel extends SchoolBase, SchoolLocation {
   schoolId: string; // e.g. "sch2026001"
   schoolCode: string;
   schoolStatusId?: number | null; // read-only, changed only via toggle-status

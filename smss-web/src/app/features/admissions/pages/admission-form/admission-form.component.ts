@@ -14,9 +14,11 @@ import {
   PageHeaderComponent,
   SelectComponent,
   SelectOption,
+  WhatsAppFieldComponent,
 } from '../../../../shared/components';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ClassService } from '../../../school-setup/services/class.service';
+import { whatsAppValidator } from '../../../../core/utils/whatsapp';
 import { PINCODE_RE, firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { AdmissionDetail, EDITABLE_STATUSES, GUARDIAN_RELATIONSHIPS, SubmitAdmissionRequest } from '../../models/admission.model';
 import { AdmissionService } from '../../services/admission.service';
@@ -33,7 +35,7 @@ const num = (v: string): number | null => (v.trim() === '' ? null : Number(v));
 
 @Component({
   selector: 'app-admission-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-form.component.scss',
   templateUrl: './admission-form.component.html',
@@ -86,7 +88,10 @@ export class AdmissionFormComponent implements OnInit {
     guardianName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(150)] }),
     guardianRelationship: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     guardianMobileNumber: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, mobileValidator] }),
-    guardianEmail: new FormControl('', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
+    // the primary guardian's WhatsApp number (or the tick) and email are mandatory
+    guardianWhatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
+    guardianWhatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
+    guardianEmail: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.email, Validators.maxLength(150)] }),
   });
 
   protected readonly submitted = signal(false);
@@ -150,7 +155,7 @@ export class AdmissionFormComponent implements OnInit {
         genderId: s(a.genderId), bloodGroupId: s(a.bloodGroupId), studentCategoryId: s(a.studentCategoryId), studentNationId: s(a.studentNationId),
         academicYearId: s(a.academicYearId), appliedClassId: s(a.appliedClassId), admissionTypeId: s(a.admissionTypeId), previousSchool: s(a.previousSchool),
         email: s(a.email), mobileNumber: s(a.mobileNumber), addressLine1: s(a.addressLine1), addressLine2: s(a.addressLine2), pincode: s(a.pincode),
-        guardianName: a.guardianName, guardianRelationship: a.guardianRelationship, guardianMobileNumber: a.guardianMobileNumber, guardianEmail: s(a.guardianEmail),
+        guardianName: a.guardianName, guardianRelationship: a.guardianRelationship, guardianMobileNumber: a.guardianMobileNumber, guardianEmail: s(a.guardianEmail), guardianWhatsAppNumber: s(a.guardianWhatsAppNumber),
       },
       { emitEvent: false },
     );
@@ -323,6 +328,8 @@ export class AdmissionFormComponent implements OnInit {
       guardianRelationship: v.guardianRelationship,
       guardianMobileNumber: v.guardianMobileNumber.trim(),
       guardianEmail: str(v.guardianEmail),
+      guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
+      guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
       previousSchool: str(v.previousSchool),
     };
 

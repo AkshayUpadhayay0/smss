@@ -16,6 +16,8 @@ namespace smss_api_db_layer.entity
         [Column("relationship")] public string Relationship { get; set; } = null!;
         [Column("mobile_number")] public string MobileNumber { get; set; } = null!;
         [Column("email")] public string? Email { get; set; }
+        /// <summary>The guardian's WhatsApp number WITH the country code ("+919876543210"); null for guardians added before it was collected.</summary>
+        [Column("whatsapp_number")] public string? WhatsAppNumber { get; set; }
         [Column("occupation")] public string? Occupation { get; set; }
         [Column("status_id")] public int StatusId { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }

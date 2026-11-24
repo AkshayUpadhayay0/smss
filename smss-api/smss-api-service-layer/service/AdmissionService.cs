@@ -81,6 +81,10 @@ namespace smss_api_service_layer.service
             if (req.BloodGroupId.HasValue && !await _repo.BloodGroupExistsAsync(req.BloodGroupId.Value, ct)) return "The selected blood group is not valid.";
             if (req.StudentCategoryId.HasValue && !await _repo.StudentCategoryExistsAsync(req.StudentCategoryId.Value, ct)) return "The selected student category is not valid.";
             if (req.DateOfBirth.Date >= DateTime.UtcNow.Date) return "Date of birth must be in the past.";
+            // the primary guardian's WhatsApp number and email are mandatory (the controller's model validation says the same; this keeps every caller honest)
+            var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
+                          ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
+            if (contact != null) return contact;
             return null;
         }
 
@@ -112,6 +116,7 @@ namespace smss_api_service_layer.service
             e.GuardianRelationship = req.GuardianRelationship;
             e.GuardianMobileNumber = req.GuardianMobileNumber;
             e.GuardianEmail = Clean(req.GuardianEmail);
+            e.GuardianWhatsAppNumber = PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber);
             e.PreviousSchool = Clean(req.PreviousSchool);
         }
 
@@ -293,6 +298,13 @@ namespace smss_api_service_layer.service
                 if (!statuses.TryGetValue(admission.StatusId, out var current) || current != Approved)
                     return Result<AdmissionDetailDto>(409, "Only an APPROVED application can be confirmed for admission.", null);
 
+                // an application made before the guardian's WhatsApp number and email were collected stays editable: it must be completed before it can be confirmed
+                var missing = new List<string>();
+                if (string.IsNullOrWhiteSpace(admission.GuardianWhatsAppNumber)) missing.Add("WhatsApp number");
+                if (PhoneNumbers.EmailError(admission.GuardianEmail, "The guardian's") != null) missing.Add("email");
+                if (missing.Count > 0)
+                    return Result<AdmissionDetailDto>(409, $"The guardian's {string.Join(" and ", missing)} {(missing.Count == 1 ? "is" : "are")} missing. Edit the application to add {(missing.Count == 1 ? "it" : "them")}, then confirm it.", null);
+
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result<AdmissionDetailDto>(400, "The selected section was not found for your school.", null);
                 if (await _repo.IsYearClosedAsync(schoolId, admission.AcademicYearId, ct)) return Result<AdmissionDetailDto>(409, ClosedYear.Message, null);
@@ -388,6 +400,7 @@ namespace smss_api_service_layer.service
                             Relationship = admission.GuardianRelationship,
                             MobileNumber = admission.GuardianMobileNumber,
                             Email = admission.GuardianEmail,
+                            WhatsAppNumber = admission.GuardianWhatsAppNumber,
                             StatusId = activeId.Value,
                             CreatedAt = now,
                             UpdatedAt = now
@@ -533,6 +546,7 @@ namespace smss_api_service_layer.service
             dto.GuardianRelationship = a.GuardianRelationship;
             dto.GuardianMobileNumber = a.GuardianMobileNumber;
             dto.GuardianEmail = a.GuardianEmail;
+            dto.GuardianWhatsAppNumber = a.GuardianWhatsAppNumber;
             dto.PreviousSchool = a.PreviousSchool;
             dto.ReviewNotes = a.ReviewNotes;
             dto.ReviewedAt = a.ReviewedAt;

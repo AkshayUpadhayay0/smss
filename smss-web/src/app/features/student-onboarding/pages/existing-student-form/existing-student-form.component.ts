@@ -5,7 +5,7 @@ import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
 import { MasterDataService } from '../../../../core/services/master-data.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { Breadcrumb, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption, TextareaComponent } from '../../../../shared/components';
+import { Breadcrumb, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, SelectOption, TextareaComponent, WhatsAppFieldComponent } from '../../../../shared/components';
 import { GUARDIAN_RELATIONSHIPS } from '../../../admissions/models/admission.model';
 import { BackdatingSummary, FeeConfigurationComponent } from '../../../students/components/fee-charges/fee-charges.component';
 import { FeeItemSelection } from '../../../students/models/student-billing.model';
@@ -13,6 +13,7 @@ import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { SectionService } from '../../../school-setup/services/section.service';
+import { whatsAppValidator } from '../../../../core/utils/whatsapp';
 import { firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { DirectStudentEntryRequest, StudentOnboardingResult, StudentOnboardingService } from '../../services/student-onboarding.service';
 
@@ -37,7 +38,7 @@ function pastDate(c: AbstractControl): ValidationErrors | null {
 /** Direct entry of a student the school already has: no application, review or approval stage. */
 @Component({
   selector: 'app-existing-student-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './existing-student-form.component.scss',
   templateUrl: './existing-student-form.component.html',
@@ -84,7 +85,10 @@ export class ExistingStudentFormComponent implements OnInit {
     guardianName: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.maxLength(150)] }),
     guardianRelationship: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     guardianMobileNumber: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, mobileValidator] }),
-    guardianEmail: new FormControl('', { nonNullable: true, validators: [Validators.email, Validators.maxLength(150)] }),
+    // the primary guardian's WhatsApp number (or the tick) and email are mandatory
+    guardianWhatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
+    guardianWhatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
+    guardianEmail: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.email, Validators.maxLength(150)] }),
   });
 
   protected readonly submitted = signal(false);
@@ -259,6 +263,8 @@ export class ExistingStudentFormComponent implements OnInit {
       guardianRelationship: v.guardianRelationship,
       guardianMobileNumber: v.guardianMobileNumber.trim(),
       guardianEmail: str(v.guardianEmail),
+      guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
+      guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
       feeItems: this.feeSelections.length ? this.feeSelections : null,
       chargeFrom: v.chargeFrom || null,
       confirmBackdating: backdated,

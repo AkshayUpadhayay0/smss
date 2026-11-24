@@ -5,7 +5,7 @@ using System.Text;
 
 namespace smss_api_service_layer.dto
 {
-    public class SubmitAdmissionRequestDto
+    public class SubmitAdmissionRequestDto : IValidatableObject
     {
         [Required] public long AcademicYearId { get; set; }
         [Required] public long AppliedClassId { get; set; }
@@ -36,9 +36,22 @@ namespace smss_api_service_layer.dto
         public string GuardianRelationship { get; set; } = null!;
         [Required, RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")]
         public string GuardianMobileNumber { get; set; } = null!;
-        [EmailAddress, MaxLength(150)] public string? GuardianEmail { get; set; }
+        /// <summary>Mandatory for the primary guardian (checked by <see cref="Validate"/>: it needs a message that says which of the two is wrong).</summary>
+        [MaxLength(150)] public string? GuardianEmail { get; set; }
+        /// <summary>The guardian's WhatsApp number: 10 digits, or with the country code. Mandatory unless <see cref="GuardianWhatsAppSameAsMobile"/> is set.</summary>
+        [MaxLength(25)] public string? GuardianWhatsAppNumber { get; set; }
+        /// <summary>"Same as mobile number": the server then uses the guardian's mobile number as the WhatsApp number.</summary>
+        public bool GuardianWhatsAppSameAsMobile { get; set; }
         /// <summary>The school the applicant comes from, if any.</summary>
         [MaxLength(200)] public string? PreviousSchool { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext context)
+        {
+            var w = smss_api_service_layer.helper.PhoneNumbers.WhatsAppError(GuardianWhatsAppNumber, GuardianWhatsAppSameAsMobile, GuardianMobileNumber, "The guardian's");
+            if (w != null) yield return new ValidationResult(w, new[] { nameof(GuardianWhatsAppNumber) });
+            var e = smss_api_service_layer.helper.PhoneNumbers.EmailError(GuardianEmail, "The guardian's");
+            if (e != null) yield return new ValidationResult(e, new[] { nameof(GuardianEmail) });
+        }
     }
 
     /// <summary>Optional notes recorded when an application is moved to Under Review.</summary>
@@ -129,6 +142,8 @@ namespace smss_api_service_layer.dto
         public string GuardianRelationship { get; set; } = null!;
         public string GuardianMobileNumber { get; set; } = null!;
         public string? GuardianEmail { get; set; }
+        /// <summary>With the country code; null on an application made before it was collected.</summary>
+        public string? GuardianWhatsAppNumber { get; set; }
 
         public string? PreviousSchool { get; set; }
         public string? ReviewNotes { get; set; }

@@ -33,5 +33,7 @@ namespace smss_api_db_layer.@interface
         Task<int> NewAdmissionsAsync(string schoolId, int activeStatusId, DateOnly from, DateOnly to, CancellationToken ct);
         Task<DashboardEmployeeRow> EmployeesAsync(string schoolId, int activeStatusId, CancellationToken ct);
         Task<int> ActiveVehiclesAsync(string schoolId, int activeStatusId, CancellationToken ct);
+        /// <summary>True when the school has no WhatsApp number on record yet (a school registered before it was collected). The dashboard only PROMPTS for it.</summary>
+        Task<bool> WhatsAppMissingAsync(string schoolId, CancellationToken ct);
     }
 }

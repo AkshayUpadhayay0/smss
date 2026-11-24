@@ -34,7 +34,8 @@ namespace smss_api_service_layer.service
             ("cls", "Class", 14), ("sec", "Section", 10), ("roll", "Roll number", 12),
             ("fname", "Father name", 24), ("fphone", "Father phone", 15), ("mname", "Mother name", 24), ("mphone", "Mother phone", 15),
             ("gname", "Guardian name", 24), ("gphone", "Guardian phone", 15), ("addr", "Address", 36),
-            ("admdate", "Admission date", 15),   // optional; appended so a file made from the older template (without it) still imports
+            ("admdate", "Admission date", 15),
+            ("pwa", "Primary guardian WhatsApp", 24), ("pemail", "Primary guardian email", 28),   // optional; appended so a file made from the older template (without it) still imports
         };
         private static readonly string[] RequiredKeys = { "name", "gender", "dob", "cls", "sec" };
         private static readonly Dictionary<string, string> HeaderAliases = new()
@@ -49,6 +50,8 @@ namespace smss_api_service_layer.service
             ["mothername"] = "mname", ["motherphone"] = "mphone", ["mothermobile"] = "mphone",
             ["guardianname"] = "gname", ["guardianphone"] = "gphone", ["guardianmobile"] = "gphone",
             ["address"] = "addr",
+            ["primaryguardianwhatsapp"] = "pwa", ["guardianwhatsapp"] = "pwa", ["whatsapp"] = "pwa", ["whatsappnumber"] = "pwa",
+            ["primaryguardianemail"] = "pemail", ["guardianemail"] = "pemail",
             ["admissiondate"] = "admdate", ["dateofadmission"] = "admdate", ["dateofjoining"] = "admdate", ["joiningdate"] = "admdate",
         };
         private static readonly string[] DateFormats = { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd" };
@@ -72,7 +75,7 @@ namespace smss_api_service_layer.service
             public bool Formula;
         }
 
-        private sealed class Guardian { public string Name = ""; public string Relationship = ""; public string Mobile = ""; }
+        private sealed class Guardian { public string Name = ""; public string Relationship = ""; public string Mobile = ""; public string? WhatsApp; public string? Email; }
 
         private sealed class VRow
         {
@@ -154,20 +157,21 @@ namespace smss_api_service_layer.service
                         await _repo.LockSchoolImportAsync(schoolId, ct);              // one import per school at a time; also guards admission-number allocation
                         var v = await ValidateAsync(schoolId, file, ct);              // validated AGAIN, inside the lock: the preview is never trusted
                         if (!v.Preview.Summary.CanImport)
-                            return Result<ImportResultDto>(422, v.Preview.FileErrors.Count > 0 ? v.Preview.FileErrors[0] : $"The file has {v.Preview.Summary.Errors} row(s) with errors. Nothing was imported. Fix them and upload the file again.", null);
+                            return Result<ImportResultDto>(422, v.Preview.FileErrors.Count > 0 ? v.Preview.FileErrors[0] : v.Preview.Summary.Total == 0 ? "The sheet has no students." : $"None of the {v.Preview.Summary.Total} row(s) can be imported: every one has an error. Nothing was imported. Fix them and upload the file again.", null);
 
                         var ctx = v.Ctx!;
                         var now = DateTime.UtcNow;
                         var today = DateTime.UtcNow.Date;
                         var baseCount = await _repo.CountStudentsAsync(schoolId, ct);
-                        var supplied = v.Rows.Where(r => r.Adm != null).Select(r => r.Adm!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        var rows = v.Rows.Where(r => r.Errors.Count == 0).ToList();       // the valid rows; the others are skipped and reported
+                        var supplied = rows.Where(r => r.Adm != null).Select(r => r.Adm!).ToHashSet(StringComparer.OrdinalIgnoreCase);
                         var seq = new Dictionary<string, int>();
                         var all = new List<object>();
                         var created = new List<(VRow Row, string StudentId)>();
 
-                        for (var n = 0; n < v.Rows.Count; n++)
+                        for (var n = 0; n < rows.Count; n++)
                         {
-                            var r = v.Rows[n];
+                            var r = rows[n];
                             var admDate = r.AdmDate ?? AdmissionDateFor(ctx.Year, r.Dob!.Value, today);   // the column when given, else the start of the academic year as before
                             var number = r.Adm;
                             if (number == null)
@@ -184,7 +188,7 @@ namespace smss_api_service_layer.service
                                 FirstName = r.First, MiddleName = r.Middle, LastName = r.Last, DateOfBirth = r.Dob!.Value, GenderId = r.GenderId,
                                 AdmissionTypeId = ctx.Type.AdmissionTypeId, AdmissionDate = admDate, AddressLine1 = r.Address,
                                 ActiveStatusId = ctx.ActiveId, AcademicYearId = ctx.Year.AcademicYearId, ClassSectionId = r.SectionId, RollNumber = r.Roll,
-                                Guardians = r.Guardians.Select(g => new OnboardingGuardianInput { Name = g.Name, Relationship = g.Relationship, Mobile = g.Mobile }).ToList(),
+                                Guardians = r.Guardians.Select(g => new OnboardingGuardianInput { Name = g.Name, Relationship = g.Relationship, Mobile = g.Mobile, WhatsApp = g.WhatsApp, Email = g.Email }).ToList(),
                                 Now = now
                             });
                             all.Add(graph.Student); all.Add(graph.Enrollment);
@@ -200,7 +204,9 @@ namespace smss_api_service_layer.service
                         {
                             Imported = created.Count,
                             AcademicYearName = ctx.Year.YearName,
-                            WarningRows = v.Rows.Count(r => r.Warnings.Count > 0),
+                            WarningRows = rows.Count(r => r.Warnings.Count > 0),
+                            SkippedRows = v.Rows.Count - rows.Count,
+                            SkippedRowNumbers = v.Rows.Where(r => r.Errors.Count > 0).Select(r => r.Raw.Row).ToList(),
                             FirstStudentId = created[0].StudentId,
                             LastStudentId = created[^1].StudentId,
                             ByClass = created.GroupBy(c => (c.Row.ClassName, c.Row.SectionName)).Select(g => new ImportClassCountDto { ClassName = g.Key.ClassName, SectionName = g.Key.SectionName, Students = g.Count() })
@@ -211,7 +217,8 @@ namespace smss_api_service_layer.service
                                 "No student logins were created. Use Create Login on a student's profile when a student needs one."
                             }
                         };
-                        return Result(201, $"{created.Count} students imported.", result);
+                        if (result.SkippedRows > 0) result.Notes.Insert(0, $"{result.SkippedRows} row(s) had errors and were NOT imported (sheet rows {string.Join(", ", result.SkippedRowNumbers.Take(30))}{(result.SkippedRowNumbers.Count > 30 ? ", ..." : "")}). Download the error report, fix them and upload them again.");
+                        return Result(201, result.SkippedRows > 0 ? $"{created.Count} students imported; {result.SkippedRows} row(s) with errors were skipped." : $"{created.Count} students imported.", result);
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == StudentIdConstraint)
                     {
@@ -350,7 +357,8 @@ namespace smss_api_service_layer.service
             s.Errors = v.Rows.Count(r => r.Errors.Count > 0);
             s.Warnings = v.Rows.Count(r => r.Errors.Count == 0 && r.Warnings.Count > 0);
             s.Ok = s.Total - s.Errors - s.Warnings;
-            s.CanImport = v.Preview.FileErrors.Count == 0 && s.Total > 0 && s.Errors == 0;
+            s.Importable = s.Total - s.Errors;
+            s.CanImport = v.Preview.FileErrors.Count == 0 && s.Importable > 0;   // a row with an error is skipped, it does not stop the others
         }
 
         private VRow ValidateRow(RawRow raw, Dictionary<string, ImportClassRow> classByName, Dictionary<long, List<ImportSectionRow>> sectionsOfClass, Dictionary<string, int> genderByWord, DateTime today)
@@ -462,11 +470,26 @@ namespace smss_api_service_layer.service
                 Err("Give at least one parent or guardian with a name and a phone number.");
 
             var primary = r.Guardians.FirstOrDefault();
+            if (primary != null)
+            {
+                // the primary guardian (the first complete block) needs a WhatsApp number (or SAME = the mobile number) and an email; each problem is an error on THIS row only
+                var waRaw = G("pwa").Trim();
+                if (waRaw.Length == 0) Err("Primary guardian WhatsApp is required: enter the number, or SAME when it is the same as the mobile number.");
+                else if (waRaw.Equals("SAME", StringComparison.OrdinalIgnoreCase)) primary.WhatsApp = PhoneNumbers.Normalise(primary.Mobile);
+                else
+                {
+                    primary.WhatsApp = PhoneNumbers.Normalise(waRaw);
+                    if (primary.WhatsApp == null) Err($"Primary guardian WhatsApp '{Clip(waRaw)}' is not valid. Enter a 10-digit mobile number, a number with its country code (+91 98765 43210), or SAME.");
+                }
+                var emailRaw = G("pemail").Trim();
+                var emailError = PhoneNumbers.EmailError(emailRaw, "Primary guardian");
+                if (emailError != null) Err(emailError); else primary.Email = emailRaw;
+            }
             r.Dto = new ImportRowDto
             {
                 AdmissionNumber = r.Adm ?? "", FullName = fullName, Gender = gender,
                 DateOfBirth = dobShown, AdmissionDate = r.AdmDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", ClassName = r.ClassName.Length > 0 ? r.ClassName : cls, SectionName = r.SectionName.Length > 0 ? r.SectionName : sec,
-                RollNumber = r.Roll ?? "", Guardian = primary?.Name ?? "", GuardianMobile = primary?.Mobile ?? ""
+                RollNumber = r.Roll ?? "", Guardian = primary?.Name ?? "", GuardianMobile = primary?.Mobile ?? "", GuardianWhatsApp = primary?.WhatsApp ?? "", GuardianEmail = primary?.Email ?? ""
             };
             return r;
         }
@@ -633,20 +656,21 @@ namespace smss_api_service_layer.service
                 ("Fill the Students sheet, one student per row, starting at row 2. Do not rename or move the header row. Save as Excel Workbook (.xlsx).", false),
                 ("", false),
                 ("Required columns", true),
-                ("Full name (the first name is required; a last name is optional), Gender, Date of birth, Class, Section, and at least one of Father / Mother / Guardian with BOTH a name and a phone.", false),
+                ("Full name (the first name is required; a last name is optional), Gender, Date of birth, Class, Section, at least one of Father / Mother / Guardian with BOTH a name and a phone, and for the primary guardian (the first one you fill in) the WhatsApp number and the email.", false),
                 ("", false),
                 ("Formats", true),
                 ("Date of birth: dd/mm/yyyy, for example 27/08/2015 (a real Excel date also works).", false),
                 ("Gender: pick Male, Female or Other from the drop-down.", false),
                 ("Class and Section: pick from the drop-downs. The section must belong to the class (see the Lists sheet).", false),
                 ("Phone: a 10-digit Indian mobile number starting 6-9. +91 or a leading 0 is removed for you.", false),
+                ("Primary guardian WhatsApp: a 10-digit number, or a number with its country code (+91 98765 43210), or the word SAME when it is the same as the mobile number. Primary guardian email: a normal email address (the same email may be used for several students).", false),
                 ("Admission date: optional, dd/mm/yyyy (a real Excel date also works). It cannot be in the future or before the date of birth. Leave it blank and the start of the current academic year is used.", false),
                 ("Admission number: optional. Leave it blank and the system gives the next number (ADMNO + year + 4 digits).", false),
                 ("Roll number: optional, but it cannot repeat inside a section.", false),
                 ($"At most {MaxRows} students per file and 1 MB. Only .xlsx; no macros, no formulas (paste values).", false),
                 ("", false),
                 ("What happens next", true),
-                ("Upload the file to see a preview first. Nothing is saved until you confirm, and a single error stops the whole import, so you never end up with half a class.", false),
+                ("Upload the file to see a preview first. Nothing is saved until you confirm. A row with an error is skipped and listed (download the error report to fix it and upload it again); the valid rows are imported.", false),
                 ("Students are added to the current academic year as 'Existing Student'. No fees and no logins are created by the import.", false),
             };
             for (var i = 0; i < lines.Length; i++) { var c = ins.Cell(i + 1, 1); c.Value = lines[i].Text; c.Style.Font.Bold = lines[i].Bold; c.Style.Alignment.WrapText = true; }

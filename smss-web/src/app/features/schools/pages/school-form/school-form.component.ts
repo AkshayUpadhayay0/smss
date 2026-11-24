@@ -14,6 +14,7 @@ import {
   PageHeaderComponent,
   SelectComponent,
   SelectOption,
+  WhatsAppFieldComponent,
 } from '../../../../shared/components';
 import { LogoChange, LogoUploadComponent } from '../../components/logo-upload/logo-upload.component';
 import { RegistrationResultComponent } from '../../components/registration-result/registration-result.component';
@@ -42,6 +43,7 @@ const TITLES: Record<SchoolFormMode, { title: string; subtitle: string }> = {
     SelectComponent,
     LogoUploadComponent,
     RegistrationResultComponent,
+    WhatsAppFieldComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-form.component.scss',

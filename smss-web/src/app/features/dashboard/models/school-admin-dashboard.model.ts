@@ -32,6 +32,8 @@ export interface SchoolAdminDashboard {
   hasFeeSetup: boolean;
   /** true = today is outside the viewed year, so this month was moved into the year's range; monthNote says so in words. */
   monthClamped: boolean;
+  /** true = the school has no WhatsApp number yet: a prompt to add it on the school profile. It never blocks anything. */
+  whatsAppMissing: boolean;
   monthNote: string | null;
 
   totalStudents: number;

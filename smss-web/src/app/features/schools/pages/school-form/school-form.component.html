@@ -77,7 +77,13 @@
         <app-input label="Email" type="email" placeholder="school@example.com" prefixIcon="mail" formControlName="email" [errorText]="err('email')" />
         <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
         <app-input label="Website" type="url" placeholder="https://example.com" formControlName="website" [errorText]="err('website')" />
+        <app-whatsapp-field label="School WhatsApp number" [number]="form.controls.whatsAppNumber" [same]="form.controls.whatsAppSameAsMobile" [error]="err('whatsAppNumber')" />
+        <app-input label="Latitude" type="text" placeholder="e.g. 26.846700" formControlName="latitude" [errorText]="err('latitude')" />
+        <app-input label="Longitude" type="text" placeholder="e.g. 80.946200" formControlName="longitude" [errorText]="err('longitude')" />
       </div>
+      @if (form.errors?.['location'] && (form.controls.latitude.touched || form.controls.longitude.touched)) {
+        <p class="field-note" role="alert" data-note="location">Enter both latitude and longitude, or leave both empty.</p>
+      }
     </app-card>
 
     <app-card title="School Contacts">

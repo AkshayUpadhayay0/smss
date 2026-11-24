@@ -335,6 +335,7 @@ namespace smss_api_service_layer.service
                 school.Pincode = Clean(req.Pincode);
                 school.Email = Clean(req.Email);
                 school.MobileNumber = Clean(req.MobileNumber);
+                school.WhatsAppNumber = PhoneNumbers.WhatsAppFor(req.WhatsAppNumber, req.WhatsAppSameAsMobile, req.MobileNumber);   // Latitude / Longitude are NOT touched: the Super Admin's
                 school.Website = Clean(req.Website);
                 school.UpdatedAt = DateTime.UtcNow;
 
@@ -475,6 +476,9 @@ namespace smss_api_service_layer.service
             s.Pincode = Clean(r.Pincode);
             s.Email = Clean(r.Email);
             s.MobileNumber = Clean(r.MobileNumber);
+            s.WhatsAppNumber = PhoneNumbers.WhatsAppFor(r.WhatsAppNumber, r.WhatsAppSameAsMobile, r.MobileNumber);
+            s.Latitude = r.Latitude;          // the Super Admin's fields: this method is only used by register and the Super Admin's update
+            s.Longitude = r.Longitude;
             s.Website = Clean(r.Website);
             //s.LogoUrl = Clean(r.LogoUrl);
             s.UpdatedAt = now;

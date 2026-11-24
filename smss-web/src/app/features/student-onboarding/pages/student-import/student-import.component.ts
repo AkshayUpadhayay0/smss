@@ -12,7 +12,7 @@ type Step = 'upload' | 'preview' | 'result';
 
 /**
  * Import many existing students from an Excel file: download the template, upload (a dry run, nothing is saved),
- * read the preview, fix the file if needed, then confirm. One error anywhere stops the whole import, so a class is never half-imported.
+ * read the preview, then confirm. A row with an error is skipped and listed (fix it from the error report and upload it again); the valid rows are imported.
  */
 @Component({
   selector: 'app-student-import',
@@ -70,7 +70,11 @@ type Step = 'upload' | 'preview' | 'result';
             </div>
 
             @if (p.summary.errors > 0) {
-              <p class="banner" role="status">{{ p.summary.errors }} row{{ p.summary.errors === 1 ? ' has' : 's have' }} an error. <strong>Nothing can be imported until every error is fixed</strong>, so you never end up with half a class. Download the error report, fix the rows and upload the file again.</p>
+              @if (p.summary.importable > 0) {
+                <p class="banner" role="status" data-banner="skipped">{{ p.summary.errors }} row{{ p.summary.errors === 1 ? ' has' : 's have' }} an error and will be <strong>skipped</strong>. The other {{ p.summary.importable }} row{{ p.summary.importable === 1 ? '' : 's' }} can be imported now. Download the error report, fix the skipped rows and upload them again.</p>
+              } @else {
+                <p class="banner" role="status" data-banner="none">{{ p.summary.errors }} row{{ p.summary.errors === 1 ? ' has' : 's have' }} an error, so <strong>nothing can be imported yet</strong>. Download the error report, fix the rows and upload the file again.</p>
+              }
             } @else if (p.summary.warnings > 0) {
               <p class="banner soft" role="status">{{ p.summary.warnings }} row{{ p.summary.warnings === 1 ? ' has' : 's have' }} a warning. Warnings do not stop the import, but read them first.</p>
             } @else {
@@ -117,7 +121,7 @@ type Step = 'upload' | 'preview' | 'result';
               @if (p.summary.errors > 0) {
                 <app-button variant="secondary" [disabled]="downloadingReport()" (click)="downloadReport()"><app-icon name="download" [size]="16" />{{ downloadingReport() ? 'Preparing…' : 'Download error report' }}</app-button>
               }
-              <app-button [disabled]="!p.summary.canImport || committing()" (click)="confirmImport()">{{ committing() ? 'Importing…' : 'Import ' + p.summary.total + ' student' + (p.summary.total === 1 ? '' : 's') }}</app-button>
+              <app-button [disabled]="!p.summary.canImport || committing()" (click)="confirmImport()">{{ committing() ? 'Importing…' : 'Import ' + p.summary.importable + ' student' + (p.summary.importable === 1 ? '' : 's') }}</app-button>
             </div>
             @if (committing()) { <p class="note" role="status">Importing. Please keep this page open.</p> }
           }
@@ -129,6 +133,9 @@ type Step = 'upload' | 'preview' | 'result';
           <app-card title="Import complete">
             <p class="done" role="status"><app-icon name="circle-check" [size]="20" /> <strong>{{ r.imported }}</strong> student{{ r.imported === 1 ? ' was' : 's were' }} added to <strong>{{ r.academicYearName }}</strong>.</p>
             <p class="note">Student IDs {{ r.firstStudentId }} to {{ r.lastStudentId }}.@if (r.warningRows > 0) { {{ r.warningRows }} row{{ r.warningRows === 1 ? '' : 's' }} had a warning.}</p>
+            @if ((r.skippedRows ?? 0) > 0) {
+              <p class="banner" role="status" data-banner="result-skipped"><strong>{{ r.skippedRows }}</strong> row{{ r.skippedRows === 1 ? ' was' : 's were' }} not imported because of errors (sheet row{{ r.skippedRows === 1 ? '' : 's' }} {{ (r.skippedRowNumbers ?? []).join(', ') }}). Upload the file again to see them, or download its error report.</p>
+            }
             <div class="table-wrap">
               <table class="list" aria-label="Students added per class">
                 <thead><tr><th>Class</th><th>Section</th><th>Students</th></tr></thead>
@@ -270,11 +277,12 @@ export class StudentImportComponent {
   protected async confirmImport(): Promise<void> {
     const f = this.file(); const p = this.preview();
     if (!f || !p || !p.summary.canImport || this.committing()) return;
-    const n = p.summary.total;
+    const n = p.summary.importable;
+    const skip = p.summary.errors > 0 ? ` ${p.summary.errors} row${p.summary.errors === 1 ? ' has an error and is' : 's have errors and are'} skipped.` : '';
     const warn = p.summary.warnings > 0 ? ` ${p.summary.warnings} row${p.summary.warnings === 1 ? ' has' : 's have'} a warning.` : '';
     const ok = await this.confirm.confirm({
       title: 'Import students',
-      message: `Add ${n} student${n === 1 ? '' : 's'} to ${p.academicYearName}?${warn} The file is checked again before anything is saved.`,
+      message: `Add ${n} student${n === 1 ? '' : 's'} to ${p.academicYearName}?${skip}${warn} The file is checked again before anything is saved.`,
       confirmText: `Import ${n}`,
     });
     if (!ok) return;

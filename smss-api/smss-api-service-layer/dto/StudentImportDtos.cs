@@ -18,6 +18,9 @@ namespace smss_api_service_layer.dto
         public string RollNumber { get; set; } = "";
         public string Guardian { get; set; } = "";
         public string GuardianMobile { get; set; } = "";
+        /// <summary>The primary guardian's WhatsApp number as it will be stored (with the country code), and email.</summary>
+        public string GuardianWhatsApp { get; set; } = "";
+        public string GuardianEmail { get; set; } = "";
     }
 
     public class ImportSummaryDto
@@ -26,7 +29,9 @@ namespace smss_api_service_layer.dto
         public int Ok { get; set; }
         public int Warnings { get; set; }
         public int Errors { get; set; }
-        /// <summary>True only when the file has rows, no row errors and no file-level problem.</summary>
+        /// <summary>Rows that can be imported now: no error (a warning does not stop a row).</summary>
+        public int Importable { get; set; }
+        /// <summary>True when the file has no file-level problem and at least one row can be imported. Rows with errors are skipped by the import and listed, not blocking the rest.</summary>
         public bool CanImport { get; set; }
         public int MaxRows { get; set; }
     }
@@ -52,6 +57,9 @@ namespace smss_api_service_layer.dto
         public int Imported { get; set; }
         public string AcademicYearName { get; set; } = "";
         public int WarningRows { get; set; }
+        /// <summary>Rows that had errors and were NOT imported (their sheet row numbers are in <see cref="SkippedRowNumbers"/>); download the error report, fix them and upload them again.</summary>
+        public int SkippedRows { get; set; }
+        public List<int> SkippedRowNumbers { get; set; } = new();
         public string FirstStudentId { get; set; } = "";
         public string LastStudentId { get; set; } = "";
         public List<ImportClassCountDto> ByClass { get; set; } = new();

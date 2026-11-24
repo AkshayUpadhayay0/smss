@@ -66,9 +66,9 @@ namespace smss_api_tests
         {
             using var db = new TaxDb();
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, applicant_middle_name, applicant_last_name, date_of_birth,
-                       guardian_name, guardian_relationship, guardian_mobile_number, application_date, status_id)
+                       guardian_name, guardian_relationship, guardian_mobile_number, guardian_email, guardian_whatsapp_number, application_date, status_id)
                        values ('{A}', 'ZZ2A-SWEEP', {Y}, (select min(class_id) from tb_classes where school_id='{A}'), (select min(admission_type_id) from lut_admission_type), 'Dev', 'Raj', null, '2018-01-01',
-                       'G', 'FATHER', '9876543210', current_date, (select sid from lut_status where sname='APPLICATION_SUBMITTED'))");
+                       'G', 'FATHER', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPLICATION_SUBMITTED'))");
             var svc = new AdmissionService(new AdmissionRepository(db.Ctx()), Fake.Of<INotificationService>(), Fake.Of<IStudentFeeBillingService>(), NullLogger<AdmissionService>.Instance);
             var list = (await svc.GetAllAsync(A, null, null, null, default)).Data!;
             Clean(list.Single(a => a.ApplicationNumber == "ZZ2A-SWEEP").ApplicantFullName, "Dev Raj");

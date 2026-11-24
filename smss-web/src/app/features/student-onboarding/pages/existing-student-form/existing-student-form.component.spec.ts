@@ -59,7 +59,7 @@ describe('ExistingStudentFormComponent charge-fees-from', () => {
   const todayIso = () => new Date().toISOString().slice(0, 10);
   const VALID = {
     admissionDate: '2025-06-01', academicYearId: '1', classSectionId: '5', firstName: 'Asha', lastName: 'Rao', dateOfBirth: '2015-01-02',
-    guardianName: 'Mr Rao', guardianRelationship: 'Father', guardianMobileNumber: '9876543210',
+    guardianName: 'Mr Rao', guardianRelationship: 'Father', guardianMobileNumber: '9876543210', guardianEmail: 'g@example.com', guardianWhatsAppSameAsMobile: true,
   };
 
   function open() {

@@ -67,6 +67,13 @@ namespace smss_api_service_layer.dto
         [Url, StringLength(200)] public string? Website { get; set; }
         //public string? LogoUrl { get; set; }
 
+        /// <summary>Mandatory: 10 digits, or with the country code. Not mandatory when <see cref="WhatsAppSameAsMobile"/> is ticked (the mobile number is then used).</summary>
+        [StringLength(25)] public string? WhatsAppNumber { get; set; }
+        public bool WhatsAppSameAsMobile { get; set; }
+        /// <summary>The school's location: Super Admin only (a School Admin's own edit has no such fields). Both or neither.</summary>
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+
         // The legacy subscription_* fields are no longer part of this request: subscriptions live in
         // tb_school_subscriptions. A client that still sends them has them ignored (unknown JSON members are skipped).
         public int? SchoolStatusId { get; set; }
@@ -83,6 +90,11 @@ namespace smss_api_service_layer.dto
                 yield return new ValidationResult("StateId is required when DistrictId is given.", new[] { nameof(StateId) });
             if (CityId.HasValue && !DistrictId.HasValue)
                 yield return new ValidationResult("DistrictId is required when CityId is given.", new[] { nameof(DistrictId) });
+
+            var w = PhoneNumbers.WhatsAppError(WhatsAppNumber, WhatsAppSameAsMobile, MobileNumber, "The school's");
+            if (w != null) yield return new ValidationResult(w, new[] { nameof(WhatsAppNumber) });
+            var l = SchoolLocation.Error(Latitude, Longitude);
+            if (l != null) yield return new ValidationResult(l, new[] { nameof(Latitude) });
         }
 
         protected static IEnumerable<ValidationResult> ValidateContacts(IEnumerable<SchoolContactRequest>? contacts, string field)
@@ -138,8 +150,15 @@ namespace smss_api_service_layer.dto
         public string? MobileNumber { get; set; }
         [Url, StringLength(200)] public string? Website { get; set; }
 
+        /// <summary>Mandatory on every edit: 10 digits, or with the country code. Not mandatory when <see cref="WhatsAppSameAsMobile"/> is ticked.</summary>
+        [StringLength(25)] public string? WhatsAppNumber { get; set; }
+        public bool WhatsAppSameAsMobile { get; set; }
+        // Deliberately NO Latitude / Longitude here: the location is the Super Admin's. A body that carries them is read without them (unknown JSON members are skipped).
+
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
+            var w = PhoneNumbers.WhatsAppError(WhatsAppNumber, WhatsAppSameAsMobile, MobileNumber, "The school's");
+            if (w != null) yield return new ValidationResult(w, new[] { nameof(WhatsAppNumber) });
             if (SchoolEstablishYear > DateTime.UtcNow.Year)
                 yield return new ValidationResult("Establish year cannot be in the future.", new[] { nameof(SchoolEstablishYear) });
 

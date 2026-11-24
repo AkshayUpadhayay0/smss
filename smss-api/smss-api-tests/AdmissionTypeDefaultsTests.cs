@@ -40,7 +40,7 @@ namespace smss_api_tests
         private static SubmitAdmissionRequestDto Req(long? typeId) => new()
         {
             AcademicYearId = 1, AppliedClassId = 1, AdmissionTypeId = typeId, ApplicantFirstName = "Asha", ApplicantLastName = "Rao",
-            DateOfBirth = new DateTime(2015, 1, 1), GuardianName = "G", GuardianRelationship = "Father", GuardianMobileNumber = "9999999999"
+            DateOfBirth = new DateTime(2015, 1, 1), GuardianName = "G", GuardianRelationship = "Father", GuardianMobileNumber = "9999999999", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true
         };
 
         [Fact]

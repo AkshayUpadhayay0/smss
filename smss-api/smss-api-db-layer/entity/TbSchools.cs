@@ -43,6 +43,12 @@ namespace smss_api_db_layer.entity
         [Column("mobile_number")][StringLength(20)] public string? MobileNumber { get; set; }
         [Column("website")][StringLength(200)] public string? Website { get; set; }
 
+        /// <summary>The school's WhatsApp number WITH the country code ("+919876543210"). Mandatory for a new registration and on every edit; null for schools registered before it was collected (they get a prompt, never a block).</summary>
+        [Column("whatsapp_number")][StringLength(20)] public string? WhatsAppNumber { get; set; }
+        /// <summary>The school's location, set by the Super Admin only; both are filled or both are empty.</summary>
+        [Column("latitude", TypeName = "numeric(9,6)")] public decimal? Latitude { get; set; }
+        [Column("longitude", TypeName = "numeric(9,6)")] public decimal? Longitude { get; set; }
+
         [Column("logo_url")] public string? LogoUrl { get; set; }
 
         [Column("school_status_id")] public int? SchoolStatusId { get; set; }

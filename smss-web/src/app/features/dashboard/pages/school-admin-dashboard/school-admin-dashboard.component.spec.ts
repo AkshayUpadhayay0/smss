@@ -188,6 +188,18 @@ describe('SchoolAdminDashboardComponent', () => {
     expect(el().querySelector('[data-note="month"]')!.textContent).toContain('Showing March 2027');
   });
 
+  it('asks for the school WhatsApp number with a banner when it is missing, and shows nothing when it is set', () => {
+    open(withData(dashboard({ whatsAppMissing: true })));
+    expect(el().querySelector('[data-banner="whatsapp-missing"]')!.textContent).toContain('no WhatsApp number');
+    expect(el().querySelector('[data-note="viewing"]')).toBeNull();
+    expect(card('total-students')).not.toBeNull();   // the rest of the dashboard still works
+  });
+
+  it('no WhatsApp banner when the number is set', () => {
+    open(withData(dashboard({ whatsAppMissing: false })));
+    expect(el().querySelector('[data-banner="whatsapp-missing"]')).toBeNull();
+  });
+
   it('a year with no fee items shows "No fee structure yet" on the fee cards, not zeros', () => {
     open(withData(dashboard({ hasFeeSetup: false, totalStudents: 0, studentsPaidThisMonth: 0, studentsNotPaidThisMonth: 0, feeCollectedThisMonth: 0, feeOutstandingThisMonth: 0, incomeThisMonth: 0, incomeThisSession: 0 })));
     for (const id of ['paid', 'not-paid', 'collected', 'outstanding', 'income-month', 'income-session']) expect(card(id)!.textContent).toContain('No fee structure yet');

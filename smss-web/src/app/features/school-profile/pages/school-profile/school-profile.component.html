@@ -125,6 +125,12 @@
         <app-input label="Mobile number" type="tel" placeholder="10-digit mobile" prefixIcon="phone" formControlName="mobileNumber" [errorText]="err('mobileNumber')" />
         <app-input label="Website" type="url" placeholder="https://example.com" prefixIcon="globe" formControlName="website" [errorText]="err('website')" />
       </div>
+      <div class="fields three">
+        <app-whatsapp-field label="School WhatsApp number" [number]="form.controls.whatsAppNumber" [same]="form.controls.whatsAppSameAsMobile" [error]="err('whatsAppNumber')" />
+        @if (school()?.latitude != null && school()?.longitude != null) {
+          <div class="ro" data-field="location"><span class="ro-label">Location (set by the platform team)</span><span>{{ school()?.latitude }}, {{ school()?.longitude }}</span></div>
+        }
+      </div>
     </section>
 
     @if (editing()) {

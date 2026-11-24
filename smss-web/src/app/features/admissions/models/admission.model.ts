@@ -81,6 +81,8 @@ export interface AdmissionDetail extends Admission {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail?: string | null;
+  /** With the country code; null on an application made before it was collected (it must be added before the application can be confirmed). */
+  guardianWhatsAppNumber?: string | null;
   previousSchool?: string | null;
   reviewNotes?: string | null;
   reviewedAt?: string | null;
@@ -117,7 +119,11 @@ export interface SubmitAdmissionRequest {
   guardianName: string;
   guardianRelationship: string;
   guardianMobileNumber: string;
+  /** Mandatory: the primary guardian's email. */
   guardianEmail: string | null;
+  /** The WhatsApp number as typed (10 digits or with the country code); null when "same as mobile number" is ticked. */
+  guardianWhatsAppNumber: string | null;
+  guardianWhatsAppSameAsMobile: boolean;
   previousSchool: string | null;
 }
 

@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace smss_api_service_layer.dto
 {
     // Direct entry of a student the school already has: no application, review or approval stage.
-    public class DirectStudentEntryRequestDto
+    public class DirectStudentEntryRequestDto : IValidatableObject
     {
         // The school's own number when it has one; blank = generated (ADMNO{year}{4-digit seq}, per school)
         [MaxLength(50)] public string? AdmissionNumber { get; set; }
@@ -44,7 +44,20 @@ namespace smss_api_service_layer.dto
         [Required, RegularExpression("^(FATHER|MOTHER|GUARDIAN)$", ErrorMessage = "GuardianRelationship must be FATHER, MOTHER or GUARDIAN.")]
         public string GuardianRelationship { get; set; } = null!;
         [Required, RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")] public string GuardianMobileNumber { get; set; } = null!;
-        [EmailAddress, MaxLength(150)] public string? GuardianEmail { get; set; }
+        /// <summary>Mandatory for the primary guardian (checked by <see cref="Validate"/>).</summary>
+        [MaxLength(150)] public string? GuardianEmail { get; set; }
+        /// <summary>The guardian's WhatsApp number: 10 digits, or with the country code. Mandatory unless <see cref="GuardianWhatsAppSameAsMobile"/> is set.</summary>
+        [MaxLength(25)] public string? GuardianWhatsAppNumber { get; set; }
+        /// <summary>"Same as mobile number": the server then uses the guardian's mobile number as the WhatsApp number.</summary>
+        public bool GuardianWhatsAppSameAsMobile { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext context)
+        {
+            var w = smss_api_service_layer.helper.PhoneNumbers.WhatsAppError(GuardianWhatsAppNumber, GuardianWhatsAppSameAsMobile, GuardianMobileNumber, "The guardian's");
+            if (w != null) yield return new ValidationResult(w, new[] { nameof(GuardianWhatsAppNumber) });
+            var e = smss_api_service_layer.helper.PhoneNumbers.EmailError(GuardianEmail, "The guardian's");
+            if (e != null) yield return new ValidationResult(e, new[] { nameof(GuardianEmail) });
+        }
     }
 
     public class StudentOnboardingResponseDto

@@ -47,7 +47,7 @@ namespace smss_api_tests
         private static DirectStudentEntryRequestDto Direct(long section, string? roll, string first = "Roll") => new()
         {
             AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = Y, ClassSectionId = section, RollNumber = roll,
-            FirstName = first, LastName = "Test", DateOfBirth = new DateTime(2018, 5, 5), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianMobileNumber = "9876543210",
+            FirstName = first, LastName = "Test", DateOfBirth = new DateTime(2018, 5, 5), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
         };
 
         // ----------------------------------------------------------------------------------------------- database keys and roll numbers
@@ -312,9 +312,9 @@ namespace smss_api_tests
         private static long Approved(TaxDb db, string first)
         {
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, applicant_last_name, date_of_birth,
-                       guardian_name, guardian_relationship, guardian_mobile_number, application_date, status_id)
+                       guardian_name, guardian_relationship, guardian_mobile_number, guardian_email, guardian_whatsapp_number, application_date, status_id)
                        values ('{A}', 'ZZ1A-{first}', {Y}, (select min(class_id) from tb_classes where school_id='{A}'), (select min(admission_type_id) from lut_admission_type), '{first}', 'App', '2018-01-01',
-                       'G', 'Father', '9876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
+                       'G', 'Father', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
             return db.Scalar<long>($"select admission_id from tb_admissions where school_id='{A}' and application_number='ZZ1A-{first}'");
         }
 
@@ -347,9 +347,13 @@ namespace smss_api_tests
         {
             using var wb = new XLWorkbook();
             var ws = wb.AddWorksheet("Students");
-            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone" };
+            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email" };
             for (var c = 0; c < headers.Length; c++) ws.Cell(1, c + 1).Value = headers[c];
-            for (var r = 0; r < rows.Length; r++) for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c];
+            for (var r = 0; r < rows.Length; r++)
+            {
+                var cells = rows[r].Length == 9 ? rows[r].Concat(new[] { "SAME", "guardian@example.com" }).ToArray() : rows[r];   // a 9-column row gets the two guardian columns filled in
+                for (var c = 0; c < cells.Length; c++) ws.Cell(r + 2, c + 1).Value = cells[c];
+            }
             using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
         }
 
@@ -375,10 +379,15 @@ namespace smss_api_tests
             Assert.Contains(rows[2].Messages, m => m.Contains("already taken"));                                       // "002" = the database's "2"
             Assert.Contains(rows[3].Messages, m => m.Contains("not offered"));
             Assert.Equal("OK", rows[4].Status);
-            Assert.False(preview.Data.Summary.CanImport);
+            Assert.True(preview.Data.Summary.CanImport);        // stage 2b: the valid row can still be imported
+            Assert.Equal(1, preview.Data.Summary.Importable); Assert.Equal(4, preview.Data.Summary.Errors);
             var students = db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'");
-            Assert.False(svc.CommitAsync(A, file, default).Result.Status);   // one error stops the whole import
-            Assert.Equal(students, db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'"));
+            var committed = svc.CommitAsync(A, file, default).Result;
+            Assert.True(committed.Status, committed.Message);
+            Assert.Equal(1, committed.Data!.Imported); Assert.Equal(4, committed.Data.SkippedRows);        // the four rows with errors are skipped and listed, not imported
+            Assert.Equal(new[] { 2, 3, 4, 5 }, committed.Data.SkippedRowNumbers);
+            Assert.Equal(students + 1, db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'"));
+            Assert.Equal(1, db.Scalar<int>($"select count(*) from tb_students where school_id='{A}' and first_name='Import' and last_name='Five'"));
         }
 
         // ----------------------------------------------------------------------------------------------- history readers keep showing inactive masters

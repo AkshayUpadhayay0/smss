@@ -15,7 +15,7 @@ const row = (n: number, status: ImportRow['status'], messages: string[] = []): I
 const PREVIEW = (rows: ImportRow[], fileErrors: string[] = []): ImportPreview => {
   const errors = rows.filter((r) => r.status === 'ERROR').length;
   const warnings = rows.filter((r) => r.status === 'WARNING').length;
-  return { summary: { total: rows.length, ok: rows.length - errors - warnings, warnings, errors, canImport: fileErrors.length === 0 && rows.length > 0 && errors === 0, maxRows: 500 }, fileErrors, academicYearName: '2026-27', rows };
+  return { summary: { total: rows.length, ok: rows.length - errors - warnings, warnings, errors, importable: rows.length - errors, canImport: fileErrors.length === 0 && rows.length - errors > 0, maxRows: 500 }, fileErrors, academicYearName: '2026-27', rows };
 };
 const xlsx = (name = 'students.xlsx', size = 2000) => new File([new Uint8Array(size)], name);
 
@@ -110,12 +110,12 @@ describe('StudentImportComponent', () => {
     expect(button('Download error report')).toBeUndefined();
   });
 
-  it('a file with an error opens on the Errors filter, blocks the import, and offers the error report', () => {
+  it('a file with an error opens on the Errors filter, skips the error row but still offers the valid ones, and offers the error report', () => {
     check(PREVIEW([row(2, 'OK'), row(3, 'ERROR', ['Roll number 5 is already taken in Class 3 A.']), row(4, 'WARNING', ['Looks like a student already in the school'])]));
-    expect(text()).toContain('Nothing can be imported until every error is fixed');
+    expect(text()).toContain('will be skipped');
     expect(el().querySelectorAll('tbody tr').length).toBe(1);        // the Errors filter
     expect(text()).toContain('Roll number 5 is already taken');
-    expect(button('Import 3 students')!.disabled).toBe(true);
+    expect(button('Import 2 students')!.disabled).toBe(false);
     expect(button('Download error report')).toBeTruthy();
     [...el().querySelectorAll<HTMLButtonElement>('.chip')].find((c) => c.textContent?.includes('All'))!.click();
     fixture.detectChanges();
