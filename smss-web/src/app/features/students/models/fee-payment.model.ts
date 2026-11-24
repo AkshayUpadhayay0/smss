@@ -114,7 +114,10 @@ export interface ReceiptLine {
   /** The part of this line's amount that was discounted (0 when the concession did not apply to it). */
   concessionAmount?: number;
   feeDueId: number;
+  /** The fee type's name when the payment was taken (a later rename does not change an old receipt). */
   feeTypeName: string;
+  /** The academic year of the installment: a payment can pay installments of more than one year. */
+  academicYearName?: string;
   frequencyName: string;
   dueDate: string;
   /** The installment's full amount. */
@@ -141,7 +144,8 @@ export interface FeeReceipt extends PaymentTaxFields {
   concessionReason?: string | null;
   concessionAppliedByName?: string | null;
   school: { name: string; address?: string | null; phone?: string | null; email?: string | null; logoUrl?: string | null; gstin?: string | null };
-  student: { studentId: string; name: string; className?: string | null; academicYearName?: string | null };
+  /** className / academicYearName are the student's class IN THE YEAR OF THE PAYMENT'S INSTALLMENTS; academicYearNames lists every year when a payment spans years. */
+  student: { studentId: string; name: string; className?: string | null; academicYearName?: string | null; academicYearNames?: string[] };
   lines: ReceiptLine[];
 }
 

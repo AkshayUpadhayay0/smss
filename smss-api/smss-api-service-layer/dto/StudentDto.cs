@@ -101,5 +101,24 @@ namespace smss_api_service_layer.dto
         public string? LoginId { get; set; }
 
         public List<GuardianSummaryDto> Guardians { get; set; } = new();
+
+        /// <summary>EVERY enrolment of the student, newest year first (one per academic year). The single-enrolment fields above are the current one and stay for older clients.</summary>
+        public List<StudentEnrollmentSummaryDto> Enrollments { get; set; } = new();
+    }
+
+    /// <summary>One year of a student's history: where they were in that year.</summary>
+    public class StudentEnrollmentSummaryDto
+    {
+        public long EnrollmentId { get; set; }
+        public long AcademicYearId { get; set; }
+        public string AcademicYearName { get; set; } = null!;
+        /// <summary>The school's current year.</summary>
+        public bool IsCurrentYear { get; set; }
+        /// <summary>A closed year is read-only history.</summary>
+        public bool YearIsClosed { get; set; }
+        public string ClassName { get; set; } = null!;
+        public string SectionName { get; set; } = null!;
+        public string? RollNumber { get; set; }
+        public string StatusName { get; set; } = null!;
     }
 }

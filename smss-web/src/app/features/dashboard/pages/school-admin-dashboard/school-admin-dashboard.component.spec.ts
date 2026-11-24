@@ -12,6 +12,7 @@ import { dashboard } from '../../utils/school-admin-dashboard.testing';
 import { SchoolAdminDashboardComponent } from './school-admin-dashboard.component';
 
 const URL = `${environment.apiUrl}/api/Dashboard/school-admin`;
+const YEARS = `${environment.apiUrl}/api/AcademicYear`;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
 /** ApexCharts needs a real browser, so the specs swap the one component that draws them. */
@@ -28,7 +29,15 @@ describe('SchoolAdminDashboardComponent', () => {
   const text = () => el().textContent ?? '';
   const card = (id: string) => el().querySelector(`[data-card="${id}"]`) as HTMLElement | null;
 
-  function open(flush?: (req: TestRequest) => void): void {
+  const year = (id: number, name: string, over: Record<string, unknown> = {}) => ({
+    academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent: false, statusName: 'Active', isClosed: false, ...over,
+  });
+  /** The page also lists the school's years for its selector. */
+  function flushYears(years: unknown[] = [year(3, '2026-27', { isCurrent: true })]): void {
+    http.match(YEARS).forEach((r) => r.flush(env(years)));
+  }
+
+  function open(flush?: (req: TestRequest) => void, years?: unknown[]): void {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'], schoolName: 'ZZ Demo School' }) });
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
@@ -36,6 +45,7 @@ describe('SchoolAdminDashboardComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SchoolAdminDashboardComponent);
     fixture.detectChanges();
+    flushYears(years);
     if (flush) {
       flush(http.expectOne(URL));
       fixture.detectChanges();
@@ -152,5 +162,43 @@ describe('SchoolAdminDashboardComponent', () => {
     expect(text()).toContain('Welcome Back, School Admin');
     expect(text()).toContain('ZZ Demo School');
     expect(text()).toContain('Academic Year 2026-27');
+  });
+  it('lists every year of the school in the selector, closed ones marked', () => {
+    open(withData(dashboard()), [year(1, '2025-26', { isClosed: true }), year(3, '2026-27', { isCurrent: true })]);
+    const options = [...el().querySelectorAll('app-select option, app-select [role="option"]')].map((o) => o.textContent?.trim());
+    expect(options.join('|')).toContain('2025-26 (closed, read-only)');
+  });
+
+  it('choosing another year asks the endpoint for that year only and never changes the current year', () => {
+    open(withData(dashboard()));
+    const select = el().querySelector('app-select');
+    expect(select).not.toBeNull();
+    fixture.componentInstance['yearControl'].setValue('2');
+    const req = http.expectOne((r) => r.url === URL);
+    expect(req.request.params.get('academicYearId')).toBe('2');
+    expect(req.request.method).toBe('GET');
+    req.flush(env(dashboard({ session: { academicYearId: 2, name: '2027-28', startDate: '2027-04-01', endDate: '2028-03-31', isCurrent: false, isClosed: false } })));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-note="viewing"]')!.textContent).toContain('You are viewing 2027-28');
+    expect(el().querySelector('[data-note="viewing"]')!.textContent).toContain('current year is 2026-27');
+  });
+
+  it('says so, in words, when "this month" was moved into the viewed year', () => {
+    open(withData(dashboard({ monthClamped: true, monthNote: 'Showing March 2027: today is after the academic year 2026-27.' })));
+    expect(el().querySelector('[data-note="month"]')!.textContent).toContain('Showing March 2027');
+  });
+
+  it('a year with no fee items shows "No fee structure yet" on the fee cards, not zeros', () => {
+    open(withData(dashboard({ hasFeeSetup: false, totalStudents: 0, studentsPaidThisMonth: 0, studentsNotPaidThisMonth: 0, feeCollectedThisMonth: 0, feeOutstandingThisMonth: 0, incomeThisMonth: 0, incomeThisSession: 0 })));
+    for (const id of ['paid', 'not-paid', 'collected', 'outstanding', 'income-month', 'income-session']) expect(card(id)!.textContent).toContain('No fee structure yet');
+    expect(card('total-students')!.textContent).toContain('0');
+    expect(el().querySelector('[data-empty="fees"]')).not.toBeNull();
+  });
+
+  it('the fee tiles cannot be read as total cash received', () => {
+    open(withData(dashboard()));
+    expect(card('collected')!.textContent).toContain('Fees received this month');
+    expect(card('income-session')!.textContent).toContain('Fees received for this session');
+    expect(card('collected')!.getAttribute('title')).toContain('not the total cash received');
   });
 });

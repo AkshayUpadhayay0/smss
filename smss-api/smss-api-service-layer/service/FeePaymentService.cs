@@ -62,8 +62,7 @@ namespace smss_api_service_layer.service
                     concession = await _repo.GetConcessionAsync(schoolId, concessionId, ct);
                     if (concession == null) return Result<FeeReceiptDto>(404, "Concession not found.", null);
                     if (!concession.IsActive) return Result<FeeReceiptDto>(400, $"The concession \"{concession.ConcessionName}\" is deactivated and can't be used for a new payment. Choose another or none.", null);
-                    if (await _repo.HasAssignedConcessionAsync(schoolId, studentId, concession.ConcessionId, ct))
-                        return Result<FeeReceiptDto>(409, $"This student already has the concession \"{concession.ConcessionName}\" assigned, and it already reduces their installments. It can't be given again at payment. Choose another concession or none.", null);
+                    // a concession is per academic year: it is a duplicate only for the year(s) of the installments being paid (checked below, once those are known)
                 }
 
                 var explicitAllocations = req.Allocations is { Count: > 0 };
@@ -125,6 +124,14 @@ namespace smss_api_service_layer.service
                             }
                         }
 
+                        // the concession was assigned for one of these installments' years: giving it again would discount twice
+                        if (concession != null)
+                        {
+                            var paidYears = (await _repo.GetDueYearIdsAsync(plan.Select(p => p.Due.FeeDueId).ToList(), ct)).Values.Distinct().ToList();
+                            if (await _repo.HasAssignedConcessionAsync(schoolId, studentId, concession.ConcessionId, paidYears, ct))
+                                return Result<FeeReceiptDto>(409, $"This student already has the concession \"{concession.ConcessionName}\" assigned for the year of these installments, and it already reduces them. It can't be given again at payment. Choose another concession or none.", null);
+                        }
+
                         // ---- the concession: base = the allocations to installments of the concession's fee type (all of them when it has none) ----
                         // gross (the request amount) = cash fee + concession; tax is on the cash fee, i.e. AFTER the discount; the total paid in cash = cash fee + tax
                         var concessionAmount = 0m;
@@ -184,10 +191,11 @@ namespace smss_api_service_layer.service
                             CreatedAt = now,
                             UpdatedAt = now
                         };
+                        var typeNames = await _repo.GetDueFeeTypeNamesAsync(plan.Select(p => p.Due.FeeDueId).ToList(), ct);   // snapshot: a later rename of the fee type never changes this receipt
                         for (var i = 0; i < plan.Count; i++)
                         {
                             var (due, part) = plan[i];
-                            payment.Allocations.Add(new TbFeePaymentAllocation { FeeDueId = due.FeeDueId, AllocatedAmount = part, ConcessionAmount = perAllocation[i], CreatedAt = now });
+                            payment.Allocations.Add(new TbFeePaymentAllocation { FeeDueId = due.FeeDueId, AllocatedAmount = part, ConcessionAmount = perAllocation[i], FeeTypeNameSnapshot = typeNames[due.FeeDueId], CreatedAt = now });
                             due.AmountPaid += part;   // the discounted part counts as paid: a discounted installment is cleared
                             due.UpdatedAt = now;
                         }
@@ -356,9 +364,12 @@ namespace smss_api_service_layer.service
 
             var school = await _repo.GetReceiptSchoolAsync(schoolId, ct);
             var student = await _repo.GetStudentAsync(schoolId, payment.StudentId, ct);
-            var enrollment = (await _fees.GetEnrollmentsAsync(schoolId, payment.StudentId, ct))
-                .OrderByDescending(e => e.AcademicYearIsCurrent).ThenByDescending(e => e.AcademicYearStart).FirstOrDefault();
             var details = (await _repo.GetDueDetailsAsync(payment.Allocations.Select(a => a.FeeDueId).ToList(), ct)).ToDictionary(d => d.FeeDueId);
+            // the class on a receipt is the student's class in the YEAR OF THE PAYMENT'S INSTALLMENTS (the latest year when one payment spans years), never "whatever year is current today"
+            var years = details.Values.GroupBy(d => d.AcademicYearId).Select(g => g.First()).OrderBy(d => d.AcademicYearStart).ThenBy(d => d.AcademicYearId).ToList();
+            var paymentYear = years.LastOrDefault();
+            var enrollments = await _fees.GetEnrollmentsAsync(schoolId, payment.StudentId, ct);
+            var enrollment = paymentYear == null ? null : enrollments.FirstOrDefault(e => e.AcademicYearId == paymentYear.AcademicYearId);
             var collectedBy = payment.CollectedBy is long u ? await _repo.GetUserNameAsync(u, ct) : null;
 
             return new FeeReceiptDto
@@ -384,7 +395,8 @@ namespace smss_api_service_layer.service
                 {
                     StudentId = payment.StudentId,
                     Name = student == null ? string.Empty : string.Join(' ', new[] { student.FirstName, student.MiddleName, student.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))),
-                    ClassName = enrollment?.ClassName, AcademicYearName = enrollment?.AcademicYearName
+                    ClassName = enrollment?.ClassName, AcademicYearName = paymentYear?.AcademicYearName,
+                    AcademicYearNames = years.Select(y => y.AcademicYearName).ToList()
                 },
                 Lines = payment.Allocations.OrderBy(a => details.TryGetValue(a.FeeDueId, out var d) ? d.DueDate : DateOnly.MaxValue).ThenBy(a => a.AllocationId)
                     .Where(a => details.ContainsKey(a.FeeDueId))
@@ -393,7 +405,7 @@ namespace smss_api_service_layer.service
                         var d = details[a.FeeDueId];
                         return new ReceiptLineDto
                         {
-                            FeeDueId = a.FeeDueId, FeeTypeName = d.FeeTypeName, FrequencyName = d.FrequencyName, DueDate = d.DueDate,
+                            FeeDueId = a.FeeDueId, FeeTypeName = string.IsNullOrWhiteSpace(a.FeeTypeNameSnapshot) ? d.FeeTypeName : a.FeeTypeNameSnapshot, AcademicYearName = d.AcademicYearName, FrequencyName = d.FrequencyName, DueDate = d.DueDate,
                             AmountDue = d.AmountDue, AllocatedAmount = a.AllocatedAmount, ConcessionAmount = a.ConcessionAmount, PaidToDate = d.AmountPaid
                         };
                     }).ToList()

@@ -14,6 +14,26 @@ const receipt: FeeReceipt = {
 describe('receiptHtml', () => {
   const html = receiptHtml(receipt);
 
+  describe('a payment that spans academic years', () => {
+    const spans: FeeReceipt = {
+      ...receipt,
+      student: { ...receipt.student, academicYearName: '2027-28', academicYearNames: ['2026-27', '2027-28'] },
+      lines: [{ ...receipt.lines[0], academicYearName: '2026-27' }, { ...receipt.lines[1], academicYearName: '2027-28' }],
+    };
+
+    it('names the year on each line, and the header year is the latest', () => {
+      const h = receiptHtml(spans);
+      expect(h).toContain('Monthly · 2026-27');
+      expect(h).toContain('Annual · 2027-28');
+      expect(h).toContain('<span>Academic year</span><br>2027-28');
+    });
+
+    it('a one-year payment does not repeat the year on every line', () => {
+      const h = receiptHtml({ ...spans, student: { ...spans.student, academicYearNames: ['2027-28'] } });
+      expect(h).not.toContain('Monthly · 2026-27');
+    });
+  });
+
   describe('tax lines and the school GSTIN', () => {
     const taxed: FeeReceipt = { ...receipt, feeAmount: 3500, taxName: 'Service Tax', taxCode: 'SVC', taxRatePercent: 5, taxAmount: 175, totalAmount: 3675, amount: 3675, school: { ...receipt.school, gstin: '09ABCDE1234F1Z5' } };
 

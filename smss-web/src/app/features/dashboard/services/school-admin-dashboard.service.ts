@@ -8,7 +8,8 @@ import { SchoolAdminDashboard } from '../models/school-admin-dashboard.model';
 export class SchoolAdminDashboardService {
   private readonly api = inject(ApiService);
 
-  load(): Observable<SchoolAdminDashboard> {
-    return this.api.get<SchoolAdminDashboard>('/api/Dashboard/school-admin');
+  /** academicYearId omitted = the current year. It only chooses what to LOOK at; it never changes the school's current year. */
+  load(academicYearId?: number): Observable<SchoolAdminDashboard> {
+    return this.api.get<SchoolAdminDashboard>('/api/Dashboard/school-admin', academicYearId ? { academicYearId } : undefined);
   }
 }

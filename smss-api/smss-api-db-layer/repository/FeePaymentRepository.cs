@@ -32,8 +32,8 @@ namespace smss_api_db_layer.repository
             }).ToList();
         }
 
-        public Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, CancellationToken ct) =>
-            _db.StudentFeeConcessions.AsNoTracking().AnyAsync(a => a.StudentId == studentId && a.ConcessionId == concessionId
+        public Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, IReadOnlyCollection<long> academicYearIds, CancellationToken ct) =>
+            _db.StudentFeeConcessions.AsNoTracking().AnyAsync(a => a.StudentId == studentId && a.ConcessionId == concessionId && academicYearIds.Contains(a.AcademicYearId)
                 && _db.Students.Any(s => s.SchoolId == schoolId && s.StudentId == a.StudentId), ct);
 
         public async Task<Dictionary<long, long>> GetDueFeeTypeIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct)
@@ -44,6 +44,27 @@ namespace smss_api_db_layer.repository
                               where ids.Contains(d.FeeDueId)
                               select new { d.FeeDueId, i.FeeTypeId }).ToListAsync(ct);
             return rows.ToDictionary(r => r.FeeDueId, r => r.FeeTypeId);
+        }
+
+        public async Task<Dictionary<long, string>> GetDueFeeTypeNamesAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct)
+        {
+            var ids = dueIds.ToArray();
+            var rows = await (from d in _db.StudentFeeDues.AsNoTracking()
+                              join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                              join t in _db.FeeTypes.AsNoTracking() on i.FeeTypeId equals t.FeeTypeId
+                              where ids.Contains(d.FeeDueId)
+                              select new { d.FeeDueId, t.FeeTypeName }).ToListAsync(ct);
+            return rows.ToDictionary(r => r.FeeDueId, r => r.FeeTypeName);
+        }
+
+        public async Task<Dictionary<long, long>> GetDueYearIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct)
+        {
+            var ids = dueIds.ToArray();
+            var rows = await (from d in _db.StudentFeeDues.AsNoTracking()
+                              join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                              where ids.Contains(d.FeeDueId)
+                              select new { d.FeeDueId, i.AcademicYearId }).ToListAsync(ct);
+            return rows.ToDictionary(r => r.FeeDueId, r => r.AcademicYearId);
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
@@ -128,13 +149,15 @@ namespace smss_api_db_layer.repository
                 join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
                 join t in _db.FeeTypes.AsNoTracking() on i.FeeTypeId equals t.FeeTypeId
                 join f in _db.FeeFrequencies.AsNoTracking() on i.FrequencyId equals f.FrequencyId
+                join y in _db.AcademicYears.AsNoTracking() on i.AcademicYearId equals y.AcademicYearId
                 where dueIds.Contains(d.FeeDueId)
-                select new { d.FeeDueId, t.FeeTypeName, f.FrequencyName, d.DueDate, d.AmountDue, d.AmountPaid }).ToListAsync(ct);
+                select new { d.FeeDueId, t.FeeTypeName, f.FrequencyName, d.DueDate, d.AmountDue, d.AmountPaid, i.AcademicYearId, y.YearName, y.StartDate }).ToListAsync(ct);
 
             return rows.Select(r => new DueDetailRow
             {
                 FeeDueId = r.FeeDueId, FeeTypeName = r.FeeTypeName, FrequencyName = r.FrequencyName,
-                DueDate = r.DueDate, AmountDue = r.AmountDue, AmountPaid = r.AmountPaid
+                DueDate = r.DueDate, AmountDue = r.AmountDue, AmountPaid = r.AmountPaid,
+                AcademicYearId = r.AcademicYearId, AcademicYearName = r.YearName, AcademicYearStart = r.StartDate
             }).ToList();
         }
 

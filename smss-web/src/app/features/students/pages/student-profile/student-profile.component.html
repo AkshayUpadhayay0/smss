@@ -81,12 +81,35 @@
           <div><dt>Admission number</dt><dd>{{ s.admissionNumber }}</dd></div>
           <div><dt>Admission date</dt><dd>{{ fmt(s.admissionDate) }}</dd></div>
           <div><dt>Admission type</dt><dd>{{ s.admissionTypeName || '—' }}</dd></div>
-          <div><dt>Academic year</dt><dd>{{ s.academicYearName || '—' }}</dd></div>
-          <div><dt>Class</dt><dd>{{ s.className || '—' }}</dd></div>
-          <div><dt>Section</dt><dd>{{ s.sectionName || '—' }}</dd></div>
-          <div><dt>Roll number</dt><dd>{{ s.rollNumber || '—' }}</dd></div>
-          <div><dt>Enrollment status</dt><dd>{{ s.enrollmentStatusName || '—' }}</dd></div>
         </dl>
+        @if (years().length > 1) {
+          <div class="year-tabs" role="tablist" aria-label="Academic years of this student">
+            @for (y of years(); track y.enrollmentId) {
+              <button type="button" role="tab" class="year-tab" [class.active]="shownYear()?.enrollmentId === y.enrollmentId" [attr.aria-selected]="shownYear()?.enrollmentId === y.enrollmentId"
+                      [attr.aria-label]="y.academicYearName + (y.isCurrentYear ? ', current year' : '') + (y.yearIsClosed ? ', closed' : '')"
+                      (click)="pickYear(y.enrollmentId)">
+                {{ y.academicYearName }}@if (y.isCurrentYear) { <small>current</small> }@if (y.yearIsClosed) { <small>closed</small> }
+              </button>
+            }
+          </div>
+        }
+        @if (shownYear(); as y) {
+          <dl class="grid year-detail" data-year="detail">
+            <div><dt>Academic year</dt><dd>{{ y.academicYearName }}</dd></div>
+            <div><dt>Class</dt><dd>{{ y.className }}</dd></div>
+            <div><dt>Section</dt><dd>{{ y.sectionName }}</dd></div>
+            <div><dt>Roll number</dt><dd>{{ y.rollNumber || '—' }}</dd></div>
+            <div><dt>Enrollment status</dt><dd>{{ y.statusName }}</dd></div>
+          </dl>
+        } @else {
+          <dl class="grid">
+            <div><dt>Academic year</dt><dd>{{ s.academicYearName || '—' }}</dd></div>
+            <div><dt>Class</dt><dd>{{ s.className || '—' }}</dd></div>
+            <div><dt>Section</dt><dd>{{ s.sectionName || '—' }}</dd></div>
+            <div><dt>Roll number</dt><dd>{{ s.rollNumber || '—' }}</dd></div>
+            <div><dt>Enrollment status</dt><dd>{{ s.enrollmentStatusName || '—' }}</dd></div>
+          </dl>
+        }
         @if (!hasEnrollment()) {
           <p class="hint">This student is not enrolled in any class yet.</p>
         }

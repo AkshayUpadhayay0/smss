@@ -397,7 +397,7 @@ export class StudentFeesTabComponent implements OnInit {
       variant: 'danger',
     });
     if (!ok) return;
-    this.run(this.students.removeConcession(this.studentId(), c.concessionId), 'Concession removed.');
+    this.run(this.students.removeConcession(this.studentId(), c.concessionId, c.academicYearId), 'Concession removed.');
   }
 
   private run(request$: Observable<StudentFees>, success: string, after?: () => void): void {

@@ -77,16 +77,16 @@ namespace smss_api_db_layer.repository
             }).ToList();
         }
 
-        public async Task<List<AppliedConcessionRow>> GetAppliedConcessionsAsync(string schoolId, string studentId, CancellationToken ct)
+        public async Task<List<AppliedConcessionRow>> GetAppliedConcessionsAsync(string schoolId, string studentId, long academicYearId, CancellationToken ct)
         {
             var rows = await (
                 from sc in _db.StudentFeeConcessions.AsNoTracking()
                 join c in _db.FeeConcessions.AsNoTracking() on sc.ConcessionId equals c.ConcessionId
-                where sc.StudentId == studentId && c.SchoolId == schoolId
+                where sc.StudentId == studentId && c.SchoolId == schoolId && sc.AcademicYearId == academicYearId
                 orderby sc.CreatedAt
                 select new
                 {
-                    sc.StudentFeeConcessionId, sc.ConcessionId, c.ConcessionName, c.ConcessionCode, c.ConcessionType, c.Value,
+                    sc.StudentFeeConcessionId, sc.ConcessionId, sc.AcademicYearId, c.ConcessionName, c.ConcessionCode, c.ConcessionType, c.Value,
                     c.ApplicableFeeTypeId, ConcessionIsActive = c.IsActive, sc.Remarks, sc.ApprovedBy, AppliedAt = sc.CreatedAt
                 }).ToListAsync(ct);
 
@@ -100,7 +100,7 @@ namespace smss_api_db_layer.repository
 
             return rows.Select(r => new AppliedConcessionRow
             {
-                StudentFeeConcessionId = r.StudentFeeConcessionId, ConcessionId = r.ConcessionId, ConcessionName = r.ConcessionName,
+                StudentFeeConcessionId = r.StudentFeeConcessionId, ConcessionId = r.ConcessionId, AcademicYearId = r.AcademicYearId, ConcessionName = r.ConcessionName,
                 ConcessionCode = r.ConcessionCode, ConcessionType = r.ConcessionType, Value = r.Value,
                 ApplicableFeeTypeId = r.ApplicableFeeTypeId,
                 ApplicableFeeTypeName = r.ApplicableFeeTypeId is long ft && feeTypeNames.TryGetValue(ft, out var n) ? n : null,
@@ -110,9 +110,12 @@ namespace smss_api_db_layer.repository
             }).ToList();
         }
 
-        public Task<TbStudentFeeConcession?> GetAppliedConcessionAsync(string studentId, long concessionId, bool track, CancellationToken ct)
+        public Task<List<long>> GetAppliedConcessionYearsAsync(string studentId, long concessionId, CancellationToken ct) =>
+            _db.StudentFeeConcessions.AsNoTracking().Where(x => x.StudentId == studentId && x.ConcessionId == concessionId).Select(x => x.AcademicYearId).ToListAsync(ct);
+
+        public Task<TbStudentFeeConcession?> GetAppliedConcessionAsync(string studentId, long concessionId, long academicYearId, bool track, CancellationToken ct)
         {
-            IQueryable<TbStudentFeeConcession> q = _db.StudentFeeConcessions.Where(x => x.StudentId == studentId && x.ConcessionId == concessionId);
+            IQueryable<TbStudentFeeConcession> q = _db.StudentFeeConcessions.Where(x => x.StudentId == studentId && x.ConcessionId == concessionId && x.AcademicYearId == academicYearId);
             if (!track) q = q.AsNoTracking();
             return q.FirstOrDefaultAsync(ct);
         }

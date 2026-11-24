@@ -107,11 +107,11 @@ namespace smss_api_db_layer.repository
                 select new
                 {
                     e.EnrollmentId, e.RollNumber, e.StatusId, e.AcademicYearId, y.YearName, y.StartDate, y.IsCurrent,
-                    c.ClassName, sec.SectionName
+                    c.ClassName, sec.SectionName, Closed = y.ClosedAt != null
                 }).ToListAsync(ct);
 
             return rows.Select(r => new StudentEnrollmentRow(r.EnrollmentId, r.RollNumber, r.StatusId, r.AcademicYearId, r.YearName,
-                r.StartDate, r.IsCurrent, r.ClassName, r.SectionName)).ToList();
+                r.StartDate, r.IsCurrent, r.ClassName, r.SectionName, r.Closed)).ToList();
         }
 
         public async Task<List<StudentGuardianRow>> GetGuardiansAsync(string schoolId, string studentId, CancellationToken ct)

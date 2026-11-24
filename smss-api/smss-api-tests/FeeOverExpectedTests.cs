@@ -44,7 +44,7 @@ namespace smss_api_tests
             Assert.Contains(before, d => d.Date > today);        // ... and some are not due yet
 
             // the concession arrives now, after the past months were billed
-            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by) values ('{student}', {StaffWardHalf}, {TaxDb.UserA})");
+            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by, academic_year_id) values ('{student}', {StaffWardHalf}, {TaxDb.UserA}, (select max(academic_year_id) from tb_student_enrollments where student_id='{student}'))");
             using var c2 = db.Ctx();
             var billing = new StudentFeeBillingService(new StudentFeeBillingRepository(c2), new StudentFeeRepository(c2), NullLogger<StudentFeeBillingService>.Instance);
             await billing.SyncAsync(TaxDb.SchoolA, student, TaxDb.YearA, null, default);
@@ -71,7 +71,7 @@ namespace smss_api_tests
             var before = db.Scalar<string>($"select amount_due||'|'||amount_paid||'|'||due_date from tb_student_fee_dues where fee_due_id={due}");
             db.Exec($"insert into tb_fee_concessions (school_id, concession_name, concession_code, concession_type, value, applicable_fee_type_id, isactive) values ('{TaxDb.SchoolA}', 'Late 10%', 'LATE10', 'PERCENTAGE', 10, 13, true)");
             var concession = db.Scalar<long>("select concession_id from tb_fee_concessions where concession_code='LATE10'");
-            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by) values ('{student}', {concession}, {TaxDb.UserA})");
+            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by, academic_year_id) values ('{student}', {concession}, {TaxDb.UserA}, (select max(academic_year_id) from tb_student_enrollments where student_id='{student}'))");
 
             using var c2 = db.Ctx();
             var billing = new StudentFeeBillingService(new StudentFeeBillingRepository(c2), new StudentFeeRepository(c2), NullLogger<StudentFeeBillingService>.Instance);

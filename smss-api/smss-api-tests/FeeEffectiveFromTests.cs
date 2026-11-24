@@ -516,7 +516,7 @@ namespace smss_api_tests
             using var db = new TaxDb(); using var r = Open(db);
             var fee = NewFeeType(db, "Lab Fee");
             var concession = db.Scalar<long>($"insert into tb_fee_concessions (school_id, concession_name, concession_code, concession_type, value, isactive) values ('{TaxDb.SchoolA}', 'Ten', 'T10', 'PERCENTAGE', 10, true) returning concession_id");
-            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by) values ('GHS001ST002', {concession}, {TaxDb.UserA})");
+            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by, academic_year_id) values ('GHS001ST002', {concession}, {TaxDb.UserA}, (select max(academic_year_id) from tb_student_enrollments where student_id='GHS001ST002'))");
             Assert.Equal(200, (await Save(r, l => l.Add(Line(fee, Monthly, 1000, 10, r.Today)))).StatusCode);
             var dues = DuesOf(db, "GHS001ST002", fee);
             Assert.NotEmpty(dues);

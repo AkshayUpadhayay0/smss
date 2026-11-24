@@ -45,9 +45,10 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it('gives a School Admin their own dashboard (one Dashboard/school-admin request, no placeholder)', () => {
+  it('gives a School Admin their own dashboard (one Dashboard/school-admin request plus the year list for its selector, no placeholder)', () => {
     const { fixture, http } = open(['School Admin']);
     http.expectOne(`${environment.apiUrl}/api/Dashboard/school-admin`);
+    http.expectOne(`${environment.apiUrl}/api/AcademicYear`);   // the dashboard's year selector
     expect(fixture.nativeElement.querySelector('app-school-admin-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-super-admin-dashboard')).toBeNull();
@@ -73,6 +74,7 @@ describe('DashboardPageComponent', () => {
   it('keeps the School Admin dashboard for an account that is both a School Admin and a Principal', () => {
     const { fixture, http } = open(['School Admin', 'Principal']);
     http.expectOne(`${environment.apiUrl}/api/Dashboard/school-admin`);
+    http.expectOne(`${environment.apiUrl}/api/AcademicYear`);   // the dashboard's year selector
     expect(fixture.nativeElement.querySelector('app-principal-dashboard')).toBeNull();
     http.verify();
   });

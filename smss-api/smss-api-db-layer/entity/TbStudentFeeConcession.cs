@@ -14,6 +14,8 @@ namespace smss_api_db_layer.entity
 
         [Column("student_id")][StringLength(20)] public string StudentId { get; set; } = null!;
         [Column("concession_id")] public long ConcessionId { get; set; }
+        /// <summary>The academic year the concession applies to (a concession is only for the year it was given for).</summary>
+        [Column("academic_year_id")] public long AcademicYearId { get; set; }
         /// <summary>The user (tb_users.user_id) who applied it, from the token.</summary>
         [Column("approved_by")] public long? ApprovedBy { get; set; }
         [Column("remarks")] public string? Remarks { get; set; }

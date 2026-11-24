@@ -14,12 +14,12 @@ namespace smss_api.Controllers
         private readonly ISchoolAdminDashboardService _service;
         public DashboardController(ISchoolAdminDashboardService service) => _service = service;
 
-        // GET api/Dashboard/school-admin
+        // GET api/Dashboard/school-admin?academicYearId=   (the year to VIEW; omitted = the current year. Not the same as setting the current year.)
         [HttpGet("school-admin")]
-        public async Task<IActionResult> SchoolAdmin(CancellationToken ct)
+        public async Task<IActionResult> SchoolAdmin([FromQuery] long? academicYearId, CancellationToken ct)
         {
             if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can see the school dashboard.");
-            var response = await _service.GetAsync(User.GetSchoolId(), ct);
+            var response = await _service.GetAsync(User.GetSchoolId(), ct, null, academicYearId);
             return StatusCode(response.StatusCode, response);
         }
     }

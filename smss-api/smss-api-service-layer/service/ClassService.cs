@@ -97,12 +97,13 @@ namespace smss_api_service_layer.service
 
                 var name = req.ClassName.Trim();
                 if (await _repo.ExistsAsync(schoolId, name, excludeId: id)) return Fail(409, DuplicateMessage);
-                if (await CheckNextAsync(schoolId, id, req.NextClassId) is { } nextRefused) return nextRefused;
+                var nextClassId = req.NextClassIdSpecified ? req.NextClassId : entity.NextClassId;   // omitted = unchanged, explicit null = clear
+                if (req.NextClassIdSpecified && await CheckNextAsync(schoolId, id, nextClassId) is { } nextRefused) return nextRefused;
 
                 entity.ClassName = name;
                 entity.ClassCode = Clean(req.ClassCode);
                 entity.SequenceOrder = (short)req.SequenceOrder!.Value;
-                entity.NextClassId = req.NextClassId;
+                entity.NextClassId = nextClassId;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
 

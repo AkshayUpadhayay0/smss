@@ -163,6 +163,15 @@ namespace smss_api_service_layer.service
                     .ThenByDescending(e => e.AcademicYearStart)
                     .ThenByDescending(e => e.EnrollmentId)
                     .FirstOrDefault();
+                // the whole history, newest year first: the screen shows a tab per year
+                dto.Enrollments = enrollments
+                    .OrderByDescending(e => e.AcademicYearStart).ThenByDescending(e => e.EnrollmentId)
+                    .Select(e => new StudentEnrollmentSummaryDto
+                    {
+                        EnrollmentId = e.EnrollmentId, AcademicYearId = e.AcademicYearId, AcademicYearName = e.AcademicYearName, IsCurrentYear = e.AcademicYearIsCurrent,
+                        YearIsClosed = e.AcademicYearIsClosed, ClassName = e.ClassName, SectionName = e.SectionName, RollNumber = e.RollNumber,
+                        StatusName = statuses.GetValueOrDefault(e.StatusId, "Unknown")
+                    }).ToList();
                 if (current != null)
                 {
                     dto.EnrollmentId = current.EnrollmentId;

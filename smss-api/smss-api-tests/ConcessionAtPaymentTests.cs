@@ -161,7 +161,7 @@ namespace smss_api_tests
             {
                 var c = Fake.WithUser(new StudentFeeController(real, Fake.Of<IStudentFeeBillingService>()), Fake.User("SCH1", 7, r));
                 Assert.True(403 == Fake.Code(await c.ApplyConcession(Student, new ApplyConcessionRequest { ConcessionId = 1 }, default)), $"assign: {r}");
-                Assert.True(403 == Fake.Code(await c.RemoveConcession(Student, 1, default)), $"remove: {r}");
+                Assert.True(403 == Fake.Code(await c.RemoveConcession(Student, 1, null, default)), $"remove: {r}");
             }
         }
 
@@ -351,7 +351,7 @@ namespace smss_api_tests
             using var db = new TaxDb();
             var assigned = NewConcession(db, TaxDb.SchoolA, "Assigned", "ASG", "PERCENTAGE", 10);
             var other = NewConcession(db, TaxDb.SchoolA, "Other", "OTH", "PERCENTAGE", 10);
-            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by) values ('{Student}', {assigned}, {TaxDb.UserA})");
+            db.Exec($"insert into tb_student_fee_concessions (student_id, concession_id, approved_by, academic_year_id) values ('{Student}', {assigned}, {TaxDb.UserA}, (select max(academic_year_id) from tb_student_enrollments where student_id='{Student}'))");
             var r = await Pay(db, 100, assigned);
             Assert.Equal(409, r.StatusCode); Assert.Contains("already has the concession", r.Message);
             Assert.Equal(201, (await Pay(db, 100, other)).StatusCode);

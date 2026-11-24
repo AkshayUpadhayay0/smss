@@ -104,7 +104,7 @@ namespace smss_api_service_layer.service
             }
 
             // 3. concessions -> concession_amount / net_amount (only items that apply to the student take a discount)
-            var applied = await _fees.GetAppliedConcessionsAsync(schoolId, studentId, ct);
+            var applied = await _fees.GetAppliedConcessionsAsync(schoolId, studentId, academicYearId, ct);   // only the concessions given for THIS year
             var typesInStructure = items.Where(i => i.IsActive).Select(i => i.FeeTypeId).ToHashSet();
             var usable = applied.Where(c => c.ApplicableFeeTypeId == null || typesInStructure.Contains(c.ApplicableFeeTypeId.Value)).ToList();
             var discounting = items.Where(i => i.IsActive && i.IsApplicable).ToList();

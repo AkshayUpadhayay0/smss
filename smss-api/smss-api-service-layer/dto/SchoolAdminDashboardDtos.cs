@@ -7,6 +7,10 @@ namespace smss_api_service_layer.dto
         public string Name { get; set; } = null!;
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
+        /// <summary>True when this is the school's current year (the one new fees and enrolments go to).</summary>
+        public bool IsCurrent { get; set; }
+        /// <summary>A closed year is read-only history.</summary>
+        public bool IsClosed { get; set; }
     }
 
     public class DashboardEmployeesDto
@@ -26,18 +30,28 @@ namespace smss_api_service_layer.dto
         public DateOnly Today { get; set; }
         public DateOnly MonthStart { get; set; }
         public DateOnly MonthEnd { get; set; }
-        /// <summary>The current Active academic year; null when the school has none (the session figures are then null).</summary>
+        /// <summary>The academic year being VIEWED (the one asked for, else the current Active year); null when the school has none (the session figures are then null).</summary>
         public DashboardSessionDto? Session { get; set; }
+        /// <summary>The school's current year name, so the client can say "viewing 2027-28, current is 2026-27". Null when there is none.</summary>
+        public string? CurrentYearName { get; set; }
+        /// <summary>False = no fee item was ever assigned in the viewed year: the fee figures are then not zeros but "no fee structure yet" (they are 0 here and must not be shown as real).</summary>
+        public bool HasFeeSetup { get; set; }
+        /// <summary>True when today is outside the viewed year, so "this month" was moved into the year's range (the first month before it starts, the last month after it ends).</summary>
+        public bool MonthClamped { get; set; }
+        /// <summary>A ready sentence for the client when MonthClamped, e.g. "Showing March 2027: today is after the academic year 2026-27."</summary>
+        public string? MonthNote { get; set; }
 
+        /// <summary>Active students with an Active enrolment in the VIEWED year.</summary>
         public int TotalStudents { get; set; }
         /// <summary>Students with at least one due this month, all of them fully paid.</summary>
         public int StudentsPaidThisMonth { get; set; }
         /// <summary>Students with at least one due this month that is unpaid or part-paid. Students with no due this month are in neither count.</summary>
         public int StudentsNotPaidThisMonth { get; set; }
+        /// <summary>Fees received this month against the VIEWED year's installments (not total cash received: another year's installments paid this month are not here).</summary>
         public decimal FeeCollectedThisMonth { get; set; }
         public decimal FeeOutstandingThisMonth { get; set; }
 
-        /// <summary>Fee collected from the start of the month / of the session until today. Null session figure = no current academic year.</summary>
+        /// <summary>Fees received this month / for the whole viewed session, against that year's installments. Null session figure = no year.</summary>
         public decimal IncomeThisMonth { get; set; }
         public decimal? IncomeThisSession { get; set; }
         /// <summary>No school-level expenses data model exists yet: false means "Not set up yet", never a zero.</summary>

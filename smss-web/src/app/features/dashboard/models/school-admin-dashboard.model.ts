@@ -5,6 +5,10 @@ export interface DashboardSession {
   name: string;
   startDate: string;
   endDate: string;
+  /** The school's current year (the one new fees and enrolments go to). */
+  isCurrent: boolean;
+  /** A closed year is read-only history. */
+  isClosed: boolean;
 }
 
 export interface DashboardEmployees {
@@ -20,7 +24,15 @@ export interface SchoolAdminDashboard {
   today: string;
   monthStart: string;
   monthEnd: string;
+  /** The academic year being VIEWED (the one asked for, else the current year). */
   session: DashboardSession | null;
+  /** The school's current year name, to say "viewing 2027-28, current is 2026-27". */
+  currentYearName: string | null;
+  /** false = the viewed year has no fee items at all: the fee figures are not real zeros, show "no fee structure yet". */
+  hasFeeSetup: boolean;
+  /** true = today is outside the viewed year, so this month was moved into the year's range; monthNote says so in words. */
+  monthClamped: boolean;
+  monthNote: string | null;
 
   totalStudents: number;
   studentsPaidThisMonth: number;

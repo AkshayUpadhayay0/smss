@@ -91,6 +91,18 @@ export class StudentProfileComponent implements OnInit {
 
   protected readonly hasEnrollment = computed(() => !!this.student()?.enrollmentId);
 
+  /** The student's years, newest first: a tab per year. Fewer than two years need no tabs. */
+  protected readonly years = computed(() => this.student()?.enrollments ?? []);
+  private readonly pickedEnrollmentId = signal<number | null>(null);
+  /** The year shown: the one the user picked, else the current one, else the newest. */
+  protected readonly shownYear = computed(() => {
+    const list = this.years();
+    return list.find((e) => e.enrollmentId === this.pickedEnrollmentId()) ?? list.find((e) => e.isCurrentYear) ?? list[0] ?? null;
+  });
+  protected pickYear(enrollmentId: number): void {
+    this.pickedEnrollmentId.set(enrollmentId);
+  }
+
   protected readonly photoUrl = computed(() => this.student()?.profilePhotoUrl ?? null);
   protected readonly initials = computed(() => initialsOf(this.student()?.fullName));
   protected readonly photoDialogOpen = signal(false);

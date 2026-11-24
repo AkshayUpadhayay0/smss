@@ -144,8 +144,10 @@ export class StudentService {
     return this.api.get<ConcessionChoice[]>('/api/FeePayment/concessions');
   }
 
-  removeConcession(studentId: string, concessionId: number): Observable<StudentFees> {
-    return this.api.delete<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/concessions/${concessionId}`);
+  /** academicYearId: the year the concession was given for (the server needs it only when the student has it in several years). */
+  removeConcession(studentId: string, concessionId: number, academicYearId?: number): Observable<StudentFees> {
+    const year = academicYearId ? `?academicYearId=${academicYearId}` : '';
+    return this.api.delete<StudentFees>(`/api/StudentFee/${encodeURIComponent(studentId)}/concessions/${concessionId}${year}`);
   }
 
   private withSchool<T>(call: (schoolId: string) => Observable<T>): Observable<T> {

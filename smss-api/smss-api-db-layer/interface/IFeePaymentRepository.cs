@@ -12,6 +12,10 @@ namespace smss_api_db_layer.@interface
         public DateOnly DueDate { get; set; }
         public decimal AmountDue { get; set; }
         public decimal AmountPaid { get; set; }
+        /// <summary>The academic year of the installment's fee item (an installment belongs to one year).</summary>
+        public long AcademicYearId { get; set; }
+        public string AcademicYearName { get; set; } = null!;
+        public DateOnly AcademicYearStart { get; set; }
     }
 
     public class PaymentListRow
@@ -44,9 +48,14 @@ namespace smss_api_db_layer.@interface
         /// <summary>The school's active concessions, by name (for the payment form).</summary>
         Task<List<ConcessionOptionRow>> GetActiveConcessionsAsync(string schoolId, CancellationToken ct);
         /// <summary>True when this student already has this concession assigned in tb_student_fee_concessions (it is already reducing their installments).</summary>
-        Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, CancellationToken ct);
+        /// <summary>Is the concession already assigned to the student for ANY of these academic years (a concession is per year)?</summary>
+        Task<bool> HasAssignedConcessionAsync(string schoolId, string studentId, long concessionId, IReadOnlyCollection<long> academicYearIds, CancellationToken ct);
         /// <summary>Installment id -> the fee type it belongs to, for the installments asked about.</summary>
         Task<Dictionary<long, long>> GetDueFeeTypeIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct);
+        /// <summary>The fee type name of each installment, for the snapshot a payment line stores.</summary>
+        Task<Dictionary<long, string>> GetDueFeeTypeNamesAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct);
+        /// <summary>The academic year of each installment.</summary>
+        Task<Dictionary<long, long>> GetDueYearIdsAsync(IReadOnlyCollection<long> dueIds, CancellationToken ct);
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
 
         /// <summary>

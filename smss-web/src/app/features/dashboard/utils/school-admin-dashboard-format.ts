@@ -36,10 +36,26 @@ export interface DashboardCard {
   muted?: boolean;
 }
 
+/** The fee figures of a year with no fee items: not zeros, a plain "no fee structure yet". */
+function noFeeStructure(id: string, label: string, d: SchoolAdminDashboard): DashboardCard {
+  return {
+    id, label, value: 'No fee structure yet', note: d.session ? `Nothing is assigned for ${d.session.name}` : 'No academic year', icon: 'indian-rupee', tone: 'warning', muted: true,
+    hint: 'No fee has been assigned to any student for this academic year yet, so there is nothing to count (this is not zero).',
+  };
+}
+
 export function studentsAndFeesCards(d: SchoolAdminDashboard): DashboardCard[] {
   const month = monthLabel(d.monthStart);
+  const year = d.session?.name ?? 'the academic year';
+  const students: DashboardCard = {
+    id: 'total-students', label: 'Total students', value: String(d.totalStudents), note: d.session ? `Enrolled in ${year}` : 'No academic year',
+    hint: `Active students with an Active enrolment in ${year}.`, icon: 'users', tone: 'primary',
+  };
+  if (!d.hasFeeSetup) {
+    return [students, noFeeStructure('paid', 'Paid this month', d), noFeeStructure('not-paid', 'Not paid this month', d), noFeeStructure('collected', 'Fees received this month', d), noFeeStructure('outstanding', 'Outstanding this month', d)];
+  }
   return [
-    { id: 'total-students', label: 'Total students', value: String(d.totalStudents), note: 'Active students', hint: 'Students whose record is Active.', icon: 'users', tone: 'primary' },
+    students,
     {
       id: 'paid', label: 'Paid this month', value: String(d.studentsPaidThisMonth), note: `Fully paid, ${month}`, icon: 'circle-check', tone: 'success',
       hint: 'Students with at least one fee due this month where every due this month is fully paid (a discounted due counts as paid). Students with no due this month are not counted.',
@@ -50,12 +66,12 @@ export function studentsAndFeesCards(d: SchoolAdminDashboard): DashboardCard[] {
       link: { path: '/fee-reports/class', query: { month: monthParam(d.monthStart) } },
     },
     {
-      id: 'collected', label: 'Fee collected this month', value: inr(d.feeCollectedThisMonth), note: `${month}, till today`, icon: 'indian-rupee', tone: 'info',
-      hint: 'Cash received this month on payments that are not voided, net of any concession given at payment. Tax is not included.',
+      id: 'collected', label: 'Fees received this month', value: inr(d.feeCollectedThisMonth), note: `For ${year} fees, ${month}`, icon: 'indian-rupee', tone: 'info',
+      hint: `Cash received this month against ${year} installments, on payments that are not voided, net of any concession given at payment. Tax is not included. Installments of another academic year paid this month are not in this figure, so it is not the total cash received.`,
     },
     {
       id: 'outstanding', label: 'Outstanding this month', value: inr(d.feeOutstandingThisMonth), note: 'Unpaid balance of this month\'s dues', icon: 'wallet', tone: 'warning',
-      hint: 'The unpaid balance of fee dues whose due date is in this month, for Active students.',
+      hint: `The unpaid balance of ${year} fee dues whose due date is in this month, for Active students.`,
     },
   ];
 }
@@ -63,16 +79,21 @@ export function studentsAndFeesCards(d: SchoolAdminDashboard): DashboardCard[] {
 export function moneyCards(d: SchoolAdminDashboard): DashboardCard[] {
   const month = monthLabel(d.monthStart);
   const session = d.session ? `Academic Year ${d.session.name}` : 'No current academic year';
-  const incomeHint = d.otherIncomeSetUp ? 'Fee collected plus other income.' : 'Fee collected (cash received, net of concession). Other income is not set up yet, so it is not included.';
+  const incomeHint = d.otherIncomeSetUp
+    ? 'Fees received for this academic year plus other income.'
+    : 'Fees received against this academic year\'s installments (cash, net of concession). Other income is not set up yet, so it is not included. It is not the total cash received: another year\'s installments paid at the same time are not here.';
   const notSet = (id: string, label: string): DashboardCard => ({
     id, label, value: 'Not set up yet', note: 'Expenses are not recorded in SMSS yet', hint: 'There is no school expenses record yet, so no figure is shown (this is not zero).',
     icon: 'coins', tone: 'warning', muted: true,
   });
   return [
-    { id: 'income-month', label: 'Income this month', value: inr(d.incomeThisMonth), note: `${month}, till today`, hint: incomeHint, icon: 'indian-rupee', tone: 'success' },
-    d.session
-      ? { id: 'income-session', label: 'Income this session', value: inr(d.incomeThisSession ?? 0), note: `${session}, till today`, hint: incomeHint, icon: 'indian-rupee', tone: 'success' as const }
-      : { id: 'income-session', label: 'Income this session', value: 'Not set up yet', note: 'Add a current academic year', hint: 'The session is the current academic year.', icon: 'indian-rupee', tone: 'warning' as const, muted: true },
+    d.hasFeeSetup
+      ? { id: 'income-month', label: 'Fees received this month', value: inr(d.incomeThisMonth), note: `For ${d.session?.name ?? 'the year'}, ${month}`, hint: incomeHint, icon: 'indian-rupee', tone: 'success' as const }
+      : noFeeStructure('income-month', 'Fees received this month', d),
+    d.session && !d.hasFeeSetup ? noFeeStructure('income-session', 'Fees received for this session', d)
+    : d.session
+      ? { id: 'income-session', label: 'Fees received for this session', value: inr(d.incomeThisSession ?? 0), note: session, hint: incomeHint, icon: 'indian-rupee', tone: 'success' as const }
+      : { id: 'income-session', label: 'Fees received for this session', value: 'Not set up yet', note: 'Add a current academic year', hint: 'The session is the current academic year.', icon: 'indian-rupee', tone: 'warning' as const, muted: true },
     d.expensesSetUp ? { id: 'expenses-month', label: 'Expenses this month', value: inr(d.expensesThisMonth ?? 0), note: `${month}, till today`, hint: 'Expenses recorded this month.', icon: 'coins', tone: 'danger' as const } : notSet('expenses-month', 'Expenses this month'),
     d.expensesSetUp ? { id: 'expenses-session', label: 'Expenses this session', value: inr(d.expensesThisSession ?? 0), note: `${session}, till today`, hint: 'Expenses recorded this session.', icon: 'coins', tone: 'danger' as const } : notSet('expenses-session', 'Expenses this session'),
   ];
@@ -130,7 +151,7 @@ export function paidDonutOptions(d: SchoolAdminDashboard, c: ChartColors = FALLB
 export function incomeExpenseOptions(d: SchoolAdminDashboard, c: ChartColors = FALLBACK_COLORS): ApexOptions {
   const cats = d.session ? ['This month', 'This session'] : ['This month'];
   const income = d.session ? [d.incomeThisMonth, d.incomeThisSession ?? 0] : [d.incomeThisMonth];
-  const series = [{ name: 'Income', data: income }];
+  const series = [{ name: 'Fees received', data: income }];
   const colors = [c.success];
   if (d.expensesSetUp) {
     series.push({ name: 'Expenses', data: d.session ? [d.expensesThisMonth ?? 0, d.expensesThisSession ?? 0] : [d.expensesThisMonth ?? 0] });

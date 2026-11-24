@@ -11,7 +11,7 @@ namespace smss_api_db_layer.@interface
 
     /// <summary>A student's enrollment joined to its year, class and section.</summary>
     public record StudentEnrollmentRow(long EnrollmentId, string? RollNumber, int StatusId, long AcademicYearId, string AcademicYearName,
-        DateOnly AcademicYearStart, bool AcademicYearIsCurrent, string ClassName, string SectionName);
+        DateOnly AcademicYearStart, bool AcademicYearIsCurrent, string ClassName, string SectionName, bool AcademicYearIsClosed = false);
 
     /// <summary>One instalment of a student (tb_student_fee_dues): when it falls due, what it is for and what the payment allocations have applied to it so far.</summary>
     public record StudentDueRow(string StudentId, DateOnly DueDate, decimal AmountDue, decimal AmountPaid);

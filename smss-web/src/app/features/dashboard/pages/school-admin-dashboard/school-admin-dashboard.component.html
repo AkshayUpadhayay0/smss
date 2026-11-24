@@ -23,6 +23,16 @@
 } @else {
   @let d = data()!;
 
+  <div class="year-bar">
+    <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
+    @if (viewingNote(); as note) {
+      <p class="note" role="status" data-note="viewing"><app-icon name="info" [size]="16" /><span>{{ note }}</span></p>
+    }
+    @if (d.monthClamped && d.monthNote) {
+      <p class="note" role="status" data-note="month"><app-icon name="info" [size]="16" /><span>{{ d.monthNote }}</span></p>
+    }
+  </div>
+
   @if (empty()) {
     <p class="empty" role="status" data-state="empty">
       <app-icon name="info" [size]="18" />
@@ -50,7 +60,9 @@
     </div>
     <section class="panel" aria-label="Paid and not paid students">
       <header><h3>Paid vs not paid this month</h3></header>
-      @if (anyDues()) {
+      @if (!d.hasFeeSetup) {
+        <p class="muted" data-empty="fees">No fee structure has been set up for {{ d.session?.name || 'this academic year' }} yet.</p>
+      } @else if (anyDues()) {
         <app-chart [options]="donut()" label="Students who paid and have not paid this month" />
       } @else {
         <p class="muted" data-empty="dues">No student has a fee due this month.</p>
@@ -70,8 +82,8 @@
       }
     </div>
     <section class="panel" aria-label="Income and expenses">
-      <header><h3>Income vs expenses</h3></header>
-      <app-chart [options]="incomeExpense()" label="Income compared with expenses, this month and this session" />
+      <header><h3>Fees received vs expenses</h3></header>
+      <app-chart [options]="incomeExpense()" label="Fees received compared with expenses, this month and this session" />
       @if (!d.expensesSetUp) {
         <p class="muted" data-note="expenses">Expenses are not set up yet, so only income is shown.</p>
       }
@@ -88,7 +100,7 @@
         <span class="txt"><span class="label">Attendance today</span><strong [class.small]="!a.marked">{{ a.value }}</strong><small>{{ a.note }}</small></span>
       </div>
 
-      <div class="card primary" title="Active students admitted as New Admission with an admission date inside the current academic year. Students entered as existing are not counted." data-card="new-admissions">
+      <div class="card primary" title="Active students admitted as New Admission with an admission date inside the viewed academic year. Students entered as existing are not counted." data-card="new-admissions">
         <span class="ico"><app-icon name="user-plus" [size]="26" /></span>
         <span class="txt">
           <span class="label">New admissions this session</span>

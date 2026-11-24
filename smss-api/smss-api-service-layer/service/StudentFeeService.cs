@@ -84,7 +84,7 @@ namespace smss_api_service_layer.service
         public Task<ApiResponse<StudentFeesDto>> ApplyConcessionAsync(string? schoolId, string studentId, long approvedByUserId, ApplyConcessionRequest req, CancellationToken ct) =>
             Task.FromResult(string.IsNullOrWhiteSpace(schoolId) ? Result(400, TenantMessages.NoSchool, null) : Result(409, "Concessions are now chosen when collecting a payment.", null));
 
-        public async Task<ApiResponse<StudentFeesDto>> RemoveConcessionAsync(string? schoolId, string studentId, long concessionId, CancellationToken ct)
+        public async Task<ApiResponse<StudentFeesDto>> RemoveConcessionAsync(string? schoolId, string studentId, long concessionId, long? academicYearId, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
             try
@@ -93,13 +93,17 @@ namespace smss_api_service_layer.service
                 if (student == null) return Result(404, "Student not found.", null);
 
                 // The student is this school's (checked above), so their applied row is too
-                var applied = await _repo.GetAppliedConcessionAsync(studentId, concessionId, track: true, ct);
-                if (applied == null) return Result(404, "That concession is not applied to this student.", null);
+                // a concession belongs to one year: say which year when the student has it in several
+                var years = await _repo.GetAppliedConcessionYearsAsync(studentId, concessionId, ct);
+                if (years.Count == 0) return Result(404, "That concession is not applied to this student.", null);
+                if (academicYearId == null && years.Count > 1) return Result(400, "This student has that concession in more than one academic year. Say which year to remove it from.", null);
+                var year = academicYearId ?? years[0];
+                var applied = await _repo.GetAppliedConcessionAsync(studentId, concessionId, year, track: true, ct);
+                if (applied == null) return Result(404, "That concession is not applied to this student for that year.", null);
 
                 _repo.RemoveAppliedConcession(applied);
                 await _repo.SaveChangesAsync(ct);
-                var enrollment = await CurrentEnrollmentAsync(schoolId, studentId, ct);
-                if (enrollment != null) await _billing.SyncAsync(schoolId, studentId, enrollment.AcademicYearId, null, ct);
+                await _billing.SyncAsync(schoolId, studentId, year, null, ct);   // re-price THAT year's fees, whichever year is current
 
                 return Result(200, "Concession removed.", await BuildAsync(schoolId, student, ct));
             }
@@ -143,7 +147,7 @@ namespace smss_api_service_layer.service
             dto.StructureIsActive = structure.IsActive;
 
             var lines = await _repo.GetStructureLinesAsync(structure.FeeStructureId, ct);
-            var applied = await _repo.GetAppliedConcessionsAsync(schoolId, student.StudentId, ct);
+            var applied = await _repo.GetAppliedConcessionsAsync(schoolId, student.StudentId, enrollment.AcademicYearId, ct);
             var feeTypesInStructure = lines.Select(l => l.FeeTypeId).ToHashSet();
             bool Applicable(AppliedConcessionRow c) => c.ApplicableFeeTypeId == null || feeTypesInStructure.Contains(c.ApplicableFeeTypeId.Value);
 
@@ -174,7 +178,7 @@ namespace smss_api_service_layer.service
 
             dto.Concessions = applied.Select(c => new StudentFeeConcessionDto
             {
-                StudentFeeConcessionId = c.StudentFeeConcessionId, ConcessionId = c.ConcessionId, ConcessionName = c.ConcessionName,
+                StudentFeeConcessionId = c.StudentFeeConcessionId, AcademicYearId = c.AcademicYearId, ConcessionId = c.ConcessionId, ConcessionName = c.ConcessionName,
                 ConcessionCode = c.ConcessionCode, ConcessionType = c.ConcessionType, Value = c.Value,
                 ApplicableFeeTypeId = c.ApplicableFeeTypeId, ApplicableFeeTypeName = c.ApplicableFeeTypeName,
                 Remarks = c.Remarks, ApprovedByName = c.ApprovedByName, AppliedAt = c.AppliedAt, IsApplicable = Applicable(c)

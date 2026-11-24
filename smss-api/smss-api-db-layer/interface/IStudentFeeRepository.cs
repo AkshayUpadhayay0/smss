@@ -28,6 +28,7 @@ namespace smss_api_db_layer.@interface
     {
         public long StudentFeeConcessionId { get; set; }
         public long ConcessionId { get; set; }
+        public long AcademicYearId { get; set; }
         public string ConcessionName { get; set; } = null!;
         public string ConcessionCode { get; set; } = null!;
         public string ConcessionType { get; set; } = null!;
@@ -72,8 +73,11 @@ namespace smss_api_db_layer.@interface
         Task<List<StudentFeeLineRow>> GetStructureLinesAsync(long feeStructureId, CancellationToken ct);
         Task<List<FeeStructureOptionRow>> GetActiveStructuresAsync(string schoolId, long academicYearId, CancellationToken ct);
 
-        Task<List<AppliedConcessionRow>> GetAppliedConcessionsAsync(string schoolId, string studentId, CancellationToken ct);
-        Task<TbStudentFeeConcession?> GetAppliedConcessionAsync(string studentId, long concessionId, bool track, CancellationToken ct);
+        /// <summary>The concessions assigned to the student FOR THE GIVEN YEAR only: a concession never carries over to another year.</summary>
+        Task<List<AppliedConcessionRow>> GetAppliedConcessionsAsync(string schoolId, string studentId, long academicYearId, CancellationToken ct);
+        Task<TbStudentFeeConcession?> GetAppliedConcessionAsync(string studentId, long concessionId, long academicYearId, bool track, CancellationToken ct);
+        /// <summary>The years the student has this concession for (to tell whether a removal needs the year).</summary>
+        Task<List<long>> GetAppliedConcessionYearsAsync(string studentId, long concessionId, CancellationToken ct);
         Task<TbFeeConcessions?> GetConcessionAsync(string schoolId, long concessionId, CancellationToken ct);
         Task<List<ConcessionOptionRow>> GetActiveConcessionsAsync(string schoolId, CancellationToken ct);
 

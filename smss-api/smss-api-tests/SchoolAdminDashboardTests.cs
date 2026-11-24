@@ -27,7 +27,7 @@ namespace smss_api_tests
             string? seen = null;
             var fake = Fake.Of<ISchoolAdminDashboardService>(new() { ["GetAsync"] = (Func<object?[], object?>)(a => { seen = (string?)a[0]; return Fake.Ok(new SchoolAdminDashboardDto()); }) });
             var c = Fake.WithUser(new DashboardController(fake), Fake.User("SCH-A", 1, "School Admin"));
-            Assert.Equal(200, Fake.Code(await c.SchoolAdmin(default)));
+            Assert.Equal(200, Fake.Code(await c.SchoolAdmin(null, default)));
             Assert.Equal("SCH-A", seen);
         }
 
@@ -37,7 +37,7 @@ namespace smss_api_tests
         public async Task Every_other_role_gets_403_and_the_service_is_never_reached(string role)
         {
             var c = Make(Fake.User("SCH-A", 1, role), out var svc);
-            Assert.Equal(403, Fake.Code(await c.SchoolAdmin(default)));
+            Assert.Equal(403, Fake.Code(await c.SchoolAdmin(null, default)));
             Assert.DoesNotContain("GetAsync", Fake.ProxyOf(svc).Calls);
         }
 
@@ -56,9 +56,11 @@ namespace smss_api_tests
         {
             public Task<int?> ActiveStatusIdAsync(CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<DashboardYearRow?> CurrentYearAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
-            public Task<int> ActiveStudentsAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
-            public Task<DashboardFeeMonthRow> FeeMonthAsync(string s, int a, DateOnly f, DateOnly t, CancellationToken ct) => throw new InvalidOperationException("boom");
-            public Task<decimal> CollectedAsync(string s, DateTime f, DateTime t, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<DashboardYearRow?> YearAsync(string s, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<int> EnrolledStudentsAsync(string s, int a, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<bool> HasFeeItemsAsync(string s, long y, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<DashboardFeeMonthRow> FeeMonthAsync(string s, int a, long y, DateOnly f, DateOnly t, CancellationToken ct) => throw new InvalidOperationException("boom");
+            public Task<decimal> CollectedAsync(string s, long y, DateTime? f, DateTime? t, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<int> NewAdmissionsAsync(string s, int a, DateOnly f, DateOnly t, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<DashboardEmployeeRow> EmployeesAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
             public Task<int> ActiveVehiclesAsync(string s, int a, CancellationToken ct) => throw new InvalidOperationException("boom");
@@ -125,9 +127,9 @@ namespace smss_api_tests
             var voidVals = status == "Voided" ? ", 4, now(), 'test'" : "";
             db.Exec($@"insert into tb_fee_payments (student_id, school_id, amount, payment_mode, receipt_number, fee_amount, payment_date, status{voided})
                        values ('{student}', '{school}', {allocated}, 'Cash', 'ZZ-{n}', {allocated}, '{utc}+00', '{status}'{voidVals})");
-            db.Exec($@"insert into tb_fee_payment_allocations (payment_id, fee_due_id, allocated_amount, concession_amount)
+            db.Exec($@"insert into tb_fee_payment_allocations (payment_id, fee_due_id, allocated_amount, concession_amount, fee_type_name_snapshot)
                        values ((select payment_id from tb_fee_payments where school_id='{school}' and receipt_number='ZZ-{n}'),
-                               (select fee_due_id from tb_student_fee_dues where student_id='{student}' and due_date='{dueDate}'), {allocated}, {discount})");
+                               (select fee_due_id from tb_student_fee_dues where student_id='{student}' and due_date='{dueDate}'), {allocated}, {discount}, 'Tuition')");
         }
 
         private static void Seed(TaxDb db)
@@ -170,6 +172,16 @@ namespace smss_api_tests
             {
                 db.Exec($"insert into tb_classes (school_id, class_name, sequence_order, status_id) values ('{s}', 'C1', 1, {Active})");
                 db.Exec($"insert into tb_sections (school_id, class_id, section_name, status_id) select '{s}', class_id, 'A', {Active} from tb_classes where school_id='{s}'");
+            }
+            // enrolments: "Total students" counts students ENROLLED in the viewed year, so every active student gets an enrolment in the school's year
+            foreach (var s in new[] { A, B })
+            {
+                db.Exec($"insert into tb_academic_year_classes (school_id, academic_year_id, class_id, status_id) select '{s}', (select academic_year_id from tb_academic_years where school_id='{s}'), class_id, {Active} from tb_classes where school_id='{s}'");
+                db.Exec($@"insert into tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, status_id)
+                           select '{s}', (select academic_year_id from tb_academic_years where school_id='{s}'), class_id, section_id, {Active} from tb_sections where school_id='{s}'");
+                db.Exec($@"insert into tb_student_enrollments (school_id, student_id, academic_year_id, class_section_id, enrollment_date, admission_type_id, status_id)
+                           select '{s}', st.student_id, (select academic_year_id from tb_academic_years where school_id='{s}'), (select min(section_id) from tb_sections where school_id='{s}'), '2026-06-01',
+                                  st.admission_type_id, {Active} from tb_students st where st.school_id='{s}' and st.status_id={Active}");
             }
             void Mark(string school, string student, string date, string code) =>
                 db.Exec($@"insert into tb_student_attendance (school_id, academic_year_id, section_id, class_id, student_id, attendance_date, attendance_status_id, marked_by)
@@ -240,8 +252,9 @@ namespace smss_api_tests
             // the 00:10 IST 1 Dec 100 and the other school's 5000 are not in November
             Assert.Equal(2500m, d.FeeCollectedThisMonth);
             Assert.Equal(2500m, d.IncomeThisMonth);
-            // session = from 2026-04-01 to today: November's 2500 plus the 200 paid at 23:00 IST on 31 Oct; the 100 paid after midnight on 1 Dec is not yet "till today"
-            Assert.Equal(2700m, d.IncomeThisSession);
+            // the SESSION figure is everything received against this year's installments, whenever it was paid: November's 2500, the 200 paid at 23:00 IST on 31 Oct and the 100 paid
+            // at 00:10 IST on 1 Dec (the voided 300 and the other school's 5000 are never in it)
+            Assert.Equal(2800m, d.IncomeThisSession);
         }
 
         [DbFact]
@@ -337,22 +350,17 @@ namespace smss_api_tests
             Seed(db);
             var year = db.Scalar<long>($"select academic_year_id from tb_academic_years where school_id='{A}'");
             var classId = db.Scalar<long>($"select class_id from tb_classes where school_id='{A}'");
-            // an enrolment can only be in a section the year offers (stage 1a): offer every section of the school in this year first
-            db.Exec($@"insert into tb_academic_year_classes (school_id, academic_year_id, class_id, status_id) select distinct '{A}', {year}, class_id, {Active} from tb_sections where school_id='{A}' on conflict do nothing");
-            db.Exec($@"insert into tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, status_id) select '{A}', {year}, class_id, section_id, {Active} from tb_sections where school_id='{A}' on conflict do nothing");
-            foreach (var s in new[] { "ZDA1", "ZDA2", "ZDA3", "ZDA5" })
-                db.Exec($@"insert into tb_student_enrollments (school_id, student_id, academic_year_id, class_section_id, enrollment_date, admission_type_id, status_id)
-                           select '{A}', '{s}', {year}, section_id, '2026-06-01', (select admission_type_id from lut_admission_type where type_code='NEW_ADMISSION'), {Active} from tb_sections where school_id='{A}'");
+            // the seed already enrolled every active student of the school in its year (stage 1b counts enrolments)
 
             var month = (await db.Reports().GetClassReportAsync(A, classId, year, null, true, default, new DateOnly(2026, 11, 17))).Data!;
             Assert.Equal("2026-11", month.Month);
-            Assert.Equal(new[] { "ZDA1", "ZDA2", "ZDA3" }, month.Students.Select(r => r.StudentId).OrderBy(x => x));   // ZDA5 has no due in November
+            Assert.Equal(new[] { "ZDA1", "ZDA2", "ZDA3", "ZDA4" }, month.Students.Select(r => r.StudentId).OrderBy(x => x));   // ZDA4 is enrolled by the seed and cleared by a discount; ZDA5 has no due in November
             Assert.Equal(1100m, month.TotalOutstanding);                                                              // the dashboard's outstanding figure
             Assert.Equal(2, month.Students.Count(r => r.Outstanding > 0));                                            // the dashboard's "not paid" count
 
             var whole = (await db.Reports().GetClassReportAsync(A, classId, year, null, true, default)).Data!;
             Assert.Null(whole.Month);
-            Assert.Equal(4, whole.Students.Count);                                                                    // the whole-year view is unchanged
+            Assert.Equal(6, whole.Students.Count);   // the whole-year view lists every enrolled student: the six active ones the seed enrolled (ZDA6 is inactive)
         }
 
         [DbFact]
@@ -370,6 +378,92 @@ namespace smss_api_tests
             Assert.Equal(0m, d.FeeCollectedThisMonth);
             Assert.Equal(0, d.ActiveVehicles);
             Assert.Equal(0, d.Employees.Total);
+        }
+
+        // ---------------------------------------------------------------- stage 1b: the year being viewed
+        private static long YearOf(TaxDb db, string school, string name) => db.Scalar<long>($"select academic_year_id from tb_academic_years where school_id='{school}' and year_name='{name}'");
+
+        private static long NextYear(TaxDb db, string school)
+        {
+            db.Exec($"insert into tb_academic_years (school_id, year_name, start_date, end_date, is_current, status_id) values ('{school}', '2027-28', '2027-04-01', '2028-03-31', false, {Active})");
+            return YearOf(db, school, "2027-28");
+        }
+
+        [DbFact]
+        public async Task A_year_nobody_is_enrolled_in_shows_zero_students_and_no_fee_structure_not_the_old_years_numbers()
+        {
+            using var db = new TaxDb();
+            Seed(db);
+            var next = NextYear(db, A);
+            // the school switches its current year to 2027-28, with nobody moved into it yet (the LAS case)
+            db.Exec($"update tb_academic_years set is_current=false where school_id='{A}' and year_name='2026-27'");
+            db.Exec($"update tb_academic_years set is_current=true where academic_year_id={next}");
+            var d = await Get(db, A, new DateOnly(2027, 5, 10));
+            Assert.Equal("2027-28", d.Session!.Name);
+            Assert.True(d.Session.IsCurrent);
+            Assert.Equal(0, d.TotalStudents);
+            Assert.False(d.HasFeeSetup);
+            Assert.Equal(0m, d.FeeCollectedThisMonth); Assert.Equal(0m, d.FeeOutstandingThisMonth);
+            Assert.Equal(0, d.StudentsPaidThisMonth + d.StudentsNotPaidThisMonth);
+            Assert.False(d.MonthClamped);
+
+            // looking back at 2026-27 shows its own numbers, and does not change which year is current
+            var old = (await Svc(db).GetAsync(A, default, new DateOnly(2026, 11, 30), YearOf(db, A, "2026-27"))).Data!;
+            Assert.Equal(6, old.TotalStudents); Assert.True(old.HasFeeSetup); Assert.False(old.Session!.IsCurrent);
+            Assert.Equal("2027-28", old.CurrentYearName);
+            Assert.Equal(2, old.StudentsPaidThisMonth); Assert.Equal(2, old.StudentsNotPaidThisMonth);
+            Assert.Equal(1, db.Scalar<int>($"select count(*) from tb_academic_years where school_id='{A}' and is_current"));
+            Assert.True(db.Scalar<bool>($"select is_current from tb_academic_years where academic_year_id={next}"));
+        }
+
+        [DbFact]
+        public async Task Another_schools_year_is_a_404_and_never_leaks()
+        {
+            using var db = new TaxDb();
+            Seed(db);
+            var r = await Svc(db).GetAsync(A, default, LastDay, YearOf(db, B, "2026-27"));
+            Assert.Equal(404, r.StatusCode);
+            Assert.Null(r.Data);
+            Assert.Equal(404, (await Svc(db).GetAsync(A, default, LastDay, 99999999)).StatusCode);
+        }
+
+        [DbFact]
+        public async Task This_month_is_moved_into_the_viewed_year_when_today_is_outside_it_and_the_note_says_so()
+        {
+            using var db = new TaxDb();
+            Seed(db);
+            var after = await Get(db, A, new DateOnly(2027, 6, 15));       // today is after 2026-27
+            Assert.True(after.MonthClamped);
+            Assert.Equal(new DateOnly(2027, 3, 1), after.MonthStart); Assert.Equal(new DateOnly(2027, 3, 31), after.MonthEnd);
+            Assert.Contains("March 2027", after.MonthNote); Assert.Contains("after the academic year 2026-27", after.MonthNote);
+            var before = await Get(db, A, new DateOnly(2026, 2, 3));       // today is before it starts
+            Assert.True(before.MonthClamped);
+            Assert.Equal(new DateOnly(2026, 4, 1), before.MonthStart);
+            Assert.Contains("before the academic year", before.MonthNote);
+            var inside = await Get(db, A, LastDay);
+            Assert.False(inside.MonthClamped); Assert.Null(inside.MonthNote);
+        }
+
+        [DbFact]
+        public async Task Fees_received_count_only_the_viewed_years_installments_not_every_rupee_received()
+        {
+            using var db = new TaxDb();
+            Seed(db);
+            var next = NextYear(db, A);
+            // a 2027-28 fee item with an installment due 5 Apr 2027 for ZDA1, paid on 5 Nov 2026 (an advance payment)
+            db.Exec($@"insert into tb_student_fee_items (student_id, school_id, academic_year_id, fee_type_id, frequency_id, base_amount, net_amount)
+                       values ('ZDA1', '{A}', {next}, (select fee_type_id from tb_fee_types where school_id='{A}' and fee_type_code='TZDA1'), (select min(frequency_id) from lut_fee_frequency), 700, 700)");
+            db.Exec($@"insert into tb_student_fee_dues (student_fee_item_id, student_id, school_id, due_date, amount_due, amount_paid)
+                       values ((select max(student_fee_item_id) from tb_student_fee_items where student_id='ZDA1' and academic_year_id={next}), 'ZDA1', '{A}', '2027-04-05', 700, 700)");
+            db.Exec($@"insert into tb_fee_payments (student_id, school_id, amount, payment_mode, receipt_number, fee_amount, payment_date, status) values ('ZDA1', '{A}', 700, 'Cash', 'ZZ-ADV', 700, '2026-11-05 06:00:00+00', 'Active')");
+            db.Exec($@"insert into tb_fee_payment_allocations (payment_id, fee_due_id, allocated_amount, concession_amount, fee_type_name_snapshot)
+                       values ((select payment_id from tb_fee_payments where receipt_number='ZZ-ADV'), (select max(fee_due_id) from tb_student_fee_dues where student_id='ZDA1'), 700, 0, 'Tuition')");
+
+            var thisYear = await Get(db, A, LastDay);
+            Assert.Equal(2500m, thisYear.FeeCollectedThisMonth);          // the 700 advance is for 2027-28 installments: not here
+            var nextYear = (await Svc(db).GetAsync(A, default, LastDay, next)).Data!;
+            Assert.Equal(700m, nextYear.IncomeThisSession);               // it shows against the year it was paid for
+            Assert.True(nextYear.HasFeeSetup);
         }
     }
 }

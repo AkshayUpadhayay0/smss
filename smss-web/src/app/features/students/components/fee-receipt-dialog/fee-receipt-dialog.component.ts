@@ -58,7 +58,7 @@ import { printReceipt } from '../../utils/receipt-print';
           <tbody>
             @for (l of receipt().lines; track l.feeDueId) {
               <tr>
-                <td>{{ l.feeTypeName }}<small>{{ l.frequencyName }}</small></td>
+                <td>{{ l.feeTypeName }}<small>{{ l.frequencyName }}@if ((receipt().student.academicYearNames?.length ?? 0) > 1 && l.academicYearName) { · {{ l.academicYearName }} }</small></td>
                 <td>{{ date(l.dueDate) }}</td>
                 <td class="num">{{ inr(l.amountDue) }}</td>
                 <td class="num"><strong>{{ inr(l.allocatedAmount) }}</strong></td>

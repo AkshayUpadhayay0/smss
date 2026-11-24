@@ -16,18 +16,32 @@ namespace smss_api_db_layer.repository
         {
             var y = await _db.AcademicYears.AsNoTracking().Where(x => x.SchoolId == schoolId && x.IsCurrent && x.StatusId == activeStatusId)
                 .OrderByDescending(x => x.StartDate).Select(x => new { x.AcademicYearId, x.YearName, x.StartDate, x.EndDate }).FirstOrDefaultAsync(ct);
-            return y == null ? null : new DashboardYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate);
+            return y == null ? null : new DashboardYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate, true, false);   // the current year can never be closed
         }
 
-        public Task<int> ActiveStudentsAsync(string schoolId, int activeStatusId, CancellationToken ct) =>
-            _db.Students.AsNoTracking().CountAsync(s => s.SchoolId == schoolId && s.StatusId == activeStatusId, ct);
-
-        public async Task<DashboardFeeMonthRow> FeeMonthAsync(string schoolId, int activeStatusId, DateOnly monthStart, DateOnly monthEnd, CancellationToken ct)
+        public async Task<DashboardYearRow?> YearAsync(string schoolId, long academicYearId, CancellationToken ct)
         {
-            // dues of ACTIVE students of this school, due inside the month; the student join also keeps another school's rows out
+            var y = await _db.AcademicYears.AsNoTracking().Where(x => x.SchoolId == schoolId && x.AcademicYearId == academicYearId)
+                .Select(x => new { x.AcademicYearId, x.YearName, x.StartDate, x.EndDate, x.IsCurrent, Closed = x.ClosedAt != null }).FirstOrDefaultAsync(ct);
+            return y == null ? null : new DashboardYearRow(y.AcademicYearId, y.YearName, y.StartDate, y.EndDate, y.IsCurrent, y.Closed);
+        }
+
+        public Task<int> EnrolledStudentsAsync(string schoolId, int activeStatusId, long academicYearId, CancellationToken ct) =>
+            (from e in _db.StudentEnrollments.AsNoTracking()
+             join s in _db.Students.AsNoTracking() on new { e.StudentId, e.SchoolId } equals new { s.StudentId, s.SchoolId }
+             where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId && s.StatusId == activeStatusId
+             select e.StudentId).Distinct().CountAsync(ct);
+
+        public Task<bool> HasFeeItemsAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            _db.StudentFeeItems.AsNoTracking().AnyAsync(i => i.SchoolId == schoolId && i.AcademicYearId == academicYearId, ct);
+
+        public async Task<DashboardFeeMonthRow> FeeMonthAsync(string schoolId, int activeStatusId, long academicYearId, DateOnly monthStart, DateOnly monthEnd, CancellationToken ct)
+        {
+            // dues of the YEAR's fee items for ACTIVE students of this school, due inside the month; the student join also keeps another school's rows out
             var dues = from d in _db.StudentFeeDues.AsNoTracking()
+                       join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
                        join s in _db.Students.AsNoTracking() on new { d.StudentId, d.SchoolId } equals new { s.StudentId, s.SchoolId }
-                       where d.SchoolId == schoolId && s.StatusId == activeStatusId && d.DueDate >= monthStart && d.DueDate <= monthEnd
+                       where d.SchoolId == schoolId && i.SchoolId == schoolId && i.AcademicYearId == academicYearId && s.StatusId == activeStatusId && d.DueDate >= monthStart && d.DueDate <= monthEnd
                        select d;
             var withDues = await dues.Select(d => d.StudentId).Distinct().CountAsync(ct);
             var notPaid = await dues.Where(d => d.AmountPaid < d.AmountDue).Select(d => d.StudentId).Distinct().CountAsync(ct);
@@ -35,10 +49,13 @@ namespace smss_api_db_layer.repository
             return new DashboardFeeMonthRow(withDues, notPaid, outstanding);
         }
 
-        public async Task<decimal> CollectedAsync(string schoolId, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct) =>
+        public async Task<decimal> CollectedAsync(string schoolId, long academicYearId, DateTime? fromUtc, DateTime? toUtcExclusive, CancellationToken ct) =>
             await (from a in _db.FeePaymentAllocations.AsNoTracking()
                    join p in _db.FeePayments.AsNoTracking() on a.PaymentId equals p.PaymentId
-                   where p.SchoolId == schoolId && p.Status == "Active" && p.PaymentDate >= fromUtc && p.PaymentDate < toUtcExclusive
+                   join d in _db.StudentFeeDues.AsNoTracking() on a.FeeDueId equals d.FeeDueId
+                   join i in _db.StudentFeeItems.AsNoTracking() on d.StudentFeeItemId equals i.StudentFeeItemId
+                   where p.SchoolId == schoolId && p.Status == "Active" && i.SchoolId == schoolId && i.AcademicYearId == academicYearId
+                         && (fromUtc == null || p.PaymentDate >= fromUtc) && (toUtcExclusive == null || p.PaymentDate < toUtcExclusive)
                    select (decimal?)(a.AllocatedAmount - a.ConcessionAmount)).SumAsync(ct) ?? 0m;
 
         public Task<int> NewAdmissionsAsync(string schoolId, int activeStatusId, DateOnly from, DateOnly to, CancellationToken ct)
@@ -71,3 +88,4 @@ namespace smss_api_db_layer.repository
             _db.Vehicles.AsNoTracking().CountAsync(v => v.SchoolId == schoolId && v.StatusId == activeStatusId, ct);
     }
 }
+ 

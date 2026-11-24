@@ -93,12 +93,12 @@ namespace smss_api.Controllers
             return Reply(await _service.ApplyConcessionAsync(User.GetSchoolId(), studentId, userId, request, ct));
         }
 
-        // DELETE api/StudentFee/{studentId}/concessions/{concessionId}
+        // DELETE api/StudentFee/{studentId}/concessions/{concessionId}?academicYearId=   (the year is needed only when the student has it in several)
         [HttpDelete("{studentId:length(1,20)}/concessions/{concessionId:long}")]
-        public async Task<IActionResult> RemoveConcession(string studentId, long concessionId, CancellationToken ct)
+        public async Task<IActionResult> RemoveConcession(string studentId, long concessionId, [FromQuery] long? academicYearId, CancellationToken ct)
         {
             if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can remove a concession.");
-            return Reply(await _service.RemoveConcessionAsync(User.GetSchoolId(), studentId, concessionId, ct));
+            return Reply(await _service.RemoveConcessionAsync(User.GetSchoolId(), studentId, concessionId, academicYearId, ct));
         }
     }
 }

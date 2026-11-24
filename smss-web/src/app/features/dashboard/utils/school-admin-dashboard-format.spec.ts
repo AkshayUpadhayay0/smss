@@ -94,13 +94,13 @@ describe('school admin dashboard formatting', () => {
 
     it('income vs expenses leaves expenses out while they are not set up (no fake zero bars)', () => {
       const o = incomeExpenseOptions(dashboard());
-      expect((o.series as { name: string }[]).map((s) => s.name)).toEqual(['Income']);
+      expect((o.series as { name: string }[]).map((s) => s.name)).toEqual(['Fees received']);
       expect((o.series as { data: number[] }[])[0].data).toEqual([2500, 2700]);
     });
 
     it('draws both series once expenses exist, and only this month when there is no session', () => {
       const both = incomeExpenseOptions(dashboard({ expensesSetUp: true, expensesThisMonth: 400, expensesThisSession: 1200 }));
-      expect((both.series as { name: string }[]).map((s) => s.name)).toEqual(['Income', 'Expenses']);
+      expect((both.series as { name: string }[]).map((s) => s.name)).toEqual(['Fees received', 'Expenses']);
       const noSession = incomeExpenseOptions(dashboard({ session: null, incomeThisSession: null }));
       expect((noSession.series as { data: number[] }[])[0].data).toEqual([2500]);
     });

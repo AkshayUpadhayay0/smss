@@ -30,11 +30,11 @@ describe('StudentProfileComponent', () => {
     studentId: 'DPS001ST001', admissionNumber: 'ADMNO20260001', fullName: 'Abhinav Kumar', dateOfBirth: '1998-07-08',
     admissionDate: '2026-04-01', statusName: 'Active', loginId: 'DPS001ST001', guardians: [],
   };
-  const openAs = (roles: string[]) => {
+  const openAs = (roles: string[], profile: object = PROFILE) => {
     setup(roles);
     fixture.componentRef.setInput('studentId', 'DPS001ST001');
     fixture.detectChanges();
-    http.expectOne(`${API}/api/Student/DPS261013001/DPS001ST001`).flush(env(PROFILE));
+    http.expectOne(`${API}/api/Student/DPS261013001/DPS001ST001`).flush(env(profile));
     fixture.detectChanges();
     // the Fees tab (open from the start for an Accountant) loads its own data: answer it all with empty fee data
     for (let i = 0; i < 6; i++) {   // the Transport card adds a request (and, for a School Admin, a second one for the areas)
@@ -126,6 +126,33 @@ describe('StudentProfileComponent', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (fixture.componentInstance as unknown as { back(): void }).back();
     expect(navigate).toHaveBeenCalledWith(['/fee-reports/class'], expect.anything());
+  });
+
+  it('shows a tab per academic year when the student has several enrolments, the current year first, and a click shows that year', () => {
+    openAs(['School Admin'], {
+      ...PROFILE, className: 'Class 3', sectionName: 'A', academicYearName: '2026-27',
+      enrollments: [
+        { enrollmentId: 2, academicYearId: 2, academicYearName: '2027-28', isCurrentYear: false, yearIsClosed: false, className: 'Class 4', sectionName: 'B', rollNumber: '9', statusName: 'Active' },
+        { enrollmentId: 1, academicYearId: 1, academicYearName: '2026-27', isCurrentYear: true, yearIsClosed: false, className: 'Class 3', sectionName: 'A', rollNumber: '4', statusName: 'Active' },
+      ],
+    });
+    const tabs = [...el().querySelectorAll('.year-tab')];
+    expect(tabs.map((b) => b.getAttribute('aria-label'))).toEqual(['2027-28', '2026-27, current year']);
+    const detail = () => el().querySelector('[data-year="detail"]')!.textContent!.replace(/\s+/g, ' ');
+    expect(detail()).toContain('Class 3');                      // the current year is shown first
+    (tabs[0] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(detail()).toContain('2027-28');
+    expect(detail()).toContain('Class 4');
+    expect(detail()).toContain('9');
+  });
+
+  it('a student with one enrolment gets no year tabs', () => {
+    openAs(['School Admin'], {
+      ...PROFILE, enrollments: [{ enrollmentId: 1, academicYearId: 1, academicYearName: '2026-27', isCurrentYear: true, yearIsClosed: false, className: 'Class 3', sectionName: 'A', rollNumber: '4', statusName: 'Active' }],
+    });
+    expect(el().querySelectorAll('.year-tab').length).toBe(0);
+    expect(el().querySelector('[data-year="detail"]')!.textContent).toContain('Class 3');
   });
 
   it('loads the profile by the string student id (the route param is not converted to a number)', () => {

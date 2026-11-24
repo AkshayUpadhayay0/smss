@@ -20,6 +20,8 @@ namespace smss_api_db_layer.entity
         [Column("allocated_amount", TypeName = "numeric(12,2)")] public decimal AllocatedAmount { get; set; }
         /// <summary>The part of <see cref="AllocatedAmount"/> that was discounted (0 for an allocation the concession did not apply to).</summary>
         [Column("concession_amount", TypeName = "numeric(12,2)")] public decimal ConcessionAmount { get; set; }
+        /// <summary>The fee type's name when the payment was taken: a later rename never changes an old receipt.</summary>
+        [Column("fee_type_name_snapshot")] public string FeeTypeNameSnapshot { get; set; } = null!;
         [Column("created_at")] public DateTime CreatedAt { get; set; }
     }
 }

@@ -35,6 +35,8 @@ namespace smss_api_service_layer.dto
     public class StudentFeeConcessionDto
     {
         public long StudentFeeConcessionId { get; set; }
+        /// <summary>The year the concession was given for: it applies to that year's fees only.</summary>
+        public long AcademicYearId { get; set; }
         public long ConcessionId { get; set; }
         public string ConcessionName { get; set; } = null!;
         public string ConcessionCode { get; set; } = null!;

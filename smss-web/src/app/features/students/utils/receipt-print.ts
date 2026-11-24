@@ -9,10 +9,11 @@ const dateTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: '
 
 /** The receipt as a standalone printable page. Every value is escaped: names and remarks are typed by people. */
 export function receiptHtml(r: FeeReceipt): string {
+  const mixedYears = (r.student.academicYearNames?.length ?? 0) > 1;   // a payment that spans academic years names the year on each line
   const rows = r.lines
     .map(
       (l) => `<tr>
-        <td>${escapeHtml(l.feeTypeName)}<div class="sub">${escapeHtml(l.frequencyName)}</div></td>
+        <td>${escapeHtml(l.feeTypeName)}<div class="sub">${escapeHtml(l.frequencyName)}${mixedYears && l.academicYearName ? ' · ' + escapeHtml(l.academicYearName) : ''}</div></td>
         <td>${escapeHtml(longDate(l.dueDate))}</td>
         <td class="num">${escapeHtml(formatInr(l.amountDue))}</td>
         <td class="num"><strong>${escapeHtml(formatInr(l.allocatedAmount))}</strong></td>

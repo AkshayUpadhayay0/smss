@@ -118,7 +118,10 @@ namespace smss_api_service_layer.dto
     public class ReceiptLineDto
     {
         public long FeeDueId { get; set; }
+        /// <summary>The fee type's name when the payment was taken (a later rename does not change it).</summary>
         public string FeeTypeName { get; set; } = null!;
+        /// <summary>The academic year the installment belongs to (a payment can pay installments of more than one year).</summary>
+        public string AcademicYearName { get; set; } = "";
         public string FrequencyName { get; set; } = null!;
         public DateOnly DueDate { get; set; }
         /// <summary>The installment's full amount.</summary>
@@ -147,7 +150,10 @@ namespace smss_api_service_layer.dto
         public string StudentId { get; set; } = null!;
         public string Name { get; set; } = null!;
         public string? ClassName { get; set; }
+        /// <summary>The year of the payment's installments (the latest one when a payment spans years): the class below is the student's class IN that year.</summary>
         public string? AcademicYearName { get; set; }
+        /// <summary>Every academic year the payment's installments belong to, oldest first. More than one means a payment that spans years: the receipt then shows a year on each line.</summary>
+        public List<string> AcademicYearNames { get; set; } = new();
     }
 
     /// <summary>Everything needed to show or print a receipt.</summary>

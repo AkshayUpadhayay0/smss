@@ -14,6 +14,8 @@ export interface StudentFeeLine {
 
 export interface StudentFeeConcession {
   studentFeeConcessionId: number;
+  /** The year the concession was given for: it applies to that year's fees only. */
+  academicYearId?: number;
   concessionId: number;
   concessionName: string;
   concessionCode: string;

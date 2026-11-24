@@ -65,6 +65,23 @@ export interface StudentProfile {
   loginId?: string | null;
 
   guardians: GuardianSummary[];
+
+  /** EVERY enrolment of the student, newest year first. The single-enrolment fields above are the current one and stay for older screens. */
+  enrollments?: StudentEnrollmentSummary[];
+}
+
+/** One year of a student's history: where they were in that year. */
+export interface StudentEnrollmentSummary {
+  enrollmentId: number;
+  academicYearId: number;
+  academicYearName: string;
+  isCurrentYear: boolean;
+  /** A closed year is read-only history. */
+  yearIsClosed: boolean;
+  className: string;
+  sectionName: string;
+  rollNumber?: string | null;
+  statusName: string;
 }
 
 /** Table row for the list page. */

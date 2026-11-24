@@ -23,31 +23,52 @@ namespace smss_api_service_layer.service
             _repo = repo; _attendance = attendance; _logger = logger;
         }
 
-        public async Task<ApiResponse<SchoolAdminDashboardDto>> GetAsync(string? schoolId, CancellationToken ct, DateOnly? todayOverride = null)
+        public async Task<ApiResponse<SchoolAdminDashboardDto>> GetAsync(string? schoolId, CancellationToken ct, DateOnly? todayOverride = null, long? academicYearId = null)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
             try
             {
                 var active = await _repo.ActiveStatusIdAsync(ct) ?? throw new InvalidOperationException("The Active status is missing from lut_status.");
                 var today = todayOverride ?? SchoolClock.Today();
-                var monthStart = new DateOnly(today.Year, today.Month, 1);
+                var dto = new SchoolAdminDashboardDto { Today = today };
+
+                var current = await _repo.CurrentYearAsync(schoolId, active, ct);
+                dto.CurrentYearName = current?.YearName;
+                // the year being VIEWED: the one asked for (404 for another school's, like any foreign id), else the current one
+                var year = current;
+                if (academicYearId != null)
+                {
+                    year = await _repo.YearAsync(schoolId, academicYearId.Value, ct);
+                    if (year == null) return Result(404, "Academic year not found.", null);
+                }
+                if (year != null) dto.Session = new DashboardSessionDto { AcademicYearId = year.AcademicYearId, Name = year.YearName, StartDate = year.StartDate, EndDate = year.EndDate, IsCurrent = year.IsCurrent, IsClosed = year.IsClosed };
+
+                // "this month" is the calendar month of today, moved INTO the viewed year's range when today is outside it
+                var monthDay = MonthDay(today, year, out var clampedNote);
+                var monthStart = new DateOnly(monthDay.Year, monthDay.Month, 1);
                 var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-                var dto = new SchoolAdminDashboardDto { Today = today, MonthStart = monthStart, MonthEnd = monthEnd };
+                dto.MonthStart = monthStart; dto.MonthEnd = monthEnd;
+                dto.MonthClamped = clampedNote != null; dto.MonthNote = clampedNote;
 
-                var year = await _repo.CurrentYearAsync(schoolId, active, ct);
-                if (year != null) dto.Session = new DashboardSessionDto { AcademicYearId = year.AcademicYearId, Name = year.YearName, StartDate = year.StartDate, EndDate = year.EndDate };
-
-                dto.TotalStudents = await _repo.ActiveStudentsAsync(schoolId, active, ct);
-                var fee = await _repo.FeeMonthAsync(schoolId, active, monthStart, monthEnd, ct);
-                dto.StudentsNotPaidThisMonth = fee.StudentsNotPaid;
-                dto.StudentsPaidThisMonth = fee.StudentsWithDues - fee.StudentsNotPaid;
-                dto.FeeOutstandingThisMonth = fee.Outstanding;
-
-                // India day boundaries as UTC instants: a payment at 23:30 IST on the last evening of the month belongs to that month
-                var tomorrowUtc = SchoolClock.StartOfDayUtc(today.AddDays(1));
-                dto.FeeCollectedThisMonth = await _repo.CollectedAsync(schoolId, SchoolClock.StartOfDayUtc(monthStart), tomorrowUtc, ct);
-                dto.IncomeThisMonth = dto.FeeCollectedThisMonth;   // no other-income table exists: income = fee collected
-                if (year != null) dto.IncomeThisSession = await _repo.CollectedAsync(schoolId, SchoolClock.StartOfDayUtc(year.StartDate), tomorrowUtc, ct);
+                if (year != null)
+                {
+                    dto.TotalStudents = await _repo.EnrolledStudentsAsync(schoolId, active, year.AcademicYearId, ct);
+                    dto.HasFeeSetup = await _repo.HasFeeItemsAsync(schoolId, year.AcademicYearId, ct);
+                    if (dto.HasFeeSetup)
+                    {
+                        var fee = await _repo.FeeMonthAsync(schoolId, active, year.AcademicYearId, monthStart, monthEnd, ct);
+                        dto.StudentsNotPaidThisMonth = fee.StudentsNotPaid;
+                        dto.StudentsPaidThisMonth = fee.StudentsWithDues - fee.StudentsNotPaid;
+                        dto.FeeOutstandingThisMonth = fee.Outstanding;
+                        // India day boundaries as UTC instants: a payment at 23:30 IST on the last evening of the month belongs to that month.
+                        // The running month stops at today; a past or future month is bounded by its own last day.
+                        var monthEndExclusive = SchoolClock.StartOfDayUtc(monthEnd.AddDays(1));
+                        var upTo = today >= monthStart && today <= monthEnd ? SchoolClock.StartOfDayUtc(today.AddDays(1)) : monthEndExclusive;
+                        dto.FeeCollectedThisMonth = await _repo.CollectedAsync(schoolId, year.AcademicYearId, SchoolClock.StartOfDayUtc(monthStart), upTo, ct);
+                        dto.IncomeThisMonth = dto.FeeCollectedThisMonth;   // no other-income table exists: income = fee collection only
+                        dto.IncomeThisSession = await _repo.CollectedAsync(schoolId, year.AcademicYearId, null, null, ct);
+                    }
+                }
                 dto.ExpensesSetUp = false;
                 dto.OtherIncomeSetUp = false;
 
@@ -72,6 +93,16 @@ namespace smss_api_service_layer.service
                 _logger.LogError(ex, "Error while building the School Admin dashboard");
                 return Result(500, "Something went wrong. Please try again later.", null);
             }
+        }
+
+        /// <summary>The day whose calendar month is "this month": today when it is inside the year, else the year's first / last day, with a sentence saying so.</summary>
+        public static DateOnly MonthDay(DateOnly today, DashboardYearRow? year, out string? note)
+        {
+            note = null;
+            if (year == null || (today >= year.StartDate && today <= year.EndDate)) return today;
+            var day = today < year.StartDate ? year.StartDate : year.EndDate;
+            note = "Showing " + day.ToString("MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture) + ": today is " + (today < year.StartDate ? "before" : "after") + " the academic year " + year.YearName + ".";
+            return day;
         }
 
         private static ApiResponse<SchoolAdminDashboardDto> Result(int code, string message, SchoolAdminDashboardDto? data) =>
