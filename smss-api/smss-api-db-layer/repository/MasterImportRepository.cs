@@ -47,6 +47,17 @@ namespace smss_api_db_layer.repository
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
 
+        public async Task<int> LinkNextClassesAsync(string schoolId, IReadOnlyList<(string From, string To)> pairs, CancellationToken ct)
+        {
+            var set = 0;
+            foreach (var (from, to) in pairs)
+                set += await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE public.tb_classes c SET next_class_id = n.class_id, updated_at = now()
+FROM public.tb_classes n
+WHERE c.school_id = {schoolId} AND n.school_id = {schoolId} AND c.class_name = {from} AND n.class_name = {to} AND c.next_class_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM public.tb_classes o WHERE o.school_id = {schoolId} AND o.next_class_id = n.class_id)", ct);
+            return set;
+        }
+
         public async Task AddRangeAsync<T>(IEnumerable<T> entities, CancellationToken ct) where T : class =>
             await _db.Set<T>().AddRangeAsync(entities, ct);
 

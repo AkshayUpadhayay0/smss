@@ -4,6 +4,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
+import { historyClassOptions, historyYearOptions, pickYear } from '../../../../core/utils/history-options';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
 import { Section } from '../../../school-setup/models/section.model';
@@ -67,11 +68,11 @@ export class FeeDashboardComponent implements OnInit {
       .filterOptions()
       .pipe(finalize(() => this.setupLoading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe(({ years, classes, sections }) => {
-        const active = years.filter((y) => y.statusName === 'Active');
-        this.yearOptions.set(active.map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
-        this.classOptions.set([{ label: 'All classes', value: '' }, ...classes.filter((c) => c.statusName === 'Active').map((c) => ({ label: c.className, value: String(c.classId) }))]);
+        // a read-only dashboard: every year (closed ones marked) and every class (an inactive one marked)
+        this.yearOptions.set(historyYearOptions(years));
+        this.classOptions.set([{ label: 'All classes', value: '' }, ...historyClassOptions(classes)]);
         this.allSections.set(sections);
-        const year = active.find((y) => y.isCurrent) ?? active[0];
+        const year = pickYear(years);
         if (year) this.yearControl.setValue(String(year.academicYearId));
       });
   }

@@ -77,20 +77,21 @@ namespace smss_api_db_layer.repository
 
         public async Task OfferInCurrentYearAsync(string schoolId, long sectionId) => await _db.OfferSectionInCurrentYearAsync(schoolId, sectionId, default);
 
-        public async Task DetachOfferingsAsync(string schoolId, long sectionId)
-        {
-            await _db.Database.ExecuteSqlInterpolatedAsync($@"DROP TABLE IF EXISTS _moved_section_offerings");
-            await _db.Database.ExecuteSqlInterpolatedAsync($@"CREATE TEMP TABLE _moved_section_offerings ON COMMIT DROP AS
-SELECT academic_year_id, max_strength, status_id FROM public.tb_academic_year_sections WHERE school_id = {schoolId} AND section_id = {sectionId}");
-            await _db.Database.ExecuteSqlInterpolatedAsync($@"DELETE FROM public.tb_academic_year_sections WHERE school_id = {schoolId} AND section_id = {sectionId}");
-        }
+        public Task<List<string>> GetUseAsync(string schoolId, long sectionId) => MasterUseQueries.SectionAsync(_db, schoolId, sectionId);
 
-        public async Task ReattachOfferingsAsync(string schoolId, long sectionId, long newClassId) =>
-            await _db.Database.ExecuteSqlInterpolatedAsync($@"
-INSERT INTO public.tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, max_strength, status_id)
-SELECT {schoolId}, m.academic_year_id, {newClassId}, {sectionId}, m.max_strength, m.status_id
-FROM _moved_section_offerings m
-WHERE EXISTS (SELECT 1 FROM public.tb_academic_year_classes c WHERE c.academic_year_id = m.academic_year_id AND c.class_id = {newClassId})");
+        public Task<List<string>> GetHistoryAsync(string schoolId, long sectionId) => MasterUseQueries.SectionHistoryAsync(_db, schoolId, sectionId);
+
+        public async Task<List<string>> GetYearsWhereClassNotOfferedAsync(string schoolId, long sectionId, long newClassId) =>
+            await (from o in _db.AcademicYearSections.AsNoTracking()
+                   join y in _db.AcademicYears.AsNoTracking() on new { o.SchoolId, o.AcademicYearId } equals new { y.SchoolId, y.AcademicYearId }
+                   where o.SchoolId == schoolId && o.SectionId == sectionId
+                         && !_db.AcademicYearClasses.Any(c => c.AcademicYearId == o.AcademicYearId && c.ClassId == newClassId)
+                   orderby y.StartDate
+                   select y.YearName).ToListAsync();
+
+        public async Task MoveOfferingsAsync(string schoolId, long sectionId, long newClassId) =>
+            await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE public.tb_academic_year_sections SET class_id = {newClassId}, updated_at = now()
+WHERE school_id = {schoolId} AND section_id = {sectionId} AND class_id <> {newClassId}");
 
         public async Task AddAsync(TbSections entity) => await _db.Sections.AddAsync(entity);
 

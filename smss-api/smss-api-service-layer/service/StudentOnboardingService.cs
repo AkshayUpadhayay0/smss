@@ -52,6 +52,8 @@ namespace smss_api_service_layer.service
                 if (await _repo.IsYearClosedAsync(schoolId, req.AcademicYearId, ct)) return Result(409, ClosedYear.Message, null);
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result(400, "The selected class and section was not found for your school.", null);
+                var target = EnrollmentTargetRules.Refusal(await _repo.CheckEnrollmentTargetAsync(schoolId, req.AcademicYearId, req.ClassSectionId, Clean(req.RollNumber), ct), Clean(req.RollNumber));
+                if (target is { } refused) return Result(refused.Code, refused.Message, null);
                 // "Charge fees from": checked BEFORE the student is saved, so a refusal creates nothing
                 if (req.ChargeFrom is DateOnly chargeFrom)
                 {
@@ -164,6 +166,10 @@ namespace smss_api_service_layer.service
                             FeeStructureName = assignedStructure?.StructureName,
                             Warnings = feeWarning == null ? new List<string>() : new List<string> { feeWarning }
                         });
+                    }
+                    catch (DbUpdateException ex) when (ConstraintOf(ex) == EnrollmentTargetRules.RollConstraint)
+                    {
+                        return Result(409, EnrollmentTargetRules.RollTaken(req.RollNumber, "this section", "this year"), null);   // two people took the same roll number at the same moment
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == AadharConstraint)
                     {

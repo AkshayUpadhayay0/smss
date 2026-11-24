@@ -24,6 +24,7 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { historyClassOptions, historyYearOptions, pickYear } from '../../../../core/utils/history-options';
 import { dueStatusTone } from '../../models/student-billing.model';
 import { IdCardBulkResult, StudentListItem, StudentRow } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
@@ -167,14 +168,14 @@ export class StudentListComponent implements OnInit {
     })
       .pipe(finalize(() => this.setupLoading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe(({ years, classes, sections }) => {
-        const activeYears = years.filter((y) => y.statusName === 'Active');
-        this.yearOptions.set(activeYears.map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
-        this.classOptions.set(classes.filter((c) => c.statusName === 'Active').map((c) => ({ label: c.className, value: String(c.classId) })));
+        // a read-only screen: every year (closed ones marked) and every class (an inactive one marked), so past years stay reachable
+        this.yearOptions.set(historyYearOptions(years));
+        this.classOptions.set(historyClassOptions(classes));
         this.allSections.set(sections);
 
         const q = this.route.snapshot.queryParamMap;
         const wantedYear = q.get('academicYearId');
-        const year = activeYears.find((y) => String(y.academicYearId) === wantedYear) ?? activeYears.find((y) => y.isCurrent);
+        const year = pickYear(years, wantedYear);
         // These must emit: `ready` is derived from the controls' valueChanges, so a silent set would leave it false
         if (year) this.yearControl.setValue(String(year.academicYearId));
 

@@ -103,15 +103,26 @@ namespace smss_api_service_layer.service
                 if (await _repo.ExistsAsync(classId, name, excludeId: id)) return Fail(409, DuplicateMessage);
 
                 var movedClass = entity.ClassId != classId;
+                if (movedClass)
+                {
+                    // renaming (a typo fix) is always allowed; moving to another class only while NOTHING has ever used the section, because enrolments, attendance, fees, report cards,
+                    // timetables and homework all show the section's class: moving it would silently change history
+                    var history = await _repo.GetHistoryAsync(schoolId, id);
+                    if (history.Count > 0)
+                        return Fail(409, $"This section can't be moved to another class because it has been used: {string.Join(", ", history.Take(6))}{(history.Count > 6 ? $" and {history.Count - 6} more kinds of records" : "")}. Create a new section under the other class instead, or rename this one.");
+                    var missing = await _repo.GetYearsWhereClassNotOfferedAsync(schoolId, id, classId);
+                    if (missing.Count > 0)
+                        return Fail(409, $"This section is offered in {string.Join(", ", missing)}, where the new class is not offered. Offer the new class there first (Academic Setup).");
+                }
                 await using (var tx = await _repo.BeginTransactionAsync())
                 {
-                    if (movedClass) await _repo.DetachOfferingsAsync(schoolId, id);   // the year offerings are tied to (section, class)
+                    // the section's offering rows are updated IN PLACE (never deleted) before the section itself changes class; the key between them is deferred to the commit
+                    if (movedClass) await _repo.MoveOfferingsAsync(schoolId, id, classId);
                     entity.ClassId = classId;
                     entity.SectionName = name;
                     entity.MaxStrength = (short?)req.MaxStrength;
                     entity.UpdatedAt = DateTime.UtcNow;
                     await _repo.SaveChangesAsync();
-                    if (movedClass) await _repo.ReattachOfferingsAsync(schoolId, id, classId);
                     await tx.CommitAsync();
                 }
 
@@ -135,6 +146,11 @@ namespace smss_api_service_layer.service
                     return ConfigError("'Active'/'Inactive' general status is missing in lut_status");
 
                 var deactivating = entity.StatusId == activeId;
+                if (deactivating)
+                {
+                    var use = await _repo.GetUseAsync(schoolId, id);
+                    if (use.Count > 0) return Fail(409, $"This section can't be deactivated while it is in use in an open academic year: {string.Join("; ", use)}.");
+                }
                 entity.StatusId = deactivating ? inactiveId : activeId;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();

@@ -78,7 +78,7 @@ namespace smss_api_db_layer.repository
         }
 
         public Task<List<long>> GetClassSectionIdsAsync(string schoolId, long classId, int activeStatusId, CancellationToken ct) =>
-            _db.Sections.AsNoTracking().Where(s => s.SchoolId == schoolId && s.ClassId == classId && s.StatusId == activeStatusId).Select(s => s.SectionId).ToListAsync(ct);
+            _db.Sections.AsNoTracking().Where(s => s.SchoolId == schoolId && s.ClassId == classId).Select(s => s.SectionId).ToListAsync(ct);
 
         public async Task<Dictionary<long, string>> GetSectionNamesAsync(string schoolId, IReadOnlyCollection<long> sectionIds, CancellationToken ct)
         {

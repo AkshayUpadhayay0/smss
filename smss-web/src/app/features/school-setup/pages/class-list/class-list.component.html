@@ -50,5 +50,5 @@
 </app-card>
 
 @if (modal(); as m) {
-  <app-class-form-modal [schoolClass]="m.schoolClass" (saved)="onSaved($event)" (closed)="modal.set(null)" />
+  <app-class-form-modal [schoolClass]="m.schoolClass" [allClasses]="classes()" (saved)="onSaved($event)" (closed)="modal.set(null)" />
 }

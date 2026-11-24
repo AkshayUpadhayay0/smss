@@ -29,7 +29,8 @@ namespace smss_api_service_layer.service
             {
                 var classes = await _repo.GetBySchoolAsync(schoolId, academicYearId);
                 var names = await StatusNamesAsync();
-                return Ok(200, "Successfully fetched", classes.Select(c => ToResponse(c, names)).ToList());
+                var classNames = await _repo.GetClassNamesAsync(schoolId);
+                return Ok(200, "Successfully fetched", classes.Select(c => ToResponse(c, names, classNames)).ToList());
             }
             catch (Exception ex) { return Error(ex, "fetching classes"); }
         }
@@ -42,7 +43,7 @@ namespace smss_api_service_layer.service
             {
                 var entity = await _repo.GetByIdAsync(schoolId, id);
                 if (entity == null) return Fail(404, "Class not found");
-                return Ok(200, "Successfully fetched", ToResponse(entity, await StatusNamesAsync()));
+                return Ok(200, "Successfully fetched", ToResponse(entity, await StatusNamesAsync(), await _repo.GetClassNamesAsync(schoolId)));
             }
             catch (Exception ex) { return Error(ex, "fetching class"); }
         }
@@ -54,6 +55,7 @@ namespace smss_api_service_layer.service
             {
                 var name = req.ClassName.Trim();
                 if (await _repo.ExistsAsync(schoolId, name)) return Fail(409, DuplicateMessage);
+                if (await CheckNextAsync(schoolId, null, req.NextClassId) is { } nextRefused) return nextRefused;
 
                 var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
                 if (activeId == null) return ConfigError("Active status missing from lut_status");
@@ -65,6 +67,7 @@ namespace smss_api_service_layer.service
                     ClassName = name,
                     ClassCode = Clean(req.ClassCode),
                     SequenceOrder = (short)req.SequenceOrder!.Value,
+                    NextClassId = req.NextClassId,
                     StatusId = activeId,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -78,9 +81,9 @@ namespace smss_api_service_layer.service
                     await tx.CommitAsync();
                 }
 
-                return Ok(201, "Class created successfully", ToResponse(entity, await StatusNamesAsync()));
+                return Ok(201, "Class created successfully", ToResponse(entity, await StatusNamesAsync(), await _repo.GetClassNamesAsync(schoolId)));
             }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, DuplicateMessage); }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, UniqueMessage(ex)); }
             catch (Exception ex) { return Error(ex, "creating class"); }
         }
 
@@ -94,16 +97,18 @@ namespace smss_api_service_layer.service
 
                 var name = req.ClassName.Trim();
                 if (await _repo.ExistsAsync(schoolId, name, excludeId: id)) return Fail(409, DuplicateMessage);
+                if (await CheckNextAsync(schoolId, id, req.NextClassId) is { } nextRefused) return nextRefused;
 
                 entity.ClassName = name;
                 entity.ClassCode = Clean(req.ClassCode);
                 entity.SequenceOrder = (short)req.SequenceOrder!.Value;
+                entity.NextClassId = req.NextClassId;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
 
-                return Ok(200, "Class updated successfully", ToResponse(entity, await StatusNamesAsync()));
+                return Ok(200, "Class updated successfully", ToResponse(entity, await StatusNamesAsync(), await _repo.GetClassNamesAsync(schoolId)));
             }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, DuplicateMessage); }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) { return Fail(409, UniqueMessage(ex)); }
             catch (Exception ex) { return Error(ex, "updating class"); }
         }
 
@@ -121,12 +126,22 @@ namespace smss_api_service_layer.service
                     return ConfigError("'Active'/'Inactive' general status is missing in lut_status");
 
                 var deactivating = entity.StatusId == activeId;
+                if (deactivating)
+                {
+                    // a class that another class moves up to cannot disappear from the chain: name the class that points to it
+                    var pointer = await _repo.GetClassPointingToAsync(schoolId, id);
+                    if (pointer != null)
+                        return Fail(409, $"{entity.ClassName} can't be deactivated: the class \"{pointer}\" moves its students up to it. Change the next class of \"{pointer}\" first.");
+                    var use = await _repo.GetUseAsync(schoolId, id);
+                    if (use.Count > 0)
+                        return Fail(409, $"{entity.ClassName} can't be deactivated while it is in use in an open academic year: {string.Join("; ", use)}.");
+                }
                 entity.StatusId = deactivating ? inactiveId : activeId;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();
 
                 return Ok(200, deactivating ? "Class deactivated successfully" : "Class activated successfully",
-                    ToResponse(entity, await StatusNamesAsync()));
+                    ToResponse(entity, await StatusNamesAsync(), await _repo.GetClassNamesAsync(schoolId)));
             }
             catch (Exception ex) { return Error(ex, "toggling class status"); }
         }
@@ -137,18 +152,36 @@ namespace smss_api_service_layer.service
 
         private static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-        private static ClassResponse ToResponse(TbClasses c, Dictionary<int, string> statusNames) => new()
+        /// <summary>The rules of next_class_id: the school's own class, not itself, not already the next class of another class, no loop. Null when it is fine.</summary>
+        private async Task<ApiResponse<object>?> CheckNextAsync(string schoolId, long? classId, long? nextClassId)
+        {
+            if (nextClassId == null) return null;
+            if (classId != null && nextClassId == classId) return Fail(400, "A class can't be its own next class.");
+            var names = await _repo.GetClassNamesAsync(schoolId);
+            if (!names.TryGetValue(nextClassId.Value, out var nextName)) return Fail(400, "The next class was not found for your school.");
+            var other = await _repo.GetClassPointingToAsync(schoolId, nextClassId.Value, classId);
+            if (other != null) return Fail(409, $"\"{nextName}\" is already the next class of \"{other}\". Two classes can't move up to the same class.");
+            if (classId != null && await _repo.NextWouldLoopAsync(schoolId, classId.Value, nextClassId.Value)) return Fail(409, $"\"{nextName}\" already leads back to this class, so this would make a loop.");
+            return null;
+        }
+
+        private static ClassResponse ToResponse(TbClasses c, Dictionary<int, string> statusNames, Dictionary<long, string> classNames) => new()
         {
             ClassId = c.ClassId,
             SchoolId = c.SchoolId,
             ClassName = c.ClassName,
             ClassCode = c.ClassCode,
             SequenceOrder = c.SequenceOrder,
+            NextClassId = c.NextClassId,
+            NextClassName = c.NextClassId is long nid && classNames.TryGetValue(nid, out var nn) ? nn : null,
             StatusId = c.StatusId,
             StatusName = c.StatusId is int sid && statusNames.TryGetValue(sid, out var n) ? n : null,
             CreatedAt = c.CreatedAt,
             UpdatedAt = c.UpdatedAt
         };
+
+        private static string UniqueMessage(DbUpdateException ex) =>
+            ex.InnerException is PostgresException { ConstraintName: "uq_tb_classes_school_next" } ? "Another class already moves up to that class. Two classes can't have the same next class." : DuplicateMessage;
 
         private static bool IsUniqueViolation(DbUpdateException ex) =>
             ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };

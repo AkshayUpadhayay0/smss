@@ -207,6 +207,9 @@ namespace smss_api_tests
             db.Exec($"update tb_academic_years set is_current = true where academic_year_id = {TaxDb.YearA}");
             db.Exec($"insert into tb_academic_years (school_id, year_name, start_date, end_date, is_current, status_id) select school_id, 'Other', '2025-04-01', '2026-03-31', false, status_id from tb_academic_years where academic_year_id = {TaxDb.YearA}");
             var other = db.Scalar<long>($"select max(academic_year_id) from tb_academic_years where school_id = '{SchoolA}'");
+            // an enrolment can only be in a section the year offers (stage 1a): offer that student's class and section in the other year first
+            db.Exec($"insert into tb_academic_year_classes (school_id, academic_year_id, class_id, status_id) select '{SchoolA}', {other}, s.class_id, 1 from tb_student_enrollments e join tb_sections s on s.section_id = e.class_section_id where e.student_id = '{s[5].Student}' on conflict do nothing");
+            db.Exec($"insert into tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, status_id) select '{SchoolA}', {other}, s.class_id, s.section_id, 1 from tb_student_enrollments e join tb_sections s on s.section_id = e.class_section_id where e.student_id = '{s[5].Student}' on conflict do nothing");
             db.Exec($"update tb_student_enrollments set academic_year_id = {other} where student_id = '{s[5].Student}'"); // enrolled in another year only
             Enable(db);
             foreach (var x in s.Take(6)) await Register(db, x.User, "tok-" + x.Student);

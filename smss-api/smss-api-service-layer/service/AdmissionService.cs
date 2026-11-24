@@ -296,6 +296,8 @@ namespace smss_api_service_layer.service
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result<AdmissionDetailDto>(400, "The selected section was not found for your school.", null);
                 if (await _repo.IsYearClosedAsync(schoolId, admission.AcademicYearId, ct)) return Result<AdmissionDetailDto>(409, ClosedYear.Message, null);
+                var target = EnrollmentTargetRules.Refusal(await _repo.CheckEnrollmentTargetAsync(schoolId, admission.AcademicYearId, req.ClassSectionId, Clean(req.RollNumber), ct), Clean(req.RollNumber));
+                if (target is { } refused) return Result<AdmissionDetailDto>(refused.Code, refused.Message, null);
 
                 var admittedId = await _repo.GetAdmissionStatusIdAsync(Admitted, ct);
                 var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);
@@ -431,6 +433,10 @@ namespace smss_api_service_layer.service
                         detail.FeeStructureName = assignedStructure?.StructureName;
                         if (feeWarning != null) detail.Warnings.Add(feeWarning);
                         return Result(200, "Admission confirmed. Student and enrollment created.", detail);
+                    }
+                    catch (DbUpdateException ex) when (ConstraintOf(ex) == EnrollmentTargetRules.RollConstraint)
+                    {
+                        return Result<AdmissionDetailDto>(409, EnrollmentTargetRules.RollTaken(req.RollNumber, "this section", "this year"), null);   // two people took the same roll number at the same moment
                     }
                     catch (DbUpdateException ex) when (IsUniqueViolation(ex) && attempt < 2)
                     {

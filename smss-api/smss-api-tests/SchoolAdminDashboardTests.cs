@@ -337,6 +337,9 @@ namespace smss_api_tests
             Seed(db);
             var year = db.Scalar<long>($"select academic_year_id from tb_academic_years where school_id='{A}'");
             var classId = db.Scalar<long>($"select class_id from tb_classes where school_id='{A}'");
+            // an enrolment can only be in a section the year offers (stage 1a): offer every section of the school in this year first
+            db.Exec($@"insert into tb_academic_year_classes (school_id, academic_year_id, class_id, status_id) select distinct '{A}', {year}, class_id, {Active} from tb_sections where school_id='{A}' on conflict do nothing");
+            db.Exec($@"insert into tb_academic_year_sections (school_id, academic_year_id, class_id, section_id, status_id) select '{A}', {year}, class_id, section_id, {Active} from tb_sections where school_id='{A}' on conflict do nothing");
             foreach (var s in new[] { "ZDA1", "ZDA2", "ZDA3", "ZDA5" })
                 db.Exec($@"insert into tb_student_enrollments (school_id, student_id, academic_year_id, class_section_id, enrollment_date, admission_type_id, status_id)
                            select '{A}', '{s}', {year}, section_id, '2026-06-01', (select admission_type_id from lut_admission_type where type_code='NEW_ADMISSION'), {Active} from tb_sections where school_id='{A}'");

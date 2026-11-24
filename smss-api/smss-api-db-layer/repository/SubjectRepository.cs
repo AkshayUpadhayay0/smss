@@ -44,6 +44,8 @@ namespace smss_api_db_layer.repository
 
         public async Task AddAsync(TbSubjects entity) => await _db.Subjects.AddAsync(entity);
 
+        public Task<List<string>> GetUseAsync(string schoolId, long subjectId) => MasterUseQueries.SubjectAsync(_db, schoolId, subjectId);
+
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }

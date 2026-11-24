@@ -32,6 +32,7 @@ namespace smss_api_db_layer.@interface
         /// <summary>Every per-subject remark of a scheme for the given students: one query.</summary>
         Task<List<TbReportSubjectRemark>> GetSubjectRemarksAsync(long schemeId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<Dictionary<long, string>> GetSubjectNamesAsync(string schoolId, IReadOnlyCollection<long> subjectIds, CancellationToken ct);
+        /// <summary>EVERY section of the class, whatever its status (a section deactivated later still has students in this year's class-wide ranking). activeStatusId is kept for the signature only.</summary>
         Task<List<long>> GetClassSectionIdsAsync(string schoolId, long classId, int activeStatusId, CancellationToken ct);
         Task<Dictionary<long, string>> GetSectionNamesAsync(string schoolId, IReadOnlyCollection<long> sectionIds, CancellationToken ct);
 

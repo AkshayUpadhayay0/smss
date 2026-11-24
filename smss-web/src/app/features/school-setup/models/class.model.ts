@@ -6,6 +6,9 @@ export interface SchoolClass {
   className: string;
   classCode?: string | null;
   sequenceOrder: number;
+  /** The class students normally move up to; null = the last class (its students pass out). */
+  nextClassId?: number | null;
+  nextClassName?: string | null;
   statusId?: number | null;
   /** "Active" / "Inactive", resolved by the server so the client never deals in status ids. */
   statusName?: string | null;
@@ -18,6 +21,8 @@ export interface ClassRequest {
   className: string;
   classCode: string | null;
   sequenceOrder: number;
+  /** Sent on every update (the whole request replaces the stored value); null = the last class. */
+  nextClassId: number | null;
 }
 
 /** A list row: display-ready values. */
@@ -26,6 +31,7 @@ export interface ClassRow extends Record<string, unknown> {
   className: string;
   classCode: string;
   sequenceOrder: number;
+  nextClassName: string;
   statusName: string;
   isActive: boolean;
 }

@@ -4,6 +4,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { canAccess } from '../../../../core/config/route-roles';
+import { historyClassOptions, historyYearOptions, pickYear } from '../../../../core/utils/history-options';
 import { AuthService } from '../../../../core/services/auth.service';
 import { formatInr } from '../../../../core/utils/currency';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption, SortChange, SortDirection, TableColumn, TableComponent } from '../../../../shared/components';
@@ -117,14 +118,14 @@ export class ClassFeeReportComponent implements OnInit {
       .filterOptions()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(({ years, classes, sections }) => {
-        const active = years.filter((y) => y.statusName === 'Active');
-        this.yearOptions.set(active.map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
-        this.classOptions.set(classes.filter((c) => c.statusName === 'Active').map((c) => ({ label: c.className, value: String(c.classId) })));
+        // a read-only report: every year (closed ones marked) and every class (an inactive one marked)
+        this.yearOptions.set(historyYearOptions(years));
+        this.classOptions.set(historyClassOptions(classes));
         this.allSections.set(sections);
 
         // opened from the dashboard with its filter in the URL
         const q = this.route.snapshot.queryParamMap;
-        const year = active.find((y) => String(y.academicYearId) === q.get('academicYearId')) ?? active.find((y) => y.isCurrent) ?? active[0];
+        const year = pickYear(years, q.get('academicYearId'));
         const wantedMonth = q.get('month');
         this.month.set(wantedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(wantedMonth) ? wantedMonth : null);
         // opened for a month without a class (the dashboard card is school-wide): start with the first class

@@ -115,6 +115,11 @@ namespace smss_api_service_layer.service
                     return ConfigError("'Active'/'Inactive' general status is missing in lut_status");
 
                 var deactivating = entity.StatusId == activeId;
+                if (deactivating)
+                {
+                    var use = await _repo.GetUseAsync(schoolId, id);
+                    if (use.Count > 0) return Fail(409, $"{entity.SubjectName} can't be deactivated while it is in use in an open academic year: {string.Join("; ", use)}.");
+                }
                 entity.StatusId = deactivating ? inactiveId : activeId;
                 entity.UpdatedAt = DateTime.UtcNow;
                 await _repo.SaveChangesAsync();

@@ -11,6 +11,8 @@ namespace smss_api_db_layer.@interface
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType);
         Task<List<(int Sid, string Name)>> GetGeneralStatusesAsync(string statusType);
         Task AddAsync(TbSubjects entity);
+        /// <summary>What still uses the subject in an OPEN academic year (empty = safe to deactivate).</summary>
+        Task<List<string>> GetUseAsync(string schoolId, long subjectId);
         Task<int> SaveChangesAsync();
     }
 }

@@ -22,6 +22,7 @@ const COLUMNS: TableColumn<ClassRow>[] = [
   { key: 'className', label: 'Class Name', sortable: true },
   { key: 'classCode', label: 'Class Code', sortable: true },
   { key: 'sequenceOrder', label: 'Sequence Order', sortable: true },
+  { key: 'nextClassName', label: 'Next Class', sortable: true },
   { key: 'statusName', label: 'Status', type: 'status', sortable: true },
 ];
 
@@ -105,6 +106,7 @@ export class ClassListComponent implements OnInit {
       className: c.className,
       classCode: c.classCode ?? '',
       sequenceOrder: c.sequenceOrder,
+      nextClassName: c.nextClassName ?? '— (students pass out)',
       statusName: c.statusName ?? 'Inactive',
       isActive: c.statusName === 'Active',
     };

@@ -43,7 +43,10 @@ namespace smss_api_db_layer.@interface
 
         // lookups that already exist elsewhere in the project (read-only)
         Task<TbAcademicYears?> GetYearAsync(string schoolId, long academicYearId, CancellationToken ct);
+        /// <summary>ACTIVE classes only: for VALIDATING a class being added to a scheme. To show a class that is already in one, use <see cref="ClassNamesAnyStatusAsync"/>.</summary>
         Task<Dictionary<long, string>> ClassNamesAsync(string schoolId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct);
+        /// <summary>The names whatever the class's status: history and existing schemes must still show a class that was deactivated later.</summary>
+        Task<Dictionary<long, string>> ClassNamesAnyStatusAsync(string schoolId, IReadOnlyCollection<long> classIds, CancellationToken ct);
         Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct);
         Task<Dictionary<long, string>> SubjectNamesAsync(string schoolId, IReadOnlyCollection<long> subjectIds, CancellationToken ct);
         Task<Dictionary<long, string>> ScaleNamesAsync(string schoolId, IReadOnlyCollection<long> scaleIds, CancellationToken ct);

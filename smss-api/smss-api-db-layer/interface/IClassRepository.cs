@@ -16,6 +16,14 @@ namespace smss_api_db_layer.@interface
         Task<IDbContextTransaction> BeginTransactionAsync();
         /// <summary>Offers the class in the school's current, open academic year (no current year: nothing happens).</summary>
         Task OfferInCurrentYearAsync(string schoolId, long classId);
+        /// <summary>What still uses the class in an OPEN academic year (empty = safe to deactivate): enrolments, fee structures, subject mappings, class teachers, timetable slots.</summary>
+        Task<List<string>> GetUseAsync(string schoolId, long classId);
+        /// <summary>The name of the class that already has <paramref name="targetClassId"/> as its next class (other than <paramref name="exceptClassId"/>), or null.</summary>
+        Task<string?> GetClassPointingToAsync(string schoolId, long targetClassId, long? exceptClassId = null);
+        /// <summary>True when following next_class_id from <paramref name="nextClassId"/> reaches <paramref name="classId"/> (setting it would make a loop).</summary>
+        Task<bool> NextWouldLoopAsync(string schoolId, long classId, long nextClassId);
+        /// <summary>Class names of the school by id (for showing the next class).</summary>
+        Task<Dictionary<long, string>> GetClassNamesAsync(string schoolId);
         Task<int> SaveChangesAsync();
     }
 }

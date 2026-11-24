@@ -43,7 +43,7 @@ namespace smss_api_service_layer.service
                     var g = await _repo.LoadGraphAsync(schoolId, r.Scheme.SchemeId, false, ct);   // a handful of schemes per school: one small read each
                     classRows[r.Scheme.SchemeId] = g!.Classes.Select(c => c.ClassId).ToList();
                 }
-                var names = await _repo.ClassNamesAsync(schoolId, classRows.Values.SelectMany(x => x).Distinct().ToList(), active.Value, ct);
+                var names = await _repo.ClassNamesAnyStatusAsync(schoolId, classRows.Values.SelectMany(x => x).Distinct().ToList(), ct);
                 return Result(200, "Successfully fetched", rows.Select(r => ToList(r, classRows[r.Scheme.SchemeId], names)).ToList());
             }
             catch (Exception ex) { return Error<List<SchemeListDto>>(ex, "listing report schemes"); }
@@ -274,7 +274,7 @@ namespace smss_api_service_layer.service
                 var items = req.Subjects!;
                 var classIds = g.Classes.Select(c => c.ClassId).ToList();
                 var mapped = (await _repo.MappedSubjectsAsync(schoolId, g.Scheme.AcademicYearId, classIds, active.Value, ct)).Select(m => (m.ClassId, m.SubjectId)).ToHashSet();
-                var classNames = await _repo.ClassNamesAsync(schoolId, classIds, active.Value, ct);
+                var classNames = await _repo.ClassNamesAnyStatusAsync(schoolId, classIds, ct);
                 var subjectNames = await _repo.SubjectNamesAsync(schoolId, items.Select(i => i.SubjectId!.Value).Distinct().ToList(), ct);
                 foreach (var i in items)
                 {
@@ -633,7 +633,7 @@ namespace smss_api_service_layer.service
             if (g == null) return Result<SchemeDto>(404, "Report scheme not found.", null);
             var year = await _repo.GetYearAsync(schoolId, g.Scheme.AcademicYearId, ct);
             var statusRow = (await _repo.ListSchemesAsync(schoolId, g.Scheme.AcademicYearId, true, active.Value, ct)).FirstOrDefault(r => r.Scheme.SchemeId == schemeId);
-            var classNames = await _repo.ClassNamesAsync(schoolId, g.Classes.Select(c => c.ClassId).Union(g.Subjects.Select(s => s.ClassId)).Distinct().ToList(), active.Value, ct);
+            var classNames = await _repo.ClassNamesAnyStatusAsync(schoolId, g.Classes.Select(c => c.ClassId).Union(g.Subjects.Select(s => s.ClassId)).Distinct().ToList(), ct);
             var subjectNames = await _repo.SubjectNamesAsync(schoolId, g.Subjects.Select(s => s.SubjectId).Distinct().ToList(), ct);
             var scaleNames = g.Scheme.GradeScaleId == null ? new() : await _repo.ScaleNamesAsync(schoolId, new[] { g.Scheme.GradeScaleId.Value }, ct);
             string Cls(long id) => classNames.GetValueOrDefault(id, $"Class #{id}");

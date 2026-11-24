@@ -40,6 +40,8 @@ namespace smss_api_db_layer.@interface
         /// <summary>The global admission type with that code (case-insensitive), or null.</summary>
         Task<LutAdmissionType?> GetAdmissionTypeByCodeAsync(string code, CancellationToken ct);
         Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct);
+        /// <summary>Can a student be enrolled in this section in this year? Is the section offered (Active offering) there, and is the roll number free (normalised: see RollKey)? Null only from test fakes.</summary>
+        Task<EnrollmentTargetCheck?> CheckEnrollmentTargetAsync(string schoolId, long academicYearId, long sectionId, string? rollNumber, CancellationToken ct);
         Task<bool> GenderExistsAsync(long id, CancellationToken ct);
         Task<bool> BloodGroupExistsAsync(long id, CancellationToken ct);
         Task<bool> StudentCategoryExistsAsync(long id, CancellationToken ct);
@@ -84,4 +86,7 @@ namespace smss_api_db_layer.@interface
         /// <summary>Forgets every pending / failed entity so a retry after a failed save starts from a clean context.</summary>
         void ClearTracking();
     }
+
+    /// <summary>The answer of <see cref="IAdmissionRepository.CheckEnrollmentTargetAsync"/>. RollTakenByStudentId is set when another enrolment of that section and year has the same normalised roll number.</summary>
+    public record EnrollmentTargetCheck(bool Offered, string SectionLabel, string YearName, string? RollTakenByStudentId);
 }

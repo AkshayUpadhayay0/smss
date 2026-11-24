@@ -76,7 +76,7 @@ namespace smss_api_service_layer.service
         private async Task<ScheduleSchemeDto> BuildAsync(string schoolId, long schemeId, string yearName, int activeId, CancellationToken ct)
         {
             var g = (await _repo.LoadGraphAsync(schoolId, schemeId, false, ct))!;
-            var names = await _repo.ClassNamesAsync(schoolId, g.Classes.Select(c => c.ClassId).ToList(), activeId, ct);
+            var names = await _repo.ClassNamesAnyStatusAsync(schoolId, g.Classes.Select(c => c.ClassId).ToList(), ct);
             string Cls(long id) => names.GetValueOrDefault(id, $"Class #{id}");
             return new ScheduleSchemeDto
             {

@@ -15,6 +15,8 @@ namespace smss_api_db_layer.@interface
         Task<int?> GetActiveStatusIdAsync(CancellationToken ct);
 
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
+        /// <summary>Sets next_class_id from -> to for each pair of class NAMES of the school, only where it is still NULL and no other class already moves up to the target. Returns how many were set.</summary>
+        Task<int> LinkNextClassesAsync(string schoolId, IReadOnlyList<(string From, string To)> pairs, CancellationToken ct);
         Task AddRangeAsync<T>(IEnumerable<T> entities, CancellationToken ct) where T : class;
         Task SaveChangesAsync(CancellationToken ct);
         /// <summary>Offers these classes and all their sections in the school's current, open academic year (no current year: nothing happens).</summary>

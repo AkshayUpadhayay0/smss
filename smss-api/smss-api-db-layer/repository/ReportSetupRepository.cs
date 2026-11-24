@@ -69,6 +69,12 @@ namespace smss_api_db_layer.repository
             return await _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && ids.Contains(c.ClassId) && c.StatusId == activeStatusId).ToDictionaryAsync(c => c.ClassId, c => c.ClassName, ct);
         }
 
+        public async Task<Dictionary<long, string>> ClassNamesAnyStatusAsync(string schoolId, IReadOnlyCollection<long> classIds, CancellationToken ct)
+        {
+            var ids = classIds.ToArray();
+            return await _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && ids.Contains(c.ClassId)).ToDictionaryAsync(c => c.ClassId, c => c.ClassName, ct);
+        }
+
         public async Task<List<MappedSubject>> MappedSubjectsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> classIds, int activeStatusId, CancellationToken ct)
         {
             var ids = classIds.ToArray();

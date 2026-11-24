@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
+using smss_api_db_layer.helper;
 using smss_api_db_layer.@interface;
 
 namespace smss_api_db_layer.repository
@@ -72,6 +73,24 @@ namespace smss_api_db_layer.repository
 
         public Task<bool> SectionBelongsToSchoolAsync(string schoolId, long sectionId, CancellationToken ct) =>
             _db.Sections.AnyAsync(s => s.SchoolId == schoolId && s.SectionId == sectionId, ct);
+
+        public async Task<EnrollmentTargetCheck?> CheckEnrollmentTargetAsync(string schoolId, long academicYearId, long sectionId, string? rollNumber, CancellationToken ct)
+        {
+            var activeId = await _db.LutStatus.AsNoTracking().Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);
+            var offered = await _db.AcademicYearSections.AsNoTracking().AnyAsync(o => o.SchoolId == schoolId && o.AcademicYearId == academicYearId && o.SectionId == sectionId && o.StatusId == activeId, ct);
+            var label = await (from s in _db.Sections.AsNoTracking() join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
+                               where s.SchoolId == schoolId && s.SectionId == sectionId select c.ClassName + " - " + s.SectionName).FirstOrDefaultAsync(ct) ?? "the selected section";
+            var year = await _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId).Select(y => y.YearName).FirstOrDefaultAsync(ct) ?? "the selected year";
+            string? takenBy = null;
+            if (RollKey.Of(rollNumber) is { } key)
+            {
+                // every enrolment of the section and year, whatever its status: the database index does not look at the status either
+                var rolls = await _db.StudentEnrollments.AsNoTracking().Where(e => e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == sectionId && e.RollNumber != null)
+                    .Select(e => new { e.StudentId, e.RollNumber }).ToListAsync(ct);
+                takenBy = rolls.FirstOrDefault(r => RollKey.Of(r.RollNumber) == key)?.StudentId;
+            }
+            return new EnrollmentTargetCheck(offered, label, year, takenBy);
+        }
 
         public Task<bool> GenderExistsAsync(long id, CancellationToken ct) => _db.LutGenders.AnyAsync(g => g.GenderId == id, ct);
         public Task<bool> BloodGroupExistsAsync(long id, CancellationToken ct) => _db.LutBloodGroups.AnyAsync(g => g.BloodGroupId == id, ct);

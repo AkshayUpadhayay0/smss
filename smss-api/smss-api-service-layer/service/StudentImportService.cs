@@ -9,6 +9,7 @@ using Npgsql;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
 using smss_api_service_layer.dto;
+using smss_api_db_layer.helper;
 using smss_api_service_layer.helper;
 using smss_api_service_layer.@interface;
 
@@ -216,6 +217,11 @@ namespace smss_api_service_layer.service
                     {
                         _logger.LogWarning(ex, "Generated student id collided during an import for school {SchoolId}; retrying.", schoolId);   // tx rolls back on dispose
                     }
+                    catch (DbUpdateException ex) when (ConstraintOf(ex) == EnrollmentTargetRules.RollConstraint)
+                    {
+                        _logger.LogWarning(ex, "A roll number was taken during an import for school {SchoolId}.", schoolId);
+                        return Result<ImportResultDto>(409, "A roll number in the file was taken by another student while importing. Nothing was imported. Upload the file again.", null);
+                    }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == AdmissionNumberConstraint)
                     {
                         _logger.LogWarning(ex, "An admission number was taken during an import for school {SchoolId}.", schoolId);
@@ -294,13 +300,18 @@ namespace smss_api_service_layer.service
             var existing = await _repo.ExistingAdmissionNumbersAsync(schoolId, v.Rows.Where(r => r.Adm != null).Select(r => r.Adm!).Distinct().ToList(), ct);
             foreach (var r in v.Rows.Where(r => r.Adm != null && existing.Contains(r.Adm!))) r.Errors.Add($"Admission number {r.Adm} already belongs to a student in this school.");
 
-            // ---- roll numbers: unique within a section (this year)
-            foreach (var grp in v.Rows.Where(r => r.Roll != null && r.SectionId != 0).GroupBy(r => (r.SectionId, Roll: r.Roll!.ToLowerInvariant())).Where(g => g.Count() > 1))
+            // ---- the year must offer the section (the database refuses an enrolment in a section the year does not offer)
+            var offered = await _repo.OfferedSectionIdsAsync(schoolId, year.AcademicYearId, ct);
+            foreach (var r in v.Rows.Where(r => r.SectionId != 0 && !offered.Contains(r.SectionId)))
+                r.Errors.Add(EnrollmentTargetRules.NotOffered($"{r.ClassName} {r.SectionName}", year.YearName));
+
+            // ---- roll numbers: unique within a section (this year), compared the way the database does (no spaces, no capitals, no leading zeros)
+            foreach (var grp in v.Rows.Where(r => r.Roll != null && r.SectionId != 0).GroupBy(r => (r.SectionId, Roll: RollKey.Of(r.Roll)!)).Where(g => g.Count() > 1))
                 foreach (var r in grp) r.Errors.Add($"Roll number {r.Roll} is used more than once in {r.ClassName} {r.SectionName} (rows {RowList(grp.Select(x => x.Raw.Row))}).");
             var rollsInDb = await _repo.ExistingRollsAsync(schoolId, year.AcademicYearId, v.Rows.Where(r => r.SectionId != 0).Select(r => r.SectionId).Distinct().ToList(), ct);
-            var rollSet = rollsInDb.Select(x => (x.SectionId, x.RollNumber.ToLowerInvariant())).ToHashSet();
-            foreach (var r in v.Rows.Where(r => r.Roll != null && r.SectionId != 0 && rollSet.Contains((r.SectionId, r.Roll!.ToLowerInvariant()))))
-                r.Errors.Add($"Roll number {r.Roll} is already taken in {r.ClassName} {r.SectionName}.");
+            var rollSet = rollsInDb.Where(x => RollKey.Of(x.RollNumber) != null).Select(x => (x.SectionId, RollKey.Of(x.RollNumber)!)).ToHashSet();
+            foreach (var r in v.Rows.Where(r => r.Roll != null && r.SectionId != 0 && rollSet.Contains((r.SectionId, RollKey.Of(r.Roll)!))))
+                r.Errors.Add(EnrollmentTargetRules.RollTaken(r.Roll, $"{r.ClassName} {r.SectionName}", year.YearName));
 
             // ---- possible duplicate person: same name + date of birth + a guardian phone (warning only)
             var dobs = v.Rows.Where(r => r.Dob != null).Select(r => r.Dob!.Value).Distinct().ToList();

@@ -16,6 +16,9 @@ namespace smss_api_service_layer.dto
         [Range(1, short.MaxValue, ErrorMessage = "Sequence order must be a positive whole number (1 to 32767).")]
         public int? SequenceOrder { get; set; }
 
+        /// <summary>The class students normally move to; null = the last class (its students pass out). The whole request replaces the stored value, so send it on every update.</summary>
+        public long? NextClassId { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
             if (ClassName != null && string.IsNullOrWhiteSpace(ClassName))
@@ -33,6 +36,8 @@ namespace smss_api_service_layer.dto
         public string ClassName { get; set; } = null!;
         public string? ClassCode { get; set; }
         public int SequenceOrder { get; set; }
+        public long? NextClassId { get; set; }
+        public string? NextClassName { get; set; }
         public int? StatusId { get; set; }
         public string? StatusName { get; set; }   // "Active" / "Inactive"
         public DateTime CreatedAt { get; set; }

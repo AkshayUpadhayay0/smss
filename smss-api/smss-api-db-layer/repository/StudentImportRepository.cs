@@ -48,6 +48,12 @@ namespace smss_api_db_layer.repository
             return (await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && list.Contains(s.AdmissionNumber)).Select(s => s.AdmissionNumber).ToListAsync(ct)).ToHashSet();
         }
 
+        public async Task<HashSet<long>> OfferedSectionIdsAsync(string schoolId, long academicYearId, CancellationToken ct)
+        {
+            var activeId = await _db.LutStatus.AsNoTracking().Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);
+            return (await _db.AcademicYearSections.AsNoTracking().Where(o => o.SchoolId == schoolId && o.AcademicYearId == academicYearId && o.StatusId == activeId).Select(o => o.SectionId).ToListAsync(ct)).ToHashSet();
+        }
+
         public async Task<List<ImportRollRow>> ExistingRollsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> sectionIds, CancellationToken ct)
         {
             if (sectionIds.Count == 0) return new();

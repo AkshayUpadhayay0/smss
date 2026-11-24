@@ -19,10 +19,15 @@ namespace smss_api_db_layer.@interface
         Task<IDbContextTransaction> BeginTransactionAsync();
         /// <summary>Offers the section in the school's current, open year when its class is offered there.</summary>
         Task OfferInCurrentYearAsync(string schoolId, long sectionId);
-        /// <summary>Moving a section to another class: its year offerings are set aside (temp table) so the section row can change class...</summary>
-        Task DetachOfferingsAsync(string schoolId, long sectionId);
-        /// <summary>...and put back under the new class, for every year in which that class is offered (capacity and status kept).</summary>
-        Task ReattachOfferingsAsync(string schoolId, long sectionId, long newClassId);
+        /// <summary>What still uses the section in an OPEN academic year (empty = safe to deactivate).</summary>
+        Task<List<string>> GetUseAsync(string schoolId, long sectionId);
+        /// <summary>Everything that has ever referenced the section in ANY year (empty = never used, so it may move to another class).</summary>
+        Task<List<string>> GetHistoryAsync(string schoolId, long sectionId);
+        /// <summary>Names of the years in which the section has an offering row but <paramref name="newClassId"/> is not offered (a move there would break the offering).</summary>
+        Task<List<string>> GetYearsWhereClassNotOfferedAsync(string schoolId, long sectionId, long newClassId);
+        /// <summary>Moving an UNUSED section: points its offering rows at the new class IN PLACE (capacity and status kept). No offering row is ever deleted.
+        /// Must run in the same transaction, before the section's own class_id changes (the key between the two is deferred).</summary>
+        Task MoveOfferingsAsync(string schoolId, long sectionId, long newClassId);
         Task<int> SaveChangesAsync();
     }
 }

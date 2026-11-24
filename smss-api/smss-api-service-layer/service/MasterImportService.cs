@@ -145,6 +145,11 @@ namespace smss_api_service_layer.service
                 }
                 await _repo.AddRangeAsync(sections, ct);
                 await _repo.SaveChangesAsync(ct);
+                // the catalogue chain Nursery -> LKG -> UKG -> Class 1 ... -> Class 12: only the NULL links of the classes picked here are filled, nothing is overwritten
+                var picked = classPick.Select(c => c.Name).ToHashSet();
+                var chain = MasterImportCatalog.Classes.OrderBy(c => c.SequenceOrder).Select(c => c.Name).ToList();
+                var pairs = Enumerable.Range(0, Math.Max(0, chain.Count - 1)).Select(i => (From: chain[i], To: chain[i + 1])).Where(p => picked.Contains(p.From) || picked.Contains(p.To)).ToList();
+                await _repo.LinkNextClassesAsync(schoolId, pairs, ct);
                 // what was imported (and the classes it picked that already existed) is offered in the current year, so the setup checklist and dashboards see it
                 await _repo.OfferInCurrentYearAsync(schoolId, touchedClassIds.ToArray(), ct);
                 await tx.CommitAsync(ct);

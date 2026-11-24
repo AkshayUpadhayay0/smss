@@ -51,6 +51,27 @@ namespace smss_api_db_layer.repository
 
         public async Task AddAsync(TbClasses entity) => await _db.Classes.AddAsync(entity);
 
+        public Task<List<string>> GetUseAsync(string schoolId, long classId) => MasterUseQueries.ClassAsync(_db, schoolId, classId);
+
+        public Task<string?> GetClassPointingToAsync(string schoolId, long targetClassId, long? exceptClassId = null) =>
+            _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId && c.NextClassId == targetClassId && (exceptClassId == null || c.ClassId != exceptClassId))
+                .Select(c => c.ClassName).FirstOrDefaultAsync();
+
+        public async Task<bool> NextWouldLoopAsync(string schoolId, long classId, long nextClassId)
+        {
+            var next = await _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId).ToDictionaryAsync(c => c.ClassId, c => c.NextClassId);
+            long? cur = nextClassId;
+            for (var hops = 0; cur != null && hops <= next.Count; hops++)
+            {
+                if (cur == classId) return true;
+                cur = next.GetValueOrDefault(cur.Value);
+            }
+            return false;
+        }
+
+        public Task<Dictionary<long, string>> GetClassNamesAsync(string schoolId) =>
+            _db.Classes.AsNoTracking().Where(c => c.SchoolId == schoolId).ToDictionaryAsync(c => c.ClassId, c => c.ClassName);
+
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }
