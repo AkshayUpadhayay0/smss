@@ -1,4 +1,5 @@
 <app-welcome-banner [title]="welcomeTitle()" [subtitle]="welcomeSub()" [badge]="yearBadge()" />
+<app-pending-promotion-tile />
 
 @if (loading() && !data()) {
   <div class="skeleton-wrap" role="status" aria-label="Loading your dashboard" data-state="loading">

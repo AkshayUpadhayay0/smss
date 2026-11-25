@@ -8,6 +8,7 @@ import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
+import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
 import { PrincipalDashboard } from '../../models/principal-dashboard.model';
 import { PrincipalDashboardComponent } from './principal-dashboard.component';
 
@@ -38,6 +39,10 @@ function principalDashboard(over: Partial<PrincipalDashboard> = {}): PrincipalDa
   };
 }
 
+/** The Pending promotion tile asks for its own count (it has its own spec): here it is only a marker, so this page is tested on its own. */
+@Component({ selector: 'app-pending-promotion-tile', template: '', changeDetection: ChangeDetectionStrategy.OnPush })
+class StubPendingTileComponent {}
+
 describe('PrincipalDashboardComponent', () => {
   let fixture: ComponentFixture<PrincipalDashboardComponent>;
   let http: HttpTestingController;
@@ -50,7 +55,7 @@ describe('PrincipalDashboardComponent', () => {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'S', roles: ['Principal'] }) });
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
-    TestBed.overrideComponent(PrincipalDashboardComponent, { remove: { imports: [ChartHostComponent] }, add: { imports: [StubChartComponent] } });
+    TestBed.overrideComponent(PrincipalDashboardComponent, { remove: { imports: [ChartHostComponent, PendingPromotionTileComponent] }, add: { imports: [StubChartComponent, StubPendingTileComponent] } });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PrincipalDashboardComponent);
     fixture.detectChanges();
@@ -62,6 +67,11 @@ describe('PrincipalDashboardComponent', () => {
     fixture.detectChanges();
   }
   afterEach(() => { http.verify(); clearSessions(); });
+
+  it('carries the Pending promotion tile (it fetches its own count)', () => {
+    open(principalDashboard());
+    expect(fixture.nativeElement.querySelector('app-pending-promotion-tile')).not.toBeNull();
+  });
 
   it('makes one GET request and shows the six headline numbers', () => {
     open(principalDashboard());

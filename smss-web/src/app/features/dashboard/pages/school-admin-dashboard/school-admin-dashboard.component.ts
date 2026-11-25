@@ -10,6 +10,7 @@ import { AcademicYear } from '../../../school-setup/models/academic-year.model';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
+import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
 import { SchoolAdminDashboard } from '../../models/school-admin-dashboard.model';
 import { SchoolAdminDashboardService } from '../../services/school-admin-dashboard.service';
 import { attendanceView, monthLabel, employeeLines, incomeExpenseOptions, isEmptyDashboard, moneyCards, paidDonutOptions, studentsAndFeesCards } from '../../utils/school-admin-dashboard-format';
@@ -21,7 +22,7 @@ import { readChartColors } from '../../utils/super-admin-charts';
  */
 @Component({
   selector: 'app-school-admin-dashboard',
-  imports: [RouterLink, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, SelectComponent, ChartHostComponent, WelcomeBannerComponent],
+  imports: [RouterLink, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, SelectComponent, ChartHostComponent, WelcomeBannerComponent, PendingPromotionTileComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-admin-dashboard.component.scss',
   templateUrl: './school-admin-dashboard.component.html',

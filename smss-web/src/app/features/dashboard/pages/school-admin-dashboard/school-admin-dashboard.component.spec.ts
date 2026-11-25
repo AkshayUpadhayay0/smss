@@ -7,6 +7,7 @@ import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
+import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
 import { SchoolAdminDashboard } from '../../models/school-admin-dashboard.model';
 import { dashboard } from '../../utils/school-admin-dashboard.testing';
 import { SchoolAdminDashboardComponent } from './school-admin-dashboard.component';
@@ -21,6 +22,10 @@ class StubChartComponent {
   readonly options = input.required<ApexOptions>();
   readonly label = input('Chart');
 }
+
+/** The Pending promotion tile asks for its own count (it has its own spec): here it is only a marker, so this page is tested on its own. */
+@Component({ selector: 'app-pending-promotion-tile', template: '', changeDetection: ChangeDetectionStrategy.OnPush })
+class StubPendingTileComponent {}
 
 describe('SchoolAdminDashboardComponent', () => {
   let fixture: ComponentFixture<SchoolAdminDashboardComponent>;
@@ -41,7 +46,7 @@ describe('SchoolAdminDashboardComponent', () => {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'], schoolName: 'ZZ Demo School' }) });
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
-    TestBed.overrideComponent(SchoolAdminDashboardComponent, { remove: { imports: [ChartHostComponent] }, add: { imports: [StubChartComponent] } });
+    TestBed.overrideComponent(SchoolAdminDashboardComponent, { remove: { imports: [ChartHostComponent, PendingPromotionTileComponent] }, add: { imports: [StubChartComponent, StubPendingTileComponent] } });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SchoolAdminDashboardComponent);
     fixture.detectChanges();
@@ -56,6 +61,13 @@ describe('SchoolAdminDashboardComponent', () => {
   afterEach(() => {
     http.verify();
     clearSessions();
+  });
+
+  it('carries the Pending promotion tile (it fetches its own count)', () => {
+    open();
+    http.expectOne(URL).flush(env(dashboard()));
+    fixture.detectChanges();
+    expect(el().querySelector('app-pending-promotion-tile')).not.toBeNull();
   });
 
   it('asks the one endpoint, with no school id anywhere in the request', () => {

@@ -116,6 +116,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Fee Status', route: '/fee-status' },
     ],
   },
+  { label: 'Promotion', icon: 'arrow-up', route: '/promotion' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   { label: 'My Profile', icon: 'user', route: '/my-student-profile' },
 

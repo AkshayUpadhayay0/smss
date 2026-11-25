@@ -13,7 +13,9 @@ const ROLE_SETS: Record<string, string[]> = {
 const INVENTORY_ROUTES = ['/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
 const isInventory = (route: string) => route === '/inventory' || route.startsWith('/inventory/');
 /** Pages added after Inventory, on purpose, by other modules. The frozen golden predates them, so they are set aside here (never added to the golden). */
-const ADDED_AFTER_INVENTORY = ['/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/schools/:schoolId/whatsapp'];
+const ADDED_AFTER_INVENTORY = ['/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/schools/:schoolId/whatsapp'];
+/** Top-level menu items that are not part of the frozen golden: Inventory itself and the later flat Promotion item (School Admin and Principal). */
+const AFTER_INVENTORY_ITEMS = ['Inventory', 'Promotion'];
 const shape = (items: ReturnType<typeof visibleNav>) => items.map((i) => ({ label: i.label, route: i.route ?? null, children: i.children?.filter((c) => !ADDED_AFTER_INVENTORY.includes(c.route ?? '')).map((c) => `${c.label}|${c.route}`) ?? null }));
 
 describe('Inventory leaves every other role exactly as it was', () => {
@@ -27,8 +29,8 @@ describe('Inventory leaves every other role exactly as it was', () => {
       const golden = PRE_INVENTORY_GOLDEN[name];
 
       it('sees the same menu, apart from the new Inventory group', () => {
-        expect(shape(visibleNav(roles, true).filter((i) => i.label !== 'Inventory'))).toEqual(golden.menu);
-        expect(visibleNav(roles, false).filter((i) => i.label !== 'Inventory').map((i) => i.label)).toEqual(golden.menuNoEmployeeRecord);
+        expect(shape(visibleNav(roles, true).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)))).toEqual(golden.menu);
+        expect(visibleNav(roles, false).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)).map((i) => i.label)).toEqual(golden.menuNoEmployeeRecord);
       });
 
       it('can open exactly the same routes, apart from the /inventory ones', () => {

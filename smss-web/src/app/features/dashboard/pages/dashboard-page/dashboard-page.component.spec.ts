@@ -13,6 +13,8 @@ function open(roles: string[]) {
   const http = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(DashboardPageComponent);
   fixture.detectChanges();
+  // the School Admin and Principal dashboards carry the Pending promotion tile, which asks for its own count (it has its own spec): answer it so these tests stay about the page
+  http.match((r) => r.url === `${environment.apiUrl}/api/Promotion/pending`).forEach((r) => r.flush({ status: true, statusCode: 200, message: 'ok', data: { hasEarlierYear: false, total: 0, blocked: 0, rows: [] } }));
   return { fixture, http };
 }
 

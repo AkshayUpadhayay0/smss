@@ -1,4 +1,5 @@
 <app-page-header title="Dashboard" [subtitle]="subtitle()" icon="layout-dashboard" [breadcrumbs]="breadcrumbs" />
+<app-pending-promotion-tile />
 
 @if (loading() && !data()) {
   <app-card><p class="muted center" role="status">Loading your dashboard…</p></app-card>

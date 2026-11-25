@@ -1,3 +1,4 @@
+import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -23,7 +24,7 @@ import { readChartColors } from '../../utils/super-admin-charts';
  */
 @Component({
   selector: 'app-principal-dashboard',
-  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ChartHostComponent, DashboardYearBarComponent],
+  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ChartHostComponent, DashboardYearBarComponent, PendingPromotionTileComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../role-dashboard.scss',
   templateUrl: './principal-dashboard.component.html',
