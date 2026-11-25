@@ -154,7 +154,7 @@ namespace smss_api_tests
         public async Task The_School_Admin_Accountant_and_Principal_read_the_rule_only_the_School_Admin_changes_it_and_the_School_Admin_and_Accountant_preview(string role)
         {
             var svc = Fake.Of<ILateFeeService>();
-            var c = Fake.WithUser(new LateFeeController(svc), Fake.User("S", 5, role));
+            var c = Fake.WithUser(new LateFeeController(svc, Fake.Of<ILateFeeReportService>()), Fake.User("S", 5, role));
             var read = Fake.Code(await c.GetRule(default));
             var write = Fake.Code(await c.SaveRule(Save(), default));
             var preview = Fake.Code(await c.Preview("ST1", new LateFeePreviewRequest { Amount = 100 }, default));

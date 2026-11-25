@@ -24,12 +24,12 @@ namespace smss_api_tests
         private static readonly DateOnly DueDate = new(2026, 9, 1);
         private static int DaysLate => SchoolClock.Today().DayNumber - DueDate.DayNumber;
 
-        private static RecordPaymentRequest Pay(long due, decimal amount, bool apply = true, string? note = null, long? tax = null, long? concession = null, string? reason = null) => new()
+        internal static RecordPaymentRequest Pay(long due, decimal amount, bool apply = true, string? note = null, long? tax = null, long? concession = null, string? reason = null) => new()
         {
             Amount = amount, PaymentMode = "Cash", Allocations = new() { new() { FeeDueId = due, Amount = amount } }, ApplyLateFee = apply, LateFeeNote = note, TaxTypeId = tax, ConcessionId = concession, ConcessionReason = reason,
         };
 
-        private static async Task<FeeReceiptDto> Rec(TaxDb db, string school, string student, RecordPaymentRequest r)
+        internal static async Task<FeeReceiptDto> Rec(TaxDb db, string school, string student, RecordPaymentRequest r)
         {
             var x = await db.Payments().RecordPaymentAsync(school, student, TaxDb.UserA, r, default);
             Assert.True(x.Status, x.Message);
@@ -37,7 +37,7 @@ namespace smss_api_tests
         }
 
         /// <summary>A school with a student owing Tuition 1000 (due 1 Sep, flagged for the late fee) and Bus 500 (not flagged).</summary>
-        private static async Task<(P.W W, string Student, long Tui, long Bus)> World(TaxDb db, string id, string type = "FLAT", decimal amount = 50, decimal? percent = null, int grace = 5, decimal? cap = null, bool tax = false)
+        internal static async Task<(P.W W, string Student, long Tui, long Bus)> World(TaxDb db, string id, string type = "FLAT", decimal amount = 50, decimal? percent = null, int grace = 5, decimal? cap = null, bool tax = false)
         {
             var (w, s, tui, bus) = L.Student(db, id);
             var saved = await L.Svc(db).SaveRuleAsync(w.School, TaxDb.UserA, L.Save(type: type, amount: type == "PERCENT" ? null : amount, percent: percent, grace: grace, cap: cap, tax: tax, types: new[] { L.Type(db, w.School, "TUI") }), default);

@@ -7,6 +7,8 @@ namespace smss_api_service_layer.dto
         public const string Fees = "fees";
         public const string CollectedToday = "collectedToday";
         public const string Payments = "payments";
+        /// <summary>The late fee and total received tiles (they read the payments' late fee columns).</summary>
+        public const string LateFee = "lateFee";
     }
 
     public class AccountantDashboardStatsDto
@@ -15,6 +17,12 @@ namespace smss_api_service_layer.dto
         public decimal? CollectedToday { get; set; }
         /// <summary>CASH received in the current India calendar month, summed over every year's installments (the last bar of the chart): all-years cash, not a year figure.</summary>
         public decimal? CollectedThisMonth { get; set; }
+        /// <summary>LATE FEE collected today / this month (India dates, all years, non-voided payments), without the tax on it. A separate figure: "Cash collected" above is fee only and does not include it.</summary>
+        public decimal? LateFeeToday { get; set; }
+        public decimal? LateFeeThisMonth { get; set; }
+        /// <summary>TOTAL RECEIVED today / this month: what the non-voided receipts add up to (fee + late fee + tax), so the cash drawer reconciles against the receipts.</summary>
+        public decimal? TotalReceivedToday { get; set; }
+        public decimal? TotalReceivedThisMonth { get; set; }
         public decimal? Outstanding { get; set; }
         public int? OverdueCount { get; set; }
         public decimal? OverdueAmount { get; set; }

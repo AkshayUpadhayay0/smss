@@ -19,10 +19,11 @@ namespace smss_api_service_layer.service
         private readonly ILogger<SchoolAdminDashboardService> _logger;
         private readonly IStudentDocumentService? _documents;
         private readonly IGuardianService? _guardians;
+        private readonly ILateFeeReportRepository? _lateFees;
 
-        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger, IStudentDocumentService? documents = null, IGuardianService? guardians = null)
+        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger, IStudentDocumentService? documents = null, IGuardianService? guardians = null, ILateFeeReportRepository? lateFees = null)
         {
-            _repo = repo; _attendance = attendance; _logger = logger; _documents = documents; _guardians = guardians;
+            _repo = repo; _attendance = attendance; _logger = logger; _documents = documents; _guardians = guardians; _lateFees = lateFees;
         }
 
         public async Task<ApiResponse<SchoolAdminDashboardDto>> GetAsync(string? schoolId, CancellationToken ct, DateOnly? todayOverride = null, long? academicYearId = null)
@@ -67,7 +68,12 @@ namespace smss_api_service_layer.service
                         var monthEndExclusive = SchoolClock.StartOfDayUtc(monthEnd.AddDays(1));
                         var upTo = today >= monthStart && today <= monthEnd ? SchoolClock.StartOfDayUtc(today.AddDays(1)) : monthEndExclusive;
                         dto.FeeCollectedThisMonth = await _repo.CollectedAsync(schoolId, year.AcademicYearId, SchoolClock.StartOfDayUtc(monthStart), upTo, ct);
-                        dto.IncomeThisMonth = dto.FeeCollectedThisMonth;   // no other-income table exists: income = fee collection only
+                        dto.IncomeThisMonth = dto.FeeCollectedThisMonth;   // no other-income table exists: income = fee collection only (a late fee is shown on its own tile, never added here)
+                        if (_lateFees != null)
+                        {
+                            try { dto.LateFeeCollectedThisMonth = await _lateFees.GetLateFeeCollectedAsync(schoolId, year.AcademicYearId, SchoolClock.StartOfDayUtc(monthStart), upTo, ct); }
+                            catch (Exception ex) { _logger.LogWarning(ex, "School Admin dashboard: could not read the late fee collected this month"); dto.LateFeeCollectedThisMonth = null; }
+                        }
                         dto.IncomeThisSession = await _repo.CollectedAsync(schoolId, year.AcademicYearId, null, null, ct);
                     }
                 }

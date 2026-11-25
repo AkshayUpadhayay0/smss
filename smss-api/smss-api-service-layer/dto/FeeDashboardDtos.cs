@@ -5,7 +5,12 @@ namespace smss_api_service_layer.dto
         /// <summary>First day of the month, e.g. 2026-10-01.</summary>
         public DateOnly Month { get; set; }
         public string Label { get; set; } = null!;
+        /// <summary>FEE collected (cash fee: allocations minus the concession). Unchanged: it never includes a late fee or tax.</summary>
         public decimal Amount { get; set; }
+        /// <summary>Late fee collected in the month on installments of the year (without the tax on it). Null where the view does not carry it (the Accountant trend).</summary>
+        public decimal? LateFee { get; set; }
+        /// <summary>Total received in the month = fee + late fee + tax of the payments that paid installments of the year (voided payments excluded). A payment that paid two years counts its tax in both year views, as the tax report does. Null where the view does not carry it.</summary>
+        public decimal? TotalReceived { get; set; }
     }
 
     public class FeeTaxBreakdownDto

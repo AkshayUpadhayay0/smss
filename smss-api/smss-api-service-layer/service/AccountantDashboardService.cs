@@ -19,10 +19,11 @@ namespace smss_api_service_layer.service
         private readonly IAccountantDashboardRepository _repo;
         private readonly ISchoolDashboardRepository _years;
         private readonly ILogger<AccountantDashboardService> _logger;
+        private readonly ILateFeeReportRepository? _lateFees;
 
-        public AccountantDashboardService(IFeeReportService fees, IAccountantDashboardRepository repo, ISchoolDashboardRepository years, ILogger<AccountantDashboardService> logger)
+        public AccountantDashboardService(IFeeReportService fees, IAccountantDashboardRepository repo, ISchoolDashboardRepository years, ILogger<AccountantDashboardService> logger, ILateFeeReportRepository? lateFees = null)
         {
-            _fees = fees; _repo = repo; _years = years; _logger = logger;
+            _fees = fees; _repo = repo; _years = years; _logger = logger; _lateFees = lateFees;
         }
 
         public async Task<ApiResponse<AccountantDashboardDto>> GetSummaryAsync(string? schoolId, long? academicYearId, CancellationToken ct)
@@ -40,6 +41,20 @@ namespace smss_api_service_layer.service
                     dto.Stats.CollectedToday = await _repo.GetCollectedBetweenAsync(schoolId, SchoolClock.StartOfDayUtc(today), SchoolClock.StartOfDayUtc(today.AddDays(1)), ct);
                 }
                 catch (Exception ex) { Down(AccountantDashboardParts.CollectedToday, dto, ex); }
+
+                // Late fee collected and Total received (today and this month, India dates, all years, voided payments excluded). Separate figures: the "Cash collected" tiles stay fee only.
+                if (_lateFees != null)
+                {
+                    try
+                    {
+                        var monthStart = new DateOnly(today.Year, today.Month, 1);
+                        var day = await _lateFees.GetReceivedBetweenAsync(schoolId, SchoolClock.StartOfDayUtc(today), SchoolClock.StartOfDayUtc(today.AddDays(1)), ct);
+                        var month = await _lateFees.GetReceivedBetweenAsync(schoolId, SchoolClock.StartOfDayUtc(monthStart), SchoolClock.StartOfDayUtc(monthStart.AddMonths(1)), ct);
+                        dto.Stats.LateFeeToday = day.LateFeeAmount; dto.Stats.TotalReceivedToday = day.TotalAmount;
+                        dto.Stats.LateFeeThisMonth = month.LateFeeAmount; dto.Stats.TotalReceivedThisMonth = month.TotalAmount;
+                    }
+                    catch (Exception ex) { Down(AccountantDashboardParts.LateFee, dto, ex); }
+                }
 
                 try
                 {

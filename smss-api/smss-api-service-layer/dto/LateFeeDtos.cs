@@ -93,4 +93,58 @@ namespace smss_api_service_layer.dto
         public decimal TaxAmount { get; set; }
         public string? Note { get; set; }
     }
+
+    public class LateFeeChargedItemDto
+    {
+        public long PaymentId { get; set; }
+        public string ReceiptNumber { get; set; } = null!;
+        public DateTime PaymentDate { get; set; }
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string? ClassName { get; set; }
+        public string FeeType { get; set; } = null!;
+        public DateOnly DueDate { get; set; }
+        public int DaysLate { get; set; }
+        /// <summary>The days beyond the grace days: the ones that were charged.</summary>
+        public int DaysCharged { get; set; }
+        /// <summary>What the payment applied to the due.</summary>
+        public decimal BaseAmount { get; set; }
+        /// <summary>The late fee this payment charged on the due (without tax).</summary>
+        public decimal Amount { get; set; }
+    }
+
+    public class LateFeeWaivedItemDto
+    {
+        public long PaymentId { get; set; }
+        public string ReceiptNumber { get; set; } = null!;
+        public DateTime PaymentDate { get; set; }
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string? ClassName { get; set; }
+        /// <summary>What the late fee would have been.</summary>
+        public decimal WouldHaveBeen { get; set; }
+        public string? WaivedBy { get; set; }
+        public string? Note { get; set; }
+    }
+
+    /// <summary>The Late fee report for a payment date range (India days): charged late fees per payment and due, and, separately, the waived ones. Voided payments are in neither.</summary>
+    public class LateFeeReportDto
+    {
+        public DateOnly From { get; set; }
+        public DateOnly To { get; set; }
+        public long? ClassId { get; set; }
+        /// <summary>"charged" or "waived": which list <see cref="Charged"/> / <see cref="Waived"/> holds.</summary>
+        public string View { get; set; } = "charged";
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        /// <summary>Rows in the viewed list over the whole range (not only this page).</summary>
+        public int TotalItems { get; set; }
+        /// <summary>Always both, whichever list is viewed. The charged amount excludes the tax on the late fee (that stays in the tax report).</summary>
+        public int ChargedCount { get; set; }
+        public decimal ChargedAmount { get; set; }
+        public int WaivedCount { get; set; }
+        public decimal WaivedAmount { get; set; }
+        public List<LateFeeChargedItemDto> Charged { get; set; } = new();
+        public List<LateFeeWaivedItemDto> Waived { get; set; } = new();
+    }
 }

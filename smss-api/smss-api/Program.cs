@@ -80,6 +80,8 @@ builder.Services.AddScoped<IReportActivityAreaService, ReportActivityAreaService
 builder.Services.AddScoped<IReportScheduleService, ReportScheduleService>();
 builder.Services.AddScoped<IFeeSectionStatusService, FeeSectionStatusService>();
 builder.Services.AddScoped<ILateFeeRepository, LateFeeRepository>();
+builder.Services.AddScoped<ILateFeeReportRepository, LateFeeReportRepository>();
+builder.Services.AddScoped<ILateFeeReportService, LateFeeReportService>();
 builder.Services.AddScoped<ILateFeeService, LateFeeService>();
 builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();

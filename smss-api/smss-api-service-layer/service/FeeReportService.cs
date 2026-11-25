@@ -14,9 +14,11 @@ namespace smss_api_service_layer.service
         private readonly IFeeReportRepository _repo;
         private readonly IStudentRepository _students;
         private readonly ILogger<FeeReportService> _logger;
+        private readonly ILateFeeReportRepository? _lateFees;
 
-        public FeeReportService(IFeeReportRepository repo, IStudentRepository students, ILogger<FeeReportService> logger)
+        public FeeReportService(IFeeReportRepository repo, IStudentRepository students, ILogger<FeeReportService> logger, ILateFeeReportRepository? lateFees = null)
         {
+            _lateFees = lateFees;
             _repo = repo;
             _students = students;
             _logger = logger;
@@ -44,6 +46,13 @@ namespace smss_api_service_layer.service
                 // two queries for the whole dashboard, whatever the number of students
                 var totals = await _repo.GetDashboardTotalsAsync(schoolId, academicYearId, classId, sectionId, today, today.AddDays(days), ct);
                 var months = await _repo.GetCollectionByMonthAsync(schoolId, academicYearId, classId, sectionId, ct);
+                // late fee and tax by month, for the Late fee and Total received columns; if they cannot be read the fee figures are still shown (the two columns stay empty, never 0)
+                List<LateFeeMonthRow>? lateMonths = null;
+                if (_lateFees != null)
+                {
+                    try { lateMonths = await _lateFees.GetByMonthAsync(schoolId, academicYearId, classId, sectionId, ct); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Fee dashboard: the late fee by month could not be read"); }
+                }
                 var taxRows = await _repo.GetTaxCollectedAsync(schoolId, academicYearId, classId, sectionId, ct);
                 var concessionRows = await _repo.GetConcessionGivenAsync(schoolId, academicYearId, classId, sectionId, ct);
                 var concessionGiven = concessionRows.Sum(c => c.Amount);
@@ -61,7 +70,7 @@ namespace smss_api_service_layer.service
                     TotalOutstanding = Math.Max(totals.TotalDue - totals.TotalPaid, 0),
                     OverdueAmount = totals.OverdueAmount, OverdueCount = totals.OverdueCount,
                     UpcomingAmount = totals.UpcomingAmount, UpcomingCount = totals.UpcomingCount,
-                    CollectionByMonth = FillMonths(year.StartDate, year.EndDate, months),
+                    CollectionByMonth = FillMonths(year.StartDate, year.EndDate, months, lateMonths),
                     CanManage = canManage
                 });
             }
@@ -69,15 +78,18 @@ namespace smss_api_service_layer.service
         }
 
         /// <summary>Every month of the academic year (zero where nothing was collected), plus any month outside it that did get a payment.</summary>
-        private static List<FeeCollectionMonthDto> FillMonths(DateOnly start, DateOnly end, List<CollectionMonth> collected)
+        private static List<FeeCollectionMonthDto> FillMonths(DateOnly start, DateOnly end, List<CollectionMonth> collected, List<LateFeeMonthRow>? late = null)
         {
             var byMonth = collected.ToDictionary(m => new DateOnly(m.Year, m.Month, 1), m => m.Amount);
-            var keys = new SortedSet<DateOnly>(byMonth.Keys);
+            var lateBy = (late ?? new()).ToDictionary(m => new DateOnly(m.Year, m.Month, 1));
+            var keys = new SortedSet<DateOnly>(byMonth.Keys.Concat(lateBy.Keys));
             for (var m = new DateOnly(start.Year, start.Month, 1); m <= end; m = m.AddMonths(1)) keys.Add(m);
             return keys.Select(k => new FeeCollectionMonthDto
             {
                 Month = k, Label = k.ToDateTime(TimeOnly.MinValue).ToString("MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
-                Amount = byMonth.GetValueOrDefault(k)
+                Amount = byMonth.GetValueOrDefault(k),
+                LateFee = late == null ? null : lateBy.GetValueOrDefault(k)?.LateFee ?? 0m,
+                TotalReceived = late == null ? null : byMonth.GetValueOrDefault(k) + (lateBy.GetValueOrDefault(k)?.LateFee ?? 0m) + (lateBy.GetValueOrDefault(k)?.Tax ?? 0m)
             }).ToList();
         }
 

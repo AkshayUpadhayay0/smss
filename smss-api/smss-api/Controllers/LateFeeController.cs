@@ -15,7 +15,18 @@ namespace smss_api.Controllers
     public class LateFeeController : ControllerBase
     {
         private readonly ILateFeeService _service;
-        public LateFeeController(ILateFeeService service) => _service = service;
+        private readonly ILateFeeReportService _report;
+        public LateFeeController(ILateFeeService service, ILateFeeReportService report) { _service = service; _report = report; }
+
+        // GET api/LateFee/report?from=2026-11-01&to=2026-11-30&classId=&view=charged|waived&page=1&pageSize=25
+        // The Late fee report: School Admin, Accountant and Principal (CanViewFees; the Principal is read-only like everywhere in the fee reports). Voided payments are never in it.
+        [HttpGet("report")]
+        public async Task<IActionResult> Report([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] long? classId, [FromQuery] string? view, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default)
+        {
+            if (!User.CanViewFees()) return this.Forbidden("You do not have access to the fee reports.");
+            var response = await _report.GetAsync(User.GetSchoolId(), from, to, classId, view, page, pageSize, ct);
+            return StatusCode(response.StatusCode, response);
+        }
 
         // GET api/LateFee/rule
         [HttpGet("rule")]

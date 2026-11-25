@@ -50,6 +50,8 @@ namespace smss_api_service_layer.dto
         /// <summary>Fees received this month against the VIEWED year's installments (not total cash received: another year's installments paid this month are not here).</summary>
         public decimal FeeCollectedThisMonth { get; set; }
         public decimal FeeOutstandingThisMonth { get; set; }
+        /// <summary>LATE FEE collected this month on installments of the viewed year (non-voided payments, without the tax on it). A separate figure: "Fees received" does not include it. Null when it could not be worked out (the client says Unavailable, never 0) or the year has no fee setup.</summary>
+        public decimal? LateFeeCollectedThisMonth { get; set; }
 
         /// <summary>Fees received this month / for the whole viewed session, against that year's installments. Null session figure = no year.</summary>
         public decimal IncomeThisMonth { get; set; }
