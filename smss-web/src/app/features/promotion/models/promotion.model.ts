@@ -188,3 +188,35 @@ export interface PromotionPending {
   blocked: number;
   rows: PromotionPendingRow[];
 }
+
+// ---- the correction of ONE promotion (4b-4)
+export interface PromotionCorrectionRemoval {
+  newYearName: string | null;
+  className: string | null;
+  sectionName: string | null;
+  rollNumber: string | null;
+  enrolment: boolean;
+  feeItems: number;
+  dues: number;
+  duesAmount: number;
+  feeStructure: boolean;
+}
+
+export interface PromotionCorrectionCheck {
+  studentId: string;
+  studentName: string;
+  sourceYearName: string;
+  decision: PromotionDecision | null;
+  outcome: string | null;
+  canCorrect: boolean;
+  blockers: string[];
+  willRemove: PromotionCorrectionRemoval;
+}
+
+export interface PromotionCorrectionResult {
+  correctionId: number;
+  studentId: string;
+  outcomeCleared: string;
+  removed: PromotionCorrectionRemoval;
+}
+

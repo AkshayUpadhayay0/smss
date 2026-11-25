@@ -15,7 +15,7 @@ namespace smss_api_tests
     {
         private const string Active = "(select sid from lut_status where sname='Active' and stype='general status')";
 
-        private static PromotionExecuteRequest Exe(P.W w, long? cls = null, long? section = null, DateOnly? date = null, PromotionDecisionInput[]? edits = null,
+        internal static PromotionExecuteRequest Exe(P.W w, long? cls = null, long? section = null, DateOnly? date = null, PromotionDecisionInput[]? edits = null,
             bool confirm = true, bool ack = true, string? reason = null, string[]? overrides = null, bool backdate = false)
         {
             var r = P.Req(w, cls, section, date, edits);
@@ -25,23 +25,23 @@ namespace smss_api_tests
                 Confirm = confirm, AcknowledgeNoFeeStructure = ack, OverrideReason = reason, OverrideStudentIds = overrides?.Select(s => w.School + s).ToList(), ConfirmBackdating = backdate,
             };
         }
-        private static PromotionDecisionInput D(P.W w, string s, string decision) => new() { StudentId = w.School + s, Decision = decision };
+        internal static PromotionDecisionInput D(P.W w, string s, string decision) => new() { StudentId = w.School + s, Decision = decision };
 
-        private static async Task<PromotionResultDto> Run(TaxDb db, PromotionExecuteRequest r, string school)
+        internal static async Task<PromotionResultDto> Run(TaxDb db, PromotionExecuteRequest r, string school)
         {
             var x = await P.Svc(db).ExecuteAsync(school, TaxDb.UserA, r, default);
             Assert.True(x.Status, x.Message);
             return x.Data!;
         }
 
-        private static string OldColumns(TaxDb db, P.W w) => db.Scalar<string>($@"select md5(coalesce(string_agg(concat_ws('|', enrollment_id, school_id, student_id, academic_year_id, class_section_id, roll_number, enrollment_date, admission_type_id, status_id, created_at, updated_at), E'\n' order by enrollment_id), ''))
+        internal static string OldColumns(TaxDb db, P.W w) => db.Scalar<string>($@"select md5(coalesce(string_agg(concat_ws('|', enrollment_id, school_id, student_id, academic_year_id, class_section_id, roll_number, enrollment_date, admission_type_id, status_id, created_at, updated_at), E'\n' order by enrollment_id), ''))
             from tb_student_enrollments where school_id='{w.School}' and academic_year_id={w.S}");
 
-        private static string Outcome(TaxDb db, P.W w, string s, long year) => db.Scalar<string>($"select coalesce(outcome, '-') from tb_student_enrollments where student_id='{w.School}{s}' and academic_year_id={year}");
-        private static int Count(TaxDb db, string sql) => db.Scalar<int>(sql);
-        private static int NewEnrol(TaxDb db, P.W w, string s) => Count(db, $"select count(*) from tb_student_enrollments where student_id='{w.School}{s}' and academic_year_id={w.T}");
+        internal static string Outcome(TaxDb db, P.W w, string s, long year) => db.Scalar<string>($"select coalesce(outcome, '-') from tb_student_enrollments where student_id='{w.School}{s}' and academic_year_id={year}");
+        internal static int Count(TaxDb db, string sql) => db.Scalar<int>(sql);
+        internal static int NewEnrol(TaxDb db, P.W w, string s) => Count(db, $"select count(*) from tb_student_enrollments where student_id='{w.School}{s}' and academic_year_id={w.T}");
 
-        private static void FeeLines(TaxDb db, P.W w) =>
+        internal static void FeeLines(TaxDb db, P.W w) =>
             db.Exec($@"insert into tb_fee_structure_details (fee_structure_id, fee_type_id, frequency_id, amount, due_day, effective_from)
                        select fs.fee_structure_id, (select fee_type_id from tb_fee_types where school_id='{w.School}' and fee_type_code='TUI'), (select frequency_id from lut_fee_frequency where frequency_code='MONTHLY'), 1000, 10, '2026-04-01'
                        from tb_fee_structures fs where fs.school_id='{w.School}' and fs.academic_year_id={w.T}");
@@ -239,7 +239,9 @@ namespace smss_api_tests
             Assert.Equal(new[] { "AdmissionRepository.cs", "PromotionRepository.cs" }, writers.Distinct().OrderBy(x => x).ToArray());
             var promotion = File.ReadAllText(Directory.EnumerateFiles(dir!.FullName, "PromotionRepository.cs", SearchOption.AllDirectories).First());
             Assert.Contains("SET outcome = @o, outcome_at = CURRENT_TIMESTAMP WHERE enrollment_id = @id AND school_id = @school AND outcome IS NULL", promotion);
-            Assert.DoesNotContain("DELETE FROM public.tb_student_enrollments", promotion);
+            // the ONE delete is the correction of a promotion (4b-4): it removes only the NEW-year enrolment of a year that is not closed (the service checks), by id and school
+            Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(promotion, "DELETE FROM public.tb_student_enrollments").Count);
+            Assert.Contains("DELETE FROM public.tb_student_enrollments WHERE enrollment_id = @id AND school_id = @school", promotion);
             var admission = File.ReadAllText(Directory.EnumerateFiles(dir.FullName, "AdmissionRepository.cs", SearchOption.AllDirectories).First());
             Assert.DoesNotMatch(@"StudentEnrollments\s*\.\s*(Update|Remove)", admission);
         }

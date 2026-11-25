@@ -157,6 +157,64 @@ namespace smss_api_db_layer.@interface
 
     public class PromoCount { public int Value { get; set; } }
 
+    /// <summary>Everything the correction needs to know about one student's promotion out of a year.</summary>
+    public class PromoCorrectionContext
+    {
+        public string StudentName { get; set; } = null!;
+        public long SourceEnrollmentId { get; set; }
+        public string SourceYearName { get; set; } = null!;
+        public bool SourceYearClosed { get; set; }
+        public string? Outcome { get; set; }
+        /// <summary>The live (finished, not yet reversed) promotion item of that enrolment, or null when the outcome was not written by a promotion run.</summary>
+        public long? ItemId { get; set; }
+        public long? BatchId { get; set; }
+        public string? Decision { get; set; }
+        public long? TargetEnrollmentId { get; set; }
+        public long? TargetYearId { get; set; }
+        public string? TargetYearName { get; set; }
+        public bool TargetYearClosed { get; set; }
+        public long? TargetClassId { get; set; }
+        public string? TargetClassName { get; set; }
+        public long? TargetSectionId { get; set; }
+        public string? TargetSectionName { get; set; }
+        public string? TargetRoll { get; set; }
+        public DateOnly? TargetEnrollmentDate { get; set; }
+    }
+
+    /// <summary>What exists in the NEW year for the student that a correction must not destroy.</summary>
+    public class PromoCorrectionBlockers
+    {
+        public int Attendance { get; set; }
+        public int PaymentAllocations { get; set; }
+        public int PaidDues { get; set; }
+        public int Marks { get; set; }
+        public int Concessions { get; set; }
+        public int Transport { get; set; }
+    }
+
+    public class PromoFeeRemoval
+    {
+        public int FeeItems { get; set; }
+        public int Dues { get; set; }
+        public decimal DuesAmount { get; set; }
+        public bool FeeStructure { get; set; }
+    }
+
+    public class PromoCorrectionWrite
+    {
+        public string SchoolId { get; set; } = null!;
+        public string StudentId { get; set; } = null!;
+        public long BatchId { get; set; }
+        public long ItemId { get; set; }
+        public long SourceEnrollmentId { get; set; }
+        public long? RemovedEnrollmentId { get; set; }
+        public string Decision { get; set; } = null!;
+        public string OutcomeCleared { get; set; } = null!;
+        public string RemovedJson { get; set; } = "{}";
+        public string Reason { get; set; } = null!;
+        public long CorrectedBy { get; set; }
+    }
+
     /// <summary>Promotion, read side (4b-2). Every method takes the school id; nothing here writes.</summary>
     public interface IPromotionRepository
     {
@@ -185,5 +243,20 @@ namespace smss_api_db_layer.@interface
         Task<PromoPendingYears?> GetPendingYearsAsync(string schoolId, CancellationToken ct);
         Task<int> CountPendingAsync(string schoolId, DateOnly today, CancellationToken ct);
         Task<List<PromoPendingRow>> ListPendingAsync(string schoolId, DateOnly today, int limit, CancellationToken ct);
+
+        // ---- 4b-4: the correction of ONE promotion (read side, then the writes inside BeginTransactionAsync + LockSchoolAsync)
+        Task<PromoCorrectionContext?> GetCorrectionContextAsync(string schoolId, string studentId, long sourceYearId, CancellationToken ct);
+        Task<PromoCorrectionBlockers> GetCorrectionBlockersAsync(string schoolId, string studentId, long targetYearId, CancellationToken ct);
+        Task<List<string>> ListConcessionNamesAsync(string schoolId, string studentId, long targetYearId, CancellationToken ct);
+        /// <summary>The new year's unpaid fee items, dues and fee structure assignment of the student (counts only).</summary>
+        Task<PromoFeeRemoval> CountFeesAsync(string schoolId, string studentId, long yearId, CancellationToken ct);
+        /// <summary>Removes the student's fee items, their dues and the fee structure assignment for the year (the caller has checked that nothing was paid). Returns what it removed.</summary>
+        Task<PromoFeeRemoval> RemoveFeesAsync(string schoolId, string studentId, long yearId, CancellationToken ct);
+        /// <summary>Marks the item reversed and detaches it from the enrolment that is about to be removed.</summary>
+        Task ReverseItemAsync(string schoolId, long itemId, CancellationToken ct);
+        Task<bool> DeleteEnrollmentAsync(string schoolId, long enrollmentId, CancellationToken ct);
+        /// <summary>Clears outcome and outcome_at of the old enrolment (only while it has the expected outcome).</summary>
+        Task<bool> ClearOutcomeAsync(string schoolId, long enrollmentId, string expectedOutcome, CancellationToken ct);
+        Task<long> InsertCorrectionAsync(PromoCorrectionWrite c, CancellationToken ct);
     }
 }

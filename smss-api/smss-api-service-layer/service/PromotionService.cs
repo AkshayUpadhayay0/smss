@@ -472,5 +472,111 @@ namespace smss_api_service_layer.service
                 return Result<PromotionPendingDto>(500, "The students waiting for promotion could not be read. Please try again.", null);
             }
         }
+
+        // ================================================================== the correction of one promotion (4b-4)
+        /// <summary>
+        /// Works out whether the promotion of ONE student out of a year can be corrected, and what it would remove. Refused (with the plain reasons) when the new-year enrolment has attendance, payment allocations
+        /// (or any paid due), marks or report-card entries, concessions or transport; or when the year is closed. A concession is REFUSED, never silently removed: it is something a person decided for the new
+        /// year, so the admin removes it on the student's Fees tab first.
+        /// </summary>
+        private async Task<(ApiResponse<PromotionCorrectionCheckDto>? Error, PromoCorrectionContext? Ctx, PromotionCorrectionCheckDto? Check)> CheckCoreAsync(string schoolId, string studentId, long sourceYearId, CancellationToken ct)
+        {
+            var c = await _repo.GetCorrectionContextAsync(schoolId, studentId, sourceYearId, ct);
+            if (c == null) return (Result<PromotionCorrectionCheckDto>(404, "That student has no enrolment in that year.", null), null, null);
+            var dto = new PromotionCorrectionCheckDto { StudentId = studentId, StudentName = c.StudentName, SourceYearName = c.SourceYearName, Decision = c.Decision, Outcome = c.Outcome };
+            if (c.ItemId == null || string.IsNullOrEmpty(c.Outcome) || c.Outcome is "TRANSFERRED_OUT")
+            {
+                dto.Blockers.Add(string.IsNullOrEmpty(c.Outcome) ? $"{c.StudentName} has no promotion outcome in {c.SourceYearName}: there is nothing to correct."
+                                                                 : $"The outcome {c.Outcome} of {c.StudentName} in {c.SourceYearName} was not recorded by a promotion run, so it cannot be corrected here.");
+                return (null, c, dto);
+            }
+            if (c.TargetEnrollmentId != null)
+            {
+                dto.WillRemove = new PromotionCorrectionRemovalDto { Enrolment = true, NewYearName = c.TargetYearName, ClassName = c.TargetClassName, SectionName = c.TargetSectionName, RollNumber = c.TargetRoll };
+                var year = c.TargetYearId!.Value;
+                if (c.TargetYearClosed) dto.Blockers.Add($"{c.TargetYearName} is closed: its enrolments cannot be removed.");
+                var b = await _repo.GetCorrectionBlockersAsync(schoolId, studentId, year, ct);
+                if (b.Attendance > 0) dto.Blockers.Add($"{b.Attendance} attendance record{(b.Attendance == 1 ? " exists" : "s exist")} in {c.TargetYearName}.");
+                if (b.PaymentAllocations > 0 || b.PaidDues > 0) dto.Blockers.Add($"A payment has been recorded against the {c.TargetYearName} fees.");
+                if (b.Marks > 0) dto.Blockers.Add($"Marks or report-card entries exist in {c.TargetYearName} ({b.Marks}).");
+                if (b.Transport > 0) dto.Blockers.Add($"The student is assigned to transport in {c.TargetYearName}: remove that first.");
+                if (b.Concessions > 0)
+                {
+                    var names = await _repo.ListConcessionNamesAsync(schoolId, studentId, year, ct);
+                    dto.Blockers.Add($"A concession was given for {c.TargetYearName} ({string.Join(", ", names)}). Remove it on the student's Fees tab first; it is never removed automatically.");
+                }
+                var fees = await _repo.CountFeesAsync(schoolId, studentId, year, ct);
+                dto.WillRemove.FeeItems = fees.FeeItems; dto.WillRemove.Dues = fees.Dues; dto.WillRemove.DuesAmount = fees.DuesAmount; dto.WillRemove.FeeStructure = fees.FeeStructure;
+            }
+            dto.CanCorrect = dto.Blockers.Count == 0;
+            return (null, c, dto);
+        }
+
+        public async Task<ApiResponse<PromotionCorrectionCheckDto>> CheckCorrectionAsync(string? schoolId, string? studentId, long sourceYearId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<PromotionCorrectionCheckDto>(400, TenantMessages.NoSchool, null);
+            if (string.IsNullOrWhiteSpace(studentId)) return Result<PromotionCorrectionCheckDto>(400, "Enter a student id.", null);
+            try
+            {
+                var (error, _, check) = await CheckCoreAsync(schoolId, studentId.Trim(), sourceYearId, ct);
+                return error ?? Result(200, "Successfully fetched", check);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Promotion correction check failed for {StudentId}", studentId);
+                return Result<PromotionCorrectionCheckDto>(500, "The correction could not be checked. Please try again.", null);
+            }
+        }
+
+        public async Task<ApiResponse<PromotionCorrectionResultDto>> CorrectAsync(string? schoolId, long userId, PromotionCorrectionRequest request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<PromotionCorrectionResultDto>(400, TenantMessages.NoSchool, null);
+            if (request == null || string.IsNullOrWhiteSpace(request.StudentId)) return Result<PromotionCorrectionResultDto>(400, "Enter a student id.", null);
+            if (!request.Confirm) return Result<PromotionCorrectionResultDto>(400, "Correcting a promotion removes the new-year enrolment: confirm it first.", null);
+            var reason = request.Reason?.Trim();
+            if (reason == null || reason.Length < 10) return Result<PromotionCorrectionResultDto>(400, "A reason of at least 10 characters is needed.", null);
+            if (reason.Length > 500) return Result<PromotionCorrectionResultDto>(400, "The reason can be at most 500 characters.", null);
+            try
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockSchoolAsync(schoolId, ct);   // the same lock as a promotion run: a correction never runs beside one
+
+                var studentId = request.StudentId.Trim();
+                var (error, c, check) = await CheckCoreAsync(schoolId, studentId, request.SourceYearId, ct);   // worked out again, under the lock
+                if (error != null) return Result<PromotionCorrectionResultDto>(error.StatusCode, error.Message, null);
+                if (!check!.CanCorrect) return Result<PromotionCorrectionResultDto>(409, "This promotion cannot be corrected: " + string.Join(" ", check.Blockers), null);
+
+                var removed = new PromotionCorrectionRemovalDto { NewYearName = c!.TargetYearName, ClassName = c.TargetClassName, SectionName = c.TargetSectionName, RollNumber = c.TargetRoll };
+                long? removedEnrollmentId = null;
+                if (c.TargetEnrollmentId != null)
+                {
+                    var fees = await _repo.RemoveFeesAsync(schoolId, studentId, c.TargetYearId!.Value, ct);
+                    removed.FeeItems = fees.FeeItems; removed.Dues = fees.Dues; removed.DuesAmount = fees.DuesAmount; removed.FeeStructure = fees.FeeStructure;
+                    await _repo.ReverseItemAsync(schoolId, c.ItemId!.Value, ct);                  // detach the audit item before the enrolment goes
+                    if (!await _repo.DeleteEnrollmentAsync(schoolId, c.TargetEnrollmentId.Value, ct)) throw new InvalidOperationException("the new enrolment vanished");
+                    removed.Enrolment = true; removedEnrollmentId = c.TargetEnrollmentId;
+                }
+                else await _repo.ReverseItemAsync(schoolId, c.ItemId!.Value, ct);
+                if (!await _repo.ClearOutcomeAsync(schoolId, c.SourceEnrollmentId, c.Outcome!, ct)) throw new InvalidOperationException("the outcome changed");
+
+                var snapshot = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    enrolment = removed.Enrolment, enrollmentId = removedEnrollmentId, newYear = removed.NewYearName, className = removed.ClassName, sectionName = removed.SectionName, rollNumber = removed.RollNumber,
+                    enrollmentDate = c.TargetEnrollmentDate, feeItems = removed.FeeItems, dues = removed.Dues, duesAmount = removed.DuesAmount, feeStructureAssignment = removed.FeeStructure,
+                }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+                var id = await _repo.InsertCorrectionAsync(new PromoCorrectionWrite
+                {
+                    SchoolId = schoolId, StudentId = studentId, BatchId = c.BatchId!.Value, ItemId = c.ItemId!.Value, SourceEnrollmentId = c.SourceEnrollmentId, RemovedEnrollmentId = removedEnrollmentId,
+                    Decision = c.Decision!, OutcomeCleared = c.Outcome!, RemovedJson = snapshot, Reason = reason, CorrectedBy = userId,
+                }, ct);
+                await tx.CommitAsync(ct);
+                return Result(200, $"The promotion of {c.StudentName} is corrected. They can be promoted again.", new PromotionCorrectionResultDto { CorrectionId = id, StudentId = studentId, OutcomeCleared = c.Outcome!, Removed = removed });
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Promotion correction failed for {StudentId}", request.StudentId);
+                return Result<PromotionCorrectionResultDto>(500, "The correction could not be completed and nothing was changed. Please try again.", null);
+            }
+        }
     }
 }

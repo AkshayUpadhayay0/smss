@@ -248,4 +248,52 @@ namespace smss_api_service_layer.dto
         public int Blocked { get; set; }
         public List<PromotionPendingRowDto> Rows { get; set; } = new();
     }
+
+    // ====================================================================== the correction of one promotion (4b-4)
+    /// <summary>Which promotion to correct: the student and the year they were promoted OUT of (their old-year enrolment carries the outcome).</summary>
+    public class PromotionCorrectionRequest
+    {
+        [Required, StringLength(20)] public string StudentId { get; set; } = null!;
+        [Range(1, long.MaxValue)] public long SourceYearId { get; set; }
+        /// <summary>At least 10 characters; stored in the audit.</summary>
+        [StringLength(500)] public string? Reason { get; set; }
+        /// <summary>Must be true: the correction removes the new-year enrolment.</summary>
+        public bool Confirm { get; set; }
+    }
+
+    public class PromotionCorrectionRemovalDto
+    {
+        public string? NewYearName { get; set; }
+        public string? ClassName { get; set; }
+        public string? SectionName { get; set; }
+        public string? RollNumber { get; set; }
+        /// <summary>True when there is a new-year enrolment to remove (promote and repeat); false after pass out or leave.</summary>
+        public bool Enrolment { get; set; }
+        public int FeeItems { get; set; }
+        public int Dues { get; set; }
+        public decimal DuesAmount { get; set; }
+        public bool FeeStructure { get; set; }
+    }
+
+    /// <summary>What a correction would do for one student, or plainly why it cannot be done.</summary>
+    public class PromotionCorrectionCheckDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string SourceYearName { get; set; } = null!;
+        public string? Decision { get; set; }
+        public string? Outcome { get; set; }
+        public bool CanCorrect { get; set; }
+        /// <summary>Plain-words reasons the correction is refused (empty when it can be done).</summary>
+        public List<string> Blockers { get; set; } = new();
+        public PromotionCorrectionRemovalDto WillRemove { get; set; } = new();
+    }
+
+    public class PromotionCorrectionResultDto
+    {
+        public long CorrectionId { get; set; }
+        public string StudentId { get; set; } = null!;
+        public string OutcomeCleared { get; set; } = null!;
+        public PromotionCorrectionRemovalDto Removed { get; set; } = new();
+    }
 }

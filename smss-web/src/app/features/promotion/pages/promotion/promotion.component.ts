@@ -13,6 +13,7 @@ import { SectionService } from '../../../school-setup/services/section.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { DECISION_LABELS, PromotionDecision, PromotionDecisionInput, PromotionPreview, PromotionResult, PromotionRow, PromotionRowStatus, STATUS_LABELS } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
+import { PromotionCorrectionComponent } from '../../components/promotion-correction/promotion-correction.component';
 
 /** The year a promotion most likely starts from (the current one) and goes to (the first later year). */
 export function defaultYears(years: AcademicYear[]): { source: number | null; target: number | null } {
@@ -29,7 +30,7 @@ export function defaultYears(years: AcademicYear[]): { source: number | null; ta
  */
 @Component({
   selector: 'app-promotion',
-  imports: [CurrencyPipe, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent],
+  imports: [CurrencyPipe, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, PromotionCorrectionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './promotion.component.scss',
   templateUrl: './promotion.component.html',

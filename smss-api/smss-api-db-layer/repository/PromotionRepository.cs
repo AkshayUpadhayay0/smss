@@ -183,5 +183,97 @@ SELECT s.student_id AS ""StudentId"", s.admission_number AS ""AdmissionNumber"",
  ORDER BY c.sequence_order, sec.section_name, ""StudentName"", s.student_id LIMIT @limit",
                 P("school", NpgsqlDbType.Varchar, schoolId), P("earlier", NpgsqlDbType.Bigint, y.EarlierYearId), P("current", NpgsqlDbType.Bigint, y.CurrentYearId), P("today", NpgsqlDbType.Date, today), P("limit", NpgsqlDbType.Integer, limit)).ToListAsync(ct);
         }
+
+        // ================================================================== 4b-4: the correction of one promotion
+        public async Task<PromoCorrectionContext?> GetCorrectionContextAsync(string schoolId, string studentId, long sourceYearId, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<PromoCorrectionContext>(@"
+SELECT btrim(concat_ws(' ', s.first_name, s.middle_name, s.last_name)) AS ""StudentName"", e.enrollment_id AS ""SourceEnrollmentId"", sy.year_name AS ""SourceYearName"", (sy.closed_at IS NOT NULL) AS ""SourceYearClosed"",
+       e.outcome AS ""Outcome"", i.item_id AS ""ItemId"", i.batch_id AS ""BatchId"", i.decision AS ""Decision"", t.enrollment_id AS ""TargetEnrollmentId"", ty.academic_year_id AS ""TargetYearId"", ty.year_name AS ""TargetYearName"",
+       COALESCE(ty.closed_at IS NOT NULL, false) AS ""TargetYearClosed"", tc.class_id AS ""TargetClassId"", tc.class_name AS ""TargetClassName"", ts.section_id AS ""TargetSectionId"", ts.section_name AS ""TargetSectionName"",
+       t.roll_number AS ""TargetRoll"", t.enrollment_date AS ""TargetEnrollmentDate""
+  FROM public.tb_student_enrollments e
+  JOIN public.tb_students s ON s.student_id = e.student_id AND s.school_id = @school
+  JOIN public.tb_academic_years sy ON sy.academic_year_id = e.academic_year_id AND sy.school_id = @school
+  LEFT JOIN LATERAL (SELECT pi.* FROM public.tb_promotion_items pi WHERE pi.school_id = @school AND pi.source_enrollment_id = e.enrollment_id AND pi.skip_reason IS NULL AND pi.reversed_at IS NULL ORDER BY pi.item_id DESC LIMIT 1) i ON true
+  LEFT JOIN public.tb_student_enrollments t ON t.enrollment_id = i.target_enrollment_id AND t.school_id = @school
+  LEFT JOIN public.tb_academic_years ty ON ty.academic_year_id = t.academic_year_id AND ty.school_id = @school
+  LEFT JOIN public.tb_sections ts ON ts.section_id = t.class_section_id AND ts.school_id = @school
+  LEFT JOIN public.tb_classes tc ON tc.class_id = ts.class_id AND tc.school_id = @school
+ WHERE e.school_id = @school AND e.student_id = @student AND e.academic_year_id = @year",
+                P("school", NpgsqlDbType.Varchar, schoolId), P("student", NpgsqlDbType.Varchar, studentId), P("year", NpgsqlDbType.Bigint, sourceYearId)).ToListAsync(ct)).FirstOrDefault();
+
+        public async Task<PromoCorrectionBlockers> GetCorrectionBlockersAsync(string schoolId, string studentId, long targetYearId, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<PromoCorrectionBlockers>(@"
+SELECT
+ (SELECT count(*)::int FROM public.tb_student_attendance a WHERE a.school_id = @school AND a.student_id = @student AND a.academic_year_id = @year) AS ""Attendance"",
+ (SELECT count(*)::int FROM public.tb_fee_payment_allocations al JOIN public.tb_student_fee_dues d ON d.fee_due_id = al.fee_due_id JOIN public.tb_student_fee_items i ON i.student_fee_item_id = d.student_fee_item_id
+   WHERE i.school_id = @school AND i.student_id = @student AND i.academic_year_id = @year) AS ""PaymentAllocations"",
+ (SELECT count(*)::int FROM public.tb_student_fee_dues d JOIN public.tb_student_fee_items i ON i.student_fee_item_id = d.student_fee_item_id
+   WHERE i.school_id = @school AND i.student_id = @student AND i.academic_year_id = @year AND d.amount_paid > 0) AS ""PaidDues"",
+ ((SELECT count(*) FROM public.tb_student_assessment_marks m JOIN public.tb_class_assessments a ON a.assessment_id = m.assessment_id WHERE a.school_id = @school AND a.academic_year_id = @year AND m.student_id = @student)
+ + (SELECT count(*) FROM public.tb_report_marks m JOIN public.tb_report_exam_subjects es ON es.exam_subject_id = m.exam_subject_id JOIN public.tb_report_schemes sc ON sc.scheme_id = es.scheme_id AND sc.school_id = @school
+     WHERE m.school_id = @school AND m.student_id = @student AND sc.academic_year_id = @year)
+ + (SELECT count(*) FROM public.tb_report_term_student x JOIN public.tb_report_schemes sc ON sc.scheme_id = x.scheme_id AND sc.school_id = @school WHERE x.school_id = @school AND x.student_id = @student AND sc.academic_year_id = @year)
+ + (SELECT count(*) FROM public.tb_report_year_student x JOIN public.tb_report_schemes sc ON sc.scheme_id = x.scheme_id AND sc.school_id = @school WHERE x.school_id = @school AND x.student_id = @student AND sc.academic_year_id = @year)
+ + (SELECT count(*) FROM public.tb_report_student_activity_grades x JOIN public.tb_report_schemes sc ON sc.scheme_id = x.scheme_id AND sc.school_id = @school WHERE x.school_id = @school AND x.student_id = @student AND sc.academic_year_id = @year)
+ + (SELECT count(*) FROM public.tb_report_subject_remarks x JOIN public.tb_report_schemes sc ON sc.scheme_id = x.scheme_id AND sc.school_id = @school WHERE x.school_id = @school AND x.student_id = @student AND sc.academic_year_id = @year)
+ + (SELECT count(*) FROM public.tb_report_publication_students ps JOIN public.tb_report_publications p ON p.publication_id = ps.publication_id AND p.school_id = @school JOIN public.tb_report_schemes sc ON sc.scheme_id = p.scheme_id AND sc.school_id = @school
+     WHERE ps.school_id = @school AND ps.student_id = @student AND sc.academic_year_id = @year))::int AS ""Marks"",
+ (SELECT count(*)::int FROM public.tb_student_fee_concessions c WHERE c.student_id = @student AND c.academic_year_id = @year AND EXISTS (SELECT 1 FROM public.tb_students s WHERE s.student_id = c.student_id AND s.school_id = @school)) AS ""Concessions"",
+ (SELECT count(*)::int FROM public.tb_student_transport t WHERE t.school_id = @school AND t.student_id = @student AND t.academic_year_id = @year) AS ""Transport""",
+                P("school", NpgsqlDbType.Varchar, schoolId), P("student", NpgsqlDbType.Varchar, studentId), P("year", NpgsqlDbType.Bigint, targetYearId)).ToListAsync(ct)).Single();
+
+        public Task<List<string>> ListConcessionNamesAsync(string schoolId, string studentId, long targetYearId, CancellationToken ct) =>
+            _db.Database.SqlQueryRaw<string>(@"
+SELECT COALESCE(cm.concession_name, 'Concession ' || c.concession_id) AS ""Value""
+  FROM public.tb_student_fee_concessions c
+  JOIN public.tb_students s ON s.student_id = c.student_id AND s.school_id = @school
+  LEFT JOIN public.tb_fee_concessions cm ON cm.concession_id = c.concession_id
+ WHERE c.student_id = @student AND c.academic_year_id = @year ORDER BY 1",
+                P("school", NpgsqlDbType.Varchar, schoolId), P("student", NpgsqlDbType.Varchar, studentId), P("year", NpgsqlDbType.Bigint, targetYearId)).ToListAsync(ct);
+
+        public async Task<PromoFeeRemoval> CountFeesAsync(string schoolId, string studentId, long yearId, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<PromoFeeRemoval>(@"
+SELECT (SELECT count(*)::int FROM public.tb_student_fee_items i WHERE i.school_id = @school AND i.student_id = @student AND i.academic_year_id = @year) AS ""FeeItems"",
+       (SELECT count(*)::int FROM public.tb_student_fee_dues d JOIN public.tb_student_fee_items i ON i.student_fee_item_id = d.student_fee_item_id WHERE i.school_id = @school AND i.student_id = @student AND i.academic_year_id = @year) AS ""Dues"",
+       COALESCE((SELECT sum(d.amount_due) FROM public.tb_student_fee_dues d JOIN public.tb_student_fee_items i ON i.student_fee_item_id = d.student_fee_item_id WHERE i.school_id = @school AND i.student_id = @student AND i.academic_year_id = @year), 0) AS ""DuesAmount"",
+       EXISTS (SELECT 1 FROM public.tb_student_fee_structure f WHERE f.school_id = @school AND f.student_id = @student AND f.academic_year_id = @year) AS ""FeeStructure""",
+                P("school", NpgsqlDbType.Varchar, schoolId), P("student", NpgsqlDbType.Varchar, studentId), P("year", NpgsqlDbType.Bigint, yearId)).ToListAsync(ct)).Single();
+
+        public async Task<PromoFeeRemoval> RemoveFeesAsync(string schoolId, string studentId, long yearId, CancellationToken ct)
+        {
+            var counted = await CountFeesAsync(schoolId, studentId, yearId, ct);
+            // dues first, then the items they hang on, then the assignment; one statement so it is all or nothing
+            await _db.Database.ExecuteSqlRawAsync(@"
+WITH items AS (SELECT student_fee_item_id FROM public.tb_student_fee_items WHERE school_id = @school AND student_id = @student AND academic_year_id = @year),
+     d AS (DELETE FROM public.tb_student_fee_dues WHERE student_fee_item_id IN (SELECT student_fee_item_id FROM items) AND school_id = @school RETURNING 1),
+     i AS (DELETE FROM public.tb_student_fee_items WHERE student_fee_item_id IN (SELECT student_fee_item_id FROM items) AND school_id = @school RETURNING 1)
+DELETE FROM public.tb_student_fee_structure WHERE school_id = @school AND student_id = @student AND academic_year_id = @year",
+                new object[] { P("school", NpgsqlDbType.Varchar, schoolId), P("student", NpgsqlDbType.Varchar, studentId), P("year", NpgsqlDbType.Bigint, yearId) }, ct);
+            return counted;
+        }
+
+        public Task ReverseItemAsync(string schoolId, long itemId, CancellationToken ct) =>
+            _db.Database.ExecuteSqlRawAsync("UPDATE public.tb_promotion_items SET reversed_at = CURRENT_TIMESTAMP, target_enrollment_id = NULL WHERE item_id = @id AND school_id = @school AND reversed_at IS NULL",
+                new object[] { P("id", NpgsqlDbType.Bigint, itemId), P("school", NpgsqlDbType.Varchar, schoolId) }, ct);
+
+        public async Task<bool> DeleteEnrollmentAsync(string schoolId, long enrollmentId, CancellationToken ct) =>
+            await _db.Database.ExecuteSqlRawAsync("DELETE FROM public.tb_student_enrollments WHERE enrollment_id = @id AND school_id = @school",
+                new object[] { P("id", NpgsqlDbType.Bigint, enrollmentId), P("school", NpgsqlDbType.Varchar, schoolId) }, ct) == 1;
+
+        public async Task<bool> ClearOutcomeAsync(string schoolId, long enrollmentId, string expectedOutcome, CancellationToken ct) =>
+            await _db.Database.ExecuteSqlRawAsync("UPDATE public.tb_student_enrollments SET outcome = NULL, outcome_at = NULL WHERE enrollment_id = @id AND school_id = @school AND outcome = @o",
+                new object[] { P("id", NpgsqlDbType.Bigint, enrollmentId), P("school", NpgsqlDbType.Varchar, schoolId), P("o", NpgsqlDbType.Varchar, expectedOutcome) }, ct) == 1;
+
+        public async Task<long> InsertCorrectionAsync(PromoCorrectionWrite c, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<long>(@"
+WITH ins AS (
+    INSERT INTO public.tb_promotion_corrections (school_id, student_id, batch_id, item_id, source_enrollment_id, removed_enrollment_id, decision, outcome_cleared, removed, reason, corrected_by)
+    VALUES (@school, @student, @batch, @item, @src, @removed, @decision, @outcome, @json::jsonb, @reason, @by)
+    RETURNING correction_id)
+SELECT correction_id AS ""Value"" FROM ins",
+                P("school", NpgsqlDbType.Varchar, c.SchoolId), P("student", NpgsqlDbType.Varchar, c.StudentId), P("batch", NpgsqlDbType.Bigint, c.BatchId), P("item", NpgsqlDbType.Bigint, c.ItemId),
+                P("src", NpgsqlDbType.Bigint, c.SourceEnrollmentId), P("removed", NpgsqlDbType.Bigint, c.RemovedEnrollmentId), P("decision", NpgsqlDbType.Varchar, c.Decision),
+                P("outcome", NpgsqlDbType.Varchar, c.OutcomeCleared), P("json", NpgsqlDbType.Text, c.RemovedJson), P("reason", NpgsqlDbType.Varchar, c.Reason), P("by", NpgsqlDbType.Bigint, c.CorrectedBy)).ToListAsync(ct)).Single();
     }
 }
