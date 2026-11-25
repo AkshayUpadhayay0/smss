@@ -110,6 +110,40 @@ export function picksToRequest(picks: GuardianPicks | null): { existingGuardianI
   };
 }
 
+// ---- duplicate parents and merge (School Admin and Principal)
+export interface DuplicateStudent { studentId: string; studentName: string; admissionNumber: string; className: string | null; sectionName: string | null; isPrimary: boolean }
+export interface DuplicateGuardian {
+  guardianId: number; name: string; relationship: string; mobileNumber: string; hasWhatsApp: boolean; hasEmail: boolean; hasLogin: boolean;
+  createdAt: string;
+  /** The oldest guardian of the group: the default survivor. */
+  isOldest: boolean;
+  students: DuplicateStudent[];
+}
+export interface DuplicateGroup {
+  phoneKey: string;
+  /** SAME / SIMILAR / DIFFERENT: how alike the names are (a shared phone alone is not proof of the same person). */
+  nameMatch: 'SAME' | 'SIMILAR' | 'DIFFERENT';
+  guardians: DuplicateGuardian[];
+}
+export interface DuplicateReport { groupCount: number; guardianCount: number; groups: DuplicateGroup[] }
+
+export interface MergeRequest { survivorId: number; absorbedId: number; confirm: boolean; reason: string | null }
+export interface MergeGuardianBrief { guardianId: number; name: string; relationship: string; mobileNumber: string; whatsAppNumber: string | null; email: string | null; occupation: string | null; hasLogin: boolean }
+export interface MergeLink { studentId: string; studentName: string; admissionNumber: string; className: string | null; sectionName: string | null; relationship: string; isPrimary: boolean; action: 'MOVE' | 'COMBINE' }
+export interface MergeApplication { admissionId: number; applicationNumber: string; role: 'PRIMARY' | 'EXTRA'; action: 'REPOINT' | 'DROP' }
+export interface MergePreview {
+  survivor: MergeGuardianBrief;
+  absorbed: MergeGuardianBrief;
+  links: MergeLink[];
+  fieldsToCopy: Record<string, string>;
+  applications: MergeApplication[];
+  guardiansToRepoint: number[];
+  account: 'NONE' | 'MOVE' | 'BLOCKED';
+  canMerge: boolean;
+  blockers: string[];
+}
+export interface MergeResult { mergeId: number; survivorId: number; absorbedId: number; linksMoved: number; linksCombined: number; applicationsRepointed: number; guardiansRepointed: number; fieldsCopied: string[]; accountMoved: boolean }
+
 export interface BulkWhatsAppResult {
   selected: number;
   updated: number;

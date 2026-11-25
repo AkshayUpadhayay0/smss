@@ -6,4 +6,8 @@ export const GUARDIANS_ROUTES: Routes = [
     path: 'parent-details',
     loadComponent: () => import('./pages/parent-details/parent-details.component').then((m) => m.ParentDetailsComponent),
   },
+  {
+    path: 'duplicate-parents',
+    loadComponent: () => import('./pages/duplicate-parents/duplicate-parents.component').then((m) => m.DuplicateParentsComponent),
+  },
 ];

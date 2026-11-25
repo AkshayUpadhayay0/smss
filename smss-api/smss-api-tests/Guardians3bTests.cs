@@ -36,7 +36,7 @@ namespace smss_api_tests
         {
             var ok = new[] { "School Admin", "Principal", "Admission Staff" }.Contains(role);
             var svc = Fake.Of<IGuardianService>();
-            var c = Fake.WithUser(new GuardiansController(svc), Fake.User(A, 5, role));
+            var c = Fake.WithUser(new GuardiansController(svc, Fake.Of<IGuardianMergeService>()), Fake.User(A, 5, role));
             var calls = new (string Name, Func<Task<IActionResult>> Run)[]
             {
                 ("GetAsync", () => c.Get(1, default)),
@@ -57,7 +57,7 @@ namespace smss_api_tests
         public async Task A_token_without_a_school_is_a_400_and_the_service_is_not_reached()
         {
             var svc = Fake.Of<IGuardianService>();
-            var c = Fake.WithUser(new GuardiansController(svc), Fake.User(null, 5, "School Admin"));
+            var c = Fake.WithUser(new GuardiansController(svc, Fake.Of<IGuardianMergeService>()), Fake.User(null, 5, "School Admin"));
             Assert.Equal(400, Fake.Code(await c.Get(1, default)));
             Assert.Empty(Fake.ProxyOf(svc).Calls);
         }

@@ -16,7 +16,8 @@ namespace smss_api.Controllers
     public class GuardiansController : ControllerBase
     {
         private readonly IGuardianService _service;
-        public GuardiansController(IGuardianService service) => _service = service;
+        private readonly IGuardianMergeService _merge;
+        public GuardiansController(IGuardianService service, IGuardianMergeService merge) { _service = service; _merge = merge; }
 
         private const string Refusal = "Only a School Admin, a Principal or Admission Staff can work with parents' contact details.";
 
@@ -33,6 +34,42 @@ namespace smss_api.Controllers
             if (!User.CanManageApplications()) return Respond(403, Refusal);
             schoolId = User.GetSchoolId() ?? string.Empty;
             return schoolId.Length == 0 ? Respond(400, TenantMessages.NoSchool) : null;
+        }
+
+        private const string MergeRefusal = "Only a School Admin or a Principal can look for duplicate parents and merge them.";
+
+        /// <summary>The duplicate report and the merge are for the School Admin and the Principal only (Admission Staff may edit parents' details but never merge them).</summary>
+        private IActionResult? MergeGate(out string schoolId)
+        {
+            schoolId = string.Empty;
+            if (!(User.IsSchoolAdmin() || User.IsPrincipal())) return Respond(403, MergeRefusal);
+            schoolId = User.GetSchoolId() ?? string.Empty;
+            return schoolId.Length == 0 ? Respond(400, TenantMessages.NoSchool) : null;
+        }
+
+        // GET api/Guardians/duplicates   (active guardians that share a phone number, grouped, with a name-similarity flag and their students)
+        [HttpGet("duplicates")]
+        public async Task<IActionResult> Duplicates(CancellationToken ct)
+        {
+            if (MergeGate(out var school) is { } refused) return refused;
+            return Reply(await _merge.ListDuplicatesAsync(school, ct));
+        }
+
+        // POST api/Guardians/merge/preview   Body: { survivorId, absorbedId }   (changes nothing)
+        [HttpPost("merge/preview")]
+        public async Task<IActionResult> MergePreview([FromBody] MergeRequestDto request, CancellationToken ct)
+        {
+            if (MergeGate(out var school) is { } refused) return refused;
+            return Reply(await _merge.PreviewAsync(school, request, ct));
+        }
+
+        // POST api/Guardians/merge   Body: { survivorId, absorbedId, confirm: true, reason? }
+        [HttpPost("merge")]
+        public async Task<IActionResult> Merge([FromBody] MergeRequestDto request, CancellationToken ct)
+        {
+            if (MergeGate(out var school) is { } refused) return refused;
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            return Reply(await _merge.MergeAsync(school, request, userId, ct));
         }
 
         // GET api/Guardians/{guardianId}

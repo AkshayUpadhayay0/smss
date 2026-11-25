@@ -16,5 +16,9 @@ namespace smss_api_db_layer.entity
         [Column("moved_links", TypeName = "jsonb")] public string MovedLinks { get; set; } = "[]";
         [Column("copied_fields", TypeName = "jsonb")] public string CopiedFields { get; set; } = "{}";
         [Column("absorbed_snapshot", TypeName = "jsonb")] public string AbsorbedSnapshot { get; set; } = "{}";
+        /// <summary>The admin's optional reason for the merge.</summary>
+        [Column("reason")][StringLength(500)] public string? Reason { get; set; }
+        /// <summary>What the merge repointed: applications (primary and extra), guardians that pointed at the absorbed one, the login that moved.</summary>
+        [Column("repointed", TypeName = "jsonb")] public string Repointed { get; set; } = "{}";
     }
 }

@@ -123,6 +123,92 @@ namespace smss_api_db_layer.repository
                     !string.IsNullOrWhiteSpace(l.WhatsAppNumber), !string.IsNullOrWhiteSpace(l.Email), l.IsPrimary)).ToList())).ToList();
         }
 
+        // ---------------------------------------------------------------- duplicates and merge
+        private sealed class KeyRow { public long GuardianId { get; set; } public string Key { get; set; } = null!; }
+
+        public async Task<List<DuplicateGuardianRow>> ListDuplicateCandidatesAsync(string schoolId, int activeStatusId, long? viewedYearId, CancellationToken ct)
+        {
+            // the keys shared by two or more active, not merged guardians of THIS school (a raw query: fn_phone_key is a database function)
+            var keyed = await _db.Database.SqlQuery<KeyRow>($@"SELECT g.guardian_id AS ""GuardianId"", public.fn_phone_key(g.mobile_number) AS ""Key"" FROM public.tb_guardians g
+                WHERE g.school_id = {schoolId} AND g.status_id = {activeStatusId} AND g.merged_into_guardian_id IS NULL AND public.fn_phone_key(g.mobile_number) IS NOT NULL").ToListAsync(ct);
+            var shared = keyed.GroupBy(k => k.Key).Where(g => g.Count() > 1).SelectMany(g => g).ToList();
+            if (shared.Count == 0) return new List<DuplicateGuardianRow>();
+            var ids = shared.Select(s => s.GuardianId).ToList();
+            var guardians = await _db.Guardians.AsNoTracking().Where(g => g.SchoolId == schoolId && ids.Contains(g.GuardianId))
+                .Select(g => new { g.GuardianId, g.FirstName, g.LastName, g.Relationship, g.MobileNumber, g.WhatsAppNumber, g.Email, g.UserId, g.CreatedAt }).ToListAsync(ct);
+            var links = await (from l in _db.StudentGuardians.AsNoTracking() where ids.Contains(l.GuardianId) select new { l.GuardianId, l.StudentId, l.IsPrimary }).ToListAsync(ct);
+            var refs = await GetStudentRefsAsync(schoolId, links.Select(l => l.StudentId).Distinct().ToList(), viewedYearId, ct);
+            return guardians.Select(g => new DuplicateGuardianRow(g.GuardianId, Name(g.FirstName, null, g.LastName), g.Relationship, g.MobileNumber, shared.First(s => s.GuardianId == g.GuardianId).Key,
+                    !string.IsNullOrWhiteSpace(g.WhatsAppNumber), !string.IsNullOrWhiteSpace(g.Email), g.UserId != null, g.CreatedAt,
+                    links.Where(l => l.GuardianId == g.GuardianId && refs.ContainsKey(l.StudentId)).Select(l => { var r = refs[l.StudentId]; return new DuplicateStudentRef(r.StudentId, r.StudentName, r.AdmissionNumber, r.ClassName, r.SectionName, l.IsPrimary); }).OrderBy(s => s.StudentName).ToList()))
+                .OrderBy(r => r.PhoneKey).ThenBy(r => r.GuardianId).ToList();
+        }
+
+        public Task<List<TbGuardian>> LockGuardiansAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct)
+        {
+            var ids = guardianIds.Distinct().OrderBy(i => i).ToArray();
+            return _db.Guardians.FromSqlInterpolated($"SELECT * FROM public.tb_guardians WHERE school_id = {schoolId} AND guardian_id = ANY({ids}) ORDER BY guardian_id FOR UPDATE").AsTracking().ToListAsync(ct);
+        }
+
+        public Task<List<TbStudentGuardian>> GetLinksOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.StudentGuardians.AsTracking() : _db.StudentGuardians.AsNoTracking();
+            return q.Where(l => l.GuardianId == guardianId && _db.Students.Any(s => s.StudentId == l.StudentId && s.SchoolId == schoolId)).OrderBy(l => l.StudentId).ToListAsync(ct);
+        }
+
+        public Task<List<TbStudentGuardian>> GetLinksToStudentsAsync(string schoolId, IReadOnlyCollection<string> studentIds, long guardianId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.StudentGuardians.AsTracking() : _db.StudentGuardians.AsNoTracking();
+            return q.Where(l => l.GuardianId == guardianId && studentIds.Contains(l.StudentId) && _db.Students.Any(s => s.StudentId == l.StudentId && s.SchoolId == schoolId)).ToListAsync(ct);
+        }
+
+        public async Task<Dictionary<string, MergeStudentRef>> GetStudentRefsAsync(string schoolId, IReadOnlyCollection<string> studentIds, long? viewedYearId, CancellationToken ct)
+        {
+            var people = await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+                .Select(s => new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, s.AdmissionNumber }).ToListAsync(ct);
+            var classes = new Dictionary<string, (string Class, string Section)>();
+            var rows = await (from e in _db.StudentEnrollments.AsNoTracking()
+                              where e.SchoolId == schoolId && studentIds.Contains(e.StudentId) && (viewedYearId == null || e.AcademicYearId == viewedYearId)
+                              join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
+                              join c in _db.Classes.AsNoTracking() on sec.ClassId equals c.ClassId
+                              select new { e.StudentId, e.EnrollmentId, c.ClassName, sec.SectionName }).ToListAsync(ct);
+            foreach (var g in rows.GroupBy(r => r.StudentId)) { var r = g.OrderByDescending(x => x.EnrollmentId).First(); classes[g.Key] = (r.ClassName, r.SectionName); }
+            return people.ToDictionary(p => p.StudentId, p => new MergeStudentRef(p.StudentId, Name(p.FirstName, p.MiddleName, p.LastName), p.AdmissionNumber,
+                classes.TryGetValue(p.StudentId, out var c) ? c.Class : null, classes.TryGetValue(p.StudentId, out var c2) ? c2.Section : null));
+        }
+
+        public Task<List<TbAdmission>> GetAdmissionsOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.Admissions.AsTracking() : _db.Admissions.AsNoTracking();
+            return q.Where(a => a.SchoolId == schoolId && a.GuardianId == guardianId).OrderBy(a => a.AdmissionId).ToListAsync(ct);
+        }
+
+        public Task<List<TbAdmissionGuardian>> GetAdmissionGuardianRowsAsync(string schoolId, IReadOnlyCollection<long> admissionIds, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.AdmissionGuardians.AsTracking() : _db.AdmissionGuardians.AsNoTracking();
+            return q.Where(a => a.SchoolId == schoolId && admissionIds.Contains(a.AdmissionId)).ToListAsync(ct);
+        }
+
+        public Task<List<TbAdmissionGuardian>> GetAdmissionGuardianRowsOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.AdmissionGuardians.AsTracking() : _db.AdmissionGuardians.AsNoTracking();
+            return q.Where(a => a.SchoolId == schoolId && a.GuardianId == guardianId).OrderBy(a => a.AdmissionId).ToListAsync(ct);
+        }
+
+        public Task<List<TbGuardian>> GetGuardiansMergedIntoAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.Guardians.AsTracking() : _db.Guardians.AsNoTracking();
+            return q.Where(g => g.SchoolId == schoolId && g.MergedIntoGuardianId == guardianId).OrderBy(g => g.GuardianId).ToListAsync(ct);
+        }
+
+        public Task<List<TbAdmission>> GetAdmissionsByIdsAsync(string schoolId, IReadOnlyCollection<long> admissionIds, CancellationToken ct) =>
+            _db.Admissions.AsNoTracking().Where(a => a.SchoolId == schoolId && admissionIds.Contains(a.AdmissionId)).ToListAsync(ct);
+
+        public void RemoveLink(TbStudentGuardian link) => _db.StudentGuardians.Remove(link);
+        public void RemoveAdmissionGuardian(TbAdmissionGuardian row) => _db.AdmissionGuardians.Remove(row);
+        public async Task AddAdmissionGuardianAsync(TbAdmissionGuardian row, CancellationToken ct) => await _db.AdmissionGuardians.AddAsync(row, ct);
+        public async Task AddMergeAsync(TbGuardianMerge merge, CancellationToken ct) => await _db.GuardianMerges.AddAsync(merge, ct);
+
         public async Task AddChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct) => await _db.GuardianChanges.AddRangeAsync(changes, ct);
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);

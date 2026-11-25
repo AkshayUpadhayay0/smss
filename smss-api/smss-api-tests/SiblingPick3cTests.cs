@@ -105,7 +105,7 @@ namespace smss_api_tests
         {
             var ok = new[] { "School Admin", "Principal", "Admission Staff" }.Contains(role);
             var svc = Fake.Of<IGuardianService>();
-            var c = Fake.WithUser(new GuardiansController(svc), Fake.User(A, 5, role));
+            var c = Fake.WithUser(new GuardiansController(svc, Fake.Of<IGuardianMergeService>()), Fake.User(A, 5, role));
             var code = Fake.Code(await c.Siblings(1, null, 20, default));
             if (ok) Assert.NotEqual(403, code); else Assert.Equal(403, code);
             Assert.Equal(ok, Fake.ProxyOf(svc).Calls.Contains("SearchSiblingsAsync"));

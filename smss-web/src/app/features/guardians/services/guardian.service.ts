@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { BulkWhatsAppResult, Guardian, GuardianUpdateRequest, IncompleteGuardians, SiblingStudent } from '../models/guardian.model';
+import { BulkWhatsAppResult, DuplicateReport, Guardian, GuardianUpdateRequest, IncompleteGuardians, MergePreview, MergeRequest, MergeResult, SiblingStudent } from '../models/guardian.model';
 
 const BASE = '/api/Guardians';
 
@@ -33,6 +33,20 @@ export class GuardianService {
     if (filters.classId) params['classId'] = filters.classId;
     if (filters.search?.trim()) params['search'] = filters.search.trim();
     return this.api.get<SiblingStudent[]>(`${BASE}/siblings`, params);
+  }
+
+  duplicates(): Observable<DuplicateReport> {
+    return this.api.get<DuplicateReport>(`${BASE}/duplicates`);
+  }
+
+  /** What a merge would do. Changes nothing. */
+  mergePreview(survivorId: number, absorbedId: number): Observable<MergePreview> {
+    return this.api.post<MergePreview>(`${BASE}/merge/preview`, { survivorId, absorbedId, confirm: false, reason: null });
+  }
+
+  /** Merge the absorbed guardian into the survivor. Refused by the server without {@code confirm: true}. */
+  merge(request: MergeRequest): Observable<MergeResult> {
+    return this.api.post<MergeResult>(`${BASE}/merge`, request);
   }
 
   incompleteCount(): Observable<number> {

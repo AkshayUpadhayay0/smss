@@ -52,6 +52,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/student-documents': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
   // Parents whose WhatsApp number or email is still missing: School Admin, Principal and Admission Staff edit them (the API re-checks).
   '/parent-details': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
+  // Parent records that share a mobile number, and the merge: School Admin and Principal only (the API re-checks).
+  '/duplicate-parents': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   // Admission applications: School Admin, Principal and Admission Staff add, edit, confirm and reject them (the API re-checks).
   '/admissions': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
   '/admissions/new': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],

@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { ROLES } from '../../../../core/config/route-roles';
+import { AuthService } from '../../../../core/services/auth.service';
 import { catchError, finalize, of } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -32,7 +35,11 @@ import { GuardianService } from '../../services/guardian.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './parent-details.component.scss',
   template: `
-    <app-page-header title="Complete parent details" subtitle="Parents whose WhatsApp number or email is still missing" icon="users" [breadcrumbs]="breadcrumbs" />
+    <app-page-header title="Complete parent details" subtitle="Parents whose WhatsApp number or email is still missing" icon="users" [breadcrumbs]="breadcrumbs">
+      @if (canMerge()) {
+        <app-button variant="secondary" (click)="duplicates()" data-link="duplicates"><app-icon name="copy" [size]="16" />Duplicate parents</app-button>
+      }
+    </app-page-header>
 
     <app-card [noPadding]="true">
       <div class="toolbar">
@@ -103,6 +110,14 @@ export class ParentDetailsComponent implements OnInit {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+
+  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  /** The duplicate report and the merge are for the School Admin and the Principal only. */
+  protected readonly canMerge = computed(() => this.auth.currentUserRoles().some((r) => r === ROLES.SCHOOL_ADMIN || r === ROLES.PRINCIPAL));
+  protected duplicates(): void {
+    void this.router.navigate(['/duplicate-parents']);
+  }
 
   protected readonly breadcrumbs: Breadcrumb[] = [{ label: 'Students', link: '/students' }, { label: 'Complete parent details' }];
   protected readonly items = signal<IncompleteGuardian[]>([]);

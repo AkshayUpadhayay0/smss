@@ -11,6 +11,11 @@ namespace smss_api_db_layer.@interface
     public record SiblingGuardianRow(long GuardianId, string Name, string Relationship, string Mobile, bool HasWhatsApp, bool HasEmail, bool IsPrimary);
     public record SiblingStudentRow(string StudentId, string StudentName, string? ClassName, string? SectionName, List<SiblingGuardianRow> Guardians);
 
+    public record DuplicateStudentRef(string StudentId, string StudentName, string AdmissionNumber, string? ClassName, string? SectionName, bool IsPrimary);
+    public record DuplicateGuardianRow(long GuardianId, string Name, string Relationship, string Mobile, string PhoneKey, bool HasWhatsApp, bool HasEmail, bool HasLogin, DateTime CreatedAt, List<DuplicateStudentRef> Students);
+    /// <summary>A student as the merge screens show them.</summary>
+    public record MergeStudentRef(string StudentId, string StudentName, string AdmissionNumber, string? ClassName, string? SectionName);
+
     // Every method takes the school id: another school's guardians can never be reached through this repository.
     public interface IGuardianRepository
     {
@@ -30,6 +35,23 @@ namespace smss_api_db_layer.@interface
         /// The mobile numbers are returned whole here; the SERVICE masks them before anything leaves the API.
         /// </summary>
         Task<List<SiblingStudentRow>> SearchSiblingStudentsAsync(string schoolId, int activeStatusId, long viewedYearId, long? classId, string? search, int limit, CancellationToken ct);
+        // ---- duplicates and merge (School Admin and Principal)
+        /// <summary>Active, not merged guardians that share a phone key (fn_phone_key) with another one of the same school, with their students.</summary>
+        Task<List<DuplicateGuardianRow>> ListDuplicateCandidatesAsync(string schoolId, int activeStatusId, long? viewedYearId, CancellationToken ct);
+        Task<List<TbGuardian>> LockGuardiansAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct);
+        /// <summary>The links of a guardian to students of this school.</summary>
+        Task<List<TbStudentGuardian>> GetLinksOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct);
+        Task<List<TbStudentGuardian>> GetLinksToStudentsAsync(string schoolId, IReadOnlyCollection<string> studentIds, long guardianId, bool tracked, CancellationToken ct);
+        Task<Dictionary<string, MergeStudentRef>> GetStudentRefsAsync(string schoolId, IReadOnlyCollection<string> studentIds, long? viewedYearId, CancellationToken ct);
+        Task<List<TbAdmission>> GetAdmissionsOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct);
+        Task<List<TbAdmissionGuardian>> GetAdmissionGuardianRowsAsync(string schoolId, IReadOnlyCollection<long> admissionIds, bool tracked, CancellationToken ct);
+        Task<List<TbAdmissionGuardian>> GetAdmissionGuardianRowsOfGuardianAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct);
+        Task<List<TbGuardian>> GetGuardiansMergedIntoAsync(string schoolId, long guardianId, bool tracked, CancellationToken ct);
+        Task<List<TbAdmission>> GetAdmissionsByIdsAsync(string schoolId, IReadOnlyCollection<long> admissionIds, CancellationToken ct);
+        void RemoveLink(TbStudentGuardian link);
+        void RemoveAdmissionGuardian(TbAdmissionGuardian row);
+        Task AddAdmissionGuardianAsync(TbAdmissionGuardian row, CancellationToken ct);
+        Task AddMergeAsync(TbGuardianMerge merge, CancellationToken ct);
         Task AddChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct);
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);
