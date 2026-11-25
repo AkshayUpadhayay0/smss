@@ -1,5 +1,8 @@
 <app-page-header [title]="heading().title" [subtitle]="heading().subtitle" icon="building-2" [breadcrumbs]="breadcrumbs()">
   <app-button variant="secondary" (click)="goToList()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
+  @if ((isView() || mode() === 'edit') && school()) {
+    <app-button variant="secondary" (click)="goToWhatsApp()" data-link="whatsapp-sender"><app-icon name="smartphone" [size]="16" />WhatsApp sender</app-button>
+  }
   @if (isView() && school()) {
     <app-button (click)="goToEdit()"><app-icon name="pencil" [size]="16" />Edit</app-button>
   }

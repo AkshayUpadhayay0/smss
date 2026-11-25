@@ -73,6 +73,11 @@ export class SchoolFormComponent implements OnInit {
   protected readonly created = signal<SchoolRegistrationResponse | null>(null);
   private logoChange: LogoChange = { file: null, remove: false };
 
+  protected goToWhatsApp(): void {
+    const id = this.school()?.schoolId;
+    if (id) void this.router.navigate(['/schools', id, 'whatsapp']);
+  }
+
   protected readonly isAdd = computed(() => this.mode() === 'add');
   protected readonly isView = computed(() => this.mode() === 'view');
   protected readonly heading = computed(() => TITLES[this.mode()]);

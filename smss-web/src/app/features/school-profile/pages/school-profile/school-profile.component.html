@@ -21,6 +21,7 @@
 
   <div class="hero-actions">
     @if (isAdminView()) {
+      <a class="hero-btn" [routerLink]="['/schools', schoolId(), 'whatsapp']" data-link="whatsapp-sender"><app-icon name="smartphone" [size]="16" />WhatsApp sender</a>
       <a class="hero-btn" routerLink="/schools"><app-icon name="arrow-left" [size]="16" />Back to schools</a>
     } @else if (canEdit() && !loading() && !loadFailed()) {
       <button type="button" class="hero-btn on"  [disabled]="saving() || editing()" (click)="startEdit()">
@@ -29,6 +30,10 @@
     }
   </div>
 </header>
+
+@if (showSenderStatus()) {
+  <app-whatsapp-sender-status />   <!-- a read-only line: the School Admin and the Principal see the status; only the Super Admin changes it -->
+}
 
 @if (loading()) {
   <div class="panel note">Loading school profile…</div>

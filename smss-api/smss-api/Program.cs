@@ -141,6 +141,8 @@ builder.Services.AddScoped<IStudentDocumentService, StudentDocumentService>();
 builder.Services.AddScoped<IGuardianRepository, GuardianRepository>();
 builder.Services.AddScoped<IGuardianService, GuardianService>();
 builder.Services.AddScoped<IGuardianMergeService, GuardianMergeService>();
+builder.Services.AddScoped<ISchoolWhatsAppSenderRepository, SchoolWhatsAppSenderRepository>();
+builder.Services.AddScoped<IWhatsAppSenderService, WhatsAppSenderService>();
 builder.Services.AddScoped<INoticeRepository, NoticeRepository>();
 builder.Services.AddScoped<INoticeService, NoticeService>();
 builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();

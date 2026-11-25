@@ -12,6 +12,7 @@ import { LogoChange, LogoUploadComponent } from '../../../schools/components/log
 import { SchoolStats, SchoolsListModel } from '../../../schools/models/school.model';
 import { SchoolService } from '../../../schools/services/school.service';
 import { firstErrorMessage } from '../../../schools/utils/school-validators';
+import { WhatsAppSenderStatusComponent } from '../../../whatsapp-sender/components/whatsapp-sender-status/whatsapp-sender-status.component';
 import { ProfileForm, createProfileForm, profileToFormValue, toProfileRequest } from '../../utils/profile-form';
 
 const NO_LOGO_CHANGE: LogoChange = { file: null, remove: false };
@@ -25,7 +26,7 @@ const NO_LOGO_CHANGE: LogoChange = { file: null, remove: false };
  */
 @Component({
   selector: 'app-school-profile',
-  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent, SelectComponent, LogoUploadComponent, WhatsAppFieldComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent, SelectComponent, LogoUploadComponent, WhatsAppFieldComponent, WhatsAppSenderStatusComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-profile.component.scss',
   templateUrl: './school-profile.component.html',
@@ -43,6 +44,8 @@ export class SchoolProfileComponent implements OnInit {
   protected readonly isAdminView = computed(() => !!this.schoolId());
   private readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
   /** Only a School Admin editing their own school; never the Super Admin view. */
+  /** The School Admin and the Principal of the school see its WhatsApp sender status (read-only); the Super Admin's view of a school has its own button instead. */
+  protected readonly showSenderStatus = computed(() => !this.isAdminView() && this.auth.currentUserRoles().some((r) => [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL].some((x) => x.toLowerCase() === r.trim().toLowerCase())));
   protected readonly canEdit = computed(() => !this.isAdminView() && this.isSchoolAdmin());
   /** The full record (type / level / board / tax / status) comes back only for the School Admin and the Super Admin. */
   protected readonly showFull = computed(() => this.canEdit() || this.isAdminView());
