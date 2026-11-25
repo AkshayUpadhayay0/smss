@@ -21,7 +21,18 @@ namespace smss_api_service_layer.service
         private readonly IPromotionRepository _repo;
         private readonly ILogger<PromotionService> _logger;
 
-        public PromotionService(IPromotionRepository repo, ILogger<PromotionService> logger) { _repo = repo; _logger = logger; }
+        private readonly IStudentFeeBillingRepository _years;
+        private readonly IFeeRepairRepository _choices;
+        private readonly IAdmissionRepository _admission;
+        private readonly IStudentFeeBillingService _billing;
+
+        public PromotionService(IPromotionRepository repo, IStudentFeeBillingRepository years, IFeeRepairRepository choices, IAdmissionRepository admission, IStudentFeeBillingService billing, ILogger<PromotionService> logger)
+        {
+            _repo = repo; _years = years; _choices = choices; _admission = admission; _billing = billing; _logger = logger;
+        }
+
+        /// <summary>What the work-out found about the years and the class, for the run.</summary>
+        private sealed class Ctx { public PromoYearRow Src = null!; public PromoYearRow Tgt = null!; }
 
         private static ApiResponse<T> Result<T>(int code, string message, T? data) where T : class => new() { Status = code is >= 200 and < 300, StatusCode = code, Message = message, Data = data };
         private static bool SameName(string? a, string? b) => !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) && string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -29,7 +40,10 @@ namespace smss_api_service_layer.service
         private sealed class OfferedSection { public long SectionId; public string Name = ""; public int? Max; public int Enrolled; }
         private sealed class OfferedClass { public long ClassId; public string Name = ""; public bool HasFees; public List<OfferedSection> Sections = new(); }
 
-        public async Task<ApiResponse<PromotionPreviewDto>> PreviewAsync(string? schoolId, PromotionPreviewRequest request, CancellationToken ct)
+        public Task<ApiResponse<PromotionPreviewDto>> PreviewAsync(string? schoolId, PromotionPreviewRequest request, CancellationToken ct) => PrepareAsync(schoolId, request, new Ctx(), ct);
+
+        /// <summary>The whole work-out, read-only: used as it is by the preview, and again by the run (under the lock) so the run trusts nothing from an earlier preview.</summary>
+        private async Task<ApiResponse<PromotionPreviewDto>> PrepareAsync(string? schoolId, PromotionPreviewRequest request, Ctx ctx, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<PromotionPreviewDto>(400, TenantMessages.NoSchool, null);
             if (request == null) return Result<PromotionPreviewDto>(400, "The request is empty.", null);
@@ -54,6 +68,7 @@ namespace smss_api_service_layer.service
                 if (candidates.Count > MaxPerRun)
                     return Result<PromotionPreviewDto>(400, $"This {(section == null ? "class" : "section")} has {candidates.Count} students; a run takes up to {MaxPerRun}. Promote it one section at a time.", null);
 
+                ctx.Src = src; ctx.Tgt = tgt;
                 var promotionDate = request.PromotionDate ?? SchoolClock.Today();
                 var ids = candidates.Select(c => c.StudentId).ToList();
                 var targetEnrol = (await _repo.ListTargetEnrollmentsAsync(schoolId, tgt.YearId, ids, ct)).ToDictionary(e => e.StudentId, e => e);
@@ -119,8 +134,6 @@ namespace smss_api_service_layer.service
                     }
                     row.BlockedByDues = row.Outstanding > 0;
 
-                    if (targetEnrol.ContainsKey(c.StudentId)) { row.Status = PromotionRowStatus.AlreadyEnrolled; row.Notes.Add($"Already enrolled in {tgt.YearName}: skipped, nothing is changed."); continue; }
-                    if (!string.IsNullOrEmpty(c.Outcome)) { row.Status = PromotionRowStatus.AlreadyRecorded; row.Notes.Add($"This enrolment already has the outcome {c.Outcome}: skipped."); continue; }
 
                     // defaults the screen can switch to without asking again
                     var nextOffered = next == null ? null : offerById.GetValueOrDefault(next.ClassId);
@@ -145,6 +158,10 @@ namespace smss_api_service_layer.service
                         decision = t.Decision == "PROMOTED" ? "PROMOTE" : "REPEAT";   // DETAINED and NOT_PROMOTED both mean the same class again
                     }
                     row.Decision = decision;
+
+                    // a student who is skipped keeps the decision they would have had (the audit records it) but nothing else is worked out
+                    if (targetEnrol.ContainsKey(c.StudentId)) { row.Status = PromotionRowStatus.AlreadyEnrolled; row.Issues.Clear(); row.Notes.Add($"Already enrolled in {tgt.YearName}: skipped, nothing is changed."); continue; }
+                    if (!string.IsNullOrEmpty(c.Outcome)) { row.Status = PromotionRowStatus.AlreadyRecorded; row.Issues.Clear(); row.Notes.Add($"This enrolment already has the outcome {c.Outcome}: skipped."); continue; }
 
                     if (decision is "PROMOTE" or "REPEAT")
                     {
@@ -232,7 +249,7 @@ namespace smss_api_service_layer.service
                 var noFees = placedRows.Select(r => r.Target!.ClassId).Distinct().Where(id => !offerById[id].HasFees).Select(id => offerById[id].Name).OrderBy(n => n).ToList();
                 var dto = new PromotionPreviewDto
                 {
-                    SourceYearId = src.YearId, SourceYearName = src.YearName, SourceYearClosed = src.IsClosed, TargetYearId = tgt.YearId, TargetYearName = tgt.YearName,
+                    SourceYearId = src.YearId, SourceYearName = src.YearName, SourceYearClosed = src.IsClosed, TargetYearId = tgt.YearId, TargetYearName = tgt.YearName, TargetYearStart = tgt.StartDate, TargetYearStarted = tgt.StartDate < SchoolClock.Today(),
                     Scope = section == null ? "CLASS" : "SECTION", ClassId = cls.ClassId, ClassName = cls.ClassName, SectionId = section?.SectionId, SectionName = section?.SectionName,
                     PromotionDate = promotionDate, NextClassId = next?.ClassId, NextClassName = next?.ClassName, IsLastClass = cls.NextClassId == null, MaxPerRun = MaxPerRun,
                     ClassesWithoutFeeStructure = noFees, NeedsFeeAcknowledgement = noFees.Count > 0,
@@ -256,6 +273,203 @@ namespace smss_api_service_layer.service
             {
                 _logger.LogError(ex, "Promotion preview failed (source {Source}, target {Target}, class {Class})", request.SourceYearId, request.TargetYearId, request.ClassId);
                 return Result<PromotionPreviewDto>(500, "The promotion preview could not be prepared. Please try again.", null);
+            }
+        }
+
+        // ================================================================== the run (4b-3)
+        private static string? OutcomeOf(string decision) => decision switch { "PROMOTE" => "PROMOTED", "REPEAT" => "REPEATED", "PASS_OUT" => "PASSED_OUT", "LEAVE" => "LEFT", _ => null };
+
+        private static string SkipReasonOf(PromotionRowDto r) => r.Status switch
+        {
+            PromotionRowStatus.Blocked => $"Unpaid dues of {r.Outstanding:0.##} up to the promotion date; not overridden.",
+            PromotionRowStatus.NeedsAttention => r.Issues.FirstOrDefault() ?? "The choice cannot be carried out.",
+            PromotionRowStatus.AlreadyEnrolled => "Already enrolled in the target year.",
+            PromotionRowStatus.AlreadyRecorded => r.Notes.FirstOrDefault() ?? "The enrolment already has an outcome.",
+            _ => "Left out of this run.",
+        };
+
+        public async Task<ApiResponse<PromotionResultDto>> ExecuteAsync(string? schoolId, long userId, PromotionExecuteRequest request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<PromotionResultDto>(400, TenantMessages.NoSchool, null);
+            if (request == null) return Result<PromotionResultDto>(400, "The request is empty.", null);
+            if (!request.Confirm) return Result<PromotionResultDto>(400, "Promoting students saves changes: confirm the run first.", null);
+            var reason = request.OverrideReason?.Trim();
+            if (reason is { Length: > 500 }) return Result<PromotionResultDto>(400, "The reason can be at most 500 characters.", null);
+            try
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.LockSchoolAsync(schoolId, ct);   // a second run waits here and then sees what the first one did
+
+                // everything is worked out again now, under the lock
+                var ctx = new Ctx();
+                var prep = await PrepareAsync(schoolId, request, ctx, ct);
+                if (!prep.Status || prep.Data == null) return Result<PromotionResultDto>(prep.StatusCode, prep.Message, null);
+                var p = prep.Data;
+                var tgt = ctx.Tgt;
+                var today = SchoolClock.Today();
+
+                var ticked = (request.OverrideStudentIds ?? new()).Select(s => s?.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToHashSet();
+                var overridden = p.Rows.Where(r => r.Status == PromotionRowStatus.Blocked && ticked.Contains(r.StudentId)).ToList();
+                if (overridden.Count > 0 && (reason == null || reason.Length < 10))
+                    return Result<PromotionResultDto>(400, "A reason of at least 10 characters is needed to override the dues block.", null);
+
+                var doRows = p.Rows.Where(r => r.Decision != null && (r.Status == PromotionRowStatus.Ready || overridden.Contains(r))).ToList();
+                var placing = doRows.Where(r => r.Decision is "PROMOTE" or "REPEAT").ToList();
+
+                // the target year has already started: charging fees from its start needs the same confirmation as "Assign fees" (current year only, explicit, with a reason)
+                var backdate = placing.Count > 0 && tgt.StartDate < today;
+                if (backdate)
+                {
+                    if (reason == null || reason.Length < 10) return Result<PromotionResultDto>(400, $"{tgt.YearName} has already started, so fees are charged from its first day: a reason of at least 10 characters is needed.", null);
+                    var problem = await _billing.CheckChargeFromAsync(schoolId, tgt.YearId, tgt.StartDate, request.ConfirmBackdating, reason, ct);
+                    if (problem != null) return Result<PromotionResultDto>(400, problem, null);
+                }
+
+                // a target class with no fee structure: one acknowledgement for the run
+                var noFees = placing.Select(r => r.Target!.ClassId).Distinct().Where(id => !p.TargetOptions.Single(o => o.ClassId == id).HasFeeStructure).ToList();
+                if (noFees.Count > 0 && !request.AcknowledgeNoFeeStructure)
+                    return Result<PromotionResultDto>(400, "A class you are promoting into has no fee structure in " + tgt.YearName + ". Tick the acknowledgement to continue without fees for them.", null);
+
+                var result = new PromotionResultDto { Backdated = backdate };
+                var items = new List<(PromotionRowDto Row, PromoItemWrite Item, string Outcome)>();
+                var enrollmentDate = p.PromotionDate > tgt.StartDate ? p.PromotionDate : tgt.StartDate;
+                var n = 0;
+                foreach (var row in p.Rows)
+                {
+                    if (row.Decision == null) { result.LeftOut++; result.Items.Add(new PromotionResultItemDto { StudentId = row.StudentId, StudentName = row.StudentName, Outcome = PromotionItemOutcome.Skipped, Reason = row.Notes.FirstOrDefault() ?? "No decision yet.", Outstanding = row.Outstanding }); continue; }
+                    var item = new PromoItemWrite
+                    {
+                        StudentId = row.StudentId, SourceEnrollmentId = row.SourceEnrollmentId, Decision = row.Decision, FromClassId = p.ClassId, FromSectionId = row.SourceSectionId, OutstandingAmount = row.Outstanding,
+                    };
+                    var isOverride = overridden.Contains(row);
+                    string? skip = null;
+                    if (!doRows.Contains(row)) skip = SkipReasonOf(row);
+                    else
+                    {
+                        await tx.CreateSavepointAsync("p" + (++n), ct);
+                        try
+                        {
+                            if (row.Decision is "PROMOTE" or "REPEAT")
+                            {
+                                item.TargetEnrollmentId = await _repo.InsertEnrollmentAsync(schoolId, row.StudentId, tgt.YearId, row.Target!.SectionId!.Value, row.RollNumber, enrollmentDate, row.SourceEnrollmentId, ct);
+                                item.ToClassId = row.Target.ClassId; item.ToSectionId = row.Target.SectionId; item.RollNumber = row.RollNumber;
+                            }
+                            if (!await _repo.SetOutcomeAsync(schoolId, row.SourceEnrollmentId, OutcomeOf(row.Decision)!, ct)) throw new InvalidOperationException("outcome already recorded");
+                            await tx.ReleaseSavepointAsync("p" + n, ct);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _logger.LogWarning(ex, "Promotion of {StudentId} could not be saved; the rest of the run continues", row.StudentId);
+                            await tx.RollbackToSavepointAsync("p" + n, ct);
+                            item.TargetEnrollmentId = null; item.ToClassId = null; item.ToSectionId = null; item.RollNumber = null;
+                            skip = "This student could not be saved; nothing was changed for them.";
+                        }
+                    }
+                    if (skip != null) item.SkipReason = skip;
+                    else if (isOverride) { item.OverrideApplied = true; item.OverrideReason = reason; }
+                    items.Add((row, item, skip != null ? PromotionItemOutcome.Skipped : isOverride ? PromotionItemOutcome.Overridden : PromotionItemOutcome.Done));
+                }
+
+                var done = items.Where(i => i.Outcome != PromotionItemOutcome.Skipped).ToList();
+                foreach (var (row, item, outcome) in items)
+                    result.Items.Add(new PromotionResultItemDto
+                    {
+                        StudentId = row.StudentId, StudentName = row.StudentName, Decision = row.Decision, Outcome = outcome, Reason = item.SkipReason ?? (outcome == PromotionItemOutcome.Overridden ? reason : null),
+                        Target = item.TargetEnrollmentId != null ? row.Target : null, RollNumber = item.RollNumber, Outstanding = row.Outstanding,
+                    });
+                result.Skipped = items.Count - done.Count;
+                if (done.Count == 0)
+                {
+                    await tx.CommitAsync(ct);   // nothing was written: no batch either
+                    return Result(200, "Nobody could be promoted in this run; nothing was changed.", result);
+                }
+
+                result.Promoted = done.Count(i => i.Item.Decision == "PROMOTE"); result.Repeated = done.Count(i => i.Item.Decision == "REPEAT");
+                result.PassedOut = done.Count(i => i.Item.Decision == "PASS_OUT"); result.Left = done.Count(i => i.Item.Decision == "LEAVE");
+                result.Overridden = done.Count(i => i.Outcome == PromotionItemOutcome.Overridden);
+                var batchId = await _repo.InsertBatchAsync(new PromoBatchWrite
+                {
+                    SchoolId = schoolId, SourceYearId = ctx.Src.YearId, TargetYearId = tgt.YearId, Scope = p.Scope, ClassId = p.ClassId, SectionId = p.SectionId, PromotionDate = p.PromotionDate, CreatedBy = userId,
+                    StudentsTotal = items.Count, Promoted = result.Promoted, Repeated = result.Repeated, PassedOut = result.PassedOut, Left = result.Left, Skipped = result.Skipped, Overrides = result.Overridden,
+                    OverrideReason = reason is { Length: >= 10 } ? reason : null, NoFeeStructureAcknowledged = noFees.Count > 0 && request.AcknowledgeNoFeeStructure,
+                }, ct);
+                foreach (var (_, item, _) in items) await _repo.InsertItemAsync(schoolId, batchId, item, ct);
+                await tx.CommitAsync(ct);
+                result.BatchId = batchId;
+
+                // Only now that the promotion is safely saved: assigning the new year's fees (the same code as "Assign fees for a year"). A failure never undoes or fails the promotion.
+                await AssignFeesAsync(schoolId, userId, tgt, placing.Where(r => done.Any(d => d.Row == r)).ToList(), backdate, reason, result, ct);
+                return Result(200, $"{done.Count} student{(done.Count == 1 ? "" : "s")} done" + (result.Skipped > 0 ? $", {result.Skipped} left out." : "."), result);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Promotion run failed (source {Source}, target {Target}, class {Class})", request.SourceYearId, request.TargetYearId, request.ClassId);
+                return Result<PromotionResultDto>(500, "The promotion could not be completed and nothing was changed. Please try again.", null);
+            }
+        }
+
+        private async Task AssignFeesAsync(string schoolId, long userId, PromoYearRow tgt, List<PromotionRowDto> placed, bool backdate, string? reason, PromotionResultDto result, CancellationToken ct)
+        {
+            if (placed.Count == 0) return;
+            try
+            {
+                var choices = (await _choices.GetPreviousChoicesAsync(schoolId, tgt.YearId, placed.Select(r => r.StudentId).ToList(), ct))
+                    .GroupBy(c => c.StudentId).ToDictionary(g => g.Key, g => g.Select(c => new FeeItemSelection { FeeTypeId = c.FeeTypeId, InstallmentPlan = c.InstallmentPlan, IsApplicable = c.IsApplicable }).ToList());
+                foreach (var r in placed)
+                {
+                    try
+                    {
+                        var structure = await _years.FindActiveStructureAsync(schoolId, r.Target!.ClassId, tgt.YearId, ct);
+                        if (structure == null) { result.FeesNoStructure++; continue; }
+                        var options = backdate ? new FeeSyncOptions { ChargeFrom = tgt.StartDate, Backdate = true, BackdatingReason = reason, UserId = userId } : null;
+                        var warning = await FeeAutoAssignment.TryAssignAsync(_admission, _billing, choices.GetValueOrDefault(r.StudentId), _logger, schoolId, r.StudentId, tgt.YearId, structure.FeeStructureId, DateTime.UtcNow, ct, options);
+                        if (warning == null) result.FeesAssigned++;
+                        else result.FeeFailures.Add(new PromotionFeeFailureDto { StudentId = r.StudentId, StudentName = r.StudentName, Reason = warning });
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogError(ex, "Fees for promoted student {StudentId} could not be assigned", r.StudentId);
+                        _admission.ClearTracking();
+                        result.FeeFailures.Add(new PromotionFeeFailureDto { StudentId = r.StudentId, StudentName = r.StudentName, Reason = FeeAutoAssignment.AssignFailedWarning });
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Fees for the promoted students could not be assigned");
+                foreach (var r in placed.Where(r => result.FeeFailures.All(f => f.StudentId != r.StudentId)).ToList())
+                    result.FeeFailures.Add(new PromotionFeeFailureDto { StudentId = r.StudentId, StudentName = r.StudentName, Reason = FeeAutoAssignment.AssignFailedWarning });
+            }
+        }
+
+        // ================================================================== pending promotion
+        public const int PendingListLimit = 1000;
+
+        public async Task<ApiResponse<PromotionPendingDto>> GetPendingAsync(string? schoolId, bool includeRows, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<PromotionPendingDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var years = await _repo.GetPendingYearsAsync(schoolId, ct);
+                var dto = new PromotionPendingDto { HasEarlierYear = years?.EarlierYearId != null, CurrentYearId = years?.CurrentYearId, CurrentYearName = years?.CurrentYearName, EarlierYearId = years?.EarlierYearId, EarlierYearName = years?.EarlierYearName };
+                if (!dto.HasEarlierYear) return Result(200, "Successfully fetched", dto);
+                var today = SchoolClock.Today();
+                dto.Total = await _repo.CountPendingAsync(schoolId, today, ct);
+                if (includeRows)
+                {
+                    dto.Rows = (await _repo.ListPendingAsync(schoolId, today, PendingListLimit, ct)).Select(r => new PromotionPendingRowDto
+                    {
+                        StudentId = r.StudentId, AdmissionNumber = r.AdmissionNumber, StudentName = r.StudentName, ClassId = r.ClassId, ClassName = r.ClassName, SectionId = r.SectionId, SectionName = r.SectionName,
+                        RollNumber = r.RollNumber, TeacherDecision = r.TeacherDecision, Outstanding = r.Outstanding, Status = r.Outstanding > 0 ? "BLOCKED" : "NO_DECISION",
+                    }).ToList();
+                    dto.Blocked = dto.Rows.Count(r => r.Status == "BLOCKED");
+                }
+                return Result(200, "Successfully fetched", dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Pending promotion could not be read");
+                return Result<PromotionPendingDto>(500, "The students waiting for promotion could not be read. Please try again.", null);
             }
         }
     }

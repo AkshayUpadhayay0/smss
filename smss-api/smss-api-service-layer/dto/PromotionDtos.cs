@@ -130,6 +130,9 @@ namespace smss_api_service_layer.dto
         public bool SourceYearClosed { get; set; }
         public long TargetYearId { get; set; }
         public string TargetYearName { get; set; } = null!;
+        /// <summary>The target year's first day and whether it has already passed: then a run charges fees from that day, needs the back-dating confirmation and a reason.</summary>
+        public DateOnly TargetYearStart { get; set; }
+        public bool TargetYearStarted { get; set; }
         public string Scope { get; set; } = "CLASS";
         public long ClassId { get; set; }
         public string ClassName { get; set; } = null!;
@@ -148,5 +151,101 @@ namespace smss_api_service_layer.dto
         /// <summary>The classes and sections the target year offers, with their capacity and how many are enrolled already.</summary>
         public List<PromotionClassOptionDto> TargetOptions { get; set; } = new();
         public List<PromotionRowDto> Rows { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Runs a promotion. The decisions, targets and roll numbers are the admin's choices; EVERYTHING else (dues, offered class and section, capacity, who is already enrolled, the years) is worked out again
+    /// by the server at this moment, so nothing from an earlier preview is trusted.
+    /// </summary>
+    public class PromotionExecuteRequest : PromotionPreviewRequest
+    {
+        /// <summary>Must be true: the run saves changes.</summary>
+        public bool Confirm { get; set; }
+        /// <summary>One reason for the whole run (at least 10 characters): needed when any blocked student is overridden, and when the target year has already started (it is the back-dating reason).</summary>
+        [StringLength(500)] public string? OverrideReason { get; set; }
+        /// <summary>The blocked students the admin ticked one by one. A student who is not blocked at this moment is ignored.</summary>
+        [MaxLength(500)] public List<string>? OverrideStudentIds { get; set; }
+        /// <summary>The tick the preview asks for when a target class has no fee structure in the target year.</summary>
+        public bool AcknowledgeNoFeeStructure { get; set; }
+        /// <summary>The same confirmation as "Assign fees": needed when the target year has already started (dues dated before today are created and logged).</summary>
+        public bool ConfirmBackdating { get; set; }
+    }
+
+    public static class PromotionItemOutcome
+    {
+        public const string Done = "DONE";
+        public const string Overridden = "OVERRIDDEN";
+        public const string Skipped = "SKIPPED";
+    }
+
+    public class PromotionResultItemDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string? Decision { get; set; }
+        /// <summary>DONE, OVERRIDDEN (done although dues were unpaid) or SKIPPED.</summary>
+        public string Outcome { get; set; } = PromotionItemOutcome.Skipped;
+        public string? Reason { get; set; }
+        public PromotionTargetDto? Target { get; set; }
+        public string? RollNumber { get; set; }
+        public decimal Outstanding { get; set; }
+    }
+
+    public class PromotionFeeFailureDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string Reason { get; set; } = null!;
+    }
+
+    public class PromotionResultDto
+    {
+        /// <summary>The audit batch; null when nothing was done (then nothing at all was written).</summary>
+        public long? BatchId { get; set; }
+        public int Promoted { get; set; }
+        public int Repeated { get; set; }
+        public int PassedOut { get; set; }
+        public int Left { get; set; }
+        public int Overridden { get; set; }
+        public int Skipped { get; set; }
+        /// <summary>Students with no decision yet: left out, not part of the audit.</summary>
+        public int LeftOut { get; set; }
+        public int FeesAssigned { get; set; }
+        /// <summary>Students placed in a class that has no active fee structure (acknowledged): no fees were assigned.</summary>
+        public int FeesNoStructure { get; set; }
+        public bool Backdated { get; set; }
+        public List<PromotionResultItemDto> Items { get; set; } = new();
+        /// <summary>Students who were promoted but whose fees could not be assigned: assign them from "Assign fees for a year" or the student's Fees tab. They are never undone.</summary>
+        public List<PromotionFeeFailureDto> FeeFailures { get; set; } = new();
+    }
+
+    public class PromotionPendingRowDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string AdmissionNumber { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public long ClassId { get; set; }
+        public string ClassName { get; set; } = null!;
+        public long SectionId { get; set; }
+        public string SectionName { get; set; } = null!;
+        public string? RollNumber { get; set; }
+        public string? TeacherDecision { get; set; }
+        public decimal Outstanding { get; set; }
+        /// <summary>BLOCKED (unpaid dues up to today) or NO_DECISION (not promoted yet).</summary>
+        public string Status { get; set; } = "NO_DECISION";
+    }
+
+    /// <summary>Students enrolled in the year before the current-flagged year with no enrolment in the current one.</summary>
+    public class PromotionPendingDto
+    {
+        /// <summary>False when the school has no year before the current one (or no current year): the tile is hidden.</summary>
+        public bool HasEarlierYear { get; set; }
+        public string? CurrentYearName { get; set; }
+        public string? EarlierYearName { get; set; }
+        public long? CurrentYearId { get; set; }
+        public long? EarlierYearId { get; set; }
+        public int Total { get; set; }
+        public int Blocked { get; set; }
+        public List<PromotionPendingRowDto> Rows { get; set; } = new();
     }
 }

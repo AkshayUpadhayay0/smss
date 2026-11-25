@@ -2,6 +2,8 @@ import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin } from 'rxjs';
+import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { ToastService } from '../../../../core/services/toast.service';
 import { AcademicYear } from '../../../school-setup/models/academic-year.model';
 import { SchoolClass } from '../../../school-setup/models/class.model';
 import { Section } from '../../../school-setup/models/section.model';
@@ -9,7 +11,7 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
-import { DECISION_LABELS, PromotionDecision, PromotionDecisionInput, PromotionPreview, PromotionRow, PromotionRowStatus, STATUS_LABELS } from '../../models/promotion.model';
+import { DECISION_LABELS, PromotionDecision, PromotionDecisionInput, PromotionPreview, PromotionResult, PromotionRow, PromotionRowStatus, STATUS_LABELS } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
 
 /** The year a promotion most likely starts from (the current one) and goes to (the first later year). */
@@ -37,6 +39,8 @@ export class PromotionComponent implements OnInit {
   private readonly yearApi = inject(AcademicYearService);
   private readonly classApi = inject(ClassService);
   private readonly sectionApi = inject(SectionService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly decisions: PromotionDecision[] = ['PROMOTE', 'REPEAT', 'PASS_OUT', 'LEAVE'];
@@ -59,6 +63,27 @@ export class PromotionComponent implements OnInit {
   protected readonly edits = signal<Record<string, PromotionDecisionInput>>({});
   protected readonly result = signal<PromotionPreview | null>(null);
   protected readonly expanded = signal<Record<string, boolean>>({});
+
+  // ---- the run (4b-3)
+  /** Blocked students the admin ticked one by one: there is no "override all". */
+  protected readonly overrides = signal<ReadonlySet<string>>(new Set());
+  protected readonly reason = signal('');
+  protected readonly ack = signal(false);
+  protected readonly backdateOk = signal(false);
+  protected readonly running = signal(false);
+  protected readonly runResult = signal<PromotionResult | null>(null);
+  /** What a run would do now: the ready rows plus the blocked rows that are ticked. */
+  protected readonly willDo = computed(() => {
+    const r = this.result();
+    return r ? r.rows.filter((x) => x.decision != null && (x.status === 'READY' || (x.status === 'BLOCKED' && this.overrides().has(x.studentId)))) : [];
+  });
+  protected readonly startedAndPlacing = computed(() => !!this.result()?.targetYearStarted && this.willDo().some((x) => x.target != null));
+  protected readonly needsReason = computed(() => this.overrides().size > 0 || this.startedAndPlacing());
+  protected readonly reasonOk = computed(() => this.reason().trim().length >= 10);
+  protected readonly canRun = computed(() => {
+    const r = this.result();
+    return !!r && !this.running() && this.willDo().length > 0 && (!r.needsFeeAcknowledgement || this.ack()) && (!this.needsReason() || this.reasonOk()) && (!this.startedAndPlacing() || this.backdateOk());
+  });
 
   protected readonly classSections = computed(() => this.sections().filter((s) => s.classId === this.classId()));
   protected readonly canPreview = computed(() => !this.busy() && this.sourceId() != null && this.targetId() != null && this.classId() != null && this.sourceId() !== this.targetId());
@@ -91,6 +116,8 @@ export class PromotionComponent implements OnInit {
 
   /** A change of years, class, section or date starts the preview over (the old edits belonged to the old choice). */
   protected reset(): void {
+    this.overrides.set(new Set());
+    this.runResult.set(null);
     this.edits.set({});
     this.result.set(null);
     this.previewFailed.set(false);
@@ -140,6 +167,44 @@ export class PromotionComponent implements OnInit {
 
   protected toggle(studentId: string): void {
     this.expanded.update((e) => ({ ...e, [studentId]: !e[studentId] }));
+  }
+
+  protected toggleOverride(studentId: string, on: boolean): void {
+    this.overrides.update((s) => { const n = new Set(s); if (on) n.add(studentId); else n.delete(studentId); return n; });
+  }
+
+  protected async run(): Promise<void> {
+    const r = this.result();
+    if (!r || !this.canRun()) return;
+    const n = this.willDo().length;
+    const ok = await this.confirmDialog.confirm({
+      title: 'Promote these students?',
+      message: `${n} student${n === 1 ? '' : 's'} will be moved from ${r.sourceYearName} into ${r.targetYearName} and recorded in the audit.`,
+      confirmText: 'Promote now',
+    });
+    if (!ok) return;
+    this.running.set(true);
+    const blockedTicked = r.rows.filter((x) => x.status === 'BLOCKED' && this.overrides().has(x.studentId)).map((x) => x.studentId);
+    this.api
+      .execute({
+        sourceYearId: this.sourceId()!, targetYearId: this.targetId()!, classId: this.classId()!, sectionId: this.sectionId(), promotionDate: this.date() || null, decisions: Object.values(this.edits()),
+        confirm: true, overrideReason: this.reasonOk() ? this.reason().trim() : null, overrideStudentIds: blockedTicked,
+        acknowledgeNoFeeStructure: r.needsFeeAcknowledgement && this.ack(), confirmBackdating: this.startedAndPlacing() && this.backdateOk(),
+      })
+      .pipe(finalize(() => this.running.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.runResult.set(res);
+          this.result.set(null);
+          this.toast.success(res.batchId == null ? 'Nothing was changed.' : 'Promotion done.');
+        },
+        error: () => undefined,   // the server reason is toasted; nothing was written
+      });
+  }
+
+  protected again(): void {
+    this.reset();
+    this.runPreview();
   }
 
   protected badge(s: PromotionRowStatus): string {

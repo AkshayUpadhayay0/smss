@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace smss_api_db_layer.@interface
 {
     public class PromoYearRow
@@ -88,6 +90,73 @@ namespace smss_api_db_layer.@interface
         public string RollNumber { get; set; } = null!;
     }
 
+    /// <summary>One row of a promotion run's audit (tb_promotion_items).</summary>
+    public class PromoItemWrite
+    {
+        public string StudentId { get; set; } = null!;
+        public long SourceEnrollmentId { get; set; }
+        public long? TargetEnrollmentId { get; set; }
+        public string Decision { get; set; } = null!;
+        public long FromClassId { get; set; }
+        public long FromSectionId { get; set; }
+        public long? ToClassId { get; set; }
+        public long? ToSectionId { get; set; }
+        public string? RollNumber { get; set; }
+        public decimal OutstandingAmount { get; set; }
+        public bool OverrideApplied { get; set; }
+        public string? OverrideReason { get; set; }
+        public string? SkipReason { get; set; }
+    }
+
+    /// <summary>One promotion run's audit row (tb_promotion_batches), written with its final counts.</summary>
+    public class PromoBatchWrite
+    {
+        public string SchoolId { get; set; } = null!;
+        public long SourceYearId { get; set; }
+        public long TargetYearId { get; set; }
+        public string Scope { get; set; } = null!;
+        public long ClassId { get; set; }
+        public long? SectionId { get; set; }
+        public DateOnly PromotionDate { get; set; }
+        public long CreatedBy { get; set; }
+        public int StudentsTotal { get; set; }
+        public int Promoted { get; set; }
+        public int Repeated { get; set; }
+        public int PassedOut { get; set; }
+        public int Left { get; set; }
+        public int Skipped { get; set; }
+        public int Overrides { get; set; }
+        public string? OverrideReason { get; set; }
+        public bool NoFeeStructureAcknowledged { get; set; }
+    }
+
+    /// <summary>A student waiting to be promoted into the current-flagged year.</summary>
+    public class PromoPendingRow
+    {
+        public string StudentId { get; set; } = null!;
+        public string AdmissionNumber { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public long ClassId { get; set; }
+        public string ClassName { get; set; } = null!;
+        public long SectionId { get; set; }
+        public string SectionName { get; set; } = null!;
+        public string? RollNumber { get; set; }
+        public string? TeacherDecision { get; set; }
+        /// <summary>Unpaid dues of the earlier year due on or before today.</summary>
+        public decimal Outstanding { get; set; }
+    }
+
+    public class PromoPendingYears
+    {
+        public long CurrentYearId { get; set; }
+        public string CurrentYearName { get; set; } = null!;
+        /// <summary>The latest year starting before the current-flagged one; null when there is none.</summary>
+        public long? EarlierYearId { get; set; }
+        public string? EarlierYearName { get; set; }
+    }
+
+    public class PromoCount { public int Value { get; set; } }
+
     /// <summary>Promotion, read side (4b-2). Every method takes the school id; nothing here writes.</summary>
     public interface IPromotionRepository
     {
@@ -100,5 +169,21 @@ namespace smss_api_db_layer.@interface
         Task<List<PromoDueRow>> ListUnpaidDuesAsync(string schoolId, long sourceYearId, IReadOnlyCollection<string> studentIds, CancellationToken ct);
         Task<List<PromoOfferRow>> ListTargetOfferAsync(string schoolId, long targetYearId, CancellationToken ct);
         Task<List<PromoRollRow>> ListTargetRollsAsync(string schoolId, long targetYearId, CancellationToken ct);
+
+        // ---- 4b-3: the run (everything below must be called inside the transaction taken with BeginTransactionAsync, after LockSchoolAsync)
+        Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
+        /// <summary>Takes the school's promotion lock for the rest of the transaction: a second run waits here and then sees what the first one did.</summary>
+        Task LockSchoolAsync(string schoolId, CancellationToken ct);
+        /// <summary>Adds the new-year enrolment (Active, admission type "existing student") and returns its id.</summary>
+        Task<long> InsertEnrollmentAsync(string schoolId, string studentId, long yearId, long sectionId, string? roll, DateOnly enrollmentDate, long sourceEnrollmentId, CancellationToken ct);
+        /// <summary>Records the outcome on the old enrolment (only while it has none) and nothing else on it. Returns false when it already had one.</summary>
+        Task<bool> SetOutcomeAsync(string schoolId, long enrollmentId, string outcome, CancellationToken ct);
+        Task<long> InsertBatchAsync(PromoBatchWrite batch, CancellationToken ct);
+        Task InsertItemAsync(string schoolId, long batchId, PromoItemWrite item, CancellationToken ct);
+
+        // ---- pending promotion (read)
+        Task<PromoPendingYears?> GetPendingYearsAsync(string schoolId, CancellationToken ct);
+        Task<int> CountPendingAsync(string schoolId, DateOnly today, CancellationToken ct);
+        Task<List<PromoPendingRow>> ListPendingAsync(string schoolId, DateOnly today, int limit, CancellationToken ct);
     }
 }

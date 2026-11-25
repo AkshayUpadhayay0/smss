@@ -20,27 +20,32 @@ namespace smss_api_tests
         private const string Inactive = "(select sid from lut_status where sname='Inactive' and stype='general status')";
         private const string NewAdm = "(select admission_type_id from lut_admission_type where type_code='NEW_ADMISSION')";
 
-        private static PromotionService Svc(TaxDb db) => new(new PromotionRepository(db.Ctx()), NullLogger<PromotionService>.Instance);
+        internal static PromotionService Svc(TaxDb db)
+        {
+            var c = db.Ctx();
+            var billing = new StudentFeeBillingService(new StudentFeeBillingRepository(c), new StudentFeeRepository(c), NullLogger<StudentFeeBillingService>.Instance);
+            return new PromotionService(new PromotionRepository(c), new StudentFeeBillingRepository(c), new FeeRepairRepository(c), new AdmissionRepository(c), billing, NullLogger<PromotionService>.Instance);
+        }
 
-        private sealed class W
+        internal sealed class W
         {
             public string School = "";
             public long S, T, C1, C2, C3, C4, C1A, C1B, C2A, C2B, C3A, C4A;
         }
 
-        private static void Student(TaxDb db, string school, string id, bool active = true) =>
+        internal static void Student(TaxDb db, string school, string id, bool active = true) =>
             db.Exec($@"insert into tb_students (student_id, school_id, admission_number, first_name, last_name, date_of_birth, admission_type_id, admission_date, status_id)
                        values ('{id}', '{school}', '{id}-N', 'Stu', '{id}', '2015-01-01', {NewAdm}, '2026-04-01', {(active ? Active : Inactive)})");
 
-        private static void Enrol(TaxDb db, string school, string id, long year, long section, string? roll, string? outcome = null) =>
+        internal static void Enrol(TaxDb db, string school, string id, long year, long section, string? roll, string? outcome = null) =>
             db.Exec($@"insert into tb_student_enrollments (school_id, student_id, academic_year_id, class_section_id, roll_number, enrollment_date, admission_type_id, status_id, outcome, outcome_at)
                        values ('{school}', '{id}', {year}, {section}, {(roll == null ? "null" : $"'{roll}'")}, '2026-04-01', {NewAdm}, {Active}, {(outcome == null ? "null" : $"'{outcome}'")}, {(outcome == null ? "null" : "now()")})");
 
-        private static void Teacher(TaxDb db, W w, string student, long section, string decision, string? promotedTo = null) =>
+        internal static void Teacher(TaxDb db, W w, string student, long section, string decision, string? promotedTo = null) =>
             db.Exec($@"insert into tb_report_year_student (scheme_id, student_id, section_id, school_id, promotion_decision, promoted_to)
                        select scheme_id, '{student}', {section}, '{w.School}', '{decision}', {(promotedTo == null ? "null" : $"'{promotedTo}'")} from tb_report_schemes where school_id='{w.School}' and academic_year_id={w.S}");
 
-        private static void Due(TaxDb db, W w, string student, string date, decimal due, decimal paid)
+        internal static void Due(TaxDb db, W w, string student, string date, decimal due, decimal paid)
         {
             db.Exec($@"insert into tb_student_fee_items (student_id, school_id, academic_year_id, fee_type_id, frequency_id, base_amount, net_amount)
                        select '{student}', '{w.School}', {w.S}, (select fee_type_id from tb_fee_types where school_id='{w.School}' and fee_type_code='TUI'), (select min(frequency_id) from lut_fee_frequency), 1000, 1000
@@ -53,7 +58,7 @@ namespace smss_api_tests
         /// 2026-27 (source, current) and 2027-28 (target). Class 1 -> Class 2 -> Class 3 (next_class_id); Class 4 is offered but is nobody's next. The target offers Class 1 (A, B), Class 2 (A with 2 places, B),
         /// Class 4 (A) and NOT Class 3. Class 1 and Class 2 have a fee structure in the target; Class 4 has none.
         /// </summary>
-        private static W Build(TaxDb db, string id)
+        internal static W Build(TaxDb db, string id)
         {
             var w = new W { School = id };
             db.Exec($"insert into tb_schools (school_id, school_code, school_name, school_status_id) values ('{id}', '{id}-C', 'Promotion test {id}', {Active})");
@@ -81,7 +86,7 @@ namespace smss_api_tests
         }
 
         /// <summary>Class 1 students (see each comment) and a few in Class 2.</summary>
-        private static W Populate(TaxDb db, string id)
+        internal static W Populate(TaxDb db, string id)
         {
             var w = Build(db, id);
             foreach (var s in new[] { "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "Q1", "Q2", "Q3", "X1" }) Student(db, id, id + s, active: s != "P9");
@@ -105,7 +110,7 @@ namespace smss_api_tests
             return w;
         }
 
-        private static PromotionPreviewRequest Req(W w, long? cls = null, long? section = null, DateOnly? date = null, PromotionDecisionInput[]? edits = null) =>
+        internal static PromotionPreviewRequest Req(W w, long? cls = null, long? section = null, DateOnly? date = null, PromotionDecisionInput[]? edits = null) =>
             new() { SourceYearId = w.S, TargetYearId = w.T, ClassId = cls ?? w.C1, SectionId = section, PromotionDate = date ?? new DateOnly(2027, 3, 1), Decisions = (edits ?? Array.Empty<PromotionDecisionInput>()).ToList() };
 
         private static PromotionRowDto Row(PromotionPreviewDto d, W w, string s) => d.Rows.Single(r => r.StudentId == w.School + s);
@@ -115,7 +120,7 @@ namespace smss_api_tests
             Assert.True(x.Status, x.Message);
             return x.Data!;
         }
-        private static string Fp(TaxDb db, string school) => db.Scalar<string>($@"select md5(coalesce(string_agg(x, '|' order by x), '')) from (
+        internal static string Fp(TaxDb db, string school) => db.Scalar<string>($@"select md5(coalesce(string_agg(x, '|' order by x), '')) from (
             select e::text x from tb_student_enrollments e where school_id='{school}' union all select d::text from tb_student_fee_dues d where school_id='{school}'
             union all select b::text from tb_promotion_batches b where school_id='{school}' union all select i::text from tb_promotion_items i where school_id='{school}'
             union all select f::text from tb_student_fee_structure f where school_id='{school}') q");

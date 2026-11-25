@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using smss_api.Helpers;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
+using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
@@ -22,6 +23,25 @@ namespace smss_api.Controllers
         {
             if (!User.CanPromoteStudents()) return this.Forbidden("Only a School Admin or a Principal can promote students.");
             var response = await _service.PreviewAsync(User.GetSchoolId(), request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/Promotion/execute   body = the preview request + { confirm: true, overrideReason?, overrideStudentIds?, acknowledgeNoFeeStructure?, confirmBackdating? }
+        [HttpPost("execute")]
+        public async Task<IActionResult> Execute([FromBody] PromotionExecuteRequest request, CancellationToken ct)
+        {
+            if (!User.CanPromoteStudents()) return this.Forbidden("Only a School Admin or a Principal can promote students.");
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _service.ExecuteAsync(User.GetSchoolId(), userId, request, ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // GET api/Promotion/pending?summary=true   the students waiting to be promoted into the current year (summary = the count only, for the dashboard tile)
+        [HttpGet("pending")]
+        public async Task<IActionResult> Pending([FromQuery] bool summary, CancellationToken ct)
+        {
+            if (!User.CanPromoteStudents()) return this.Forbidden("Only a School Admin or a Principal can see the students waiting for promotion.");
+            var response = await _service.GetPendingAsync(User.GetSchoolId(), !summary, ct);
             return StatusCode(response.StatusCode, response);
         }
     }

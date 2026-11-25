@@ -102,6 +102,9 @@ export interface PromotionPreview {
   sourceYearClosed: boolean;
   targetYearId: number;
   targetYearName: string;
+  /** The target year's first day; targetYearStarted = it has passed, so a run charges fees from it (needs the back-dating confirmation and a reason). */
+  targetYearStart: string;
+  targetYearStarted: boolean;
   scope: 'CLASS' | 'SECTION';
   classId: number;
   className: string;
@@ -117,4 +120,71 @@ export interface PromotionPreview {
   needsFeeAcknowledgement: boolean;
   targetOptions: PromotionClassOption[];
   rows: PromotionRow[];
+}
+
+/** The preview request plus what a run adds. The server works everything else out again. */
+export interface PromotionExecuteRequest extends PromotionPreviewRequest {
+  confirm: boolean;
+  overrideReason: string | null;
+  overrideStudentIds: string[];
+  acknowledgeNoFeeStructure: boolean;
+  confirmBackdating: boolean;
+}
+
+export type PromotionItemOutcome = 'DONE' | 'OVERRIDDEN' | 'SKIPPED';
+
+export interface PromotionResultItem {
+  studentId: string;
+  studentName: string;
+  decision: PromotionDecision | null;
+  outcome: PromotionItemOutcome;
+  reason: string | null;
+  target: PromotionTarget | null;
+  rollNumber: string | null;
+  outstanding: number;
+}
+
+export interface PromotionFeeFailure {
+  studentId: string;
+  studentName: string;
+  reason: string;
+}
+
+export interface PromotionResult {
+  batchId: number | null;
+  promoted: number;
+  repeated: number;
+  passedOut: number;
+  left: number;
+  overridden: number;
+  skipped: number;
+  leftOut: number;
+  feesAssigned: number;
+  feesNoStructure: number;
+  backdated: boolean;
+  items: PromotionResultItem[];
+  feeFailures: PromotionFeeFailure[];
+}
+
+export interface PromotionPendingRow {
+  studentId: string;
+  admissionNumber: string;
+  studentName: string;
+  classId: number;
+  className: string;
+  sectionId: number;
+  sectionName: string;
+  rollNumber: string | null;
+  teacherDecision: string | null;
+  outstanding: number;
+  status: 'BLOCKED' | 'NO_DECISION';
+}
+
+export interface PromotionPending {
+  hasEarlierYear: boolean;
+  currentYearName: string | null;
+  earlierYearName: string | null;
+  total: number;
+  blocked: number;
+  rows: PromotionPendingRow[];
 }

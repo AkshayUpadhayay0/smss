@@ -52,6 +52,23 @@
         <p class="warn" role="alert" data-fee-warning>{{ r.classesWithoutFeeStructure.join(', ') }} {{ r.classesWithoutFeeStructure.length === 1 ? 'has' : 'have' }} no fee structure in {{ r.targetYearName }}. Students placed there will get no fees until one is set up; the run will ask you to acknowledge this.</p>
       }
 
+      <section class="run" data-run-panel aria-label="Run the promotion">
+        @if (r.needsFeeAcknowledgement) {
+          <label class="check"><input type="checkbox" data-ack [checked]="ack()" (change)="ack.set($any($event.target).checked)" /><span>I understand that {{ r.classesWithoutFeeStructure.join(', ') }} has no fee structure in {{ r.targetYearName }}: those students get no fees until one is set up.</span></label>
+        }
+        @if (startedAndPlacing()) {
+          <label class="check"><input type="checkbox" data-backdate [checked]="backdateOk()" (change)="backdateOk.set($any($event.target).checked)" /><span>{{ r.targetYearName }} began on {{ r.targetYearStart }}. I confirm that fees are charged from that day: dues already past are created and logged.</span></label>
+        }
+        @if (needsReason()) {
+          <label class="field wide"><span>Reason for the run (at least 10 characters){{ overrides().size > 0 ? ', stored with every overridden student' : '' }}</span>
+            <textarea data-reason rows="2" maxlength="500" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
+        }
+        <div class="runbar">
+          <span data-will-do>{{ willDo().length }} student{{ willDo().length === 1 ? '' : 's' }} would be done{{ overrides().size > 0 ? ' (' + overrides().size + ' overridden)' : '' }}.</span>
+          <app-button data-run-btn [disabled]="!canRun()" (click)="run()">{{ running() ? 'Promoting…' : 'Promote now' }}</app-button>
+        </div>
+      </section>
+
       <div class="scroll">
         <table class="rows" data-rows>
           <thead><tr><th>Student</th><th>Now</th><th>Decision</th><th>Moves to</th><th>Roll</th><th>Dues</th><th>Status</th></tr></thead>
@@ -85,6 +102,9 @@
                 <td>
                   @if (row.outstanding > 0) {
                     <button type="button" class="link" data-dues-toggle (click)="toggle(row.studentId)">{{ row.outstanding | currency: 'INR' : 'symbol' : '1.0-0' }} due</button>
+                    @if (row.status === 'BLOCKED') {
+                      <label class="check small"><input type="checkbox" data-override [attr.aria-label]="'Override the dues block for ' + row.studentName" [checked]="overrides().has(row.studentId)" (change)="toggleOverride(row.studentId, $any($event.target).checked)" /><span>Override</span></label>
+                    }
                   } @else { - }
                   @if (row.notYetDue > 0) { <small>{{ row.notYetDue | currency: 'INR' : 'symbol' : '1.0-0' }} not yet due</small> }
                 </td>
@@ -113,6 +133,27 @@
         </table>
       </div>
       @if (r.rows.length === 0) { <p class="hint" data-empty>No active students are enrolled in this class in {{ r.sourceYearName }}.</p> }
+    </app-card>
+  }
+
+  @if (runResult(); as res) {
+    <app-card title="Promotion result">
+      <p class="verdict ok" data-result>
+        <app-icon name="circle-check" [size]="16" />
+        @if (res.batchId == null) { Nothing was changed: nobody could be promoted in this run. } @else {
+          {{ res.promoted }} promoted, {{ res.repeated }} repeating, {{ res.passedOut }} passed out, {{ res.left }} left{{ res.overridden > 0 ? ', ' + res.overridden + ' overridden' : '' }}. Fees assigned to {{ res.feesAssigned }}.
+        }
+      </p>
+      @if (res.feesNoStructure > 0) { <p class="note" data-no-structure>{{ res.feesNoStructure }} student{{ res.feesNoStructure === 1 ? '' : 's' }} went to a class with no fee structure and got no fees.</p> }
+      @if (res.feeFailures.length > 0) {
+        <p class="warn" role="alert" data-fee-failures>Fees could not be assigned to {{ res.feeFailures.length }} student{{ res.feeFailures.length === 1 ? '' : 's' }}. They are promoted; assign their fees from Academic Year, Assign fees:</p>
+        <ul>@for (f of res.feeFailures; track f.studentId) { <li>{{ f.studentName }} ({{ f.studentId }}): {{ f.reason }}</li> }</ul>
+      }
+      @if (res.skipped + res.leftOut > 0) {
+        <p class="note">Left out of this run:</p>
+        <ul data-skipped>@for (i of res.items; track i.studentId) { @if (i.outcome === 'SKIPPED') { <li>{{ i.studentName }}: {{ i.reason }}</li> } }</ul>
+      }
+      <app-button variant="secondary" data-again (click)="again()">Preview again</app-button>
     </app-card>
   }
 }
