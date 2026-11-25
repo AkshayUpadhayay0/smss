@@ -15,7 +15,7 @@ namespace smss_api_db_layer.repository
     /// </summary>
     public class YearCopyRepository : IYearCopyRepository
     {
-        public const string PartClassesSections = "CLASSES_SECTIONS", PartSubjects = "SUBJECTS", PartSchedules = "SCHEDULES", PartClassTeachers = "CLASS_TEACHERS", PartTimetable = "TIMETABLE";
+        public const string PartClassesSections = "CLASSES_SECTIONS", PartSubjects = "SUBJECTS", PartSchedules = "SCHEDULES", PartClassTeachers = "CLASS_TEACHERS", PartTimetable = "TIMETABLE", PartFeeStructures = "FEE_STRUCTURES";
 
         private const string Act = "(SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status')";
         private const string Exists = "EXISTS";
@@ -63,6 +63,9 @@ namespace smss_api_db_layer.repository
             new NpgsqlParameter("usr", NpgsqlDbType.Bigint) { Value = (object?)user ?? DBNull.Value },
             new NpgsqlParameter("start", NpgsqlDbType.Date) { Value = tgt.StartDate },
             new NpgsqlParameter("why", NpgsqlDbType.Varchar) { Value = (object?)reason ?? DBNull.Value },
+            new NpgsqlParameter("pct", NpgsqlDbType.Numeric) { Value = 0m },
+            new NpgsqlParameter("srcname", NpgsqlDbType.Varchar) { Value = src.YearName },
+            new NpgsqlParameter("tgtname", NpgsqlDbType.Varchar) { Value = tgt.YearName },
         };
 
         private async Task StepAsync(CopyPartOutcome o, string kind, string cand, string insertInto, string insertSelect, Func<NpgsqlParameter[]> ps, CancellationToken ct)
@@ -73,7 +76,7 @@ namespace smss_api_db_layer.repository
             o.Created[kind] = await _db.Database.ExecuteSqlRawAsync($"INSERT INTO {insertInto} SELECT {insertSelect} FROM ({cand}) c WHERE c.reason IS NULL", ps());
         }
 
-        public async Task<CopyPartOutcome> RunPartAsync(string part, string schoolId, CopyYear source, CopyYear target, long? userId, CancellationToken ct)
+        public async Task<CopyPartOutcome> RunPartAsync(string part, string schoolId, CopyYear source, CopyYear target, long? userId, CancellationToken ct, decimal feeIncreasePercent = 0m)
         {
             var o = new CopyPartOutcome();
             Func<NpgsqlParameter[]> ps = () => Ps(schoolId, source, target, userId, $"Copied from {source.YearName}");
@@ -96,10 +99,76 @@ namespace smss_api_db_layer.repository
                 case PartTimetable:
                     await TimetablesAsync(o, schoolId, source, target, userId, ct);
                     break;
+                case PartFeeStructures:
+                    await FeesAsync(o, schoolId, source, target, userId, feeIncreasePercent, ct);
+                    break;
                 default: throw new ArgumentException("Unknown part " + part);
             }
             return o;
         }
+
+        // ================================================================== fee structures
+        // A structure is copied whole, per class, or not at all: a class that already has a fee structure in the target year is skipped (never merged into, never overwritten), so a second run creates nothing.
+        // Every line starts on the target year's first day. Amounts change only by the one uniform percentage, rounded to the nearest rupee; everything else is edited on the Fee Structure screen afterwards.
+        private const string FeeStructCand = $@"
+SELECT s.fee_structure_id, s.class_id, s.structure_name, cl.class_name AS label,
+       CASE WHEN NOT s.isactive THEN 'The fee structure is inactive'
+            WHEN cl.status_id IS DISTINCT FROM {Act} THEN 'The class is inactive'
+            WHEN NOT EXISTS (SELECT 1 FROM public.tb_academic_year_classes t WHERE t.academic_year_id = @tgt AND t.class_id = s.class_id AND t.status_id = {Act}) THEN 'The class is not offered in the target year'
+            WHEN EXISTS (SELECT 1 FROM public.tb_fee_structures t WHERE t.school_id = @school AND t.academic_year_id = @tgt AND t.class_id = s.class_id) THEN 'EXISTS'
+            WHEN NOT EXISTS (SELECT 1 FROM public.tb_fee_structure_details d JOIN public.tb_fee_types ft ON ft.fee_type_id = d.fee_type_id AND ft.school_id = @school WHERE d.fee_structure_id = s.fee_structure_id AND ft.isactive) THEN 'The structure has no line with an active fee type'
+       END AS reason
+FROM public.tb_fee_structures s JOIN public.tb_classes cl ON cl.class_id = s.class_id AND cl.school_id = @school
+WHERE s.school_id = @school AND s.academic_year_id = @src";
+
+        private const string NewAmount = "round(d.amount * (100 + @pct) / 100, 0)";
+
+        private async Task FeesAsync(CopyPartOutcome o, string school, CopyYear src, CopyYear tgt, long? user, decimal pct, CancellationToken ct)
+        {
+            NpgsqlParameter[] Ps2()
+            {
+                var ps = Ps(school, src, tgt, user);
+                ps.First(p => p.ParameterName == "pct").Value = pct;
+                return ps;
+            }
+            var rows = await _db.Database.SqlQueryRaw<Cand>($"SELECT c.label AS \"Label\", c.reason AS \"Reason\" FROM ({FeeStructCand}) c", Ps2()).ToListAsync(ct);
+            o.SkippedExisting += rows.Count(r => r.Reason == Exists);
+            foreach (var r in rows.Where(r => r.Reason != null && r.Reason != Exists)) o.Skipped.Add(new CopySkip(r.Reason!, r.Label ?? ""));
+
+            // lines of the structures that WILL be copied but whose fee type is inactive: left out, with the reason
+            var lost = await _db.Database.SqlQueryRaw<Cand>($@"SELECT ft.fee_type_name || ' in ' || c.label AS ""Label"", 'The fee type is inactive' AS ""Reason""
+                FROM ({FeeStructCand}) c JOIN public.tb_fee_structure_details d ON d.fee_structure_id = c.fee_structure_id JOIN public.tb_fee_types ft ON ft.fee_type_id = d.fee_type_id AND ft.school_id = @school
+                WHERE c.reason IS NULL AND NOT ft.isactive", Ps2()).ToListAsync(ct);
+            foreach (var r in lost) o.Skipped.Add(new CopySkip(r.Reason!, r.Label ?? ""));
+
+            // what each line would become: the old amount and the new one
+            var samples = await _db.Database.SqlQueryRaw<Cand>($@"SELECT c.label || ' - ' || ft.fee_type_name || ': ' || trim(to_char(d.amount, 'FM9999999990.00')) || ' -> ' || trim(to_char({NewAmount}, 'FM9999999990')) AS ""Label"", NULL::text AS ""Reason""
+                FROM ({FeeStructCand}) c JOIN public.tb_fee_structure_details d ON d.fee_structure_id = c.fee_structure_id JOIN public.tb_fee_types ft ON ft.fee_type_id = d.fee_type_id AND ft.school_id = @school
+                WHERE c.reason IS NULL AND ft.isactive ORDER BY c.label, ft.fee_type_name", Ps2()).ToListAsync(ct);
+            o.Samples.AddRange(samples.Select(s => s.Label ?? ""));
+
+            // the structures and their lines in ONE statement: the lines go only to the structures this very statement created
+            var madeRows = await _db.Database.SqlQueryRaw<FeeCounts>($@"
+WITH ins_s AS (
+    INSERT INTO public.tb_fee_structures (school_id, academic_year_id, class_id, structure_name, isactive)
+    SELECT @school, @tgt, c.class_id, left(replace(c.structure_name, @srcname, @tgtname), 150), true FROM ({FeeStructCand}) c WHERE c.reason IS NULL
+    RETURNING fee_structure_id, class_id),
+ins_d AS (
+    INSERT INTO public.tb_fee_structure_details (fee_structure_id, fee_type_id, frequency_id, amount, due_day, effective_from)
+    SELECT n.fee_structure_id, d.fee_type_id, d.frequency_id, {NewAmount}, d.due_day, @start
+    FROM ins_s n
+    JOIN public.tb_fee_structures s ON s.school_id = @school AND s.academic_year_id = @src AND s.class_id = n.class_id
+    JOIN public.tb_fee_structure_details d ON d.fee_structure_id = s.fee_structure_id
+    JOIN public.tb_fee_types ft ON ft.fee_type_id = d.fee_type_id AND ft.school_id = @school AND ft.isactive
+    RETURNING 1)
+SELECT (SELECT count(*) FROM ins_s)::int AS ""Structures"", (SELECT count(*) FROM ins_d)::int AS ""Lines""", Ps2()).ToListAsync(ct);   // (not composed with LIMIT: a data-modifying WITH must stay at the top level)
+            var made = madeRows.First();
+            o.Created["fee structures"] = made.Structures;
+            o.Created["fee lines"] = made.Lines;
+            if (pct != 0m) o.Notes[$"amounts raised by {pct:0.##} %"] = made.Lines;
+        }
+
+        private sealed class FeeCounts { public int Structures { get; set; } public int Lines { get; set; } }
 
         // ---- candidate queries: columns the INSERT needs, a label for the screen, and the Reason (null = create)
         private const string ClassesCand = $@"

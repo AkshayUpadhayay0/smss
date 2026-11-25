@@ -5,10 +5,12 @@ namespace smss_api_service_layer.dto
     // S7: copy configuration from one academic year to another. No school id: it comes from the token.
     public class YearCopyRequest
     {
-        /// <summary>CLASSES_SECTIONS, SUBJECTS, SCHEDULES, CLASS_TEACHERS, TIMETABLE (any of them, run in this order).</summary>
+        /// <summary>CLASSES_SECTIONS, FEE_STRUCTURES, SUBJECTS, SCHEDULES, CLASS_TEACHERS, TIMETABLE (any of them, run in this order).</summary>
         [Required(ErrorMessage = "Choose at least one part to copy."), MinLength(1, ErrorMessage = "Choose at least one part to copy.")] public List<string>? Parts { get; set; }
         /// <summary>A real run needs this to be true. A preview ignores it and never writes.</summary>
         public bool Confirm { get; set; }
+        /// <summary>FEE_STRUCTURES only: one uniform percentage added to every copied fee amount (0 to 100, default 0 = the same amounts), rounded to the nearest rupee.</summary>
+        [Range(0, 100, ErrorMessage = "The increase must be between 0 and 100 percent.")] public decimal FeeIncreasePercent { get; set; }
     }
 
     public class YearCopyCountDto { public string Kind { get; set; } = null!; public int Count { get; set; } }
@@ -33,6 +35,8 @@ namespace smss_api_service_layer.dto
         public List<YearCopySkipDto> Skipped { get; set; } = new();
         public int SkippedWithReason { get; set; }
         public List<YearCopyCountDto> Notes { get; set; } = new();
+        /// <summary>Lines worth reading (the fee part: each line's old amount and new amount). Shown for a preview and a real run, not kept in the log.</summary>
+        public List<string> Samples { get; set; } = new();
     }
 
     public class YearCopyResultDto

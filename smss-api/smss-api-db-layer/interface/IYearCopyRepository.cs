@@ -13,6 +13,8 @@ namespace smss_api_db_layer.@interface
         public List<CopySkip> Skipped { get; } = new();
         /// <summary>Extra facts worth showing (slots flagged "needs a teacher", ...).</summary>
         public Dictionary<string, int> Notes { get; } = new();
+        /// <summary>Examples worth reading in the preview (the fee part lists each line's old amount and new amount).</summary>
+        public List<string> Samples { get; } = new();
     }
 
     public record CopySkip(string Reason, string Ref);
@@ -30,7 +32,8 @@ namespace smss_api_db_layer.@interface
         /// Runs ONE part of the copy inside the caller's transaction. It only INSERTs into the target year (skip-if-exists on natural keys; never updates or deletes anything; the source is only read;
         /// masters are only referenced). The caller rolls back for a preview and commits for a real run, so both use exactly this code.
         /// </summary>
-        Task<CopyPartOutcome> RunPartAsync(string part, string schoolId, CopyYear source, CopyYear target, long? userId, CancellationToken ct);
+        /// <param name="feeIncreasePercent">Only the FEE_STRUCTURES part uses it: a uniform percentage added to every copied amount (0 = the same amounts), rounded to the nearest rupee.</param>
+        Task<CopyPartOutcome> RunPartAsync(string part, string schoolId, CopyYear source, CopyYear target, long? userId, CancellationToken ct, decimal feeIncreasePercent = 0m);
 
         Task AddLogAsync(TbYearCopyLog log, CancellationToken ct);
         Task<int> SaveChangesAsync(CancellationToken ct);

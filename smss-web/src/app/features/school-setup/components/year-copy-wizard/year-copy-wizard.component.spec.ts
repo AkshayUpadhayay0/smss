@@ -32,7 +32,7 @@ describe('helpers', () => {
     expect(rowsLabel(5)).toBe('5 rows');
   });
   it('lists the parts in dependency order', () => {
-    expect(PART_CHOICES.map((c) => c.part)).toEqual(['CLASSES_SECTIONS', 'SUBJECTS', 'SCHEDULES', 'CLASS_TEACHERS', 'TIMETABLE']);
+    expect(PART_CHOICES.map((c) => c.part)).toEqual(['CLASSES_SECTIONS', 'FEE_STRUCTURES', 'SUBJECTS', 'SCHEDULES', 'CLASS_TEACHERS', 'TIMETABLE']);
   });
 });
 
@@ -60,6 +60,7 @@ describe('YearCopyWizardComponent', () => {
     expect(sel.value).toBe('6');
     expect(Array.from(sel.options).map((o) => o.value)).toEqual(['5', '6']);
     expect(root().querySelectorAll('[data-part]:checked').length).toBe(5);
+    expect((root().querySelector('[data-part="FEE_STRUCTURES"]') as HTMLInputElement).checked).toBe(false);   // fees are opt-in
   });
 
   it('Preview sends the ticked parts only and nothing is written until Copy now', () => {
@@ -69,7 +70,7 @@ describe('YearCopyWizardComponent', () => {
     fixture.detectChanges();
     button('Preview').click();
     const req = http.expectOne(URL('preview'));
-    expect(req.request.body).toEqual({ parts: ['CLASSES_SECTIONS', 'SUBJECTS', 'SCHEDULES'] });
+    expect(req.request.body).toEqual({ parts: ['CLASSES_SECTIONS', 'SUBJECTS', 'SCHEDULES'], feeIncreasePercent: 0 });
     req.flush(envelope(result(true, [part('CLASSES_SECTIONS', { created: 5, details: [{ kind: 'classes', count: 2 }, { kind: 'sections', count: 3 }], skipped: [{ reason: 'The class is inactive', count: 1, examples: ['Class 3'] }], skippedWithReason: 1 }), part('SUBJECTS', { created: 6, skippedExisting: 2 }), part('SCHEDULES')])));
     fixture.detectChanges();
     expect(root().querySelector('[data-verdict]')?.textContent).toContain('11 rows');
@@ -108,7 +109,7 @@ describe('YearCopyWizardComponent', () => {
 
   it('with no part ticked Preview is disabled', () => {
     open();
-    for (const c of PART_CHOICES) (root().querySelector(`[data-part="${c.part}"]`) as HTMLInputElement).click();
+    for (const c of PART_CHOICES.filter((x) => x.part !== 'FEE_STRUCTURES')) (root().querySelector(`[data-part="${c.part}"]`) as HTMLInputElement).click();
     fixture.detectChanges();
     expect(button('Preview').disabled).toBe(true);
   });
@@ -121,5 +122,25 @@ describe('YearCopyWizardComponent', () => {
     button('Back').click();
     fixture.detectChanges();
     expect(root().querySelector('[data-source]')).not.toBeNull();
+  });
+
+  it('the fee part shows a percentage, sends it, and lists old to new amounts', () => {
+    open();
+    expect(root().querySelector('[data-percent]')).toBeNull();
+    (root().querySelector('[data-part="FEE_STRUCTURES"]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    const pct = root().querySelector('[data-percent]') as HTMLInputElement;
+    pct.value = '150'; pct.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(button('Preview').disabled).toBe(true);
+    pct.value = '10'; pct.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    button('Preview').click();
+    const req = http.expectOne(URL('preview'));
+    expect(req.request.body.feeIncreasePercent).toBe(10);
+    expect(req.request.body.parts).toContain('FEE_STRUCTURES');
+    req.flush(envelope(result(true, [{ ...part('FEE_STRUCTURES', { created: 3 }), samples: ['Class 1 - Tuition: 1800.00 -> 1980'] }])));
+    fixture.detectChanges();
+    expect(root().querySelector('[data-sample]')?.textContent).toContain('1800.00 -> 1980');
   });
 });

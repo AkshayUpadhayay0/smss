@@ -44,7 +44,8 @@ namespace smss_api.Controllers
         [HttpPost("years/{targetYearId:long}/copy-from/{sourceYearId:long}/preview")]
         public async Task<IActionResult> CopyPreview(long targetYearId, long sourceYearId, [FromBody] YearCopyRequest request, CancellationToken ct)
         {
-            if (!User.IsSchoolAdmin()) return this.Forbidden("Only a School Admin can copy the academic setup.");
+            // a School Admin or a Principal may LOOK at what a copy would do (the preview is rolled back and writes nothing); only the School Admin applies it
+            if (!User.CanViewAcademicSetup()) return this.Forbidden("Only a School Admin or a Principal can preview a copy of the academic setup.");
             var response = await _copy.PreviewAsync(User.GetSchoolId(), targetYearId, sourceYearId, request, ct);
             return StatusCode(response.StatusCode, response);
         }

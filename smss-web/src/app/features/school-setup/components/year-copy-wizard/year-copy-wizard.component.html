@@ -9,7 +9,7 @@
     @if (step() === 'choose') {
       <p class="hint">
         Start {{ target().yearName }} from the setup of an earlier year. Only <strong>adds</strong> what is missing: nothing already set up here is changed or deleted, the earlier year is not touched,
-        and students, fees and attendance are never copied.
+        and students, student fees and attendance are never copied.
       </p>
       <label class="field">
         <span>Copy from</span>
@@ -28,6 +28,14 @@
           </label>
         }
       </fieldset>
+      @if (has('FEE_STRUCTURES')) {
+        <label class="field">
+          <span>Raise every fee amount by (%)</span>
+          <input type="number" min="0" max="100" step="1" data-percent [value]="percent()" (input)="setPercent($any($event.target).value)" />
+          @if (!percentValid()) { <small role="alert">Enter a number from 0 to 100.</small> }
+        </label>
+        <p class="hint small">One percentage for all lines, rounded to the nearest rupee. Anything else is changed on the Fee Structure screen afterwards.</p>
+      }
       <p class="hint small">The parts are applied in this order. A part only copies what the year already offers (or what an earlier part adds), so tick the earlier parts too if this year has none yet.</p>
     }
 
@@ -47,6 +55,7 @@
                   <strong>{{ p.created }}</strong>
                   @for (d of p.details; track d.kind) { <small>{{ d.count }} {{ d.kind }}</small> }
                   @for (n of p.notes; track n.kind) { <small class="note">{{ n.count }} {{ n.kind }}</small> }
+                  @for (s of p.samples ?? []; track s) { <small data-sample>{{ s }}</small> }
                 </td>
                 <td>{{ p.skippedExisting }}</td>
                 <td>

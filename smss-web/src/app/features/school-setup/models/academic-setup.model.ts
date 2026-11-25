@@ -218,7 +218,7 @@ export interface AssignClassTeacherRequest {
 
 // ---------------- S7: copy configuration from another academic year (mirrors YearCopyResultDto / YearCopyLogDto)
 
-export type CopyPart = 'CLASSES_SECTIONS' | 'SUBJECTS' | 'SCHEDULES' | 'CLASS_TEACHERS' | 'TIMETABLE';
+export type CopyPart = 'CLASSES_SECTIONS' | 'SUBJECTS' | 'SCHEDULES' | 'CLASS_TEACHERS' | 'TIMETABLE' | 'FEE_STRUCTURES';
 
 export interface YearCopyCount { kind: string; count: number }
 
@@ -234,6 +234,8 @@ export interface YearCopyPart {
   skipped: YearCopySkip[];
   skippedWithReason: number;
   notes: YearCopyCount[];
+  /** Examples worth reading (the fee part: each line's old and new amount). */
+  samples?: string[];
 }
 
 export interface YearCopyResult {

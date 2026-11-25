@@ -16,10 +16,11 @@ namespace smss_api_service_layer.service
     /// </summary>
     public class YearCopyService : IYearCopyService
     {
-        public static readonly string[] Order = { YearCopyRepository.PartClassesSections, YearCopyRepository.PartSubjects, YearCopyRepository.PartSchedules, YearCopyRepository.PartClassTeachers, YearCopyRepository.PartTimetable };
+        public static readonly string[] Order = { YearCopyRepository.PartClassesSections, YearCopyRepository.PartFeeStructures, YearCopyRepository.PartSubjects, YearCopyRepository.PartSchedules, YearCopyRepository.PartClassTeachers, YearCopyRepository.PartTimetable };
         private static readonly Dictionary<string, string> Labels = new()
         {
             [YearCopyRepository.PartClassesSections] = "Classes and sections (with capacity)",
+            [YearCopyRepository.PartFeeStructures] = "Fee structures (every line starts on the first day of the target year)",
             [YearCopyRepository.PartSubjects] = "Subjects and section exceptions",
             [YearCopyRepository.PartSchedules] = "Bell schedule assignments",
             [YearCopyRepository.PartClassTeachers] = "Class teachers",
@@ -55,6 +56,7 @@ namespace smss_api_service_layer.service
                 if (unknown.Count > 0) return Result<YearCopyResultDto>(400, $"Unknown part: {string.Join(", ", unknown)}.", null);
                 parts = Order.Where(wanted.Contains).ToList();   // always run in dependency order, whatever order was asked for
                 if (!preview && !req.Confirm) return Result<YearCopyResultDto>(400, "Confirm the copy to run it (confirm = true). A preview needs no confirm.", null);
+                if (req.FeeIncreasePercent is < 0 or > 100) return Result<YearCopyResultDto>(400, "The increase must be between 0 and 100 percent.", null);
                 if (sourceYearId == targetYearId) return Result<YearCopyResultDto>(400, "The source and the target must be different academic years.", null);
 
                 var source = await _repo.GetYearAsync(schoolId, sourceYearId, ct);
@@ -73,7 +75,7 @@ namespace smss_api_service_layer.service
                     refusal = Refusal(target);
                     if (refusal != null) return refusal;
 
-                    foreach (var part in parts) outcomes.Add((part, await _repo.RunPartAsync(part, schoolId, source, target, userId, ct)));
+                    foreach (var part in parts) outcomes.Add((part, await _repo.RunPartAsync(part, schoolId, source, target, userId, ct, part == YearCopyRepository.PartFeeStructures ? decimal.Round(req.FeeIncreasePercent, 2) : 0m)));
                     var dto = Build(source, target, preview, outcomes);
 
                     if (preview)
@@ -135,7 +137,8 @@ namespace smss_api_service_layer.service
                 SkippedExisting = x.Outcome.SkippedExisting,
                 SkippedWithReason = x.Outcome.Skipped.Count,
                 Skipped = x.Outcome.Skipped.GroupBy(s => s.Reason).Select(g => new YearCopySkipDto { Reason = g.Key, Count = g.Count(), Examples = g.Select(s => s.Ref).Take(MaxExamples).ToList() }).ToList(),
-                Notes = x.Outcome.Notes.Select(n => new YearCopyCountDto { Kind = n.Key, Count = n.Value }).ToList()
+                Notes = x.Outcome.Notes.Select(n => new YearCopyCountDto { Kind = n.Key, Count = n.Value }).ToList(),
+                Samples = x.Outcome.Samples.Take(MaxExamples).ToList()
             }).ToList()
         };
 

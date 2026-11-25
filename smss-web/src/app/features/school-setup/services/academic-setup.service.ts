@@ -21,13 +21,13 @@ export class AcademicSetupService {
   }
 
   /** S7: what copying configuration from another year WOULD do. Nothing is saved. */
-  previewCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[]): Observable<YearCopyResult> {
-    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/preview`, { parts });
+  previewCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[], feeIncreasePercent = 0): Observable<YearCopyResult> {
+    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/preview`, { parts, feeIncreasePercent });
   }
 
   /** S7: runs the copy (skip-if-exists: nothing existing is changed or deleted) and writes one log row. */
-  applyCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[]): Observable<YearCopyResult> {
-    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/apply`, { parts, confirm: true });
+  applyCopy(targetYearId: number, sourceYearId: number, parts: CopyPart[], feeIncreasePercent = 0): Observable<YearCopyResult> {
+    return this.api.post<YearCopyResult>(`${BASE}/years/${targetYearId}/copy-from/${sourceYearId}/apply`, { parts, confirm: true, feeIncreasePercent });
   }
 
   copyLog(targetYearId: number): Observable<YearCopyLog[]> {
