@@ -14,6 +14,7 @@ import {
   TableColumn,
   TableComponent,
 } from '../../../../shared/components';
+import { FeeRepairModalComponent } from '../../components/fee-repair-modal/fee-repair-modal.component';
 import { YearCopyWizardComponent } from '../../components/year-copy-wizard/year-copy-wizard.component';
 import { AcademicYearFormModalComponent } from '../../components/academic-year-form-modal/academic-year-form-modal.component';
 import { AcademicYear, AcademicYearRow, AcademicYearState, AcademicYearUsage } from '../../models/academic-year.model';
@@ -58,7 +59,7 @@ const formatDate = (iso: string): string => {
 /** The signed-in school's own academic years (the server scopes everything to the token's school). */
 @Component({
   selector: 'app-academic-year-list',
-  imports: [ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, TableComponent, AcademicYearFormModalComponent, YearCopyWizardComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, TableComponent, AcademicYearFormModalComponent, YearCopyWizardComponent, FeeRepairModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './academic-year-list.component.scss',
   templateUrl: './academic-year-list.component.html',
@@ -79,6 +80,7 @@ export class AcademicYearListComponent implements OnInit {
   protected readonly modal = signal<{ year: AcademicYear | null } | null>(null);
   /** The year the "Copy configuration from a previous year" wizard is open for (offered right after a year is created, and from a row). */
   protected readonly copyTarget = signal<AcademicYear | null>(null);
+  protected readonly repairTarget = signal<AcademicYear | null>(null);
 
   protected readonly search = signal('');
   protected readonly sortKey = signal<string | null>('startDate');
@@ -180,6 +182,10 @@ export class AcademicYearListComponent implements OnInit {
 
   protected openCopy(row: AcademicYearRow): void {
     this.copyTarget.set(this.years().find((y) => y.academicYearId === row.academicYearId) ?? null);
+  }
+
+  protected openRepair(row: AcademicYearRow): void {
+    this.repairTarget.set(this.years().find((y) => y.academicYearId === row.academicYearId) ?? null);
   }
 
   protected async toggleStatus(row: AcademicYearRow): Promise<void> {

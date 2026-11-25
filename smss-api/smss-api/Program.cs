@@ -79,6 +79,8 @@ builder.Services.AddScoped<IReportSchemeService, ReportSchemeService>();
 builder.Services.AddScoped<IReportActivityAreaService, ReportActivityAreaService>();
 builder.Services.AddScoped<IReportScheduleService, ReportScheduleService>();
 builder.Services.AddScoped<IFeeSectionStatusService, FeeSectionStatusService>();
+builder.Services.AddScoped<IFeeRepairRepository, FeeRepairRepository>();
+builder.Services.AddScoped<IFeeRepairService, FeeRepairService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();
 builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();
 builder.Services.AddScoped<IIdCardSettingsRepository, IdCardSettingsRepository>();

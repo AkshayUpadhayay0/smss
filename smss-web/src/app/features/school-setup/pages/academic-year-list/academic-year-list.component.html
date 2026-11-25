@@ -29,6 +29,11 @@
           <app-icon name="copy" [size]="14" />Copy setup
         </app-button>
       }
+      @if (row.isActive && !row.isClosed) {
+        <app-button variant="secondary" size="sm" data-assign-fees (click)="openRepair(row)">
+          <app-icon name="indian-rupee" [size]="14" />Assign fees
+        </app-button>
+      }
       @if (row.isActive && !row.isCurrent && !row.isClosed) {
         <app-button variant="secondary" size="sm" [disabled]="busyId() === row.academicYearId" (click)="setCurrent(row)">
           <app-icon name="star" [size]="14" />Set as Current
@@ -74,4 +79,8 @@
 
 @if (copyTarget(); as t) {
   <app-year-copy-wizard [target]="t" [years]="years()" (closed)="copyTarget.set(null)" (done)="load()" />
+}
+
+@if (repairTarget(); as t) {
+  <app-fee-repair-modal [year]="t" (closed)="repairTarget.set(null)" />
 }
