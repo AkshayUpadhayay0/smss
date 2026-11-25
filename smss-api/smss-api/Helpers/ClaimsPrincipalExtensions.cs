@@ -73,13 +73,10 @@ namespace smss_api.Helpers
         public static bool IsStudent(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.Student);
 
         /// <summary>
-        /// Admission applications: who may take them in and work them (create, edit while undecided, move to review, withdraw, documents, every read, hand an
-        /// approved one on for student creation): School Admin, Principal or Admission Staff. Deciding is a separate, narrower permission (CanDecideAdmission).
+        /// Admission applications, in two steps (added, then confirmed into a student): who may add, edit, confirm, reject and withdraw one, upload its documents and read
+        /// them all: School Admin, Principal or Admission Staff. Every other role is refused.
         /// </summary>
         public static bool CanManageApplications(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal, RoleNames.AdmissionStaff);
-
-        /// <summary>Approving or rejecting an application: School Admin or Principal ONLY. Admission Staff can prepare an application but never decide it.</summary>
-        public static bool CanDecideAdmission(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
 
         /// <summary>
         /// A Student or Guardian login. These accounts must never read another student's record or change anything about students, so the student endpoints

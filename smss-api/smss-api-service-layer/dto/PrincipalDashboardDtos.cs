@@ -34,10 +34,8 @@ namespace smss_api_service_layer.dto
     {
         /// <summary>Employee leave requests waiting for a School Admin / Principal decision.</summary>
         public int? PendingEmployeeLeaves { get; set; }
-        /// <summary>Applications Under Review: the ones the Principal can approve or reject.</summary>
-        public int? AdmissionsToDecide { get; set; }
-        /// <summary>Applications just Submitted, not yet taken into review.</summary>
-        public int? AdmissionsAwaitingReview { get; set; }
+        /// <summary>Applications that have been added and are waiting to be confirmed.</summary>
+        public int? ApplicationsWaitingToBeConfirmed { get; set; }
     }
 
     /// <summary>One published result set (a section's report cards for a term or the year).</summary>

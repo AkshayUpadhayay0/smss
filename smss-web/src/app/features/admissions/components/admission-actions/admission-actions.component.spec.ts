@@ -35,28 +35,12 @@ describe('AdmissionActionsComponent: who sees which action', () => {
     clearSessions();
   });
 
-  it.each(['School Admin', 'Principal'])('%s: an Under Review application offers Approve, Reject and Withdraw', (role) => {
-    open(role, 'UNDER_REVIEW');
-    expect(labels()).toEqual(['Approve', 'Reject', 'Withdraw']);
+  it.each(['School Admin', 'Principal', 'Admission Staff'])('%s: an added application offers Confirm, Reject and Withdraw (all three roles may decide)', (role) => {
+    open(role, 'APPLICATION_SUBMITTED');
+    expect(labels()).toEqual(['Confirm application', 'Reject', 'Withdraw']);
   });
 
-  it('Admission Staff: an Under Review application offers ONLY Withdraw - no Approve, no Reject', () => {
-    open('Admission Staff', 'UNDER_REVIEW');
-    expect(labels()).toEqual(['Withdraw']);
-  });
-
-  it('every one of the three can start a review of a Submitted application (and withdraw it)', () => {
-    for (const role of ['School Admin', 'Principal', 'Admission Staff']) {
-      TestBed.resetTestingModule();
-      open(role, 'APPLICATION_SUBMITTED');
-      expect(labels()).toEqual(['Start Review', 'Withdraw']);
-      http.verify();
-    }
-  });
-
-  it('an Approved application offers Confirm Admission to all three; a decided or closed one offers nothing', () => {
-    open('Admission Staff', 'APPROVED');
-    expect(labels()).toEqual(['Confirm Admission']);
+  it('a confirmed, rejected or withdrawn application offers nothing', () => {
     for (const status of ['REJECTED', 'ADMITTED', 'CANCELLED'] as AdmissionStatus[]) {
       TestBed.resetTestingModule();
       open('School Admin', status);
@@ -65,21 +49,14 @@ describe('AdmissionActionsComponent: who sees which action', () => {
     }
   });
 
-  it('Start Review asks for optional notes and sends them', () => {
-    open('Admission Staff', 'APPLICATION_SUBMITTED');
-    cmp()['run']('start-review');
-    fixture.detectChanges();
-    expect(document.body.textContent).toContain('Review notes');
-    cmp()['remarks'].setValue('  Documents complete  ');
-    cmp()['submitDialog']();
-    const post = http.expectOne(`${API}/api/Admission/S/7/start-review`);
-    expect(post.request.body).toEqual({ notes: 'Documents complete' });
-    post.flush(env({ ...app('UNDER_REVIEW'), reviewNotes: 'Documents complete' }));
-    expect(cmp()['dialog']()).toBeNull();
+  it('there is no review or approve step any more', () => {
+    open('Principal', 'APPLICATION_SUBMITTED');
+    expect(labels().join(' ')).not.toMatch(/Review|Approve/);
+    expect(cmp()['dialogTitle']()).toBe('');
   });
 
   it('Reject needs a reason: an empty one is not sent', () => {
-    open('Principal', 'UNDER_REVIEW');
+    open('Principal', 'APPLICATION_SUBMITTED');
     cmp()['run']('reject');
     cmp()['submitDialog']();
     http.expectNone(`${API}/api/Admission/S/7/reject`);
@@ -92,7 +69,7 @@ describe('AdmissionActionsComponent: who sees which action', () => {
   });
 
   it('Withdraw posts to cancel with the remarks', () => {
-    open('Admission Staff', 'UNDER_REVIEW');
+    open('Admission Staff', 'APPLICATION_SUBMITTED');
     cmp()['run']('cancel');
     cmp()['remarks'].setValue('Family moved');
     cmp()['submitDialog']();

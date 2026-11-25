@@ -54,12 +54,6 @@ namespace smss_api_service_layer.dto
         }
     }
 
-    /// <summary>Optional notes recorded when an application is moved to Under Review.</summary>
-    public class AdmissionReviewRequestDto
-    {
-        [MaxLength(2000)] public string? Notes { get; set; }
-    }
-
     public class AdmissionDecisionRequestDto
     {
         [MaxLength(2000)] public string? Remarks { get; set; }
@@ -149,6 +143,8 @@ namespace smss_api_service_layer.dto
         public string? ReviewNotes { get; set; }
         public DateTime? ReviewedAt { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        /// <summary>When the application was confirmed (the student was created); null until then.</summary>
+        public DateTime? ConfirmedAt { get; set; }
         public DateTime? RejectedAt { get; set; }
         public string? DecisionRemarks { get; set; }
         public string? RejectionReason { get; set; }

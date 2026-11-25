@@ -17,7 +17,6 @@ namespace smss_api_service_layer.service
         private const int FeeUpcomingDays = 7;
         private const string PresentCode = "PRESENT";
         private const string AdmissionSubmitted = "APPLICATION_SUBMITTED";
-        private const string AdmissionUnderReview = "UNDER_REVIEW";
 
         private readonly IFeeReportService _fees;
         private readonly IEmployeeService _employees;
@@ -83,8 +82,7 @@ namespace smss_api_service_layer.service
                 var admissions = await Part(() => _admissions.GetAllAsync(schoolId, null, null, null, ct), PrincipalDashboardParts.Admissions, dto);
                 if (admissions != null)
                 {
-                    dto.Alerts.AdmissionsToDecide = admissions.Count(a => a.StatusName == AdmissionUnderReview);
-                    dto.Alerts.AdmissionsAwaitingReview = admissions.Count(a => a.StatusName == AdmissionSubmitted);
+                    dto.Alerts.ApplicationsWaitingToBeConfirmed = admissions.Count(a => a.StatusName == AdmissionSubmitted);
                 }
 
                 var published = await Part(() => _results.ListAsync(schoolId, new ReportCaller(callerUserId, false, true, false), null, null, ct), PrincipalDashboardParts.Results, dto);

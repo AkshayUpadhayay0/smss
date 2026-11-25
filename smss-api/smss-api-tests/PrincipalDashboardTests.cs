@@ -65,7 +65,7 @@ namespace smss_api_tests
             Assert.Equal((50, 45, 90.0m), (d.Stats.AttendanceMarkedToday, d.Stats.AttendancePresentToday, d.Stats.AttendancePercentToday));
             Assert.Equal((100000m, 60000m, 40000m), (d.Stats.FeeTotalDue, d.Stats.FeeCollected, d.Stats.FeeOutstanding));
             Assert.Equal(3, d.Alerts.PendingEmployeeLeaves);
-            Assert.Equal((2, 1), (d.Alerts.AdmissionsToDecide, d.Alerts.AdmissionsAwaitingReview));
+            Assert.Equal(1, d.Alerts.ApplicationsWaitingToBeConfirmed);   // only an ADDED application waits to be confirmed; a legacy Under Review / Approved row is not counted
             Assert.Equal(PrincipalDashboardService.AttendanceTrendDays, d.AttendanceTrend.Count);
             Assert.Equal(90.0m, d.AttendanceTrend[^1].PresentPercent);
             Assert.Equal(75.0m, d.AttendanceTrend[^2].PresentPercent);
@@ -121,7 +121,7 @@ namespace smss_api_tests
                 notices: new() { ["ListAsync"] = Fake.Ok(new List<NoticeDto>()) }, repo: new() { ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow>() });
             var d = (await empty.GetSummaryAsync(School, 5, null, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
-            Assert.Equal((0, 0, 0), (d.Alerts.PendingEmployeeLeaves, d.Alerts.AdmissionsToDecide, d.Alerts.AdmissionsAwaitingReview));
+            Assert.Equal((0, 0), (d.Alerts.PendingEmployeeLeaves, d.Alerts.ApplicationsWaitingToBeConfirmed));
             Assert.Empty(d.RecentPublications); Assert.Empty(d.UpcomingEvents); Assert.Empty(d.RecentNotices);
             Assert.Equal(0, d.Stats.AttendanceMarkedToday);
             Assert.Null(d.Stats.AttendancePercentToday);   // nothing marked yet today: no percentage, not 0 %

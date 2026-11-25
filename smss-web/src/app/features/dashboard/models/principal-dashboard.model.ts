@@ -20,10 +20,8 @@ export interface PrincipalDashboardStats {
 
 export interface PrincipalDashboardAlerts {
   pendingEmployeeLeaves: number | null;
-  /** Applications Under Review: the ones the Principal can approve or reject. */
-  admissionsToDecide: number | null;
-  /** Applications just submitted, not yet taken into review. */
-  admissionsAwaitingReview: number | null;
+  /** Applications that have been added and are waiting to be confirmed. */
+  applicationsWaitingToBeConfirmed: number | null;
 }
 
 export interface DashboardPublication {

@@ -314,7 +314,7 @@ namespace smss_api_tests
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, applicant_last_name, date_of_birth,
                        guardian_name, guardian_relationship, guardian_mobile_number, guardian_email, guardian_whatsapp_number, application_date, status_id)
                        values ('{A}', 'ZZ1A-{first}', {Y}, (select min(class_id) from tb_classes where school_id='{A}'), (select min(admission_type_id) from lut_admission_type), '{first}', 'App', '2018-01-01',
-                       'G', 'Father', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
+                       'G', 'Father', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPLICATION_SUBMITTED'))");
             return db.Scalar<long>($"select admission_id from tb_admissions where school_id='{A}' and application_number='ZZ1A-{first}'");
         }
 
@@ -328,18 +328,18 @@ namespace smss_api_tests
             var bad = UnofferedSection(db);
             var id = Approved(db, "Aarav");
             var students = db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'");
-            var notOffered = Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = bad }, default).Result;
+            var notOffered = Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = bad }, default).Result;
             Assert.Equal(409, notOffered.StatusCode); Assert.Contains("not offered", notOffered.Message);
 
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
             db.Exec($"update tb_student_enrollments set roll_number=null where academic_year_id={Y} and class_section_id={section}");
             db.Exec($"update tb_student_enrollments set roll_number='3' where enrollment_id=(select min(enrollment_id) from tb_student_enrollments where academic_year_id={Y} and class_section_id={section})");
-            var taken = Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section, RollNumber = "003" }, default).Result;
+            var taken = Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section, RollNumber = "003" }, default).Result;
             Assert.Equal(409, taken.StatusCode); Assert.Contains("already taken", taken.Message);
             Assert.Equal(students, db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'"));
-            Assert.Equal("APPROVED", db.Scalar<string>($"select s.sname from tb_admissions a join lut_status s on s.sid=a.status_id where a.admission_id={id}"));
+            Assert.Equal("APPLICATION_SUBMITTED", db.Scalar<string>($"select s.sname from tb_admissions a join lut_status s on s.sid=a.status_id where a.admission_id={id}"));
 
-            var ok = Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section, RollNumber = "4" }, default).Result;
+            var ok = Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section, RollNumber = "4" }, default).Result;
             Assert.True(ok.Status, ok.Message);
         }
 

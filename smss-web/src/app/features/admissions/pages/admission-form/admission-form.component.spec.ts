@@ -109,7 +109,7 @@ describe('AdmissionFormComponent', () => {
 
   it('edit mode loads the application into the form (its own academic year, not the current one) and the Aadhaar box stays empty with the masked number as a hint', () => {
     open('7');
-    answer({ '/api/Admission/S/7': DETAIL('UNDER_REVIEW') });
+    answer({ '/api/Admission/S/7': DETAIL('APPLICATION_SUBMITTED') });
     expect(cmp()['editing']()).toBe(true);
     expect(cmp()['form'].getRawValue()).toMatchObject({
       applicantFirstName: 'Anil', applicantMiddleName: 'Kumar', applicantLastName: 'Applicant', dateOfBirth: '2018-05-06', genderId: '2', academicYearId: '5', appliedClassId: '4', admissionTypeId: '1',
@@ -130,10 +130,10 @@ describe('AdmissionFormComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/admissions', 7]);
   });
 
-  it('an application that has been decided cannot be edited: the user is told and sent back to it, the form stays empty', () => {
+  it('an application that has been confirmed (or rejected, or withdrawn) cannot be edited: the user is told and sent back to it, the form stays empty', () => {
     open('7');
     const error = vi.spyOn(TestBed.inject(ToastService), 'error');
-    answer({ '/api/Admission/S/7': DETAIL('APPROVED') });
+    answer({ '/api/Admission/S/7': DETAIL('ADMITTED') });
     expect(error).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/admissions', 7]);
     expect(cmp()['form'].controls.applicantFirstName.value).toBe('');
@@ -141,7 +141,7 @@ describe('AdmissionFormComponent', () => {
 
   it('a refused save (409 after a decision elsewhere) keeps the form open', () => {
     open('7');
-    answer({ '/api/Admission/S/7': DETAIL('UNDER_REVIEW') });
+    answer({ '/api/Admission/S/7': DETAIL('APPLICATION_SUBMITTED') });
     cmp()['submit']();
     http.expectOne(`${API}/api/Admission/S/7`).flush({ status: false, statusCode: 409, message: 'can no longer be edited', data: null }, { status: 409, statusText: 'Conflict' });
     expect(router.navigate).not.toHaveBeenCalled();

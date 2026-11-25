@@ -10,13 +10,11 @@ using smss_api_service_layer.@interface;
 
 namespace smss_api_service_layer.service
 {
-    // Status-driven workflow: APPLICATION_SUBMITTED -> UNDER_REVIEW -> APPROVED -> ADMITTED, with REJECTED (from review)
-    // and CANCELLED (from submitted / under review) as exits. Status names are resolved from lut_status, never ids.
+    // Two steps: an application is ADDED (status code APPLICATION_SUBMITTED) and then CONFIRMED (ADMITTED: the student is created), with REJECTED and CANCELLED (withdrawn)
+    // as exits from the added state. The status codes are unchanged; StatusLabel gives the words people see. Status names are resolved from lut_status, never ids.
     public class AdmissionService : IAdmissionService
     {
         private const string Submitted = "APPLICATION_SUBMITTED";
-        private const string UnderReview = "UNDER_REVIEW";
-        private const string Approved = "APPROVED";
         private const string Rejected = "REJECTED";
         private const string Admitted = "ADMITTED";
         private const string Cancelled = "CANCELLED";
@@ -43,7 +41,7 @@ namespace smss_api_service_layer.service
                 if (!string.IsNullOrWhiteSpace(status))
                 {
                     statusId = await _repo.GetAdmissionStatusIdAsync(status.Trim().ToUpperInvariant(), ct);
-                    if (statusId == null) return Result<List<AdmissionResponseDto>>(400, "Unknown status. Use APPLICATION_SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, ADMITTED or CANCELLED.", null);
+                    if (statusId == null) return Result<List<AdmissionResponseDto>>(400, "Unknown status. Use APPLICATION_SUBMITTED, REJECTED, ADMITTED or CANCELLED.", null);
                 }
                 var list = await _repo.GetAllAsync(schoolId, statusId, classId, academicYearId, ct);
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
@@ -202,8 +200,8 @@ namespace smss_api_service_layer.service
 
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
                 var current = statuses.TryGetValue(admission.StatusId, out var n) ? n : "UNKNOWN";
-                if (current != Submitted && current != UnderReview)
-                    return Result<AdmissionDetailDto>(409, $"This application is {StatusLabel(current)}, so it can no longer be edited. Only a Submitted or Under Review application can be changed.", null);
+                if (current != Submitted)
+                    return Result<AdmissionDetailDto>(409, $"This application is {StatusLabel(current)}, so it can no longer be edited. Only an application that has been added (not yet confirmed, rejected or withdrawn) can be changed.", null);
 
                 var storedAadhaar = admission.AadharNumber;
                 ApplyDetails(admission, req);
@@ -221,58 +219,32 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- transitions ----------------
-        public Task<ApiResponse<AdmissionDetailDto>> StartReviewAsync(string schoolId, long admissionId, long reviewedByUserId, AdmissionReviewRequestDto? req, CancellationToken ct) =>
-            TransitionAsync(schoolId, admissionId, new[] { Submitted }, UnderReview, a =>
-            {
-                a.ReviewedBy = reviewedByUserId;
-                a.ReviewedAt = DateTime.UtcNow;
-                a.ReviewNotes = Clean(req?.Notes);
-            }, "Application moved to review.", ct);
-
-        /// <summary>The refusal message for deciding (approve / reject) an application that is not Under Review: names the step that is missing, or says why it is final.</summary>
+        /// <summary>The refusal message for rejecting an application that is no longer in the added state.</summary>
         private static string? DecideRefusal(string current) => current switch
         {
-            Submitted => "An application must be Under Review before it can be approved or rejected. Start the review first.",
-            Approved or Rejected or Admitted or Cancelled => $"This application is already {StatusLabel(current)}, so it can't be decided again.",
+            Rejected or Admitted or Cancelled => $"This application is already {StatusLabel(current)}, so it can't be rejected.",
             _ => null,
         };
 
         private static string? WithdrawRefusal(string current) => current switch
         {
-            Approved or Rejected or Admitted => $"A decision has already been made ({StatusLabel(current)}), so the application can't be withdrawn.",
+            Rejected or Admitted => $"The application is already {StatusLabel(current)}, so it can't be withdrawn.",
             Cancelled => "This application was already withdrawn.",
             _ => null,
         };
 
-        private static string StatusLabel(string status) => status switch
+        /// <summary>The words people see for a status code (the codes themselves never change).</summary>
+        public static string StatusLabel(string status) => status switch
         {
-            Submitted => "Submitted", UnderReview => "Under Review", Approved => "Approved", Rejected => "Rejected", Admitted => "Admitted (converted to a student)", Cancelled => "Withdrawn", _ => status,
+            Submitted => "Application added", Rejected => "Rejected", Admitted => "Confirmed", Cancelled => "Withdrawn", _ => status,
         };
-
-        public async Task<ApiResponse<AdmissionDetailDto>> ApproveAsync(string schoolId, long admissionId, long approvedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct)
-        {
-            var result = await TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Approved, a =>
-            {
-                a.ApprovedBy = approvedByUserId;
-                a.ApprovedAt = DateTime.UtcNow;
-                a.DecisionRemarks = Clean(req.Remarks);
-            }, "Application approved.", ct, DecideRefusal);
-
-            if (result.Status && result.Data is { } d)
-            {
-                await NotifyAsync(schoolId, d.Email, d.GuardianEmail,
-                    name => EmailTemplates.ApplicationApproved(d.ApplicantFullName, d.ApplicationNumber, name),
-                    $"application approved {d.ApplicationNumber}", ct);
-            }
-            return result;
-        }
 
         public Task<ApiResponse<AdmissionDetailDto>> RejectAsync(string schoolId, long admissionId, long rejectedByUserId, AdmissionDecisionRequestDto req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.Remarks))
                 return Task.FromResult(Result<AdmissionDetailDto>(400, "A reason is required to reject an application.", null));
 
-            return TransitionAsync(schoolId, admissionId, new[] { UnderReview }, Rejected, a =>
+            return TransitionAsync(schoolId, admissionId, new[] { Submitted }, Rejected, a =>
             {
                 a.RejectionReason = Clean(req.Remarks);
                 a.RejectedBy = rejectedByUserId;
@@ -281,13 +253,13 @@ namespace smss_api_service_layer.service
         }
 
         public Task<ApiResponse<AdmissionDetailDto>> CancelAsync(string schoolId, long admissionId, AdmissionDecisionRequestDto req, CancellationToken ct) =>
-            TransitionAsync(schoolId, admissionId, new[] { Submitted, UnderReview }, Cancelled, a => a.DecisionRemarks = Clean(req.Remarks),
+            TransitionAsync(schoolId, admissionId, new[] { Submitted }, Cancelled, a => a.DecisionRemarks = Clean(req.Remarks),
                 "Application withdrawn.", ct, WithdrawRefusal);
 
         // ---------------- confirm admission ----------------
         // Creates the student, enrollment, guardian and guardian link and marks the application ADMITTED — all in one
         // transaction, so a failure part-way leaves nothing behind.
-        public async Task<ApiResponse<AdmissionDetailDto>> ConfirmAdmissionAsync(string schoolId, long admissionId, ConfirmAdmissionRequestDto req, CancellationToken ct)
+        public async Task<ApiResponse<AdmissionDetailDto>> ConfirmAdmissionAsync(string schoolId, long admissionId, long confirmedByUserId, ConfirmAdmissionRequestDto req, CancellationToken ct)
         {
             try
             {
@@ -295,8 +267,8 @@ namespace smss_api_service_layer.service
                 if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
 
                 var statuses = await _repo.GetAdmissionStatusNamesAsync(ct);
-                if (!statuses.TryGetValue(admission.StatusId, out var current) || current != Approved)
-                    return Result<AdmissionDetailDto>(409, "Only an APPROVED application can be confirmed for admission.", null);
+                if (!statuses.TryGetValue(admission.StatusId, out var current) || current != Submitted)
+                    return Result<AdmissionDetailDto>(409, current == Admitted ? "This application is already confirmed." : $"This application is {StatusLabel(current)}, so it can't be confirmed. Only an added application can be confirmed.", null);
 
                 // an application made before the guardian's WhatsApp number and email were collected stays editable: it must be completed before it can be confirmed
                 var missing = new List<string>();
@@ -345,8 +317,8 @@ namespace smss_api_service_layer.service
                     await _repo.LockApplicationAsync(schoolId, admissionId, ct);
                     admission = await _repo.GetByIdAsync(schoolId, admissionId, true, ct);
                     if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
-                    if (!statuses.TryGetValue(admission.StatusId, out var nowStatus) || nowStatus != Approved)
-                        return Result<AdmissionDetailDto>(409, "Only an APPROVED application can be confirmed for admission. This one was already converted or is no longer approved.", null);
+                    if (!statuses.TryGetValue(admission.StatusId, out var nowStatus) || nowStatus != Submitted)
+                        return Result<AdmissionDetailDto>(409, nowStatus == Admitted ? "This application is already confirmed." : $"This application is {StatusLabel(nowStatus ?? "")}, so it can't be confirmed. Only an added application can be confirmed.", null);
                     try
                     {
                         var now = DateTime.UtcNow;
@@ -425,6 +397,8 @@ namespace smss_api_service_layer.service
                         admission.StudentId = studentId;
                         admission.Enrollment = enrollment;   // EnrollmentId is filled in from the identity value on save
                         admission.StatusId = admittedId.Value;
+                        admission.ConfirmedBy = confirmedByUserId;   // every confirmation records who and when (the database requires it)
+                        admission.ConfirmedAt = now;
                         admission.UpdatedAt = now;
 
                         await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
@@ -445,7 +419,7 @@ namespace smss_api_service_layer.service
                         var detail = await ToDetailAsync(admission, ct);
                         detail.FeeStructureName = assignedStructure?.StructureName;
                         if (feeWarning != null) detail.Warnings.Add(feeWarning);
-                        return Result(200, "Admission confirmed. Student and enrollment created.", detail);
+                        return Result(200, "Application confirmed. Student and enrollment created.", detail);
                     }
                     catch (DbUpdateException ex) when (ConstraintOf(ex) == EnrollmentTargetRules.RollConstraint)
                     {
@@ -551,6 +525,7 @@ namespace smss_api_service_layer.service
             dto.ReviewNotes = a.ReviewNotes;
             dto.ReviewedAt = a.ReviewedAt;
             dto.ApprovedAt = a.ApprovedAt;
+            dto.ConfirmedAt = a.ConfirmedAt;
             dto.RejectedAt = a.RejectedAt;
             dto.DecisionRemarks = a.DecisionRemarks;
             dto.RejectionReason = a.RejectionReason;

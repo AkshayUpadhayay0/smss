@@ -17,7 +17,7 @@ const ALLOWED = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 /**
  * An application's documents: upload, download and remove. Files are private: they are fetched through the authenticated API, never by URL.
  * Only the school's active document types that apply to students (STUDENT or BOTH) can be chosen. When the application is Rejected, Withdrawn or
- * Admitted the list stays readable but uploading and removing are switched off (the server refuses them too).
+ * Confirmed the list stays readable but uploading and removing are switched off (the server refuses them too).
  */
 @Component({
   selector: 'app-admission-documents',
@@ -87,7 +87,7 @@ export class AdmissionDocumentsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly admissionId = input.required<number>();
-  /** True once the application is Rejected, Withdrawn or Admitted. */
+  /** True once the application is Rejected, Withdrawn or Confirmed. */
   readonly locked = input(false);
 
   protected readonly accept = ADMISSION_DOCUMENT_ACCEPT;

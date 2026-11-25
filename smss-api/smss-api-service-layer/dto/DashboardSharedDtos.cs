@@ -25,7 +25,7 @@ namespace smss_api_service_layer.dto
         public string ApplicationNumber { get; set; } = null!;
         public string ApplicantFullName { get; set; } = null!;
         public string? AppliedClassName { get; set; }
-        /// <summary>The admission status code, e.g. APPLICATION_SUBMITTED / UNDER_REVIEW / APPROVED.</summary>
+        /// <summary>The admission status code, e.g. APPLICATION_SUBMITTED (shown as Application added) or ADMITTED (Confirmed).</summary>
         public string StatusName { get; set; } = null!;
         public DateTime ApplicationDate { get; set; }
     }

@@ -49,7 +49,6 @@ export function buildPrincipalAlerts(d: PrincipalDashboard): DashAlert[] {
   const a = d.alerts;
   return [
     alertRow('employeeLeave', 'Employee leave awaiting your decision', a.pendingEmployeeLeaves, down(d, 'employeeLeave'), (n) => `${plural(n, 'request')} waiting for a decision`, 'No requests waiting', '/leave/requests'),
-    alertRow('admissionsDecide', 'Admissions to decide', a.admissionsToDecide, down(d, 'admissions'), (n) => `${plural(n, 'application')} under review, ready to approve or reject`, 'No applications waiting for a decision', '/admissions'),
-    alertRow('admissionsReview', 'Admissions awaiting review', a.admissionsAwaitingReview, down(d, 'admissions'), (n) => `${plural(n, 'new application')} not yet taken into review`, 'No new applications', '/admissions'),
+    alertRow('admissionsConfirm', 'Applications waiting to be confirmed', a.applicationsWaitingToBeConfirmed, down(d, 'admissions'), (n) => `${plural(n, 'application')} added, not yet confirmed`, 'No applications waiting to be confirmed', '/admissions'),
   ];
 }

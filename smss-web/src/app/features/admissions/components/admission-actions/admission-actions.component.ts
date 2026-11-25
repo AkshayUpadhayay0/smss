@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
-import { ROLES } from '../../../../core/config/route-roles';
-import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent, SelectComponent, SelectOption, TextareaComponent, InputComponent } from '../../../../shared/components';
 import { SectionService } from '../../../school-setup/services/section.service';
@@ -16,16 +14,14 @@ import { AdmissionService } from '../../services/admission.service';
 interface ActionView {
   action: AdmissionAction;
   label: string;
-  icon: 'eye' | 'check' | 'x' | 'circle-check' | 'user';
+  icon: 'x' | 'circle-check' | 'user';
   variant: 'primary' | 'secondary' | 'danger-ghost';
 }
 
 const ACTION_VIEWS: Record<AdmissionAction, ActionView> = {
-  'start-review': { action: 'start-review', label: 'Start Review', icon: 'eye', variant: 'secondary' },
-  approve: { action: 'approve', label: 'Approve', icon: 'check', variant: 'primary' },
   reject: { action: 'reject', label: 'Reject', icon: 'x', variant: 'danger-ghost' },
   cancel: { action: 'cancel', label: 'Withdraw', icon: 'x', variant: 'danger-ghost' },
-  confirm: { action: 'confirm', label: 'Confirm Admission', icon: 'circle-check', variant: 'primary' },
+  confirm: { action: 'confirm', label: 'Confirm application', icon: 'circle-check', variant: 'primary' },
 };
 
 /**
@@ -43,23 +39,17 @@ export class AdmissionActionsComponent {
   private readonly service = inject(AdmissionService);
   private readonly sections = inject(SectionService);
   private readonly studentApi = inject(StudentService);
-  private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
   readonly admission = input.required<Admission>();
   /** Emits the updated application after any successful action. */
   readonly changed = output<AdmissionDetail>();
 
-  /** Approving and rejecting are for the School Admin and the Principal only; Admission Staff prepare and review but never decide (the API refuses them too). */
-  protected readonly canDecide = computed(() => this.auth.currentUserRoles().some((r) => r === ROLES.SCHOOL_ADMIN || r === ROLES.PRINCIPAL));
-  protected readonly views = computed(() =>
-    (ACTIONS_BY_STATUS[this.admission().statusName] ?? [])
-      .filter((a) => this.canDecide() || (a !== 'approve' && a !== 'reject'))
-      .map((a) => ACTION_VIEWS[a]),
-  );
+  /** School Admin, Principal and Admission Staff may all confirm, reject and withdraw an added application (the API refuses every other role). */
+  protected readonly views = computed(() => (ACTIONS_BY_STATUS[this.admission().statusName] ?? []).map((a) => ACTION_VIEWS[a]));
 
   protected readonly busy = signal(false);
-  /** Which dialog is open (approve / reject / cancel / confirm); start-review uses the confirm service instead. */
+  /** Which dialog is open (reject / cancel / confirm). */
   protected readonly dialog = signal<AdmissionAction | null>(null);
   protected readonly remarks = new FormControl('', { nonNullable: true });
   protected readonly remarksError = signal<string | undefined>(undefined);
@@ -84,11 +74,9 @@ export class AdmissionActionsComponent {
 
   protected readonly dialogTitle = computed(() => {
     switch (this.dialog()) {
-      case 'approve': return 'Approve application';
       case 'reject': return 'Reject application';
       case 'cancel': return 'Withdraw application';
-      case 'start-review': return 'Start review';
-      case 'confirm': return 'Confirm admission';
+      case 'confirm': return 'Confirm application';
       default: return '';
     }
   });
@@ -155,7 +143,7 @@ export class AdmissionActionsComponent {
                     const err = e as { error?: { message?: string }; message?: string };
                     this.toast.warning(
                       `${err?.error?.message ?? err?.message ?? 'The photo could not be uploaded.'} You can add it later from the student's profile.`,
-                      'Admission confirmed, but the photo was not uploaded',
+                      'Application confirmed, but the photo was not uploaded',
                     );
                     return of(updated);
                   }),
@@ -163,7 +151,7 @@ export class AdmissionActionsComponent {
               : of(updated),
           ),
         ),
-        'Admission confirmed. The student has been created.',
+        'Application confirmed. The student has been created.',
       );
     } else if (action === 'reject') {
       if (!text) {
@@ -171,10 +159,7 @@ export class AdmissionActionsComponent {
         return;
       }
       this.send(this.service.reject(a.admissionId, text), 'Application rejected.');
-    } else if (action === 'approve') {
-      this.send(this.service.approve(a.admissionId, text || null), 'Application approved.');
-    } else if (action === 'start-review') {
-      this.send(this.service.startReview(a.admissionId, text || null), 'Application moved to review.');
+
     } else if (action === 'cancel') {
       this.send(this.service.cancel(a.admissionId, text || null), 'Application withdrawn.');
     }

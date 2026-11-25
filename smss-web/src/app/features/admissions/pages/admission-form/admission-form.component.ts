@@ -127,7 +127,7 @@ export class AdmissionFormComponent implements OnInit {
     if (this.editing()) this.loadForEdit();
   }
 
-  /** The application being edited. Only a Submitted or Under Review one can change: any other is sent back to its page. */
+  /** The application being edited. Only an added application can change: any other is sent back to its page. */
   private loadForEdit(): void {
     const id = Number(this.admissionId());
     this.admissions

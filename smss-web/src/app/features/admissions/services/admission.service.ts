@@ -39,17 +39,9 @@ export class AdmissionService {
     return this.withSchool((s) => this.api.post<AdmissionDetail>(`${BASE}/${s}/submit`, payload));
   }
 
-  /** Only while Submitted or Under Review. */
+  /** Only while the application is added (not yet confirmed, rejected or withdrawn). */
   update(admissionId: number, payload: SubmitAdmissionRequest): Observable<AdmissionDetail> {
     return this.withSchool((s) => this.api.put<AdmissionDetail>(`${BASE}/${s}/${admissionId}`, payload));
-  }
-
-  startReview(admissionId: number, notes: string | null = null): Observable<AdmissionDetail> {
-    return this.withSchool((s) => this.api.post<AdmissionDetail>(`${BASE}/${s}/${admissionId}/start-review`, { notes }));
-  }
-
-  approve(admissionId: number, remarks: string | null): Observable<AdmissionDetail> {
-    return this.withSchool((s) => this.api.post<AdmissionDetail>(`${BASE}/${s}/${admissionId}/approve`, { remarks }));
   }
 
   reject(admissionId: number, remarks: string): Observable<AdmissionDetail> {

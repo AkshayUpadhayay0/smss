@@ -5,7 +5,7 @@ import { DashboardAdmission } from './dashboard-shared.model';
 export type AdmissionDashboardPart = 'applications' | 'documents';
 
 export interface AdmissionStatusCount {
-  /** APPLICATION_SUBMITTED / UNDER_REVIEW / APPROVED / ADMITTED / REJECTED / CANCELLED */
+  /** APPLICATION_SUBMITTED (Application added) / ADMITTED (Confirmed) / REJECTED / CANCELLED */
   statusName: string;
   count: number;
 }

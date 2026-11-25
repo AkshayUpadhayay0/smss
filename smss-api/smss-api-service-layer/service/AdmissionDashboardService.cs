@@ -14,10 +14,10 @@ namespace smss_api_service_layer.service
     {
         public const int RecentRows = 10;
         public const int NewDays = 7;
-        /// <summary>Every status in pipeline order, so the dashboard always lists all six (zero-filled).</summary>
-        public static readonly string[] StatusOrder = { "APPLICATION_SUBMITTED", "UNDER_REVIEW", "APPROVED", "ADMITTED", "REJECTED", "CANCELLED" };
+        /// <summary>Every status in pipeline order, so the dashboard always lists all four (zero-filled).</summary>
+        public static readonly string[] StatusOrder = { "APPLICATION_SUBMITTED", "ADMITTED", "REJECTED", "CANCELLED" };
         /// <summary>Applications still open: documents can still be added to them (Rejected, Withdrawn and Admitted ones are frozen).</summary>
-        public static readonly string[] OpenStatuses = { "APPLICATION_SUBMITTED", "UNDER_REVIEW", "APPROVED" };
+        public static readonly string[] OpenStatuses = { "APPLICATION_SUBMITTED" };
 
         private readonly IAdmissionService _admissions;
         private readonly IAdmissionDashboardRepository _repo;

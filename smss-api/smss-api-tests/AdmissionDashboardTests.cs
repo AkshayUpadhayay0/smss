@@ -20,9 +20,9 @@ namespace smss_api_tests
 
         private static List<AdmissionResponseDto> Sample() => new()
         {
-            App(1, "APPLICATION_SUBMITTED", 0), App(2, "APPLICATION_SUBMITTED", 3), App(3, "UNDER_REVIEW", 6), App(4, "UNDER_REVIEW", 7), App(5, "APPROVED", 20),
+            App(1, "APPLICATION_SUBMITTED", 0), App(2, "APPLICATION_SUBMITTED", 3), App(3, "APPLICATION_SUBMITTED", 6), App(4, "APPLICATION_SUBMITTED", 7), App(5, "APPLICATION_SUBMITTED", 20),
             App(6, "REJECTED", 30), App(7, "ADMITTED", 40), App(8, "ADMITTED", 41), App(9, "ADMITTED", 42), App(10, "CANCELLED", 50), App(11, "APPLICATION_SUBMITTED", 1),
-            App(12, "UNDER_REVIEW", 2),
+            App(12, "APPLICATION_SUBMITTED", 2),
         };
 
         private static AdmissionDashboardService Service(Dictionary<string, object?>? admissions = null, Dictionary<string, object?>? repo = null) =>
@@ -32,29 +32,29 @@ namespace smss_api_tests
                     ["GetMissingDocumentsAsync"] = new List<AdmissionMissingDocsRow>
                     {
                         new(11, "APS26-0011", "Applicant 11", "APPLICATION_SUBMITTED", Day(1), new() { "Birth Certificate" }),
-                        new(3, "APS26-0003", "Applicant 3", "UNDER_REVIEW", Day(6), new() { "Birth Certificate", "Transfer Certificate" }),
+                        new(3, "APS26-0003", "Applicant 3", "APPLICATION_SUBMITTED", Day(6), new() { "Birth Certificate", "Transfer Certificate" }),
                     }
                 }),
                 NullLogger<AdmissionDashboardService>.Instance);
 
         [Fact]
-        public async Task The_status_counts_list_all_six_in_pipeline_order()
+        public async Task The_status_counts_list_all_four_in_order()
         {
             var d = (await Service().GetSummaryAsync(School, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
-            Assert.Equal(new[] { "APPLICATION_SUBMITTED", "UNDER_REVIEW", "APPROVED", "ADMITTED", "REJECTED", "CANCELLED" }, d.ByStatus.Select(s => s.StatusName));
-            Assert.Equal(new[] { 3, 3, 1, 3, 1, 1 }, d.ByStatus.Select(s => s.Count));
+            Assert.Equal(new[] { "APPLICATION_SUBMITTED", "ADMITTED", "REJECTED", "CANCELLED" }, d.ByStatus.Select(s => s.StatusName));
+            Assert.Equal(new[] { 7, 3, 1, 1 }, d.ByStatus.Select(s => s.Count));
             Assert.Equal(12, d.TotalApplications);
-            Assert.Equal(d.TotalApplications, d.ByStatus.Sum(s => s.Count));   // the six add up to the total
+            Assert.Equal(d.TotalApplications, d.ByStatus.Sum(s => s.Count));   // the four add up to the total
         }
 
         [Fact]
         public async Task A_status_nobody_is_in_is_zero_not_missing()
         {
-            var d = (await Service(new() { ["GetAllAsync"] = Fake.Ok(new List<AdmissionResponseDto> { App(1, "APPROVED", 0) }) }).GetSummaryAsync(School, default)).Data!;
-            Assert.Equal(6, d.ByStatus.Count);
-            Assert.Equal(1, d.ByStatus.Single(s => s.StatusName == "APPROVED").Count);
-            Assert.Equal(0, d.ByStatus.Single(s => s.StatusName == "UNDER_REVIEW").Count);
+            var d = (await Service(new() { ["GetAllAsync"] = Fake.Ok(new List<AdmissionResponseDto> { App(1, "ADMITTED", 0) }) }).GetSummaryAsync(School, default)).Data!;
+            Assert.Equal(4, d.ByStatus.Count);
+            Assert.Equal(1, d.ByStatus.Single(s => s.StatusName == "ADMITTED").Count);
+            Assert.Equal(0, d.ByStatus.Single(s => s.StatusName == "REJECTED").Count);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace smss_api_tests
         public void The_week_boundary_is_exact()
         {
             var today = SchoolClock.Today();
-            var apps = new[] { App(1, "APPROVED", 6), App(2, "APPROVED", 7), App(3, "APPROVED", 0) };
+            var apps = new[] { App(1, "APPLICATION_SUBMITTED", 6), App(2, "APPLICATION_SUBMITTED", 7), App(3, "APPLICATION_SUBMITTED", 0) };
             Assert.Equal(2, AdmissionDashboardService.NewThisWeek(apps, today));
             Assert.Equal(0, AdmissionDashboardService.NewThisWeek(Array.Empty<AdmissionResponseDto>(), today));
         }
@@ -98,7 +98,7 @@ namespace smss_api_tests
         {
             IReadOnlyCollection<string>? asked = null;
             await Service(repo: new() { ["GetMissingDocumentsAsync"] = new Func<object?[], object?>(a => { asked = (IReadOnlyCollection<string>)a[1]!; return new List<AdmissionMissingDocsRow>(); }) }).GetSummaryAsync(School, default);
-            Assert.Equal(new[] { "APPLICATION_SUBMITTED", "UNDER_REVIEW", "APPROVED" }, asked);   // rejected, withdrawn and admitted applications are frozen
+            Assert.Equal(new[] { "APPLICATION_SUBMITTED" }, asked);   // rejected, withdrawn and admitted applications are frozen
         }
 
         [Fact]
@@ -126,7 +126,7 @@ namespace smss_api_tests
             var d = (await Service(new() { ["GetAllAsync"] = Fake.Ok(new List<AdmissionResponseDto>()) }, new() { ["GetMissingDocumentsAsync"] = new List<AdmissionMissingDocsRow>() }).GetSummaryAsync(School, default)).Data!;
             Assert.Empty(d.PartsUnavailable);
             Assert.Equal((0, 0, 0), (d.TotalApplications, d.NewThisWeek, d.MissingDocumentsCount));
-            Assert.Equal(6, d.ByStatus.Count);
+            Assert.Equal(4, d.ByStatus.Count);
             Assert.All(d.ByStatus, s => Assert.Equal(0, s.Count));
             Assert.Empty(d.RecentApplications); Assert.Empty(d.MissingDocuments);
         }

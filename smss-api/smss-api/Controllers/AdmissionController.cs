@@ -8,10 +8,10 @@ using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
-    // The school's admission applications. Two tiers, decided here from the token (the [Authorize(Roles)] attributes stay commented out project-wide):
-    //   CanManageApplications (School Admin, Principal, Admission Staff): take applications in, edit them while undecided, move them to review, withdraw them,
-    //       upload their documents, read everything, and Confirm an Approved application into a student (the only way one becomes a student)
-    //   CanDecideAdmission (School Admin, Principal ONLY): approve and reject. Admission Staff never decide.
+    // The school's admission applications, in two steps: ADDED, then CONFIRMED (the student is created; the only way an application becomes a student). One tier, decided
+    // here from the token (the [Authorize(Roles)] attributes stay commented out project-wide):
+    //   CanManageApplications (School Admin, Principal, Admission Staff): add, edit, confirm, reject and withdraw an application, upload its documents, read everything.
+    //   Teacher, Accountant, Student, Guardian and every other role: refused (403).
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
@@ -48,7 +48,6 @@ namespace smss_api.Controllers
         }
 
         private const string ManageRefusal = "Only a School Admin, a Principal or Admission Staff can work with admission applications.";
-        private const string DecideRefusal = "Only a School Admin or a Principal can approve or reject an application. Admission Staff can prepare and review it, but not decide it.";
 
         private IActionResult Respond(int code, string message) =>
             StatusCode(code, new ApiResponse<object> { Status = false, StatusCode = code, Message = message, Data = null });
@@ -59,7 +58,7 @@ namespace smss_api.Controllers
 
         private IActionResult Reply<T>(ApiResponse<T> response) => StatusCode(response.StatusCode, response);
 
-        // GET api/Admission/{schoolId}?status=UNDER_REVIEW&classId=&academicYearId=
+        // GET api/Admission/{schoolId}?status=APPLICATION_SUBMITTED&classId=&academicYearId=
         [HttpGet("{schoolId}")]
         public async Task<IActionResult> GetAll(string schoolId, [FromQuery] string? status, [FromQuery] long? classId, [FromQuery] long? academicYearId, CancellationToken ct)
         {
@@ -82,7 +81,7 @@ namespace smss_api.Controllers
             return Reply(await _service.SubmitAsync(own, req, ct));
         }
 
-        // PUT api/Admission/{schoolId}/{admissionId}   Body: the same fields as submit. Only while Submitted or Under Review (409 after a decision).
+        // PUT api/Admission/{schoolId}/{admissionId}   Body: the same fields as submit. Only while the application is added (409 once it is confirmed, rejected or withdrawn).
         [HttpPut("{schoolId}/{admissionId:long}")]
         public async Task<IActionResult> Update(string schoolId, long admissionId, [FromBody] SubmitAdmissionRequestDto req, CancellationToken ct)
         {
@@ -90,34 +89,16 @@ namespace smss_api.Controllers
             return Reply(await _service.UpdateAsync(own, admissionId, req, ct));
         }
 
-        // POST .../start-review   Body (optional): { notes }
-        [HttpPost("{schoolId}/{admissionId:long}/start-review")]
-        public async Task<IActionResult> StartReview(string schoolId, long admissionId, [FromBody] AdmissionReviewRequestDto? req, CancellationToken ct)
-        {
-            if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
-            if (!TryGetUserId(out var userId)) return Unauthorized();
-            return Reply(await _service.StartReviewAsync(own, admissionId, userId, req, ct));
-        }
-
-        // POST .../approve   Body: { remarks? }   (must be Under Review)
-        [HttpPost("{schoolId}/{admissionId:long}/approve")]
-        public async Task<IActionResult> Approve(string schoolId, long admissionId, [FromBody] AdmissionDecisionRequestDto req, CancellationToken ct)
-        {
-            if (Gate(schoolId, User.CanDecideAdmission(), DecideRefusal, out var own) is { } refused) return refused;
-            if (!TryGetUserId(out var userId)) return Unauthorized();
-            return Reply(await _service.ApproveAsync(own, admissionId, userId, req, ct));
-        }
-
-        // POST .../reject   Body: { remarks }   (must be Under Review; the reason is required)
+        // POST .../reject   Body: { remarks }   (only an added application; the reason is required)
         [HttpPost("{schoolId}/{admissionId:long}/reject")]
         public async Task<IActionResult> Reject(string schoolId, long admissionId, [FromBody] AdmissionDecisionRequestDto req, CancellationToken ct)
         {
-            if (Gate(schoolId, User.CanDecideAdmission(), DecideRefusal, out var own) is { } refused) return refused;
+            if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
             if (!TryGetUserId(out var userId)) return Unauthorized();
             return Reply(await _service.RejectAsync(own, admissionId, userId, req, ct));
         }
 
-        // POST .../cancel   (also .../withdraw)   The applicant pulled out: only before a decision has been made.
+        // POST .../cancel   (also .../withdraw)   The applicant pulled out: only while the application is added.
         [HttpPost("{schoolId}/{admissionId:long}/cancel")]
         [HttpPost("{schoolId}/{admissionId:long}/withdraw")]
         public async Task<IActionResult> Cancel(string schoolId, long admissionId, [FromBody] AdmissionDecisionRequestDto? req, CancellationToken ct)
@@ -126,14 +107,15 @@ namespace smss_api.Controllers
             return Reply(await _service.CancelAsync(own, admissionId, req ?? new AdmissionDecisionRequestDto(), ct));
         }
 
-        // POST .../confirm   Creates the student + enrollment + guardian + fee structure from an APPROVED application: the single conversion path.
-        // Needs the manage tier (School Admin, Principal, Admission Staff); before, any logged-in user of the school could call it.
+        // POST .../confirm   Creates the student + enrollment + guardian + fee structure from an added application: the single conversion path.
+        // Needs the manage tier (School Admin, Principal, Admission Staff); the acting user comes from the token and is recorded as the confirmer.
         [HttpPost("{schoolId}/{admissionId:long}/confirm")]
         public async Task<IActionResult> Confirm(string schoolId, long admissionId, [FromBody] ConfirmAdmissionRequestDto req, CancellationToken ct)
         {
             if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
+            if (!TryGetUserId(out var userId)) return Unauthorized();
             if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
-            return Reply(await _service.ConfirmAdmissionAsync(own, admissionId, req, ct));
+            return Reply(await _service.ConfirmAdmissionAsync(own, admissionId, userId, req, ct));
         }
 
         // ---------------------------------------------------------------- documents (the Employee documents shape)

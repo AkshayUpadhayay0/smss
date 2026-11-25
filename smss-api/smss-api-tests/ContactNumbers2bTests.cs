@@ -118,7 +118,7 @@ namespace smss_api_tests
             Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_admissions where school_id='{A}' and applicant_first_name in ('NoWa','BadWa','NoMail','BadMail')"));
         }
 
-        private static long OldApplication(TaxDb db, string number, string status = "APPROVED")
+        private static long OldApplication(TaxDb db, string number, string status = "APPLICATION_SUBMITTED")
         {
             // an application made before these two were collected
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, date_of_birth,
@@ -135,7 +135,7 @@ namespace smss_api_tests
             var id = OldApplication(db, "ZZ2B-OLD");
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
             var students = db.Scalar<long>($"select count(*) from tb_students where school_id='{A}'");
-            var refused = await Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
+            var refused = await Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
             Assert.Equal(409, refused.StatusCode);
             Assert.Contains("WhatsApp number and email are missing", refused.Message);
             Assert.Contains("Edit the application", refused.Message);
@@ -151,11 +151,10 @@ namespace smss_api_tests
             var edited = await Admissions(db).UpdateAsync(A, id, edit, default);
             Assert.True(edited.Status, edited.Message);
             Assert.Equal("+919876543210", db.Scalar<string>($"select guardian_whatsapp_number from tb_admissions where admission_id={id}"));
-            db.Exec($"update tb_admissions set status_id=(select sid from lut_status where sname='APPROVED') where admission_id={id}");   // the approval step (removed in stage 2c)
 
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
             var users = db.Scalar<long>("select count(*) from tb_users");
-            var confirmed = await Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
+            var confirmed = await Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
             Assert.True(confirmed.Status, confirmed.Message);
             var student = db.Scalar<string>($"select student_id from tb_admissions where admission_id={id}");
             Assert.Equal("+919876543210", db.Scalar<string>($"select g.whatsapp_number from tb_student_guardians sg join tb_guardians g on g.guardian_id=sg.guardian_id where sg.student_id='{student}' and sg.is_primary"));
@@ -170,7 +169,7 @@ namespace smss_api_tests
             var id = OldApplication(db, "ZZ2B-HALF");
             db.Exec($"update tb_admissions set guardian_email='half@example.com' where admission_id={id}");
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
-            var r = await Admissions(db).ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
+            var r = await Admissions(db).ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
             Assert.Equal(409, r.StatusCode);
             Assert.Contains("WhatsApp number is missing", r.Message);
             Assert.DoesNotContain("email", r.Message);

@@ -65,24 +65,21 @@ export class AdmissionDetailComponent implements OnInit {
     return a.decisionRemarks ? { label: a.statusName === 'CANCELLED' ? 'Cancellation remarks' : 'Decision remarks', text: a.decisionRemarks } : null;
   });
 
-  /** Submitted → Under Review → Approved → Admitted, or ending early at Rejected / Cancelled. */
+  /** Application added → Confirmed, or ending early at Rejected / Cancelled. */
   protected readonly steps = computed<Step[]>(() => {
     const a = this.admission();
     if (!a) return [];
     const s: AdmissionStatus = a.statusName;
-    const order: AdmissionStatus[] = ['APPLICATION_SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'ADMITTED'];
+    const order: AdmissionStatus[] = ['APPLICATION_SUBMITTED', 'ADMITTED'];
     const dateFor: Record<string, string | null | undefined> = {
       APPLICATION_SUBMITTED: a.applicationDate,
-      UNDER_REVIEW: a.reviewedAt,
-      APPROVED: a.approvedAt,
-      ADMITTED: s === 'ADMITTED' ? a.updatedAt : null,
+      ADMITTED: s === 'ADMITTED' ? (a.confirmedAt ?? a.updatedAt) : null,
     };
 
     if (s === 'REJECTED' || s === 'CANCELLED') {
       // only the steps the application actually passed through, then the failed exit
-      const passed = order.filter((o) => o === 'APPLICATION_SUBMITTED' || (o === 'UNDER_REVIEW' && !!a.reviewedAt) || (o === 'APPROVED' && !!a.approvedAt));
       return [
-        ...passed.map((o): Step => ({ label: STATUS_META[o].label, state: 'done', date: dateFor[o] })),
+        { label: STATUS_META['APPLICATION_SUBMITTED'].label, state: 'done', date: dateFor['APPLICATION_SUBMITTED'] },
         { label: STATUS_META[s].label, state: 'failed', date: a.updatedAt },
       ];
     }

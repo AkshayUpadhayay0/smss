@@ -29,7 +29,7 @@ function principalDashboard(over: Partial<PrincipalDashboard> = {}): PrincipalDa
     today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27', academicYearIsCurrent: true, academicYearIsClosed: false, currentYearName: '2026-27', viewingNote: null, hasFeeSetup: true,
     stats: { totalStudents: 420, totalStaff: 31, attendanceMarkedToday: 400, attendancePresentToday: 372, attendancePercentToday: 93, feeTotalDue: 1000000, feeCollected: 650000, feeOutstanding: 350000 },
     attendanceTrend: Array.from({ length: 14 }, (_, i) => ({ date: day(i), marked: 50, present: 45, presentPercent: 90 as number | null })),
-    alerts: { pendingEmployeeLeaves: 3, admissionsToDecide: 2, admissionsAwaitingReview: 0 },
+    alerts: { pendingEmployeeLeaves: 3, applicationsWaitingToBeConfirmed: 2 },
     recentPublications: [{ publicationId: 5, className: 'Class 5', sectionName: 'A', scope: 'TERM', termName: 'Term 1', version: 1, status: 'PUBLISHED', publishedAt: '2026-11-01T05:00:00Z', studentCount: 30 }],
     upcomingEvents: [{ eventId: 1, academicYearId: 7, eventTitle: 'Annual Day', startDate: '2026-11-20', endDate: '2026-11-20', isAllDay: true, eventCategoryId: 1, categoryName: 'Event', categoryCode: 'EVENT', colorHex: '#7c5cfc' }],
     recentNotices: [{ noticeId: 9, title: 'Diwali holiday', audience: 'ALL', createdByName: 'Admin', publishedAt: '2026-11-01T05:00:00Z' }],
@@ -85,9 +85,9 @@ describe('PrincipalDashboardComponent', () => {
   it('lists what waits for the Principal, linking to the screen that can act on it', () => {
     open(principalDashboard());
     expect(alert('employeeLeave').textContent).toContain('3 requests waiting for a decision');
-    expect(alert('admissionsDecide').textContent).toContain('2 applications under review');
-    expect(alert('admissionsReview').textContent).toContain('No new applications');
-    expect(alert('admissionsReview').classList).toContain('clear');
+    expect(alert('admissionsConfirm').textContent).toContain('Applications waiting to be confirmed');
+    expect(alert('admissionsConfirm').textContent).toContain('2 applications added, not yet confirmed');
+    expect(document.body.textContent).not.toContain('Admissions to decide');   // the decide step is gone
     expect(alert('employeeLeave').querySelector('a')?.getAttribute('href')).toBe('/leave/requests');
   });
 
@@ -103,7 +103,7 @@ describe('PrincipalDashboardComponent', () => {
     open(principalDashboard({
       stats: { ...principalDashboard().stats, feeCollected: null, feeOutstanding: null, feeTotalDue: null },
       partsUnavailable: ['fees', 'employeeLeave', 'results'],
-      alerts: { pendingEmployeeLeaves: null, admissionsToDecide: 2, admissionsAwaitingReview: 0 },
+      alerts: { pendingEmployeeLeaves: null, applicationsWaitingToBeConfirmed: 2 },
       recentPublications: [],
     }));
     for (const id of ['collected', 'outstanding', 'rate']) {

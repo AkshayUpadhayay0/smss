@@ -10,7 +10,7 @@ namespace smss_api_service_layer.dto
 
     public class AdmissionStatusCountDto
     {
-        /// <summary>APPLICATION_SUBMITTED / UNDER_REVIEW / APPROVED / REJECTED / ADMITTED / CANCELLED</summary>
+        /// <summary>APPLICATION_SUBMITTED (shown as Application added) / ADMITTED (Confirmed) / REJECTED / CANCELLED</summary>
         public string StatusName { get; set; } = null!;
         public int Count { get; set; }
     }
@@ -33,7 +33,7 @@ namespace smss_api_service_layer.dto
         public int? TotalApplications { get; set; }
         /// <summary>Applications dated in the last 7 days (today and the 6 days before).</summary>
         public int? NewThisWeek { get; set; }
-        /// <summary>Open applications (Submitted, Under Review, Approved) missing at least one required document.</summary>
+        /// <summary>Open applications (added, not yet confirmed) missing at least one required document.</summary>
         public int? MissingDocumentsCount { get; set; }
         /// <summary>The newest of those, at most 10.</summary>
         public List<AdmissionMissingDocumentsDto> MissingDocuments { get; set; } = new();

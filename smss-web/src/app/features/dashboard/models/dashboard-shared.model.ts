@@ -30,7 +30,7 @@ export interface DashboardAdmission {
   applicationNumber: string;
   applicantFullName: string;
   appliedClassName: string | null;
-  /** APPLICATION_SUBMITTED / UNDER_REVIEW / APPROVED / REJECTED / ADMITTED / CANCELLED */
+  /** APPLICATION_SUBMITTED (Application added) / ADMITTED (Confirmed) / REJECTED / CANCELLED */
   statusName: string;
   applicationDate: string;
 }

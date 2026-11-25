@@ -10,14 +10,14 @@ import { AdmissionDashboardComponent } from './admission-dashboard.component';
 const URL = `${environment.apiUrl}/api/AdmissionDashboard/summary`;
 const env = <T>(data: T) => ({ status: true, statusCode: 200, message: 'ok', data });
 
-const STATUSES = ['APPLICATION_SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'ADMITTED', 'REJECTED', 'CANCELLED'];
+const STATUSES = ['APPLICATION_SUBMITTED', 'ADMITTED', 'REJECTED', 'CANCELLED'];
 
 function admissionDashboard(over: Partial<AdmissionDashboard> = {}): AdmissionDashboard {
   return {
     today: '2026-11-14',
-    byStatus: STATUSES.map((s, i) => ({ statusName: s, count: [3, 3, 1, 3, 1, 1][i] })),
+    byStatus: STATUSES.map((s, i) => ({ statusName: s, count: [7, 3, 1, 1][i] })),
     totalApplications: 12, newThisWeek: 5, missingDocumentsCount: 2,
-    missingDocuments: [{ admissionId: 3, applicationNumber: 'APS26-0003', applicantFullName: 'Asha Verma', statusName: 'UNDER_REVIEW', applicationDate: '2026-11-08T00:00:00', missingDocuments: ['Birth Certificate', 'Transfer Certificate'] }],
+    missingDocuments: [{ admissionId: 3, applicationNumber: 'APS26-0003', applicantFullName: 'Asha Verma', statusName: 'APPLICATION_SUBMITTED', applicationDate: '2026-11-08T00:00:00', missingDocuments: ['Birth Certificate', 'Transfer Certificate'] }],
     recentApplications: [{ admissionId: 12, applicationNumber: 'APS26-0012', applicantFullName: 'Ravi Rao', appliedClassName: 'Class 1', statusName: 'APPLICATION_SUBMITTED', applicationDate: '2026-11-12T00:00:00' }],
     partsUnavailable: [],
     ...over,
@@ -54,12 +54,13 @@ describe('AdmissionDashboardComponent', () => {
     expect(card('documents').textContent).toContain('2 open applications missing a required document');
   });
 
-  it('lists all six statuses with their counts, in pipeline order', () => {
+  it('lists the four statuses with their counts, in order', () => {
     open(admissionDashboard());
     const rows = [...el().querySelectorAll('[data-status]')];
     expect(rows.map((r) => r.getAttribute('data-status'))).toEqual(STATUSES);
-    expect(rows.map((r) => r.querySelector('strong')?.textContent?.trim())).toEqual(['3', '3', '1', '3', '1', '1']);
-    expect(rows[0].textContent).toContain('Submitted');
+    expect(rows.map((r) => r.querySelector('strong')?.textContent?.trim())).toEqual(['7', '3', '1', '1']);
+    expect(rows[0].textContent).toContain('Application added');
+    expect(rows[1].textContent).toContain('Confirmed');
   });
 
   it('lists the applications missing documents, with what is missing, and the last applications', () => {

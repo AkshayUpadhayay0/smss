@@ -2,25 +2,25 @@ import { FeeItemSelection } from '../../students/models/student-billing.model';
 
 // Mirrors AdmissionResponseDto / AdmissionDetailDto / SubmitAdmissionRequestDto / ConfirmAdmissionRequestDto.
 
-export type AdmissionStatus = 'APPLICATION_SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'ADMITTED' | 'CANCELLED';
+/**
+ * The status CODES (unchanged in the database). Admission is two steps: an application is ADDED (APPLICATION_SUBMITTED) and then CONFIRMED (ADMITTED: the student is created);
+ * REJECTED and CANCELLED (withdrawn) are exits. The old Under Review and Approved steps are gone; nothing is left in those states after the Stage 2c migration.
+ */
+export type AdmissionStatus = 'APPLICATION_SUBMITTED' | 'REJECTED' | 'ADMITTED' | 'CANCELLED';
 
 /** Display label and pill colour per status. */
 export const STATUS_META: Record<AdmissionStatus, { label: string; tone: string }> = {
-  APPLICATION_SUBMITTED: { label: 'Submitted', tone: 'gray' },
-  UNDER_REVIEW: { label: 'Under Review', tone: 'blue' },
-  APPROVED: { label: 'Approved', tone: 'green' },
+  APPLICATION_SUBMITTED: { label: 'Application added', tone: 'blue' },
   REJECTED: { label: 'Rejected', tone: 'red' },
-  ADMITTED: { label: 'Admitted', tone: 'violet' },
+  ADMITTED: { label: 'Confirmed', tone: 'violet' },
   CANCELLED: { label: 'Cancelled', tone: 'gray-strike' },
 };
 
-export type AdmissionAction = 'start-review' | 'approve' | 'reject' | 'cancel' | 'confirm';
+export type AdmissionAction = 'reject' | 'cancel' | 'confirm';
 
 /** Which workflow actions are valid in each status (mirrors the server's state machine). */
 export const ACTIONS_BY_STATUS: Record<AdmissionStatus, AdmissionAction[]> = {
-  APPLICATION_SUBMITTED: ['start-review', 'cancel'],
-  UNDER_REVIEW: ['approve', 'reject', 'cancel'],
-  APPROVED: ['confirm'],
+  APPLICATION_SUBMITTED: ['confirm', 'reject', 'cancel'],
   REJECTED: [],
   ADMITTED: [],
   CANCELLED: [],
@@ -86,6 +86,8 @@ export interface AdmissionDetail extends Admission {
   previousSchool?: string | null;
   reviewNotes?: string | null;
   reviewedAt?: string | null;
+  /** When the application was confirmed (the student was created). */
+  confirmedAt?: string | null;
   approvedAt?: string | null;
   rejectedAt?: string | null;
   decisionRemarks?: string | null;
@@ -150,7 +152,7 @@ export interface AdmissionDocument {
 }
 
 /** Statuses in which the applicant details can still be edited (the server enforces it too). */
-export const EDITABLE_STATUSES: readonly AdmissionStatus[] = ['APPLICATION_SUBMITTED', 'UNDER_REVIEW'];
+export const EDITABLE_STATUSES: readonly AdmissionStatus[] = ['APPLICATION_SUBMITTED'];
 /** Statuses after which documents can no longer be added or removed. */
 export const DOCUMENT_LOCKED_STATUSES: readonly AdmissionStatus[] = ['REJECTED', 'CANCELLED', 'ADMITTED'];
 

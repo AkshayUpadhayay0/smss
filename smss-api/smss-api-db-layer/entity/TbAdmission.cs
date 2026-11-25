@@ -47,6 +47,9 @@ namespace smss_api_db_layer.entity
         [Column("rejection_reason")] public string? RejectionReason { get; set; }
         [Column("approved_by")] public long? ApprovedBy { get; set; }
         [Column("approved_at")] public DateTime? ApprovedAt { get; set; }
+        /// <summary>Who confirmed the application (the user that created the student) and when. Set only when the application becomes ADMITTED.</summary>
+        [Column("confirmed_by")] public long? ConfirmedBy { get; set; }
+        [Column("confirmed_at")] public DateTime? ConfirmedAt { get; set; }
         [Column("previous_school")][StringLength(200)] public string? PreviousSchool { get; set; }
         [Column("review_notes")] public string? ReviewNotes { get; set; }
         [Column("rejected_by")] public long? RejectedBy { get; set; }

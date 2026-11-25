@@ -116,13 +116,13 @@ namespace smss_api_tests
             db.Exec($@"insert into tb_admissions (school_id, application_number, academic_year_id, applied_class_id, admission_type_id, applicant_first_name, applicant_last_name, date_of_birth,
                        guardian_name, guardian_relationship, guardian_mobile_number, guardian_email, guardian_whatsapp_number, application_date, status_id)
                        values ('{A}', 'ZZ2A-1', {Y}, (select min(class_id) from tb_classes where school_id='{A}'), (select min(admission_type_id) from lut_admission_type), 'Aarav', null, '2018-01-01',
-                       'G', 'FATHER', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPROVED'))");
+                       'G', 'FATHER', '9876543210', 'guardian@example.com', '+919876543210', current_date, (select sid from lut_status where sname='APPLICATION_SUBMITTED'))");
             var id = db.Scalar<long>("select admission_id from tb_admissions where application_number='ZZ2A-1'");
             var section = db.Scalar<long>($"select min(section_id) from tb_academic_year_sections where academic_year_id={Y} and status_id=1");
             var svc = new AdmissionService(new AdmissionRepository(db.Ctx()), Fake.Of<INotificationService>(), Fake.Of<IStudentFeeBillingService>(), NullLogger<AdmissionService>.Instance);
             var detail = (await svc.GetByIdAsync(A, id, default)).Data!;
             Assert.Equal("Aarav", detail.ApplicantFullName);
-            var confirmed = await svc.ConfirmAdmissionAsync(A, id, new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
+            var confirmed = await svc.ConfirmAdmissionAsync(A, id, db.Scalar<long>("select min(user_id) from tb_users"), new ConfirmAdmissionRequestDto { ClassSectionId = section }, default);
             Assert.True(confirmed.Status, confirmed.Message);
             var student = db.Scalar<string>($"select student_id from tb_admissions where admission_id={id}");
             Assert.Equal(1, db.Scalar<int>($"select count(*) from tb_students where student_id='{student}' and last_name is null and first_name='Aarav'"));
