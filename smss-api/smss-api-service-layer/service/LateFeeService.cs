@@ -7,7 +7,8 @@ using smss_api_service_layer.@interface;
 namespace smss_api_service_layer.service
 {
     /// <summary>
-    /// Late fee, settings (5a-1). The rule is one row per school (off until the School Admin turns it on) plus a flag on each fee type. Nothing here charges anything or changes a due.
+    /// Late fee, settings and preview (5a). The rule is one row per school (off until the School Admin turns it on) plus a flag on each fee type; the preview works out, with the same arithmetic the payment will use
+    /// (<see cref="LateFeeMath"/>), what a payment of this size would be charged today. Nothing here charges anything or changes a due.
     /// </summary>
     public class LateFeeService : ILateFeeService
     {
@@ -65,5 +66,64 @@ namespace smss_api_service_layer.service
             catch (Exception ex) { _logger.LogError(ex, "Late fee rule could not be saved"); return Result<LateFeeRuleDto>(500, "The late fee settings could not be saved. Please try again.", null); }
         }
 
+        public async Task<ApiResponse<LateFeePreviewDto>> PreviewAsync(string? schoolId, string studentId, LateFeePreviewRequest request, CancellationToken ct, DateOnly? today = null)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<LateFeePreviewDto>(400, TenantMessages.NoSchool, null);
+            if (request == null) return Result<LateFeePreviewDto>(400, "The request is empty.", null);
+            try
+            {
+                if (!await _repo.StudentExistsAsync(schoolId, studentId, ct)) return Result<LateFeePreviewDto>(404, "Student not found.", null);
+                var asOf = today ?? SchoolClock.Today();
+                var dto = new LateFeePreviewDto { Today = asOf };
+                var rule = await _repo.GetRuleAsync(schoolId, ct);
+                if (rule == null || !rule.IsEnabled || rule.RuleType == null) { dto.Note = "The school does not charge a late fee."; return Result(200, "Successfully fetched", dto); }
+                dto.RuleEnabled = true; dto.RuleType = rule.RuleType; dto.GraceDays = rule.GraceDays;
+                var values = new LateFeeRuleValues(rule.RuleType, rule.Amount, rule.Percent, rule.GraceDays, rule.CapPerDue);
+
+                // the plan: what this payment applies to which due (explicit allocations, or the oldest dues first)
+                var plan = new List<(LateFeeDueRow Due, decimal Applied)>();
+                if (request.Allocations is { Count: > 0 })
+                {
+                    var dues = (await _repo.GetDuesAsync(schoolId, studentId, request.Allocations.Select(a => a.FeeDueId).Distinct().ToList(), ct)).ToDictionary(d => d.FeeDueId);
+                    foreach (var a in request.Allocations)
+                    {
+                        if (!dues.TryGetValue(a.FeeDueId, out var d)) return Result<LateFeePreviewDto>(400, "One or more installments do not belong to this student.", null);
+                        if (a.Amount > d.AmountDue - d.AmountPaid) return Result<LateFeePreviewDto>(400, $"The installment due {d.DueDate:dd MMM yyyy} has only {d.AmountDue - d.AmountPaid:0.00} outstanding, so {a.Amount:0.00} can't be applied to it.", null);
+                        plan.Add((d, a.Amount));
+                    }
+                }
+                else if (request.Amount is > 0)
+                {
+                    var left = request.Amount.Value;
+                    foreach (var d in await _repo.ListOutstandingDuesAsync(schoolId, studentId, ct))
+                    {
+                        if (left <= 0) break;
+                        var take = Math.Min(left, d.AmountDue - d.AmountPaid);
+                        plan.Add((d, take)); left -= take;
+                    }
+                    if (left > 0) return Result<LateFeePreviewDto>(400, "The amount is more than the student has outstanding.", null);
+                }
+                else return Result<LateFeePreviewDto>(400, "Give an amount or the installments being paid.", null);
+
+                var flagged = plan.Where(p => p.Due.AppliesLateFee).ToList();
+                var collected = (await _repo.GetCollectedAsync(schoolId, flagged.Select(p => p.Due.FeeDueId).ToList(), ct)).ToDictionary(c => c.FeeDueId, c => c.Amount);
+                foreach (var (due, applied) in flagged)
+                {
+                    var c = LateFeeMath.Charge(values, due.DueDate, asOf, applied, collected.GetValueOrDefault(due.FeeDueId));
+                    if (c == null) continue;
+                    dto.Lines.Add(new LateFeePreviewLineDto { FeeDueId = due.FeeDueId, FeeType = due.FeeTypeName, DueDate = due.DueDate, DaysLate = c.DaysLate, DaysCharged = c.DaysCharged, BaseAmount = c.BaseAmount, ComputedTotal = c.ComputedTotal, AlreadyCollected = c.AlreadyCollected, Amount = c.Amount });
+                }
+                dto.Total = dto.Lines.Sum(l => l.Amount);
+                if (dto.Total > 0 && rule.TaxApplies && request.TaxTypeId is long taxId)
+                {
+                    var tax = await _repo.GetTaxTypeAsync(schoolId, taxId, ct);
+                    if (tax == null) return Result<LateFeePreviewDto>(404, "Tax type not found.", null);
+                    if (tax.IsActive) { dto.TaxName = tax.Name; dto.TaxAmount = TaxMath.TaxOn(dto.Total, tax.RatePercent); }
+                }
+                dto.Note = dto.Lines.Count == 0 ? "No late fee applies to this payment." : null;
+                return Result(200, "Successfully fetched", dto);
+            }
+            catch (Exception ex) { _logger.LogError(ex, "Late fee preview failed for {StudentId}", studentId); return Result<LateFeePreviewDto>(500, "The late fee could not be worked out. Please try again.", null); }
+        }
     }
 }

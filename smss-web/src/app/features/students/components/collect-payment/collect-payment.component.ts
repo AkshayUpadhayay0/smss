@@ -11,6 +11,8 @@ import { ButtonComponent, IconComponent, ModalComponent, SelectComponent, Select
 import { formatDate } from '../../../admissions/models/admission.model';
 import { concessionNameWithValue } from '../../../fee-setup/models/fee-concession.model';
 import { TaxType, taxOptionLabel } from '../../../fee-setup/models/tax-type.model';
+import { LateFeePreview, LateFeePreviewRequest } from '../../../fee-setup/models/late-fee.model';
+import { LateFeeService } from '../../../fee-setup/services/late-fee.service';
 import { TaxTypeService } from '../../../fee-setup/services/tax-type.service';
 import { ConcessionChoice, FeeReceipt, PAYMENT_MODES, PaymentMode, toPaise } from '../../models/fee-payment.model';
 import { StudentFeeDue, dueStatusTone } from '../../models/student-billing.model';
@@ -35,6 +37,7 @@ import { PayRow, allocateOldestFirst, buildPreview, checkReceived, concessionApp
 export class CollectPaymentDialogComponent implements OnInit {
   private readonly students = inject(StudentService);
   private readonly taxTypeApi = inject(TaxTypeService);
+  private readonly lateFeeApi = inject(LateFeeService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -64,6 +67,17 @@ export class CollectPaymentDialogComponent implements OnInit {
   private readonly reasonText = signal('');
   /** Shown when a chosen concession had to be dropped because the selection changed. */
   protected readonly concessionNotice = signal<string | null>(null);
+
+  // ---- late fee (5a: a read-only PREVIEW from the server; nothing is added to the payment yet and no amount is ever sent)
+  /** The school charges a late fee on at least one fee type: only then is the server asked. */
+  private readonly lateFeeOn = signal(false);
+  protected readonly lateFee = signal<LateFeePreview | null>(null);
+  private readonly lateRequest = computed<LateFeePreviewRequest | null>(() => {
+    const lines = selectedLines(this.rows());
+    if (lines.length === 0) return null;
+    const t = this.selectedTax();
+    return { allocations: lines.map((l) => ({ feeDueId: l.row.dueId, amount: l.paise / 100 })), ...(t ? { taxTypeId: t.taxTypeId } : {}) };
+  });
 
   // ---- 3. tax
   protected readonly taxControl = new FormControl<string>({ value: '', disabled: true }, { nonNullable: true });
@@ -129,6 +143,16 @@ export class CollectPaymentDialogComponent implements OnInit {
   );
 
   constructor() {
+    // the late fee preview follows the selection (a short pause so typing an amount does not ask for every key)
+    effect((onCleanup) => {
+      const req = this.lateRequest();
+      if (!this.lateFeeOn() || !req) { this.lateFee.set(null); return; }
+      let sub: { unsubscribe(): void } | undefined;
+      const timer = setTimeout(() => {
+        sub = this.lateFeeApi.preview(this.studentId(), req).subscribe({ next: (p) => this.lateFee.set(p), error: () => this.lateFee.set(null) });   // a failed preview never blocks the payment
+      }, 250);
+      onCleanup(() => { clearTimeout(timer); sub?.unsubscribe(); });
+    });
     // 2 and 3 stay disabled until at least one installment is selected
     effect(() => {
       const on = this.hasSelection();
@@ -153,6 +177,10 @@ export class CollectPaymentDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.lateFeeApi.getRule().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (r) => this.lateFeeOn.set(r.enabled && r.feeTypes.some((f) => f.appliesLateFee)),
+      error: () => this.lateFeeOn.set(false),   // no preview, the payment screen works exactly as before
+    });
     const meta: Record<number, { dueDate: string; status: string }> = {};
     const rows = this.dues()
       .filter((d) => d.outstanding > 0)

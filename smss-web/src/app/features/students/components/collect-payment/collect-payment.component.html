@@ -122,11 +122,26 @@
         @if (selectedTax()) {
           <div><dt>Tax: {{ taxLabelText() }}</dt><dd>{{ paise(preview().taxPaise) }}</dd></div>
         }
+        @if (lateFee(); as lf) {
+          @if (lf.lines.length > 0) {
+            <div class="late" data-late-fee><dt>Late fee on these installments<small> (shown for information: not added to this payment yet)</small></dt><dd>{{ inr(lf.total) }}</dd></div>
+          }
+        }
         <div class="total">
           <dt>Total to collect</dt>
           <dd>{{ paise(preview().totalPaise) }}@if (waived()) { <span class="waived">Fully waived</span> }</dd>
         </div>
       </dl>
+
+      @if (lateFee(); as lf) {
+        @if (lf.lines.length > 0) {
+          <ul class="late-lines" data-late-lines aria-label="Late fee detail">
+            @for (l of lf.lines; track l.feeDueId) {
+              <li>{{ l.feeType }}, due {{ l.dueDate }}: {{ l.daysLate }} days late{{ l.daysLate !== l.daysCharged ? ' (' + l.daysCharged + ' beyond the grace days)' : '' }}{{ l.alreadyCollected > 0 ? ', ' + inr(l.alreadyCollected) + ' already collected' : '' }}: {{ inr(l.amount) }}</li>
+            }
+          </ul>
+        }
+      }
 
       @if (!waived()) {
         <div class="pay">

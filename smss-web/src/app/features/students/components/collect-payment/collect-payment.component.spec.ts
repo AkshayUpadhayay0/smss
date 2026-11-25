@@ -50,7 +50,7 @@ describe('CollectPaymentDialogComponent', () => {
   const setMode = (m: string) => { cmp()['modeControl'].setValue(m); tick(); };
   const typeReceived = (v: string) => { const i = el().querySelector<HTMLInputElement>('#cp-received')!; i.value = v; i.dispatchEvent(new Event('input')); tick(); };
 
-  function open(opts: { taxes?: TaxType[]; concessions?: ConcessionChoice[]; roles?: string[] } = {}) {
+  function open(opts: { taxes?: TaxType[]; concessions?: ConcessionChoice[]; roles?: string[]; lateRule?: unknown } = {}) {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: opts.roles ?? ['School Admin'] }) });
     TestBed.resetTestingModule();
@@ -64,6 +64,7 @@ describe('CollectPaymentDialogComponent', () => {
     fixture.detectChanges();
     http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/TaxType`).flush(env(opts.taxes ?? []));
     http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/FeePayment/concessions`).flush(env(opts.concessions ?? []));
+    http.expectOne((r) => r.method === 'GET' && r.url === `${API}/api/LateFee/rule`).flush(env(opts.lateRule ?? { enabled: false, ruleType: null, amount: null, percent: null, graceDays: 0, capPerDue: null, taxApplies: false, updatedAt: null, updatedBy: null, feeTypes: [] }));
     tick();
   }
   afterEach(() => { http.verify(); clearSessions(); vi.restoreAllMocks(); });
@@ -451,5 +452,47 @@ describe('CollectPaymentDialogComponent', () => {
     expect(el().querySelector('label[for="cp-received"]')).not.toBeNull();
     expect(el().querySelector('.summary')!.getAttribute('aria-live')).toBe('polite');
     expect(el().querySelector('section[aria-labelledby="cp-installments"]')).not.toBeNull();
+  });
+
+  describe('late fee preview (5a: read-only)', () => {
+    const RULE_ON = { enabled: true, ruleType: 'FLAT', amount: 50, percent: null, graceDays: 5, capPerDue: null, taxApplies: false, updatedAt: null, updatedBy: null, feeTypes: [{ feeTypeId: 1, name: 'Tuition Fee', isActive: true, appliesLateFee: true }] };
+    const PREVIEW = { today: '2026-11-25', ruleEnabled: true, ruleType: 'FLAT', graceDays: 5, total: 50, taxName: null, taxAmount: 0, note: null,
+      lines: [{ feeDueId: 3, feeType: 'Tuition Fee', dueDate: '2026-06-10', daysLate: 168, daysCharged: 163, baseAmount: 2500, computedTotal: 50, alreadyCollected: 0, amount: 50 }] };
+    const wait = () => new Promise((r) => setTimeout(r, 300));
+
+    it('asks nothing when the school charges no late fee: the payment screen works exactly as before', async () => {
+      open();
+      check(3);
+      await wait();
+      http.expectNone((r) => r.url.includes('/api/LateFee/preview'));
+      expect(el().querySelector('[data-late-fee]')).toBeNull();
+    });
+
+    it('shows the server late fee for the selection, sends only allocations (never an amount of late fee) and does not change the total to collect', async () => {
+      open({ lateRule: RULE_ON });
+      const before = el().querySelector('.total dd')?.textContent;
+      check(3);
+      await wait();
+      const req = http.expectOne((r) => r.method === 'POST' && r.url === `${API}/api/LateFee/preview/DPS001ST001`);
+      expect(req.request.body).toEqual({ allocations: [{ feeDueId: 3, amount: 2500 }] });
+      req.flush(env(PREVIEW));
+      tick();
+      expect(el().querySelector('[data-late-fee]')?.textContent).toContain('50');
+      expect(el().querySelector('[data-late-lines]')?.textContent).toContain('168 days late');
+      expect(el().querySelector('.total dd')?.textContent).not.toContain('2,550');          // the payment total is still just the fees: nothing is added yet
+      expect(before).not.toBeUndefined();
+    });
+
+    it('a failed preview never blocks the payment and a cleared selection clears the line', async () => {
+      open({ lateRule: RULE_ON });
+      check(3);
+      await wait();
+      http.expectOne((r) => r.url === `${API}/api/LateFee/preview/DPS001ST001`).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' });
+      tick();
+      expect(el().querySelector('[data-late-fee]')).toBeNull();
+      check(3, false);
+      await wait();
+      http.expectNone((r) => r.url.includes('/api/LateFee/preview'));
+    });
   });
 });

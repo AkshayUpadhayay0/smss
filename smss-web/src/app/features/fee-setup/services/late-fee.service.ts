@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { LateFeeRule, SaveLateFeeRuleRequest } from '../models/late-fee.model';
+import { LateFeePreview, LateFeePreviewRequest, LateFeeRule, SaveLateFeeRuleRequest } from '../models/late-fee.model';
 
 const BASE = '/api/LateFee';
 
@@ -18,5 +18,10 @@ export class LateFeeService {
   /** School Admin only. A new rule applies from the next payment. */
   saveRule(request: SaveLateFeeRuleRequest): Observable<LateFeeRule> {
     return this.api.put<LateFeeRule>(`${BASE}/rule`, request);
+  }
+
+  /** What late fee a payment like this WOULD be charged (read-only). The payment screen shows it; the client never sends an amount. */
+  preview(studentId: string, request: LateFeePreviewRequest): Observable<LateFeePreview> {
+    return this.api.post<LateFeePreview>(`${BASE}/preview/${encodeURIComponent(studentId)}`, request, { skipErrorToast: true });
   }
 }

@@ -8,5 +8,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<LateFeeRuleDto>> GetRuleAsync(string? schoolId, CancellationToken ct);
         /// <summary>School Admin: saves the rule and which fee types it applies to (new rule applies from the next payment only).</summary>
         Task<ApiResponse<LateFeeRuleDto>> SaveRuleAsync(string? schoolId, long userId, SaveLateFeeRuleRequest request, CancellationToken ct);
+        /// <summary>What late fee a payment of this amount (or these allocations) would charge today. Read-only. <paramref name="today"/> is for tests; the real date is the school's date in India.</summary>
+        Task<ApiResponse<LateFeePreviewDto>> PreviewAsync(string? schoolId, string studentId, LateFeePreviewRequest request, CancellationToken ct, DateOnly? today = null);
     }
 }

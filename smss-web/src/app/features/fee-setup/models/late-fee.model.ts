@@ -39,3 +39,33 @@ export interface SaveLateFeeRuleRequest {
   taxApplies: boolean;
   feeTypeIds: number[];
 }
+
+export interface LateFeePreviewRequest {
+  amount?: number | null;
+  allocations?: { feeDueId: number; amount: number }[];
+  taxTypeId?: number | null;
+}
+
+export interface LateFeePreviewLine {
+  feeDueId: number;
+  feeType: string;
+  dueDate: string;
+  daysLate: number;
+  daysCharged: number;
+  baseAmount: number;
+  computedTotal: number;
+  alreadyCollected: number;
+  amount: number;
+}
+
+export interface LateFeePreview {
+  today: string;
+  ruleEnabled: boolean;
+  ruleType: LateFeeRuleType | null;
+  graceDays: number;
+  lines: LateFeePreviewLine[];
+  total: number;
+  taxName: string | null;
+  taxAmount: number;
+  note: string | null;
+}

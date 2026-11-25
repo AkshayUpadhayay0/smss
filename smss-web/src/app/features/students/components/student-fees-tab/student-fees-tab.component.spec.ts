@@ -295,6 +295,7 @@ describe('StudentFeesTabComponent', () => {
       expect((fixture.nativeElement as HTMLElement).querySelector('app-collect-payment-dialog')).not.toBeNull();
       http.expectOne(`${API}/api/TaxType`).flush(env([]));   // the dialog asks for the school's tax types and concessions when it opens
       http.expectOne(`${API}/api/FeePayment/concessions`).flush(env([]));
+      http.expectOne(`${API}/api/LateFee/rule`).flush(env({ enabled: false, ruleType: null, amount: null, percent: null, graceDays: 0, capPerDue: null, taxApplies: false, updatedAt: null, updatedBy: null, feeTypes: [] }));   // and the late fee rule (read-only preview, off here)
 
       cmp()['onRecorded'](RECEIPT);
       http.expectOne(URL).flush(env(assigned));
