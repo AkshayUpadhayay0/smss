@@ -95,6 +95,19 @@ describe('AdmissionFormComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/admissions', 12]);
   });
 
+  it('an application that reuses the parents of a sibling posts the ids of the pick (and not a stored number)', () => {
+    open();
+    answer();
+    cmp()['picks'].set({ primary: { guardianId: 41, name: 'Meera Rao', relationship: 'MOTHER', maskedMobile: '98XXXXXX10', hasWhatsApp: true, hasEmail: true }, extras: [{ guardianId: 42, name: 'Anil Rao', relationship: 'FATHER', maskedMobile: '97XXXXXX11', hasWhatsApp: false, hasEmail: false }] });
+    cmp()['form'].patchValue({ applicantFirstName: 'Anil', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianRelationship: 'MOTHER' });
+    cmp()['form'].controls.guardianName.disable(); cmp()['form'].controls.guardianMobileNumber.disable(); cmp()['form'].controls.guardianEmail.disable();
+    cmp()['form'].controls.guardianWhatsAppNumber.disable(); cmp()['form'].controls.guardianWhatsAppSameAsMobile.disable();
+    cmp()['submit']();
+    const post = http.expectOne(`${API}/api/Admission/S/submit`);
+    expect(post.request.body).toMatchObject({ existingGuardianId: 41, additionalGuardians: [{ guardianId: 42, relationship: 'FATHER' }], guardianRelationship: 'MOTHER' });
+    post.flush(env({ ...DETAIL('APPLICATION_SUBMITTED'), admissionId: 13 }, 201));
+  });
+
   it('the last name is optional: an application with only a first name is valid and posts the last name as null', () => {
     open();
     answer();

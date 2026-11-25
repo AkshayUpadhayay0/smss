@@ -22,6 +22,8 @@ export interface ImportRow {
   /** The primary guardian's WhatsApp number as it will be stored (with the country code), and email. */
   guardianWhatsApp?: string;
   guardianEmail?: string;
+  /** "A guardian with this number already exists in the school (sibling?)": information only, never a warning or an error. Absent or empty when there is none. */
+  guardianHint?: string;
 }
 
 export interface ImportSummary {
@@ -31,6 +33,8 @@ export interface ImportSummary {
   errors: number;
   /** Rows that can be imported now (no error). A row with an error is skipped; the others still import. */
   importable: number;
+  /** Rows (without an error) whose guardian's number already belongs to a guardian of the school: maybe siblings. Information only. */
+  guardianHints?: number;
   canImport: boolean;
   maxRows: number;
 }

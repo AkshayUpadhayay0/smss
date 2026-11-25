@@ -69,6 +69,10 @@ type Step = 'upload' | 'preview' | 'result';
               <div class="stat bad"><span class="num">{{ p.summary.errors }}</span><span class="lbl">Errors</span></div>
             </div>
 
+            @if ((p.summary.guardianHints ?? 0) > 0) {
+              <p class="banner soft" role="status" data-banner="guardian-hints">{{ p.summary.guardianHints }} row{{ p.summary.guardianHints === 1 ? ' has' : 's have' }} a parent number that already exists in this school (maybe siblings). Nothing is linked automatically: each row gets its own parent record, and the duplicate report can merge them later.</p>
+            }
+
             @if (p.summary.errors > 0) {
               @if (p.summary.importable > 0) {
                 <p class="banner" role="status" data-banner="skipped">{{ p.summary.errors }} row{{ p.summary.errors === 1 ? ' has' : 's have' }} an error and will be <strong>skipped</strong>. The other {{ p.summary.importable }} row{{ p.summary.importable === 1 ? '' : 's' }} can be imported now. Download the error report, fix the skipped rows and upload them again.</p>
@@ -107,6 +111,7 @@ type Step = 'upload' | 'preview' | 'result';
                           <td data-label="Guardian">{{ r.guardian || '—' }}@if (r.guardianMobile) { <small>{{ r.guardianMobile }}</small> }</td>
                           <td data-label="Messages" class="msgs">
                             @for (m of r.messages; track m) { <span>{{ m }}</span> }
+                            @if (r.guardianHint) { <span class="hint" data-hint="guardian">{{ r.guardianHint }}</span> }
                           </td>
                         </tr>
                       }

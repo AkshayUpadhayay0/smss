@@ -21,6 +21,8 @@ namespace smss_api_service_layer.dto
         /// <summary>The primary guardian's WhatsApp number as it will be stored (with the country code), and email.</summary>
         public string GuardianWhatsApp { get; set; } = "";
         public string GuardianEmail { get; set; } = "";
+        /// <summary>"A guardian with this number already exists in the school (sibling?)": an information hint, not a warning or an error. The file's guardian is still created as a NEW record (never linked automatically).</summary>
+        public string GuardianHint { get; set; } = "";
     }
 
     public class ImportSummaryDto
@@ -34,6 +36,8 @@ namespace smss_api_service_layer.dto
         /// <summary>True when the file has no file-level problem and at least one row can be imported. Rows with errors are skipped by the import and listed, not blocking the rest.</summary>
         public bool CanImport { get; set; }
         public int MaxRows { get; set; }
+        /// <summary>Rows without an error whose guardian's number already belongs to a guardian of the school (maybe a sibling). Information only.</summary>
+        public int GuardianHints { get; set; }
     }
 
     public class ImportPreviewDto

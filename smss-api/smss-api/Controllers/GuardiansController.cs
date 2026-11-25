@@ -52,6 +52,14 @@ namespace smss_api.Controllers
             return Reply(await _service.UpdateAsync(school, guardianId, request, userId, ct));
         }
 
+        // GET api/Guardians/siblings?classId=&search=&limit=   (the sibling pick: students with their guardians; mobile numbers are masked)
+        [HttpGet("siblings")]
+        public async Task<IActionResult> Siblings([FromQuery] long? classId, [FromQuery] string? search, [FromQuery] int limit = 20, CancellationToken ct = default)
+        {
+            if (Gate(out var school) is { } refused) return refused;
+            return Reply(await _service.SearchSiblingsAsync(school, classId, search, limit, ct));
+        }
+
         // GET api/Guardians/incomplete?classId=&sectionId=&search=&page=&pageSize=
         [HttpGet("incomplete")]
         public async Task<IActionResult> Incomplete([FromQuery] long? classId, [FromQuery] long? sectionId, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default)

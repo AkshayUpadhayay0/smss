@@ -340,6 +340,12 @@ namespace smss_api_service_layer.service
             }
 
             Finish(v);
+
+            // ---- hint (information only, never an error or a warning, never an automatic link): the file's guardian number already belongs to a guardian of this school (maybe a sibling)
+            var existingKeys = await _repo.GuardianPhoneKeysAsync(schoolId, ct) ?? new HashSet<string>();
+            foreach (var r in v.Rows.Where(r => r.Errors.Count == 0 && r.Guardians.Count > 0 && r.Guardians.Any(g => PhoneNumbers.NationalKey(g.Mobile) is { } key && existingKeys.Contains(key))))
+                r.Dto.GuardianHint = "A guardian with this number already exists in the school (sibling?). A new guardian record is created for this row; the duplicate report can merge them later.";
+            v.Preview.Summary.GuardianHints = v.Rows.Count(r => r.Dto.GuardianHint.Length > 0);
             return v;
         }
 

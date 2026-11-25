@@ -91,6 +91,28 @@ namespace smss_api_service_layer.dto
         public List<IncompleteGuardianDto> Items { get; set; } = new();
     }
 
+    /// <summary>A guardian as the sibling search shows them: the name, a MASKED mobile number, and whether a WhatsApp number and an email are on record. Never the whole number.</summary>
+    public class SiblingGuardianDto
+    {
+        public long GuardianId { get; set; }
+        public string Name { get; set; } = null!;
+        /// <summary>The relationship this guardian has to THIS student.</summary>
+        public string Relationship { get; set; } = null!;
+        public string MaskedMobile { get; set; } = null!;
+        public bool HasWhatsApp { get; set; }
+        public bool HasEmail { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+
+    public class SiblingStudentDto
+    {
+        public string StudentId { get; set; } = null!;
+        public string StudentName { get; set; } = null!;
+        public string? ClassName { get; set; }
+        public string? SectionName { get; set; }
+        public List<SiblingGuardianDto> Guardians { get; set; } = new();
+    }
+
     public class BulkWhatsAppRequestDto
     {
         [Required, MinLength(1), MaxLength(200)] public List<long> GuardianIds { get; set; } = new();

@@ -83,6 +83,10 @@ export interface AdmissionDetail extends Admission {
   guardianEmail?: string | null;
   /** With the country code; null on an application made before it was collected (it must be added before the application can be confirmed). */
   guardianWhatsAppNumber?: string | null;
+  /** The existing guardian this application reuses as the primary guardian (a sibling's parent), shown with a MASKED mobile number; null when the primary guardian was typed in. */
+  guardianId?: number | null;
+  existingGuardian?: { guardianId: number; name: string; relationship: string; maskedMobile: string; hasWhatsApp: boolean; hasEmail: boolean } | null;
+  additionalGuardians?: { guardianId: number; name: string; relationship: string; maskedMobile: string; hasWhatsApp: boolean; hasEmail: boolean }[];
   previousSchool?: string | null;
   reviewNotes?: string | null;
   reviewedAt?: string | null;
@@ -123,6 +127,10 @@ export interface SubmitAdmissionRequest {
   guardianMobileNumber: string;
   /** Mandatory: the primary guardian's email. */
   guardianEmail: string | null;
+  /** The existing guardian reused as the PRIMARY guardian (a sibling's parent); null when the primary guardian is a person typed in. The name and mobile sent for them are ignored by the server. */
+  existingGuardianId?: number | null;
+  /** Other existing guardians to link (not primary), with the relationship for this student. */
+  additionalGuardians?: { guardianId: number; relationship: string }[];
   /** The WhatsApp number as typed (10 digits or with the country code); null when "same as mobile number" is ticked. */
   guardianWhatsAppNumber: string | null;
   guardianWhatsAppSameAsMobile: boolean;

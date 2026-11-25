@@ -29,6 +29,10 @@ export interface DirectStudentEntryRequest {
   guardianRelationship: string;
   guardianMobileNumber: string;
   guardianEmail: string | null;
+  /** The existing guardian reused as the PRIMARY guardian (a sibling's parent); null when the primary guardian is a person typed in. */
+  existingGuardianId?: number | null;
+  /** Other existing guardians to link (not primary), with the relationship for this student. */
+  additionalGuardians?: { guardianId: number; relationship: string }[];
   /** The WhatsApp number as typed; null when "same as mobile number" is ticked (the server then uses the mobile number). */
   guardianWhatsAppNumber: string | null;
   guardianWhatsAppSameAsMobile: boolean;

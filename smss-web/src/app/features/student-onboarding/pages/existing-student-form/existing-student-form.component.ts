@@ -13,6 +13,8 @@ import { StudentService } from '../../../students/services/student.service';
 import { LogoChange, LogoUploadComponent } from '../../../schools/components/logo-upload/logo-upload.component';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { SectionService } from '../../../school-setup/services/section.service';
+import { GuardianFieldsComponent } from '../../../guardians/components/guardian-fields/guardian-fields.component';
+import { GuardianPicks, picksToRequest } from '../../../guardians/models/guardian.model';
 import { whatsAppValidator } from '../../../../core/utils/whatsapp';
 import { firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { DirectStudentEntryRequest, StudentOnboardingResult, StudentOnboardingService } from '../../services/student-onboarding.service';
@@ -38,7 +40,7 @@ function pastDate(c: AbstractControl): ValidationErrors | null {
 /** Direct entry of a student the school already has: no application, review or approval stage. */
 @Component({
   selector: 'app-existing-student-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent, WhatsAppFieldComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent, WhatsAppFieldComponent, GuardianFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './existing-student-form.component.scss',
   templateUrl: './existing-student-form.component.html',
@@ -202,6 +204,11 @@ export class ExistingStudentFormComponent implements OnInit {
     window.scrollTo({ top: 0 });
   }
 
+  /** The sibling's parents picked for this student (null = the primary guardian is typed in). */
+  protected readonly picks = signal<GuardianPicks | null>(null);
+  protected readonly initialPicks = signal<GuardianPicks | null>(null);
+  protected readonly errorOf = (name: string): string | undefined => this.err(name as never);
+
   // ── Submit ──────────────────────────────────────────────────────────
   protected submit(): void {
     if (this.saving()) return;
@@ -265,6 +272,7 @@ export class ExistingStudentFormComponent implements OnInit {
       guardianEmail: str(v.guardianEmail),
       guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
       guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
+      ...picksToRequest(this.picks()),
       feeItems: this.feeSelections.length ? this.feeSelections : null,
       chargeFrom: v.chargeFrom || null,
       confirmBackdating: backdated,

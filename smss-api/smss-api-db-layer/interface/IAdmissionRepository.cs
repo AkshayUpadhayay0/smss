@@ -82,6 +82,17 @@ namespace smss_api_db_layer.@interface
         /// <summary>The student's enrollment for the academic year (any status), or null.</summary>
         Task<long?> GetEnrollmentIdAsync(string schoolId, string studentId, long academicYearId, CancellationToken ct);
 
+        // ---- reusing existing guardians (a sibling's parents): see GuardianReuse
+        /// <summary>For each id: the guardian it ends up as after following merged_into_guardian_id (itself when not merged), or null when it is not this school's guardian.</summary>
+        Task<Dictionary<long, long?>> ResolveGuardianSurvivorsAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct);
+        Task<List<TbGuardian>> GetGuardiansReadOnlyAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct);
+        /// <summary>The guardians (this school's only) as TRACKED rows locked FOR UPDATE, in id order: two confirmations that share a guardian queue up and the second one reads the first one's result.</summary>
+        Task<List<TbGuardian>> LockGuardiansAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct);
+        Task AddGuardianChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct);
+        Task<List<TbAdmissionGuardian>> GetAdmissionGuardiansAsync(string schoolId, long admissionId, bool tracked, CancellationToken ct);
+        Task AddAdmissionGuardianAsync(TbAdmissionGuardian entity, CancellationToken ct);
+        void RemoveAdmissionGuardian(TbAdmissionGuardian entity);
+
         Task<int> SaveChangesAsync(CancellationToken ct);
         /// <summary>Forgets every pending / failed entity so a retry after a failed save starts from a clean context.</summary>
         void ClearTracking();

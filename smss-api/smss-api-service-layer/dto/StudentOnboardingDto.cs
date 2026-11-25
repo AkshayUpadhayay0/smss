@@ -40,19 +40,31 @@ namespace smss_api_service_layer.dto
         [EmailAddress, MaxLength(150)] public string? Email { get; set; }
         [RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")] public string? MobileNumber { get; set; }
 
-        [Required, MaxLength(150)] public string GuardianName { get; set; } = null!;
-        [Required, RegularExpression("^(FATHER|MOTHER|GUARDIAN)$", ErrorMessage = "GuardianRelationship must be FATHER, MOTHER or GUARDIAN.")]
+        [MaxLength(150)] public string GuardianName { get; set; } = null!;   // required unless an existing guardian is picked (see Validate)
+        [RegularExpression("^(FATHER|MOTHER|GUARDIAN)$", ErrorMessage = "GuardianRelationship must be FATHER, MOTHER or GUARDIAN.")]
         public string GuardianRelationship { get; set; } = null!;
-        [Required, RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")] public string GuardianMobileNumber { get; set; } = null!;
+        [RegularExpression(Rx.Mobile, ErrorMessage = "Enter a valid 10-digit mobile number.")] public string GuardianMobileNumber { get; set; } = null!;
         /// <summary>Mandatory for the primary guardian (checked by <see cref="Validate"/>).</summary>
         [MaxLength(150)] public string? GuardianEmail { get; set; }
         /// <summary>The guardian's WhatsApp number: 10 digits, or with the country code. Mandatory unless <see cref="GuardianWhatsAppSameAsMobile"/> is set.</summary>
         [MaxLength(25)] public string? GuardianWhatsAppNumber { get; set; }
         /// <summary>"Same as mobile number": the server then uses the guardian's mobile number as the WhatsApp number.</summary>
         public bool GuardianWhatsAppSameAsMobile { get; set; }
+        /// <summary>
+        /// The EXISTING guardian who is this student's primary guardian (a sibling's parent, picked from the sibling search). Null = the primary guardian is the person typed in below. When it is set the guardian's
+        /// name and mobile come from the guardian record (what is sent for them is ignored), WhatsApp and email are needed only where the record has none, and those are written to the shared record.
+        /// </summary>
+        public long? ExistingGuardianId { get; set; }
+        /// <summary>Other existing guardians to link (not primary), each with the relationship for this student.</summary>
+        public List<ExistingGuardianPickDto>? AdditionalGuardians { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
+            // an EXISTING guardian is picked: name and mobile come from the record, and the service checks WhatsApp and email against the record
+            if (ExistingGuardianId != null) yield break;
+            if (string.IsNullOrWhiteSpace(GuardianName)) yield return new ValidationResult("The GuardianName field is required.", new[] { nameof(GuardianName) });
+            if (string.IsNullOrWhiteSpace(GuardianRelationship)) yield return new ValidationResult("The GuardianRelationship field is required.", new[] { nameof(GuardianRelationship) });
+            if (string.IsNullOrWhiteSpace(GuardianMobileNumber)) yield return new ValidationResult("The GuardianMobileNumber field is required.", new[] { nameof(GuardianMobileNumber) });
             var w = smss_api_service_layer.helper.PhoneNumbers.WhatsAppError(GuardianWhatsAppNumber, GuardianWhatsAppSameAsMobile, GuardianMobileNumber, "The guardian's");
             if (w != null) yield return new ValidationResult(w, new[] { nameof(GuardianWhatsAppNumber) });
             var e = smss_api_service_layer.helper.PhoneNumbers.EmailError(GuardianEmail, "The guardian's");

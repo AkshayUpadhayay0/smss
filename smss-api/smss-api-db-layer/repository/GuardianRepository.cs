@@ -93,6 +93,36 @@ namespace smss_api_db_layer.repository
                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.GuardianId).ToList();
         }
 
+        public async Task<List<SiblingStudentRow>> SearchSiblingStudentsAsync(string schoolId, int activeStatusId, long viewedYearId, long? classId, string? search, int limit, CancellationToken ct)
+        {
+            var q = from e in _db.StudentEnrollments.AsNoTracking()
+                    where e.SchoolId == schoolId && e.AcademicYearId == viewedYearId
+                    join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
+                    where s.SchoolId == schoolId && s.StatusId == activeStatusId
+                    join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
+                    join c in _db.Classes.AsNoTracking() on sec.ClassId equals c.ClassId
+                    select new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, s.AdmissionNumber, c.ClassId, c.ClassName, sec.SectionName };
+            if (classId != null) q = q.Where(x => x.ClassId == classId);
+            var term = search?.Trim();
+            if (!string.IsNullOrEmpty(term))
+            {
+                var like = "%" + term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+                q = q.Where(x => EF.Functions.ILike(x.FirstName + " " + (x.MiddleName ?? "") + " " + (x.LastName ?? ""), like) || EF.Functions.ILike(x.AdmissionNumber, like) || EF.Functions.ILike(x.StudentId, like));
+            }
+            var students = await q.OrderBy(x => x.FirstName).ThenBy(x => x.StudentId).Take(limit).ToListAsync(ct);
+            if (students.Count == 0) return new List<SiblingStudentRow>();
+            var ids = students.Select(s => s.StudentId).ToList();
+            var links = await (from l in _db.StudentGuardians.AsNoTracking()
+                               where ids.Contains(l.StudentId)
+                               join g in _db.Guardians.AsNoTracking() on l.GuardianId equals g.GuardianId
+                               where g.SchoolId == schoolId && g.StatusId == activeStatusId && g.MergedIntoGuardianId == null
+                               orderby l.IsPrimary descending, g.GuardianId
+                               select new { l.StudentId, l.Relationship, l.IsPrimary, g.GuardianId, g.FirstName, g.LastName, g.MobileNumber, g.WhatsAppNumber, g.Email }).ToListAsync(ct);
+            return students.Select(s => new SiblingStudentRow(s.StudentId, Name(s.FirstName, s.MiddleName, s.LastName), s.ClassName, s.SectionName,
+                links.Where(l => l.StudentId == s.StudentId).Select(l => new SiblingGuardianRow(l.GuardianId, Name(l.FirstName, null, l.LastName), l.Relationship, l.MobileNumber,
+                    !string.IsNullOrWhiteSpace(l.WhatsAppNumber), !string.IsNullOrWhiteSpace(l.Email), l.IsPrimary)).ToList())).ToList();
+        }
+
         public async Task AddChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct) => await _db.GuardianChanges.AddRangeAsync(changes, ct);
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
         public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);

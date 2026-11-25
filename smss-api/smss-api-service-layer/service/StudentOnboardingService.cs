@@ -53,9 +53,14 @@ namespace smss_api_service_layer.service
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result(400, "The selected class and section was not found for your school.", null);
                 // the primary guardian's WhatsApp number and email are mandatory (the controller's model validation says the same; this keeps every caller honest)
-                var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
-                              ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
-                if (contact != null) return Result(400, contact, null);
+                if (req.ExistingGuardianId == null)   // (an EXISTING primary guardian is checked against the guardian record, inside the transaction)
+                {
+                    var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
+                                  ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
+                    if (contact != null) return Result(400, contact, null);
+                    if (string.IsNullOrWhiteSpace(req.GuardianName) || string.IsNullOrWhiteSpace(req.GuardianRelationship) || string.IsNullOrWhiteSpace(req.GuardianMobileNumber))
+                        return Result(400, "The guardian's name, relationship and mobile number are required.", null);
+                }
                 var target = EnrollmentTargetRules.Refusal(await _repo.CheckEnrollmentTargetAsync(schoolId, req.AcademicYearId, req.ClassSectionId, Clean(req.RollNumber), ct), Clean(req.RollNumber));
                 if (target is { } refused) return Result(refused.Code, refused.Message, null);
                 // "Charge fees from": checked BEFORE the student is saved, so a refusal creates nothing
@@ -101,6 +106,26 @@ namespace smss_api_service_layer.service
                 {
                     _repo.ClearTracking();   // nothing from a failed attempt may be saved again
                     await using var tx = await _repo.BeginTransactionAsync(ct);
+
+                    // A sibling's parents are LINKED, never copied: a merged guardian is replaced by its survivor, an inactive one is refused, and the rows are locked FOR UPDATE in this transaction.
+                    GuardianReuseResult? reuse = null;
+                    var guardianChanges = new List<TbGuardianChange>();
+                    var picks = (req.AdditionalGuardians ?? new()).Select(e => new GuardianPick(e.GuardianId, e.Relationship)).ToList();
+                    if (req.ExistingGuardianId != null || picks.Count > 0)
+                    {
+                        reuse = await GuardianReuse.LoadAsync(_repo, schoolId, req.ExistingGuardianId, picks, activeId.Value, true, "saved", ct);
+                        if (reuse.Error is { } reuseError) return Result(reuseError.Code, reuseError.Message, null);
+                        if (reuse.Primary is { } existing)
+                        {
+                            // WhatsApp and email are needed only where the guardian record has none; what the admin entered is written to the shared record and logged
+                            var wa = string.IsNullOrWhiteSpace(existing.WhatsAppNumber) ? PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, existing.MobileNumber) : existing.WhatsAppNumber;
+                            var em = string.IsNullOrWhiteSpace(existing.Email) ? Clean(req.GuardianEmail) : existing.Email;
+                            var bad = (string.IsNullOrWhiteSpace(existing.WhatsAppNumber) ? PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, existing.MobileNumber, "The guardian's") : null)
+                                      ?? (string.IsNullOrWhiteSpace(existing.Email) ? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's") : null);
+                            if (bad != null) return Result(400, bad, null);
+                            guardianChanges.AddRange(GuardianReuse.ApplyContact(existing, wa, em, userId, schoolId, DateTime.UtcNow));
+                        }
+                    }
                     try
                     {
                         var now = DateTime.UtcNow;
@@ -128,18 +153,25 @@ namespace smss_api_service_layer.service
                             AcademicYearId = req.AcademicYearId,
                             ClassSectionId = req.ClassSectionId,
                             RollNumber = Clean(req.RollNumber),
-                            Guardians = new[] { new OnboardingGuardianInput { Name = req.GuardianName, Relationship = req.GuardianRelationship, Mobile = req.GuardianMobileNumber, WhatsApp = PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber), Email = Clean(req.GuardianEmail) } },
+                            Guardians = reuse?.Primary != null ? Array.Empty<OnboardingGuardianInput>() : new[] { new OnboardingGuardianInput { Name = req.GuardianName, Relationship = req.GuardianRelationship, Mobile = req.GuardianMobileNumber, WhatsApp = PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber), Email = Clean(req.GuardianEmail) } },
                             Now = now
                         });
                         var student = graph.Student;
                         var enrollment = graph.Enrollment;
-                        var guardian = graph.Guardians[0];
-                        var link = graph.Links[0];
+                        var guardian = graph.Guardians.FirstOrDefault();   // null when the primary guardian is an existing one
 
                         await _repo.AddStudentAsync(student, ct);
                         await _repo.AddEnrollmentAsync(enrollment, ct);
-                        await _repo.AddGuardianAsync(guardian, ct);
-                        await _repo.AddStudentGuardianAsync(link, ct);
+                        if (guardian != null)
+                        {
+                            await _repo.AddGuardianAsync(guardian, ct);
+                            await _repo.AddStudentGuardianAsync(graph.Links[0], ct);
+                        }
+                        if (reuse?.Primary is { } primaryGuardian)
+                            await _repo.AddStudentGuardianAsync(new TbStudentGuardian { StudentId = studentId, GuardianId = primaryGuardian.GuardianId, Relationship = req.GuardianRelationship is "FATHER" or "MOTHER" or "GUARDIAN" ? req.GuardianRelationship : primaryGuardian.Relationship, IsPrimary = true, IsEmergencyContact = true, CanPickupStudent = true, CreatedAt = now, UpdatedAt = now }, ct);
+                        foreach (var (extra, relationship) in reuse?.Extras ?? new())
+                            await _repo.AddStudentGuardianAsync(new TbStudentGuardian { StudentId = studentId, GuardianId = extra.GuardianId, Relationship = relationship ?? extra.Relationship, IsPrimary = false, IsEmergencyContact = false, CanPickupStudent = true, CreatedAt = now, UpdatedAt = now }, ct);
+                        if (guardianChanges.Count > 0) await _repo.AddGuardianChangesAsync(guardianChanges, ct);
 
                         await _repo.SaveChangesAsync(ct);   // one SaveChanges = one transaction for the whole graph
                         await tx.CommitAsync(ct);
@@ -156,7 +188,7 @@ namespace smss_api_service_layer.service
                         }
 
                         var fullName = string.Join(' ', new[] { student.FirstName, student.MiddleName, student.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                        await _notify.SendAsync(student.Email, guardian.Email,
+                        await _notify.SendAsync(student.Email, guardian?.Email ?? reuse?.Primary?.Email,
                             EmailTemplates.StudentIdAssigned(fullName, studentId, school.SchoolName),
                             $"student id assigned {studentId}", ct);
 

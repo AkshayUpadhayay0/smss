@@ -124,6 +124,45 @@ namespace smss_api_db_layer.repository
         }
 
         // ---- confirm-admission writes ----
+        public async Task<Dictionary<long, long?>> ResolveGuardianSurvivorsAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct)
+        {
+            var result = new Dictionary<long, long?>();
+            foreach (var id in guardianIds.Distinct())
+            {
+                long? answer = null;
+                var current = id;
+                for (var depth = 0; depth < 10; depth++)   // a merge chain is short; the limit only stops a loop
+                {
+                    var row = await _db.Guardians.AsNoTracking().Where(g => g.SchoolId == schoolId && g.GuardianId == current).Select(g => new { g.GuardianId, g.MergedIntoGuardianId }).FirstOrDefaultAsync(ct);
+                    if (row == null) break;
+                    if (row.MergedIntoGuardianId == null) { answer = row.GuardianId; break; }
+                    current = row.MergedIntoGuardianId.Value;
+                }
+                result[id] = answer;
+            }
+            return result;
+        }
+
+        public Task<List<TbGuardian>> GetGuardiansReadOnlyAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct) =>
+            _db.Guardians.AsNoTracking().Where(g => g.SchoolId == schoolId && guardianIds.Contains(g.GuardianId)).OrderBy(g => g.GuardianId).ToListAsync(ct);
+
+        public Task<List<TbGuardian>> LockGuardiansAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct)
+        {
+            var ids = guardianIds.Distinct().OrderBy(i => i).ToArray();
+            return _db.Guardians.FromSqlInterpolated($"SELECT * FROM public.tb_guardians WHERE school_id = {schoolId} AND guardian_id = ANY({ids}) ORDER BY guardian_id FOR UPDATE").AsTracking().ToListAsync(ct);
+        }
+
+        public async Task AddGuardianChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct) => await _db.GuardianChanges.AddRangeAsync(changes, ct);
+
+        public Task<List<TbAdmissionGuardian>> GetAdmissionGuardiansAsync(string schoolId, long admissionId, bool tracked, CancellationToken ct)
+        {
+            var q = tracked ? _db.AdmissionGuardians.AsTracking() : _db.AdmissionGuardians.AsNoTracking();
+            return q.Where(a => a.SchoolId == schoolId && a.AdmissionId == admissionId).OrderBy(a => a.GuardianId).ToListAsync(ct);
+        }
+
+        public async Task AddAdmissionGuardianAsync(TbAdmissionGuardian entity, CancellationToken ct) => await _db.AdmissionGuardians.AddAsync(entity, ct);
+        public void RemoveAdmissionGuardian(TbAdmissionGuardian entity) => _db.AdmissionGuardians.Remove(entity);
+
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) => _db.Database.BeginTransactionAsync(ct);
         public async Task AddStudentAsync(TbStudent entity, CancellationToken ct) => await _db.Students.AddAsync(entity, ct);
         public async Task AddEnrollmentAsync(TbStudentEnrollment entity, CancellationToken ct) => await _db.StudentEnrollments.AddAsync(entity, ct);

@@ -27,6 +27,8 @@ namespace smss_api_db_layer.@interface
         /// <summary>The sections the year offers (Active offering): an enrolment in any other section is refused.</summary>
         Task<HashSet<long>> OfferedSectionIdsAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task<List<ImportRollRow>> ExistingRollsAsync(string schoolId, long academicYearId, IReadOnlyCollection<long> sectionIds, CancellationToken ct);
+        /// <summary>The 10-digit keys (fn_phone_key) of the mobile numbers of this school's active, not merged guardians: a row whose guardian number is among them may be a sibling of an existing student.</summary>
+        Task<HashSet<string>> GuardianPhoneKeysAsync(string schoolId, CancellationToken ct);
         Task<List<ImportPersonRow>> FindPeopleBornOnAsync(string schoolId, IReadOnlyCollection<DateTime> dates, CancellationToken ct);
         Task<int> CountStudentsAsync(string schoolId, CancellationToken ct);
         Task<int> MaxAdmissionNumberSequenceAsync(string schoolId, string prefix, CancellationToken ct);

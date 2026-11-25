@@ -18,6 +18,8 @@ import {
 } from '../../../../shared/components';
 import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { ClassService } from '../../../school-setup/services/class.service';
+import { GuardianFieldsComponent } from '../../../guardians/components/guardian-fields/guardian-fields.component';
+import { GuardianPicks, PickedGuardian, picksToRequest } from '../../../guardians/models/guardian.model';
 import { whatsAppValidator } from '../../../../core/utils/whatsapp';
 import { PINCODE_RE, firstErrorMessage, mobileValidator, pattern, requiredTrimmed } from '../../../schools/utils/school-validators';
 import { AdmissionDetail, EDITABLE_STATUSES, GUARDIAN_RELATIONSHIPS, SubmitAdmissionRequest } from '../../models/admission.model';
@@ -35,7 +37,7 @@ const num = (v: string): number | null => (v.trim() === '' ? null : Number(v));
 
 @Component({
   selector: 'app-admission-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, WhatsAppFieldComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, GuardianFieldsComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-form.component.scss',
   templateUrl: './admission-form.component.html',
@@ -54,6 +56,10 @@ export class AdmissionFormComponent implements OnInit {
   readonly admissionId = input<string>();
   protected readonly editing = computed(() => this.admissionId() !== undefined);
   protected readonly breadcrumbs = computed<Breadcrumb[]>(() => [{ label: 'Admissions', link: '/admissions' }, { label: this.editing() ? 'Edit Application' : 'New Application' }]);
+  /** The sibling's parents picked for this application (null = the primary guardian is typed in), and the pick an edited application starts from. */
+  protected readonly picks = signal<GuardianPicks | null>(null);
+  protected readonly initialPicks = signal<GuardianPicks | null>(null);
+  protected readonly errorOf = (name: string): string | undefined => this.err(name as never);
   protected readonly relationshipOptions: SelectOption[] = GUARDIAN_RELATIONSHIPS.map((r) => ({ label: r.label, value: r.value }));
   protected readonly maxDob = new Date().toISOString().slice(0, 10);
 
@@ -159,6 +165,10 @@ export class AdmissionFormComponent implements OnInit {
       },
       { emitEvent: false },
     );
+    // an application that reuses a sibling's parents starts from that pick (the pick can be changed until the application is confirmed)
+    this.initialPicks.set(a.guardianId || a.additionalGuardians?.length
+      ? { primary: a.existingGuardian ?? null, extras: a.additionalGuardians ?? [] }
+      : null);
     // The Aadhaar number only comes back masked: the box stays empty and an empty box keeps the stored number (the server never clears it on an edit)
     this.storedAadhaarMasked.set(a.aadharNumberMasked ?? null);
     this.restoreLocation(a);
@@ -330,6 +340,7 @@ export class AdmissionFormComponent implements OnInit {
       guardianEmail: str(v.guardianEmail),
       guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
       guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
+      ...picksToRequest(this.picks()),
       previousSchool: str(v.previousSchool),
     };
 

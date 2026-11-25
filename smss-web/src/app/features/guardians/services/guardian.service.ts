@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { BulkWhatsAppResult, Guardian, GuardianUpdateRequest, IncompleteGuardians } from '../models/guardian.model';
+import { BulkWhatsAppResult, Guardian, GuardianUpdateRequest, IncompleteGuardians, SiblingStudent } from '../models/guardian.model';
 
 const BASE = '/api/Guardians';
 
@@ -25,6 +25,14 @@ export class GuardianService {
     if (filters.sectionId) params['sectionId'] = filters.sectionId;
     if (filters.search?.trim()) params['search'] = filters.search.trim();
     return this.api.get<IncompleteGuardians>(`${BASE}/incomplete`, params);
+  }
+
+  /** The sibling pick: active students of this school with their parents (mobile numbers masked). Needs a class or at least 2 letters of a name. */
+  siblings(filters: { classId?: number; search?: string; limit?: number } = {}): Observable<SiblingStudent[]> {
+    const params: Record<string, string | number> = { limit: filters.limit ?? 20 };
+    if (filters.classId) params['classId'] = filters.classId;
+    if (filters.search?.trim()) params['search'] = filters.search.trim();
+    return this.api.get<SiblingStudent[]>(`${BASE}/siblings`, params);
   }
 
   incompleteCount(): Observable<number> {

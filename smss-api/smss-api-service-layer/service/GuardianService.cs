@@ -113,6 +113,31 @@ namespace smss_api_service_layer.service
 
         private static string Display(TbGuardian g) => string.Join(' ', new[] { g.FirstName, g.LastName }.Where(p => !string.IsNullOrWhiteSpace(p)));
 
+        // ---------------------------------------------------------------- the sibling pick
+        public const int MaxSiblingResults = 30;
+
+        public async Task<ApiResponse<List<SiblingStudentDto>>> SearchSiblingsAsync(string? schoolId, long? classId, string? search, int limit, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<SiblingStudentDto>>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var term = search?.Trim();
+                if (classId == null && (term == null || term.Length < 2)) return Result<List<SiblingStudentDto>>(400, "Choose a class, or type at least 2 letters of the student's name.", null);
+                var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);
+                if (activeId == null) return ConfigError<List<SiblingStudentDto>>("Active status is missing in lut_status");
+                var year = await _repo.GetViewedYearIdAsync(schoolId, SchoolClock.Today(), ct);
+                if (year == null) return Result(200, "Successfully fetched", new List<SiblingStudentDto>());   // no academic year: no class lists to pick from
+                limit = Math.Clamp(limit <= 0 ? 20 : limit, 1, MaxSiblingResults);
+                var rows = await _repo.SearchSiblingStudentsAsync(schoolId, activeId.Value, year.Value, classId, term, limit, ct);
+                return Result(200, "Successfully fetched", rows.Select(s => new SiblingStudentDto
+                {
+                    StudentId = s.StudentId, StudentName = s.StudentName, ClassName = s.ClassName, SectionName = s.SectionName,
+                    Guardians = s.Guardians.Select(g => new SiblingGuardianDto { GuardianId = g.GuardianId, Name = g.Name, Relationship = g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.Mobile), HasWhatsApp = g.HasWhatsApp, HasEmail = g.HasEmail, IsPrimary = g.IsPrimary }).ToList(),
+                }).ToList());
+            }
+            catch (Exception ex) { return Error<List<SiblingStudentDto>>(ex, "searching students for the sibling pick"); }
+        }
+
         // ---------------------------------------------------------------- the "Complete parent details" list
         public async Task<ApiResponse<IncompleteGuardiansDto>> ListIncompleteAsync(string? schoolId, long? classId, long? sectionId, string? search, int page, int pageSize, CancellationToken ct)
         {

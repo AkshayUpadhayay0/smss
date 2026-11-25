@@ -10,6 +10,14 @@ namespace smss_api_db_layer.repository
     {
         private readonly dbContext _db;
         public StudentImportRepository(dbContext db) => _db = db;
+        public async Task<HashSet<string>> GuardianPhoneKeysAsync(string schoolId, CancellationToken ct)
+        {
+            var keys = await _db.Database.SqlQuery<string>($@"SELECT DISTINCT public.fn_phone_key(g.mobile_number) AS ""Value"" FROM public.tb_guardians g
+                JOIN public.lut_status s ON s.sid = g.status_id AND s.sname = 'Active' AND s.stype = 'general status'
+                WHERE g.school_id = {schoolId} AND g.merged_into_guardian_id IS NULL AND public.fn_phone_key(g.mobile_number) IS NOT NULL").ToListAsync(ct);
+            return keys.ToHashSet();
+        }
+
         public Task<bool> IsYearClosedAsync(string schoolId, long academicYearId, CancellationToken ct) => _db.IsYearClosedAsync(schoolId, academicYearId, ct);
 
         public Task<int?> GetActiveStatusIdAsync(CancellationToken ct) =>

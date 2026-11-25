@@ -178,6 +178,8 @@ namespace smss_api_tests
                 ["GetClassNamesAsync"] = new Dictionary<long, string> { [1] = "Class 1" },
                 ["GetAcademicYearNamesAsync"] = new Dictionary<long, string> { [1] = "2026-27" },
                 ["GetAdmissionTypeNamesAsync"] = new Dictionary<long, string> { [ActiveType] = "New Admission", [DeactivatedType] = "Old Style" },
+                ["GetAdmissionGuardiansAsync"] = new List<smss_api_db_layer.entity.TbAdmissionGuardian>(),   // an application that reuses no guardian
+                ["GetGuardiansReadOnlyAsync"] = new List<smss_api_db_layer.entity.TbGuardian>(),
             });
             return new AdmissionService(repo, Fake.Of<INotificationService>(), Fake.Of<IStudentFeeBillingService>(), NullLogger<AdmissionService>.Instance);
         }

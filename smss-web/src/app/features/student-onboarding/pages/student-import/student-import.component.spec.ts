@@ -110,6 +110,17 @@ describe('StudentImportComponent', () => {
     expect(button('Download error report')).toBeUndefined();
   });
 
+  it('shows the "maybe siblings" hint count and the row hint, without turning the rows into warnings', () => {
+    const rows = [{ ...row(2, 'OK'), guardianHint: 'A guardian with this number already exists in the school (sibling?).' }, row(3, 'OK')];
+    const preview = PREVIEW(rows);
+    preview.summary.guardianHints = 1;
+    check(preview);
+    expect(el().querySelector('[data-banner="guardian-hints"]')!.textContent).toContain('1 row has a parent number that already exists');
+    expect(el().textContent).toContain('(sibling?)');
+    expect(el().querySelectorAll('[data-hint="guardian"]').length).toBe(1);
+    expect(preview.summary.warnings).toBe(0);
+  });
+
   it('a file with an error opens on the Errors filter, skips the error row but still offers the valid ones, and offers the error report', () => {
     check(PREVIEW([row(2, 'OK'), row(3, 'ERROR', ['Roll number 5 is already taken in Class 3 A.']), row(4, 'WARNING', ['Looks like a student already in the school'])]));
     expect(text()).toContain('will be skipped');

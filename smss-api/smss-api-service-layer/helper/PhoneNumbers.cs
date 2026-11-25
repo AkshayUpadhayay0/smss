@@ -29,6 +29,13 @@ namespace smss_api_service_layer.helper
             return null;
         }
 
+        /// <summary>A number for show where only a recognisable hint is wanted ("98XXXXXX10": the first two and last two digits). Never the whole number.</summary>
+        public static string Mask(string? number)
+        {
+            var d = NonDigits.Replace(number ?? "", "");
+            return d.Length < 6 ? "XXXXXX" : d[..2] + new string('X', d.Length - 4) + d[^2..];
+        }
+
         /// <summary>The number as stored ("+91..."), or null when the text is blank or is not a valid number.</summary>
         public static string? Normalise(string? raw)
         {

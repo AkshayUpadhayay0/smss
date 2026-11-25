@@ -69,6 +69,50 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- submit ----------------
+        private sealed record ReuseChoice(long? PrimaryId, List<(long Id, string? Relationship)> Extras);
+
+        /// <summary>
+        /// Existing guardians picked for the application (a sibling's parents): they must be this school's, active (a merged one is replaced by its survivor). For an existing PRIMARY guardian the
+        /// guardian's name and mobile are copied onto the application for display, and WhatsApp and email are needed only where the guardian record has none. Null when nothing is reused.
+        /// </summary>
+        private async Task<(ReuseChoice? Choice, (int Code, string Message)? Error)> PrepareReuseAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        {
+            var extras = (req.AdditionalGuardians ?? new()).Select(e => new GuardianPick(e.GuardianId, e.Relationship)).ToList();
+            if (req.ExistingGuardianId == null && extras.Count == 0) return (null, null);
+            var activeId = await _repo.GetGeneralStatusIdAsync(StatusNames.Active, ct);
+            if (activeId == null) return (null, (500, "The system is not configured correctly. Please contact support."));
+            var load = await GuardianReuse.LoadAsync(_repo, schoolId, req.ExistingGuardianId, extras, activeId.Value, false, "saved", ct);
+            if (load.Error is { } error) return (null, error);
+            if (load.Primary is { } p)
+            {
+                req.ExistingGuardianId = p.GuardianId;   // a merged guardian is replaced by its survivor
+                req.GuardianName = GuardianReuse.Display(p);
+                req.GuardianMobileNumber = p.MobileNumber;
+                if (req.GuardianRelationship is not ("FATHER" or "MOTHER" or "GUARDIAN")) req.GuardianRelationship = p.Relationship;
+                var wa = !string.IsNullOrWhiteSpace(p.WhatsAppNumber) ? p.WhatsAppNumber : PhoneNumbers.WhatsAppFor(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, p.MobileNumber);
+                var email = !string.IsNullOrWhiteSpace(p.Email) ? p.Email.Trim() : Clean(req.GuardianEmail);
+                var bad = (string.IsNullOrWhiteSpace(p.WhatsAppNumber) ? PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, p.MobileNumber, "The guardian's") : null)
+                          ?? (string.IsNullOrWhiteSpace(p.Email) ? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's") : null);
+                if (bad != null) return (null, (400, bad));
+                req.GuardianWhatsAppNumber = wa; req.GuardianWhatsAppSameAsMobile = false; req.GuardianEmail = email;   // what the application will show and Confirm will write where the record has none
+            }
+            return (new ReuseChoice(load.Primary?.GuardianId, load.Extras.Select(x => (x.Guardian.GuardianId, x.Relationship ?? x.Guardian.Relationship)).ToList()), null);
+        }
+
+        /// <summary>Makes the application's extra guardians equal to the picked ones (adds the new, drops the removed, updates a changed relationship).</summary>
+        private async Task SyncExtrasAsync(string schoolId, long admissionId, ReuseChoice? choice, CancellationToken ct)
+        {
+            var wanted = choice?.Extras ?? new List<(long Id, string? Relationship)>();
+            var current = await _repo.GetAdmissionGuardiansAsync(schoolId, admissionId, true, ct);
+            foreach (var row in current.Where(c => wanted.All(w => w.Id != c.GuardianId))) _repo.RemoveAdmissionGuardian(row);
+            foreach (var (id, rel) in wanted)
+            {
+                var row = current.FirstOrDefault(c => c.GuardianId == id);
+                if (row != null) row.Relationship = rel;
+                else await _repo.AddAdmissionGuardianAsync(new TbAdmissionGuardian { AdmissionId = admissionId, GuardianId = id, SchoolId = schoolId, Relationship = rel, CreatedAt = DateTime.UtcNow }, ct);
+            }
+        }
+
         /// <summary>Everything about a submitted / edited application that can be wrong without touching the database row: foreign ids must be this school's, the date plausible.</summary>
         /// <param name="keepTypeId">An edit may keep the application's current admission type even if it has since been deactivated.</param>
         private async Task<string?> ValidateRequestAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct, long? keepTypeId = null)
@@ -82,9 +126,14 @@ namespace smss_api_service_layer.service
             if (req.StudentCategoryId.HasValue && !await _repo.StudentCategoryExistsAsync(req.StudentCategoryId.Value, ct)) return "The selected student category is not valid.";
             if (req.DateOfBirth.Date >= DateTime.UtcNow.Date) return "Date of birth must be in the past.";
             // the primary guardian's WhatsApp number and email are mandatory (the controller's model validation says the same; this keeps every caller honest)
-            var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
-                          ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
-            if (contact != null) return contact;
+            // (an EXISTING primary guardian is checked against the guardian record by PrepareReuseAsync instead)
+            if (req.ExistingGuardianId == null)
+            {
+                var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
+                              ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
+                if (contact != null) return contact;
+                if (string.IsNullOrWhiteSpace(req.GuardianName) || string.IsNullOrWhiteSpace(req.GuardianRelationship) || string.IsNullOrWhiteSpace(req.GuardianMobileNumber)) return "The guardian's name, relationship and mobile number are required.";
+            }
             return null;
         }
 
@@ -131,6 +180,8 @@ namespace smss_api_service_layer.service
                     if (def == null) return Result<AdmissionDetailDto>(400, defError!, null);
                     req.AdmissionTypeId = def.AdmissionTypeId;
                 }
+                var (reuse, reuseError) = await PrepareReuseAsync(schoolId, req, ct);
+                if (reuseError is { } re) return Result<AdmissionDetailDto>(re.Code, re.Message, null);
                 var bad = await ValidateRequestAsync(schoolId, req, ct);
                 if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
 
@@ -149,11 +200,17 @@ namespace smss_api_service_layer.service
 
                     var entity = new TbAdmission { SchoolId = schoolId, ApplicationNumber = $"{prefix}{next:D4}", ApplicationDate = now.Date, StatusId = submittedId.Value, CreatedAt = now, UpdatedAt = now };
                     ApplyDetails(entity, req);
+                    entity.GuardianId = reuse?.PrimaryId;
 
                     try
                     {
                         await _repo.AddAdmissionAsync(entity, ct);
                         await _repo.SaveChangesAsync(ct);
+                        if (reuse != null && reuse.Extras.Count > 0)
+                        {
+                            await SyncExtrasAsync(schoolId, entity.AdmissionId, reuse, ct);
+                            await _repo.SaveChangesAsync(ct);
+                        }
                         await tx.CommitAsync(ct);
                         var detail = await ToDetailAsync(entity, ct);
                         await NotifyAsync(schoolId, entity.Email, entity.GuardianEmail,
@@ -192,6 +249,8 @@ namespace smss_api_service_layer.service
                         req.AdmissionTypeId = def.AdmissionTypeId;
                     }
                 }
+                var (reuse, reuseError) = await PrepareReuseAsync(schoolId, req, ct);
+                if (reuseError is { } re) return Result<AdmissionDetailDto>(re.Code, re.Message, null);
                 var bad = await ValidateRequestAsync(schoolId, req, ct, keepTypeId: existing?.AdmissionTypeId);
                 if (bad != null) return Result<AdmissionDetailDto>(400, bad, null);
 
@@ -209,6 +268,8 @@ namespace smss_api_service_layer.service
                 ApplyDetails(admission, req);
                 if (string.IsNullOrWhiteSpace(req.AadharNumber)) admission.AadharNumber = storedAadhaar;   // the form only ever sees it masked, so a blank box means keep it
                 admission.UpdatedAt = DateTime.UtcNow;
+                admission.GuardianId = reuse?.PrimaryId;   // the pick can be changed until the application is confirmed
+                await SyncExtrasAsync(schoolId, admissionId, reuse, ct);
                 try { await _repo.SaveChangesAsync(ct); }
                 catch (DbUpdateException ex) when (ConstraintOf(ex) == "uq_tb_admissions_school_aadhar")
                 {
@@ -273,11 +334,12 @@ namespace smss_api_service_layer.service
                     return Result<AdmissionDetailDto>(409, current == Admitted ? "This application is already confirmed." : $"This application is {StatusLabel(current)}, so it can't be confirmed. Only an added application can be confirmed.", null);
 
                 // an application made before the guardian's WhatsApp number and email were collected stays editable: it must be completed before it can be confirmed
-                var missing = new List<string>();
-                if (string.IsNullOrWhiteSpace(admission.GuardianWhatsAppNumber)) missing.Add("WhatsApp number");
-                if (PhoneNumbers.EmailError(admission.GuardianEmail, "The guardian's") != null) missing.Add("email");
-                if (missing.Count > 0)
-                    return Result<AdmissionDetailDto>(409, $"The guardian's {string.Join(" and ", missing)} {(missing.Count == 1 ? "is" : "are")} missing. Edit the application to add {(missing.Count == 1 ? "it" : "them")}, then confirm it.", null);
+                // (an application with an EXISTING primary guardian is checked inside the transaction, on the locked guardian record)
+                if (admission.GuardianId == null)
+                {
+                    var notComplete = MissingContactMessage(admission.GuardianWhatsAppNumber, admission.GuardianEmail);
+                    if (notComplete != null) return Result<AdmissionDetailDto>(409, notComplete, null);
+                }
 
                 if (!await _repo.SectionBelongsToSchoolAsync(schoolId, req.ClassSectionId, ct))
                     return Result<AdmissionDetailDto>(400, "The selected section was not found for your school.", null);
@@ -321,6 +383,27 @@ namespace smss_api_service_layer.service
                     if (admission == null) return Result<AdmissionDetailDto>(404, "Admission application not found.", null);
                     if (!statuses.TryGetValue(admission.StatusId, out var nowStatus) || nowStatus != Submitted)
                         return Result<AdmissionDetailDto>(409, nowStatus == Admitted ? "This application is already confirmed." : $"This application is {StatusLabel(nowStatus ?? "")}, so it can't be confirmed. Only an added application can be confirmed.", null);
+                    // A sibling's parents are LINKED, never copied: resolve merged guardians to their survivor, refuse an inactive one, and lock the guardian rows FOR UPDATE (in this transaction)
+                    // so two confirmations that share a guardian queue up and the second reads the first one's result.
+                    TbGuardian? reusedPrimary = null;
+                    var reusedExtras = new List<(TbGuardian Guardian, string? Relationship)>();
+                    var guardianChanges = new List<TbGuardianChange>();
+                    var extraRows = await _repo.GetAdmissionGuardiansAsync(schoolId, admissionId, false, ct);
+                    if (admission.GuardianId != null || extraRows.Count > 0)
+                    {
+                        var load = await GuardianReuse.LoadAsync(_repo, schoolId, admission.GuardianId, extraRows.Select(r => new GuardianPick(r.GuardianId, r.Relationship)).ToList(), activeId.Value, true, "confirmed", ct);
+                        if (load.Error is { } loadError) return Result<AdmissionDetailDto>(loadError.Code, loadError.Message, null);
+                        reusedPrimary = load.Primary;
+                        reusedExtras = load.Extras;
+                        if (reusedPrimary != null)
+                        {
+                            // the Stage 2 rule is checked on the guardian RECORD (what it has, plus what the admin entered for it)
+                            var notComplete = MissingContactMessage(string.IsNullOrWhiteSpace(reusedPrimary.WhatsAppNumber) ? admission.GuardianWhatsAppNumber : reusedPrimary.WhatsAppNumber,
+                                                                   string.IsNullOrWhiteSpace(reusedPrimary.Email) ? admission.GuardianEmail : reusedPrimary.Email);
+                            if (notComplete != null) return Result<AdmissionDetailDto>(409, notComplete, null);
+                            guardianChanges.AddRange(GuardianReuse.ApplyContact(reusedPrimary, admission.GuardianWhatsAppNumber, admission.GuardianEmail, confirmedByUserId, schoolId, DateTime.UtcNow));
+                        }
+                    }
                     try
                     {
                         var now = DateTime.UtcNow;
@@ -367,7 +450,7 @@ namespace smss_api_service_layer.service
                             CreatedAt = now,
                             UpdatedAt = now
                         };
-                        var guardian = new TbGuardian
+                        var guardian = reusedPrimary != null ? null : new TbGuardian
                         {
                             SchoolId = schoolId,
                             FirstName = admission.GuardianName,
@@ -382,7 +465,8 @@ namespace smss_api_service_layer.service
                         var link = new TbStudentGuardian
                         {
                             StudentId = studentId,
-                            Guardian = guardian,          // GuardianId is filled in from the identity value on save
+                            Guardian = guardian,          // a NEW guardian: GuardianId is filled in from the identity value on save (null when an existing guardian is linked instead)
+                            GuardianId = reusedPrimary?.GuardianId ?? 0,
                             Relationship = admission.GuardianRelationship,
                             IsPrimary = true,
                             IsEmergencyContact = true,
@@ -393,8 +477,11 @@ namespace smss_api_service_layer.service
 
                         await _repo.AddStudentAsync(student, ct);
                         await _repo.AddEnrollmentAsync(enrollment, ct);
-                        await _repo.AddGuardianAsync(guardian, ct);
+                        if (guardian != null) await _repo.AddGuardianAsync(guardian, ct);
                         await _repo.AddStudentGuardianAsync(link, ct);
+                        foreach (var (extra, relationship) in reusedExtras)   // the other parents: linked, never primary
+                            await _repo.AddStudentGuardianAsync(new TbStudentGuardian { StudentId = studentId, GuardianId = extra.GuardianId, Relationship = relationship ?? extra.Relationship, IsPrimary = false, IsEmergencyContact = false, CanPickupStudent = true, CreatedAt = now, UpdatedAt = now }, ct);
+                        if (guardianChanges.Count > 0) await _repo.AddGuardianChangesAsync(guardianChanges, ct);
 
                         admission.StudentId = studentId;
                         admission.Enrollment = enrollment;   // EnrollmentId is filled in from the identity value on save
@@ -446,6 +533,16 @@ namespace smss_api_service_layer.service
                 return Result<AdmissionDetailDto>(409, "Student ID or admission number collision — please try again.", null);   // the transaction rolled back
             }
             catch (Exception ex) { return Error<AdmissionDetailDto>(ex, "confirming admission"); }
+        }
+
+        /// <summary>The Stage 2 rule: the primary guardian needs a WhatsApp number and an email before the application can be confirmed. Null when both are there.</summary>
+        private static string? MissingContactMessage(string? whatsApp, string? email)
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(whatsApp)) missing.Add("WhatsApp number");
+            if (PhoneNumbers.EmailError(email, "The guardian's") != null) missing.Add("email");
+            return missing.Count == 0 ? null
+                : $"The guardian's {string.Join(" and ", missing)} {(missing.Count == 1 ? "is" : "are")} missing. Edit the application to add {(missing.Count == 1 ? "it" : "them")}, then confirm it.";
         }
 
         // ---------------- helpers ----------------
@@ -530,6 +627,12 @@ namespace smss_api_service_layer.service
             dto.GuardianMobileNumber = a.GuardianMobileNumber;
             dto.GuardianEmail = a.GuardianEmail;
             dto.GuardianWhatsAppNumber = a.GuardianWhatsAppNumber;
+            dto.GuardianId = a.GuardianId;
+            var extraRows = await _repo.GetAdmissionGuardiansAsync(a.SchoolId, a.AdmissionId, false, ct);
+            var shown = await _repo.GetGuardiansReadOnlyAsync(a.SchoolId, extraRows.Select(r => r.GuardianId).Concat(a.GuardianId is long gid ? new[] { gid } : Array.Empty<long>()).ToList(), ct);
+            GuardianPickDto Pick(TbGuardian g, string? relationship) => new() { GuardianId = g.GuardianId, Name = GuardianReuse.Display(g), Relationship = relationship ?? g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.MobileNumber), HasWhatsApp = !string.IsNullOrWhiteSpace(g.WhatsAppNumber), HasEmail = !string.IsNullOrWhiteSpace(g.Email) };
+            if (a.GuardianId is long primaryId && shown.FirstOrDefault(g => g.GuardianId == primaryId) is { } primary) dto.ExistingGuardian = Pick(primary, a.GuardianRelationship);
+            dto.AdditionalGuardians = extraRows.Select(r => shown.FirstOrDefault(g => g.GuardianId == r.GuardianId) is { } g ? Pick(g, r.Relationship) : null).Where(p => p != null).Select(p => p!).ToList();
             dto.PreviousSchool = a.PreviousSchool;
             dto.ReviewNotes = a.ReviewNotes;
             dto.ReviewedAt = a.ReviewedAt;
