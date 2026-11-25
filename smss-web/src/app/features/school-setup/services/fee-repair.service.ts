@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { FeeRepairPreview, FeeRepairResult } from '../models/fee-repair.model';
+import { FeeRepairPreview, FeeRepairRequest, FeeRepairResult } from '../models/fee-repair.model';
 
 const BASE = '/api/FeeRepair';
 
@@ -15,7 +15,7 @@ export class FeeRepairService {
     return this.api.get<FeeRepairPreview>(`${BASE}/years/${academicYearId}/missing`);
   }
 
-  assign(academicYearId: number): Observable<FeeRepairResult> {
-    return this.api.post<FeeRepairResult>(`${BASE}/years/${academicYearId}/assign`, {});
+  assign(academicYearId: number, request: FeeRepairRequest = { chargeFromYearStart: false, confirmBackdating: false, reason: null }): Observable<FeeRepairResult> {
+    return this.api.post<FeeRepairResult>(`${BASE}/years/${academicYearId}/assign`, request);
   }
 }

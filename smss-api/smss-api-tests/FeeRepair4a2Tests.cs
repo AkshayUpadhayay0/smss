@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using smss_api.Controllers;
 using smss_api_db_layer.repository;
+using smss_api_service_layer.dto;
 using smss_api_service_layer.@interface;
 using smss_api_service_layer.service;
 using Xunit;
@@ -85,7 +86,7 @@ namespace smss_api_tests
             var w = Build(db, "ZRA");
             var other = Fingerprint(db, w.Other);
             var before2 = db.Scalar<string>("select f::text from tb_student_fee_structure f where student_id='ZR2'");
-            var r = await Svc(db).RunAsync(w.School, w.Cur, default);
+            var r = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, null, default);
             Assert.True(r.Status, r.Message);
             Assert.Equal(2, r.Data!.Assigned);                // ZR1 and ZR6
             Assert.Equal(1, r.Data.SkippedNoStructure);       // ZR3: Class 2 has no structure
@@ -104,7 +105,7 @@ namespace smss_api_tests
         {
             using var db = new TaxDb();
             var w = Build(db, "ZRB");
-            Assert.True((await Svc(db).RunAsync(w.School, w.Cur, default)).Status);
+            Assert.True((await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, null, default)).Status);
             Assert.True(db.Scalar<bool>($"select is_applicable from tb_student_fee_items where student_id='ZR6' and academic_year_id={w.Cur} and fee_type_id={w.Bus}"));
             Assert.False(db.Scalar<bool>($"select is_applicable from tb_student_fee_items where student_id='ZR1' and academic_year_id={w.Cur} and fee_type_id={w.Bus}"));
             Assert.True(db.Scalar<bool>($"select is_applicable from tb_student_fee_items where student_id='ZR1' and academic_year_id={w.Cur} and fee_type_id={w.Tuition}"));   // a compulsory fee always applies
@@ -115,9 +116,9 @@ namespace smss_api_tests
         {
             using var db = new TaxDb();
             var w = Build(db, "ZRC");
-            Assert.Equal(2, (await Svc(db).RunAsync(w.School, w.Cur, default)).Data!.Assigned);
+            Assert.Equal(2, (await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, null, default)).Data!.Assigned);
             var fp = Fingerprint(db, w.School);
-            var again = await Svc(db).RunAsync(w.School, w.Cur, default);
+            var again = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, null, default);
             Assert.True(again.Status, again.Message);
             Assert.Equal(0, again.Data!.Assigned);
             Assert.Equal(1, again.Data.SkippedNoStructure);
@@ -146,7 +147,7 @@ namespace smss_api_tests
             var w = Build(db, "ZRE");
             db.Exec(@"create function zr_boom() returns trigger language plpgsql as $$ begin if new.student_id = 'ZR1' then raise exception 'boom'; end if; return new; end $$;
                       create trigger zr_boom before insert on tb_student_fee_items for each row execute function zr_boom();");
-            var r = await Svc(db).RunAsync(w.School, w.Cur, default);
+            var r = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, null, default);
             Assert.True(r.Status, r.Message);
             Assert.Equal(1, r.Data!.Assigned);                // ZR6 still got its fees
             var f = Assert.Single(r.Data.Failed);
@@ -163,13 +164,93 @@ namespace smss_api_tests
             var w = Build(db, "ZRF");
             var fp = Fingerprint(db, w.Other);
             Assert.Equal(404, (await Svc(db).PreviewAsync(w.School, w.OtherCur, default)).StatusCode);
-            Assert.Equal(404, (await Svc(db).RunAsync(w.School, w.OtherCur, default)).StatusCode);
-            Assert.Equal(400, (await Svc(db).RunAsync(null, w.Cur, default)).StatusCode);
+            Assert.Equal(404, (await Svc(db).RunAsync(w.School, TaxDb.UserA, w.OtherCur, null, default)).StatusCode);
+            Assert.Equal(400, (await Svc(db).RunAsync(null, TaxDb.UserA, w.Cur, null, default)).StatusCode);
             Assert.Equal(fp, Fingerprint(db, w.Other));
             db.Exec($"update tb_academic_years set closed_at = now(), closed_by = {TaxDb.UserA} where academic_year_id = {w.Prev}");
-            var closed = await Svc(db).RunAsync(w.School, w.Prev, default);
+            var closed = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Prev, null, default);
             Assert.Equal(400, closed.StatusCode);
             Assert.Contains("closed", closed.Message);
+        }
+
+        // ------------------------------------------------------------------------------------------------ back-dating (the follow-up)
+        private static FeeRepairRequest Back(string? reason = "Fees were never set up for this class", bool confirm = true) => new() { ChargeFromYearStart = true, ConfirmBackdating = confirm, Reason = reason };
+        private static DateOnly FirstDue(TaxDb db, string student, long year) => DateOnly.Parse(db.Scalar<string>($"select min(d.due_date)::text from tb_student_fee_dues d join tb_student_fee_items i using(student_fee_item_id) where i.student_id='{student}' and i.academic_year_id={year}"));
+
+        [DbFact]
+        public async Task Without_the_choice_nothing_is_back_dated_and_the_preview_offers_it_when_the_year_has_started()
+        {
+            using var db = new TaxDb();
+            var w = Build(db, "ZRG");
+            var p = (await Svc(db).PreviewAsync(w.School, w.Cur, default)).Data!;
+            Assert.True(p.YearStarted); Assert.True(p.BackdatingAllowed); Assert.Equal(new DateOnly(2026, 4, 1), p.YearStart);
+            var r = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, new FeeRepairRequest { ChargeFromYearStart = false, Reason = "ignored" }, default);
+            Assert.True(r.Status, r.Message);
+            Assert.False(r.Data!.Backdated);
+            Assert.True(FirstDue(db, "ZR1", w.Cur) >= smss_api_service_layer.helper.SchoolClock.Today());
+            Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}'"));
+        }
+
+        [DbFact]
+        public async Task Charging_from_the_year_start_creates_the_past_dues_and_one_log_row_per_student_with_the_reason()
+        {
+            using var db = new TaxDb();
+            var w = Build(db, "ZRH");
+            var r = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(), default);
+            Assert.True(r.Status, r.Message);
+            Assert.True(r.Data!.Backdated);
+            Assert.Equal(2, r.Data.Assigned);
+            Assert.True(FirstDue(db, "ZR1", w.Cur) < smss_api_service_layer.helper.SchoolClock.Today());
+            Assert.True(FirstDue(db, "ZR1", w.Cur) >= new DateOnly(2026, 4, 1));
+            Assert.Equal(2, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}' and kind='STUDENT' and academic_year_id={w.Cur} and reason='Fees were never set up for this class' and created_by={TaxDb.UserA}"));
+            Assert.Equal(1, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}' and student_id='ZR1'"));
+            Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.Other}'"));
+        }
+
+        [DbFact]
+        public async Task The_reason_and_the_confirmation_are_required_and_a_refusal_changes_nothing()
+        {
+            using var db = new TaxDb();
+            var w = Build(db, "ZRI");
+            var fp = Fingerprint(db, w.School);
+            foreach (var bad in new[] { Back(reason: null), Back(reason: "   "), Back(confirm: false) })
+            {
+                var r = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, bad, default);
+                Assert.Equal(400, r.StatusCode);
+            }
+            Assert.Equal(400, (await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(reason: new string('x', 501)), default)).StatusCode);
+            Assert.Equal(fp, Fingerprint(db, w.School));
+            Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}'"));
+        }
+
+        [DbFact]
+        public async Task A_second_back_dated_run_assigns_nothing_and_logs_nothing_more_and_only_the_current_year_may_be_back_dated()
+        {
+            using var db = new TaxDb();
+            var w = Build(db, "ZRJ");
+            Assert.Equal(2, (await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(), default)).Data!.Assigned);
+            var fp = Fingerprint(db, w.School);
+            var logs = db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}'");
+            var again = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(), default);
+            Assert.True(again.Status, again.Message);
+            Assert.Equal(0, again.Data!.Assigned);
+            Assert.Equal(fp, Fingerprint(db, w.School));
+            Assert.Equal(logs, db.Scalar<int>($"select count(*) from tb_fee_backdating_log where school_id='{w.School}'"));
+        }
+
+        [DbFact]
+        public async Task A_year_that_is_not_the_current_one_cannot_be_back_dated_and_a_closed_year_is_refused_even_with_the_choice()
+        {
+            using var db = new TaxDb();
+            var w = Build(db, "ZRK");
+            db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.Cur}");
+            db.Exec($"update tb_academic_years set is_current=true where academic_year_id={w.Prev}");
+            var notCurrent = await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(), default);
+            Assert.Equal(400, notCurrent.StatusCode);
+            Assert.Contains("current academic year", notCurrent.Message);
+            Assert.Equal(0, db.Scalar<int>($"select count(*) from tb_student_fee_structure where student_id in ('ZR1','ZR6')"));
+            db.Exec($"update tb_academic_years set closed_at = now(), closed_by = {TaxDb.UserA} where academic_year_id = {w.Cur}");
+            Assert.Equal(400, (await Svc(db).RunAsync(w.School, TaxDb.UserA, w.Cur, Back(), default)).StatusCode);
         }
 
         // ------------------------------------------------------------------------------------------------ who may do what
@@ -181,7 +262,7 @@ namespace smss_api_tests
             var svc = Fake.Of<IFeeRepairService>();
             var c = Fake.WithUser(new FeeRepairController(svc), Fake.User("S", 5, role));
             var preview = Fake.Code(await c.Missing(3, default));
-            var run = Fake.Code(await c.Assign(3, default));
+            var run = Fake.Code(await c.Assign(3, null, default));
             if (role == "School Admin") { Assert.NotEqual(403, preview); Assert.NotEqual(403, run); } else { Assert.Equal(403, preview); Assert.Equal(403, run); }
             Assert.Equal(role == "School Admin", Fake.ProxyOf(svc).Calls.Contains("RunAsync"));
         }

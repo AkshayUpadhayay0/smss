@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using smss_api.Helpers;
 using smss_api_service_layer.@interface;
+using System.Security.Claims;
 
 namespace smss_api.Controllers
 {
@@ -26,10 +27,11 @@ namespace smss_api.Controllers
 
         // POST api/FeeRepair/years/9/assign   (a POST, like every action on this project)
         [HttpPost("years/{yearId:long}/assign")]
-        public async Task<IActionResult> Assign(long yearId, CancellationToken ct)
+        public async Task<IActionResult> Assign(long yearId, [FromBody] smss_api_service_layer.dto.FeeRepairRequest? request, CancellationToken ct)
         {
             if (!User.CanConfigureFees()) return this.Forbidden("Only a School Admin can assign fees for a year.");
-            var response = await _service.RunAsync(User.GetSchoolId(), yearId, ct);
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _service.RunAsync(User.GetSchoolId(), userId, yearId, request, ct);
             return StatusCode(response.StatusCode, response);
         }
     }

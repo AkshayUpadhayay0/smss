@@ -9,7 +9,7 @@ namespace smss_api_service_layer.service
     /// <summary>
     /// "Assign fees for a year": gives every active, enrolled student of the year who has NO fee structure the active structure of their class, through the same code admission uses
     /// (FeeAutoAssignment: the assignment, then the items and dues). A student who already has a structure is never touched, so running it twice assigns nothing the second time. Optional-fee
-    /// choices carry over from the previous year. Dues start from today (this never back-dates; use the student's Fees tab for that). Best-effort per student, and capped per run.
+    /// choices carry over from the previous year. Dues start from today unless the admin chooses to charge from the year's start: then the existing back-dating rules apply (current year only, explicit confirmation, a written reason) and each student's dues are logged in tb_fee_backdating_log. Best-effort per student, and capped per run.
     /// </summary>
     public class FeeRepairService : IFeeRepairService
     {
@@ -39,6 +39,7 @@ namespace smss_api_service_layer.service
                 {
                     AcademicYearId = academicYearId, YearName = year.YearName, MissingCount = missing.Count, MaxPerRun = MaxPerRun,
                     WouldAssign = Math.Min(MaxPerRun, missing.Count(m => m.FeeStructureId != null)),
+                    YearStart = year.StartDate, YearStarted = year.StartDate < SchoolClock.Today(), BackdatingAllowed = year.IsCurrent,
                     ClassesWithoutStructure = missing.Where(m => m.FeeStructureId == null).GroupBy(m => m.ClassName).Select(g => new FeeRepairNoStructureDto { ClassName = g.Key, Students = g.Count() }).OrderBy(g => g.ClassName).ToList(),
                 };
                 return Result(200, "Successfully fetched", dto);
@@ -50,7 +51,7 @@ namespace smss_api_service_layer.service
             }
         }
 
-        public async Task<ApiResponse<FeeRepairResultDto>> RunAsync(string? schoolId, long academicYearId, CancellationToken ct)
+        public async Task<ApiResponse<FeeRepairResultDto>> RunAsync(string? schoolId, long userId, long academicYearId, FeeRepairRequest? request, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<FeeRepairResultDto>(400, TenantMessages.NoSchool, null);
             try
@@ -59,8 +60,16 @@ namespace smss_api_service_layer.service
                 if (year == null) return Result<FeeRepairResultDto>(404, "The academic year was not found.", null);
                 if (year.ClosedAt != null) return Result<FeeRepairResultDto>(400, "This academic year is closed: fees cannot be assigned in it.", null);
 
+                // back-dating: only when asked for, and only when the year's first day has really passed; the existing check decides (current year, confirmation, reason)
+                FeeSyncOptions? options = null;
+                if (request is { ChargeFromYearStart: true } && year.StartDate < SchoolClock.Today())
+                {
+                    var problem = await _billing.CheckChargeFromAsync(schoolId, academicYearId, year.StartDate, request.ConfirmBackdating, request.Reason, ct);
+                    if (problem != null) return Result<FeeRepairResultDto>(400, problem, null);
+                    options = new FeeSyncOptions { ChargeFrom = year.StartDate, Backdate = true, BackdatingReason = request.Reason!.Trim(), UserId = userId };
+                }
                 var missing = await _repair.ListMissingAsync(schoolId, academicYearId, ct);
-                var result = new FeeRepairResultDto { AcademicYearId = academicYearId, YearName = year.YearName, SkippedNoStructure = missing.Count(m => m.FeeStructureId == null) };
+                var result = new FeeRepairResultDto { AcademicYearId = academicYearId, YearName = year.YearName, Backdated = options != null, SkippedNoStructure = missing.Count(m => m.FeeStructureId == null) };
                 var todo = missing.Where(m => m.FeeStructureId != null).ToList();
                 var batch = todo.Take(MaxPerRun).ToList();
                 result.Remaining = todo.Count - batch.Count;
@@ -70,7 +79,7 @@ namespace smss_api_service_layer.service
 
                 foreach (var m in batch)
                 {
-                    var warning = await FeeAutoAssignment.TryAssignAsync(_admission, _billing, choices.GetValueOrDefault(m.StudentId), _logger, schoolId, m.StudentId, academicYearId, m.FeeStructureId!.Value, DateTime.UtcNow, ct);
+                    var warning = await FeeAutoAssignment.TryAssignAsync(_admission, _billing, choices.GetValueOrDefault(m.StudentId), _logger, schoolId, m.StudentId, academicYearId, m.FeeStructureId!.Value, DateTime.UtcNow, ct, options);
                     if (warning == null) result.Assigned++;
                     else result.Failed.Add(new FeeRepairStudentDto { StudentId = m.StudentId, StudentName = m.StudentName, ClassName = m.ClassName, Reason = warning });
                 }

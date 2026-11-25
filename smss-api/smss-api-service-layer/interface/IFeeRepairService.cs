@@ -6,6 +6,6 @@ namespace smss_api_service_layer.@interface
     public interface IFeeRepairService
     {
         Task<ApiResponse<FeeRepairPreviewDto>> PreviewAsync(string? schoolId, long academicYearId, CancellationToken ct);
-        Task<ApiResponse<FeeRepairResultDto>> RunAsync(string? schoolId, long academicYearId, CancellationToken ct);
+        Task<ApiResponse<FeeRepairResultDto>> RunAsync(string? schoolId, long userId, long academicYearId, FeeRepairRequest? request, CancellationToken ct);
     }
 }

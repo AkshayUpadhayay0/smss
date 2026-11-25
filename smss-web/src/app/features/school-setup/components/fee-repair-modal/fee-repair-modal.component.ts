@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -25,7 +25,7 @@ import { FeeRepairService } from '../../services/fee-repair.service';
         } @else if (result(); as r) {
           <p class="verdict ok" data-done>
             <app-icon name="circle-check" [size]="16" />
-            {{ r.assigned === 0 && r.failed.length === 0 ? 'Nobody needed fees assigned.' : 'Fees assigned to ' + r.assigned + ' student' + (r.assigned === 1 ? '' : 's') + '.' }}
+            {{ doneText(r) }}
           </p>
           @if (r.skippedNoStructure > 0) { <p class="note">{{ r.skippedNoStructure }} student{{ r.skippedNoStructure === 1 ? ' was' : 's were' }} left out because their class has no fee structure.</p> }
           @if (r.remaining > 0) { <p class="note" data-remaining>{{ r.remaining }} more student{{ r.remaining === 1 ? '' : 's' }} still need fees: run this again.</p> }
@@ -47,7 +47,21 @@ import { FeeRepairService } from '../../services/fee-repair.service';
                 @for (c of p.classesWithoutStructure; track c.className) { <li>{{ c.className }}: {{ c.students }} student{{ c.students === 1 ? '' : 's' }}</li> }
               </ul>
             }
-            <p class="note">Optional fees chosen last year carry over. Fees are charged from today; nothing is back-dated.</p>
+            <p class="note">Optional fees chosen last year carry over.</p>
+            @if (p.yearStarted && p.backdatingAllowed) {
+              <label class="check"><input type="checkbox" data-from-start [checked]="fromStart()" (change)="fromStart.set($any($event.target).checked)" />
+                <span>Charge from the year's start ({{ p.yearStart }}) <small>The year has already begun, so this creates dues that are already past. Without this, fees are charged from today and nothing is back-dated.</small></span></label>
+              @if (fromStart()) {
+                <label class="check"><input type="checkbox" data-confirm-backdating [checked]="confirmed()" (change)="confirmed.set($any($event.target).checked)" />
+                  <span>I confirm: dues dated before today will be created and logged.</span></label>
+                <label class="field"><span>Reason (required)</span>
+                  <textarea data-reason rows="2" maxlength="500" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
+              }
+            } @else if (p.yearStarted) {
+              <p class="note" data-no-backdating>Fees are charged from today. Charging from the year's start is only possible in the current academic year.</p>
+            } @else {
+              <p class="note">Fees are charged from the year's start.</p>
+            }
           }
         }
       </div>
@@ -56,7 +70,7 @@ import { FeeRepairService } from '../../services/fee-repair.service';
           <app-button (click)="closed.emit()">Close</app-button>
         } @else {
           <app-button variant="secondary" [disabled]="busy()" (click)="closed.emit()">Not now</app-button>
-          <app-button data-assign-btn [disabled]="busy() || loading() || !preview() || preview()!.wouldAssign === 0" (click)="run()">{{ busy() ? 'Assigning…' : 'Assign fees' }}</app-button>
+          <app-button data-assign-btn [disabled]="busy() || loading() || !preview() || preview()!.wouldAssign === 0 || !canRun()" (click)="run()">{{ busy() ? 'Assigning…' : 'Assign fees' }}</app-button>
         }
       </ng-container>
     </app-modal>
@@ -67,6 +81,8 @@ import { FeeRepairService } from '../../services/fee-repair.service';
     .verdict.ok { color: var(--color-success, #15803d); }
     .note { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
     .warn { margin: 0; color: var(--color-danger, #b91c1c); font-weight: var(--weight-semibold); }
+    .check { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--text-sm); small { display: block; color: var(--color-text-muted); } }
+    .field { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
     ul { margin: 0; padding-left: var(--space-5); font-size: var(--text-sm); }
   `,
 })
@@ -85,6 +101,11 @@ export class FeeRepairModalComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly preview = signal<FeeRepairPreview | null>(null);
   protected readonly result = signal<FeeRepairResult | null>(null);
+  protected readonly fromStart = signal(false);
+  protected readonly confirmed = signal(false);
+  protected readonly reason = signal('');
+  /** Charging from the year's start needs the confirmation and a written reason. */
+  protected readonly canRun = computed(() => !this.fromStart() || (this.confirmed() && this.reason().trim().length > 0));
 
   ngOnInit(): void {
     this.api
@@ -93,11 +114,16 @@ export class FeeRepairModalComponent implements OnInit {
       .subscribe({ next: (p) => this.preview.set(p), error: () => this.loadFailed.set(true) });
   }
 
+  protected doneText(r: FeeRepairResult): string {
+    if (r.assigned === 0 && r.failed.length === 0) return 'Nobody needed fees assigned.';
+    return `Fees assigned to ${r.assigned} student${r.assigned === 1 ? '' : 's'}${r.backdated ? ", charged from the year's start" : ''}.`;
+  }
+
   protected run(): void {
     if (this.busy()) return;
     this.busy.set(true);
     this.api
-      .assign(this.year().academicYearId)
+      .assign(this.year().academicYearId, { chargeFromYearStart: this.fromStart(), confirmBackdating: this.fromStart() && this.confirmed(), reason: this.fromStart() ? this.reason().trim() : null })
       .pipe(finalize(() => this.busy.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
