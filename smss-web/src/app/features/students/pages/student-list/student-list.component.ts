@@ -70,6 +70,14 @@ export class StudentListComponent implements OnInit {
   private readonly sections = inject(SectionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  protected parentDetails(): void {
+    void this.router.navigate(['/parent-details']);
+  }
+
+  protected pendingDocuments(): void {
+    void this.router.navigate(['/student-documents']);
+  }
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
 

@@ -23,7 +23,7 @@ namespace smss_api_tests
 
         private static PrincipalDashboardService Service(Dictionary<string, object?>? employees = null, Dictionary<string, object?>? fees = null,
             Dictionary<string, object?>? leave = null, Dictionary<string, object?>? admissions = null, Dictionary<string, object?>? results = null, Dictionary<string, object?>? events = null,
-            Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null, Dictionary<string, object?>? documents = null)
+            Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null, Dictionary<string, object?>? documents = null, Dictionary<string, object?>? guardians = null)
         {
             var today = smss_api_service_layer.helper.SchoolClock.Today();
             return new PrincipalDashboardService(
@@ -51,7 +51,7 @@ namespace smss_api_tests
                     ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow> { new(today, 50, 45), new(today.AddDays(-1), 40, 30) },
                     ["CurrentYearAsync"] = Year1, ["EnrolledStudentsAsync"] = 55, ["HasFeeItemsAsync"] = true,
                 }, repo)),
-                NullLogger<PrincipalDashboardService>.Instance, documents == null ? null : Fake.Of<IStudentDocumentService>(documents));
+                NullLogger<PrincipalDashboardService>.Instance, documents == null ? null : Fake.Of<IStudentDocumentService>(documents), guardians == null ? null : Fake.Of<IGuardianService>(guardians));
         }
 
         [Fact]
@@ -63,6 +63,18 @@ namespace smss_api_tests
             var down = (await Service(documents: new()).GetSummaryAsync(School, 5, null, default)).Data!;   // the stand-in answers 500
             Assert.Null(down.Alerts.StudentsWithPendingDocuments);
             Assert.Contains("documents", down.PartsUnavailable);
+            Assert.Equal(1, down.Alerts.ApplicationsWaitingToBeConfirmed);   // the other tiles are unaffected
+        }
+
+        [Fact]
+        public async Task Parent_details_to_complete_are_counted_and_a_failure_says_unavailable_never_zero()
+        {
+            var ok = (await Service(guardians: new() { ["CountIncompleteAsync"] = Fake.Ok(9) }).GetSummaryAsync(School, 5, null, default)).Data!;
+            Assert.Equal(9, ok.Alerts.ParentDetailsToComplete);
+            Assert.DoesNotContain("guardians", ok.PartsUnavailable);
+            var down = (await Service(guardians: new()).GetSummaryAsync(School, 5, null, default)).Data!;   // the stand-in answers 500
+            Assert.Null(down.Alerts.ParentDetailsToComplete);
+            Assert.Contains("guardians", down.PartsUnavailable);
             Assert.Equal(1, down.Alerts.ApplicationsWaitingToBeConfirmed);   // the other tiles are unaffected
         }
 

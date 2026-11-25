@@ -28,11 +28,12 @@ namespace smss_api_service_layer.service
         private readonly ISchoolDashboardRepository _repo;
         private readonly ILogger<PrincipalDashboardService> _logger;
         private readonly IStudentDocumentService? _documents;
+        private readonly IGuardianService? _guardians;
 
         public PrincipalDashboardService(IFeeReportService fees, IEmployeeService employees, IEmployeeLeaveService employeeLeave, IAdmissionService admissions,
-            IReportResultService results, ISchoolEventService events, INoticeService notices, ISchoolDashboardRepository repo, ILogger<PrincipalDashboardService> logger, IStudentDocumentService? documents = null)
+            IReportResultService results, ISchoolEventService events, INoticeService notices, ISchoolDashboardRepository repo, ILogger<PrincipalDashboardService> logger, IStudentDocumentService? documents = null, IGuardianService? guardians = null)
         {
-            _documents = documents;
+            _documents = documents; _guardians = guardians;
             _fees = fees; _employees = employees; _employeeLeave = employeeLeave; _admissions = admissions;
             _results = results; _events = events; _notices = notices; _repo = repo; _logger = logger;
         }
@@ -96,6 +97,17 @@ namespace smss_api_service_layer.service
                         else { _logger.LogWarning("Principal dashboard: could not count pending documents ({StatusCode}: {Message})", pending.StatusCode, pending.Message); dto.PartsUnavailable.Add(PrincipalDashboardParts.Documents); }
                     }
                     catch (Exception ex) { _logger.LogWarning(ex, "Principal dashboard: could not count pending documents"); dto.PartsUnavailable.Add(PrincipalDashboardParts.Documents); }
+                }
+
+                if (_guardians != null)
+                {
+                    try
+                    {
+                        var incomplete = await _guardians.CountIncompleteAsync(schoolId, ct);
+                        if (incomplete.Status) dto.Alerts.ParentDetailsToComplete = incomplete.Data;
+                        else { _logger.LogWarning("Principal dashboard: could not count parent details to complete ({StatusCode}: {Message})", incomplete.StatusCode, incomplete.Message); dto.PartsUnavailable.Add(PrincipalDashboardParts.Guardians); }
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Principal dashboard: could not count parent details to complete"); dto.PartsUnavailable.Add(PrincipalDashboardParts.Guardians); }
                 }
 
                 var published = await Part(() => _results.ListAsync(schoolId, new ReportCaller(callerUserId, false, true, false), null, null, ct), PrincipalDashboardParts.Results, dto);

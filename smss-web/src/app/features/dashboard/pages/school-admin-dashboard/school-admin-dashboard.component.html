@@ -128,6 +128,18 @@
         </span>
       </a>
 
+      <a class="card warning" routerLink="/parent-details" title="Parents of active students whose WhatsApp number or email is still missing. Nothing is blocked by it." data-card="parent-details">
+        <span class="ico"><app-icon name="users" [size]="26" /></span>
+        <span class="txt">
+          <span class="label">Parent details to complete</span>
+          @if (d.parentDetailsToComplete !== null) {
+            <strong>{{ d.parentDetailsToComplete }}</strong><small>{{ d.parentDetailsToComplete === 1 ? 'parent' : 'parents' }} missing WhatsApp or email</small>
+          } @else {
+            <strong class="small">Unavailable</strong><small>Could not be loaded</small>
+          }
+        </span>
+      </a>
+
       <div class="card info employees" title="Active employees. Teaching staff are teachers; the rest are grouped by designation (accountant, admission, driver); any other designation is other staff." data-card="employees">
         <span class="ico"><app-icon name="users" [size]="26" /></span>
         <span class="txt">

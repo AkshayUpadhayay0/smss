@@ -13,7 +13,7 @@ import { InputComponent } from '../input/input.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wa">
-      <app-input [label]="label()" type="tel" [required]="true" placeholder="10 digits or +91 98765 43210" [formControl]="number()" [errorText]="error()" />
+      <app-input [label]="label()" type="tel" [required]="required()" placeholder="10 digits or +91 98765 43210" [formControl]="number()" [errorText]="error()" />
       <label class="same"><input type="checkbox" [formControl]="same()" data-field="whatsapp-same" /> <span>Same as mobile number</span></label>
     </div>
   `,
@@ -36,6 +36,8 @@ export class WhatsAppFieldComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly label = input('WhatsApp number');
+  /** Mandatory by default (admission, direct entry, school); the parent-details edit makes it optional for a guardian who is not a primary guardian. */
+  readonly required = input(true);
   readonly number = input.required<FormControl<string>>();
   readonly same = input.required<FormControl<boolean>>();
   readonly error = input<string | undefined>();

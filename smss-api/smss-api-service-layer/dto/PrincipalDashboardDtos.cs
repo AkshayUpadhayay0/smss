@@ -13,6 +13,7 @@ namespace smss_api_service_layer.dto
         public const string Events = "events";
         public const string Notices = "notices";
         public const string Documents = "documents";
+        public const string Guardians = "guardians";
     }
 
     public class PrincipalDashboardStatsDto
@@ -39,6 +40,8 @@ namespace smss_api_service_layer.dto
         public int? ApplicationsWaitingToBeConfirmed { get; set; }
         /// <summary>Students missing at least one required document. Null (with "documents" in PartsUnavailable) when it could not be worked out.</summary>
         public int? StudentsWithPendingDocuments { get; set; }
+        /// <summary>Primary guardians of active students still lacking a WhatsApp number or an email. Null (with "guardians" in PartsUnavailable) when it could not be worked out.</summary>
+        public int? ParentDetailsToComplete { get; set; }
     }
 
     /// <summary>One published result set (a section's report cards for a term or the year).</summary>

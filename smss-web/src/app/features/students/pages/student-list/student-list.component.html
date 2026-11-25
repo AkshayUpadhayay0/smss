@@ -1,4 +1,7 @@
-<app-page-header title="Students" subtitle="Students enrolled in each class and section" icon="graduation-cap" [breadcrumbs]="breadcrumbs" />
+<app-page-header title="Students" subtitle="Students enrolled in each class and section" icon="graduation-cap" [breadcrumbs]="breadcrumbs">
+  <app-button variant="secondary" (click)="parentDetails()" data-link="parent-details"><app-icon name="users" [size]="16" />Parent details</app-button>
+  <app-button variant="secondary" (click)="pendingDocuments()" data-link="pending-documents"><app-icon name="file-text" [size]="16" />Pending documents</app-button>
+</app-page-header>
 
 <app-card>
   <div class="filters">

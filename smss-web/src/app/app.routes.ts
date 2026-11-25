@@ -35,6 +35,7 @@ export const routes: Routes = [
       { path: '', loadChildren: () => import('./features/company-finance/company-finance.routes').then((m) => m.COMPANY_FINANCE_ROUTES) },
       { path: '', loadChildren: () => import('./features/school-profile/school-profile.routes').then((m) => m.SCHOOL_PROFILE_ROUTES) },
       { path: '', loadChildren: () => import('./features/admissions/admissions.routes').then((m) => m.ADMISSIONS_ROUTES) },
+      { path: '', loadChildren: () => import('./features/guardians/guardians.routes').then((m) => m.GUARDIANS_ROUTES) },
       { path: '', loadChildren: () => import('./features/student-documents/student-documents.routes').then((m) => m.STUDENT_DOCUMENTS_ROUTES) },
       { path: '', loadChildren: () => import('./features/student-onboarding/student-onboarding.routes').then((m) => m.STUDENT_ONBOARDING_ROUTES) },
       // after student-onboarding: '/students/onboard-existing' must match before '/students/:studentId'

@@ -200,6 +200,17 @@ describe('SchoolAdminDashboardComponent', () => {
     expect(card('pending-documents')!.textContent).not.toMatch(/0/);
   });
 
+  it('the Parent details to complete tile counts the parents and links to the list', () => {
+    open(withData(dashboard({ parentDetailsToComplete: 6 })));
+    expect(card('parent-details')!.textContent).toContain('6');
+    expect(card('parent-details')!.getAttribute('href')).toBe('/parent-details');
+  });
+
+  it('the Parent details to complete tile says Unavailable, never 0, when the count could not be worked out', () => {
+    open(withData(dashboard({ parentDetailsToComplete: null })));
+    expect(card('parent-details')!.textContent).toContain('Unavailable');
+  });
+
   it('asks for the school WhatsApp number with a banner when it is missing, and shows nothing when it is set', () => {
     open(withData(dashboard({ whatsAppMissing: true })));
     expect(el().querySelector('[data-banner="whatsapp-missing"]')!.textContent).toContain('no WhatsApp number');

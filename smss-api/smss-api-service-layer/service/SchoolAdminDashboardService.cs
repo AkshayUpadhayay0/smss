@@ -18,10 +18,11 @@ namespace smss_api_service_layer.service
         private readonly ISchoolDashboardRepository _attendance;
         private readonly ILogger<SchoolAdminDashboardService> _logger;
         private readonly IStudentDocumentService? _documents;
+        private readonly IGuardianService? _guardians;
 
-        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger, IStudentDocumentService? documents = null)
+        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger, IStudentDocumentService? documents = null, IGuardianService? guardians = null)
         {
-            _repo = repo; _attendance = attendance; _logger = logger; _documents = documents;
+            _repo = repo; _attendance = attendance; _logger = logger; _documents = documents; _guardians = guardians;
         }
 
         public async Task<ApiResponse<SchoolAdminDashboardDto>> GetAsync(string? schoolId, CancellationToken ct, DateOnly? todayOverride = null, long? academicYearId = null)
@@ -86,6 +87,17 @@ namespace smss_api_service_layer.service
                         else _logger.LogWarning("School admin dashboard: could not count pending documents ({StatusCode}: {Message})", pending.StatusCode, pending.Message);
                     }
                     catch (Exception ex) { _logger.LogWarning(ex, "School admin dashboard: could not count pending documents"); }   // the tile says Unavailable; the rest of the dashboard is unaffected
+                }
+
+                if (_guardians != null)
+                {
+                    try
+                    {
+                        var incomplete = await _guardians.CountIncompleteAsync(schoolId, ct);
+                        if (incomplete.Status) dto.ParentDetailsToComplete = incomplete.Data;
+                        else _logger.LogWarning("School admin dashboard: could not count parent details to complete ({StatusCode}: {Message})", incomplete.StatusCode, incomplete.Message);
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "School admin dashboard: could not count parent details to complete"); }   // the tile says Unavailable; the rest of the dashboard is unaffected
                 }
 
                 if (year != null) dto.NewAdmissionsThisSession = await _repo.NewAdmissionsAsync(schoolId, active, year.StartDate, year.EndDate, ct);

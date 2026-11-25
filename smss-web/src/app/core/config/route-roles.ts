@@ -50,6 +50,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/students/:studentId': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT],
   // Students missing a required document: School Admin, Principal and Admission Staff (the API re-checks). A Teacher sees the statuses on the student page only.
   '/student-documents': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
+  // Parents whose WhatsApp number or email is still missing: School Admin, Principal and Admission Staff edit them (the API re-checks).
+  '/parent-details': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
   // Admission applications: School Admin, Principal and Admission Staff add, edit, confirm and reject them (the API re-checks).
   '/admissions': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
   '/admissions/new': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.ADMISSION_STAFF],
