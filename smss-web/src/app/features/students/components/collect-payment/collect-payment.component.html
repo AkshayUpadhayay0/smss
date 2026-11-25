@@ -124,12 +124,15 @@
         }
         @if (lateFee(); as lf) {
           @if (lf.lines.length > 0) {
-            <div class="late" data-late-fee><dt>Late fee on these installments<small> (shown for information: not added to this payment yet)</small></dt><dd>{{ inr(lf.total) }}</dd></div>
+            <div class="late" data-late-fee><dt>Late fee{{ applyLate() ? '' : ' (waived)' }}</dt><dd>{{ applyLate() ? paise(toPaiseOf(lf.total)) : '—' }}</dd></div>
+            @if (applyLate() && lf.taxAmount > 0) {
+              <div class="late" data-late-tax><dt>Tax on the late fee: {{ lf.taxName }}</dt><dd>{{ paise(toPaiseOf(lf.taxAmount)) }}</dd></div>
+            }
           }
         }
         <div class="total">
           <dt>Total to collect</dt>
-          <dd>{{ paise(preview().totalPaise) }}@if (waived()) { <span class="waived">Fully waived</span> }</dd>
+          <dd>{{ paise(grandPaise()) }}@if (waived()) { <span class="waived">Fully waived</span> }</dd>
         </div>
       </dl>
 
@@ -140,6 +143,13 @@
               <li>{{ l.feeType }}, due {{ l.dueDate }}: {{ l.daysLate }} days late{{ l.daysLate !== l.daysCharged ? ' (' + l.daysCharged + ' beyond the grace days)' : '' }}{{ l.alreadyCollected > 0 ? ', ' + inr(l.alreadyCollected) + ' already collected' : '' }}: {{ inr(l.amount) }}</li>
             }
           </ul>
+          <div class="late-decision" data-late-decision>
+            <label class="check"><input type="checkbox" data-apply-late [checked]="applyLate()" (change)="applyLate.set($any($event.target).checked)" /><span>Charge the late fee</span></label>
+            @if (!applyLate()) {
+              <label class="late-note"><span>Why is the late fee waived? (at least 5 characters)</span>
+                <input data-late-note type="text" maxlength="500" [value]="lateNote()" [attr.aria-invalid]="lateNoteMissing()" (input)="lateNote.set($any($event.target).value)" /></label>
+            }
+          </div>
         }
       }
 

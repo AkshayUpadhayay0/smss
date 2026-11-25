@@ -11,7 +11,7 @@ import { FeeDueRow, FeeItemRow, midCycleExample, StudentFeeDues, StudentFeeItem,
 import { StudentFeeConcession, StudentFeeLineRow, StudentFees } from '../../models/student-fees.model';
 import { CollectPaymentDialogComponent } from '../collect-payment/collect-payment.component';
 import { FeeReceiptDialogComponent } from '../fee-receipt-dialog/fee-receipt-dialog.component';
-import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, concessionLabel, hasConcession, hasTax, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
+import { FEE_MANAGER_ROLES, FeeReceipt, PaymentRow, PaymentSummary, concessionLabel, hasConcession, hasLateFee, hasTax, lateFeeWaived, paymentStatusTone, taxLabel } from '../../models/fee-payment.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { StudentService } from '../../services/student.service';
 
@@ -37,6 +37,7 @@ const PAYMENT_COLUMNS: TableColumn<PaymentRow>[] = [
   { key: 'feeAmount', label: 'Fee' },
   { key: 'concession', label: 'Concession' },
   { key: 'tax', label: 'Tax' },
+  { key: 'lateFee', label: 'Late fee' },
   { key: 'amount', label: 'Total paid' },
   { key: 'paymentMode', label: 'Mode' },
   { key: 'collectedByName', label: 'Collected By' },
@@ -107,6 +108,7 @@ export class StudentFeesTabComponent implements OnInit {
       feeAmount: formatInr(p.feeAmount ?? p.amount),
       concession: hasConcession(p) ? `${concessionLabel(p)} · − ${formatInr(p.concessionAmount ?? 0)}` : '—',
       tax: hasTax(p) ? `${taxLabel(p)} · ${formatInr(p.taxAmount ?? 0)}` : '—',
+      lateFee: hasLateFee(p) ? formatInr(p.lateFee!.amount) : lateFeeWaived(p) ? 'Waived' : '—',
       amount: formatInr(p.amount),
       paymentMode: p.paymentMode,
       collectedByName: p.collectedByName ?? '—',

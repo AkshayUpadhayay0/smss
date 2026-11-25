@@ -61,6 +61,14 @@ namespace smss_api_service_layer.dto
 
         [StringLength(500, ErrorMessage = "Remarks can be at most 500 characters.")]
         public string? Remarks { get; set; }
+
+        /// <summary>Whether to charge the late fee the server works out (true, the default) or waive it (false: then <see cref="LateFeeNote"/> is required when a late fee would have been charged).
+        /// There is deliberately no late fee amount in this request: a client-sent one is never read.</summary>
+        public bool ApplyLateFee { get; set; } = true;
+
+        /// <summary>Why the late fee is waived (at least 5 characters, only needed when it is waived and one would have been charged).</summary>
+        [StringLength(500, ErrorMessage = "The late fee note can be at most 500 characters.")]
+        public string? LateFeeNote { get; set; }
     }
 
     public class VoidPaymentRequest
@@ -89,8 +97,11 @@ namespace smss_api_service_layer.dto
         public string? TaxCode { get; set; }
         public decimal? TaxRatePercent { get; set; }
         public decimal TaxAmount { get; set; }
-        /// <summary>Fee + tax: what the payer handed over.</summary>
+        /// <summary>Fee + late fee + tax: what the payer handed over.</summary>
         public decimal TotalAmount { get; set; }
+        /// <summary>The late fee of this payment (charged, or waived: staff only). Absent (not even null in the JSON) when no late fee was due, so a receipt without one is exactly what it always was.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public PaymentLateFeeDto? LateFee { get; set; }
     }
 
     public class PaymentSummaryDto : PaymentTaxFields
@@ -177,5 +188,36 @@ namespace smss_api_service_layer.dto
         public ReceiptSchoolDto School { get; set; } = new();
         public ReceiptStudentDto Student { get; set; } = new();
         public List<ReceiptLineDto> Lines { get; set; } = new();
+    }
+
+    public class PaymentLateFeeLineDto
+    {
+        public string FeeType { get; set; } = null!;
+        public DateOnly DueDate { get; set; }
+        public int DaysLate { get; set; }
+        /// <summary>The days beyond the grace days: the ones that were charged.</summary>
+        public int DaysCharged { get; set; }
+        /// <summary>What this payment applied to the due.</summary>
+        public decimal BaseAmount { get; set; }
+        /// <summary>What this payment charged on the due (for a waiver: what it would have charged).</summary>
+        public decimal Amount { get; set; }
+    }
+
+    /// <summary>The late fee line of a receipt. A late fee is not an allocation against a due: the installments in the receipt are exactly what they were.</summary>
+    public class PaymentLateFeeDto
+    {
+        /// <summary>APPLIED or WAIVED. A student sees only APPLIED.</summary>
+        public string Decision { get; set; } = "APPLIED";
+        /// <summary>The late fee charged (0 when waived), without tax.</summary>
+        public decimal Amount { get; set; }
+        /// <summary>The tax charged on the late fee (0 unless the school's setting says tax applies to it).</summary>
+        public decimal TaxAmount { get; set; }
+        /// <summary>The rule as it was when the payment was taken, in words.</summary>
+        public string RuleText { get; set; } = "";
+        public List<PaymentLateFeeLineDto> Lines { get; set; } = new();
+        /// <summary>Staff only: who decided, and for a waiver the note and what would have been charged.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string? DecidedByName { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string? Note { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public decimal? WaivedAmount { get; set; }
     }
 }

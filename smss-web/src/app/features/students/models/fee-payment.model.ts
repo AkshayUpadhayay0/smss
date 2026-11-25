@@ -29,8 +29,49 @@ export interface PaymentTaxFields {
   taxCode?: string | null;
   taxRatePercent?: number | null;
   taxAmount?: number;
-  /** Fee + tax = what was handed over (same value as `amount`). */
+  /** Fee + late fee + tax = what was handed over (same value as `amount`). */
   totalAmount?: number;
+  /** The late fee of the payment (charged, or waived: staff only). Absent when no late fee was due, so an older receipt reads exactly as before. */
+  lateFee?: PaymentLateFee | null;
+}
+
+export interface PaymentLateFeeLine {
+  feeType: string;
+  dueDate: string;
+  daysLate: number;
+  /** The days beyond the grace days: the ones that were charged. */
+  daysCharged: number;
+  baseAmount: number;
+  amount: number;
+}
+
+/** The late fee on a receipt. A late fee is not an allocation against a due: the installment lines are exactly what they were. */
+export interface PaymentLateFee {
+  decision: 'APPLIED' | 'WAIVED';
+  amount: number;
+  taxAmount: number;
+  /** The rule as it was when the payment was taken, in words. */
+  ruleText: string;
+  lines: PaymentLateFeeLine[];
+  /** Staff only. */
+  decidedByName?: string | null;
+  note?: string | null;
+  waivedAmount?: number | null;
+}
+
+/** True when the payment charged a late fee. */
+export const hasLateFee = (p: PaymentTaxFields): boolean => p.lateFee?.decision === 'APPLIED' && (p.lateFee.amount ?? 0) > 0;
+
+/** True when a late fee was due and the cashier waived it (staff see this; a student's own receipt never carries it). */
+export const lateFeeWaived = (p: PaymentTaxFields): boolean => p.lateFee?.decision === 'WAIVED';
+
+/** The lines under the totals that explain the late fee: each late installment with its days, the rule, or the waiver with its note and who decided. */
+export function lateFeeNotes(p: PaymentTaxFields, inr: (n: number) => string): string[] {
+  const lf = p.lateFee;
+  if (!lf) return [];
+  const per = lf.lines.map((l) => `${l.feeType} (due ${l.dueDate}): ${l.daysLate} days late${l.daysCharged !== l.daysLate ? `, ${l.daysCharged} beyond the grace days` : ''}${lf.decision === 'APPLIED' ? ` · late fee ${inr(l.amount)}` : ''}`);
+  if (lf.decision === 'APPLIED') return [...per, ...(lf.ruleText ? [`Late fee rule: ${lf.ruleText}`] : [])];
+  return [`Late fee of ${inr(lf.waivedAmount ?? 0)} waived${lf.note ? `: ${lf.note}` : ''}${lf.decidedByName ? ` (by ${lf.decidedByName})` : ''}`, ...per.map((x) => `Would have been: ${x}`)];
 }
 
 /** True when the payment carried a tax type (a 0% type still counts: it is on the receipt). */
@@ -62,12 +103,14 @@ export interface ReceiptTotalLine {
 export function receiptTotals(r: PaymentTaxFields & { amount: number }): ReceiptTotalLine[] {
   const taxed = hasTax(r);
   const discounted = hasConcession(r);
-  if (!taxed && !discounted) return [{ label: 'Total received', amount: r.amount, total: true }];
+  const late = hasLateFee(r);
+  if (!taxed && !discounted && !late) return [{ label: 'Total received', amount: r.amount, total: true }];
   const lines: ReceiptTotalLine[] = [{ label: 'Fee amount', amount: r.grossAmount ?? r.feeAmount ?? 0 }];
   if (discounted) {
     lines.push({ label: `Concession: ${concessionLabel(r)}`, amount: r.concessionAmount ?? 0, deduction: true });
     lines.push({ label: 'Net fee', amount: r.netFeeAmount ?? r.feeAmount ?? 0 });
   }
+  if (late) lines.push({ label: 'Late fee', amount: r.lateFee!.amount });
   if (taxed) lines.push({ label: `Tax: ${taxLabel(r)}`, amount: r.taxAmount ?? 0 });
   lines.push({ label: 'Total paid', amount: r.totalAmount ?? r.amount, total: true });
   return lines;
@@ -88,6 +131,9 @@ export interface RecordPaymentRequest {
   /** The split over installments. Omit it for oldest-first automatic allocation (the dialog always sends one). */
   allocations?: PaymentAllocation[];
   remarks?: string | null;
+  /** Charge the late fee the server works out (true) or waive it (false: then `lateFeeNote` of at least 5 characters is required when one would have been charged). No late fee AMOUNT is ever sent. */
+  applyLateFee?: boolean;
+  lateFeeNote?: string | null;
 }
 
 export interface PaymentSummary extends PaymentTaxFields {
@@ -156,6 +202,7 @@ export interface PaymentRow extends Record<string, unknown> {
   /** Fee part, tax text ("GST (18%) · ₹180.00" or "—") and the total paid. */
   feeAmount: string;
   tax: string;
+  lateFee: string;
   amount: string;
   paymentMode: string;
   collectedByName: string;

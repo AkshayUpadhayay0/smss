@@ -58,7 +58,8 @@ namespace smss_api_service_layer.service
                     Payments = pays.Data.Where(p => p.Status == "Active").OrderByDescending(p => p.PaymentDate)
                         .Select(p => new MyFeePaymentDto { PaymentDate = p.PaymentDate, Amount = p.Amount, FeeAmount = p.FeeAmount, GrossAmount = p.GrossAmount, NetFeeAmount = p.NetFeeAmount,
                             ConcessionName = p.ConcessionName, ConcessionCode = p.ConcessionCode, ConcessionType = p.ConcessionType, ConcessionValue = p.ConcessionValue, ConcessionAmount = p.ConcessionAmount,   // never the reason: that is for staff
-                            TaxName = p.TaxName, TaxCode = p.TaxCode, TaxRatePercent = p.TaxRatePercent, TaxAmount = p.TaxAmount, TotalAmount = p.TotalAmount, ReceiptNumber = p.ReceiptNumber, PaymentMode = p.PaymentMode }).ToList()
+                            TaxName = p.TaxName, TaxCode = p.TaxCode, TaxRatePercent = p.TaxRatePercent, TaxAmount = p.TaxAmount, TotalAmount = p.TotalAmount, ReceiptNumber = p.ReceiptNumber, PaymentMode = p.PaymentMode,
+                            LateFee = p.LateFee is { Decision: "APPLIED" } lf ? new PaymentLateFeeDto { Decision = lf.Decision, Amount = lf.Amount, TaxAmount = lf.TaxAmount, RuleText = lf.RuleText, Lines = lf.Lines } : null }).ToList()
                 });
             }
             catch (Exception ex)

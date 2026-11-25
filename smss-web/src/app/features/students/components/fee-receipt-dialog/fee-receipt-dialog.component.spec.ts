@@ -88,3 +88,39 @@ describe('FeeReceiptDialogComponent: concession lines', () => {
   });
 });
 });
+
+describe('FeeReceiptDialogComponent: late fee line', () => {
+  let fixture: ComponentFixture<FeeReceiptDialogComponent>;
+  const text = () => ((fixture.nativeElement as HTMLElement).textContent ?? '').replace(/\s+/g, ' ');
+  const open = (r: FeeReceipt) => {
+    fixture = TestBed.createComponent(FeeReceiptDialogComponent);
+    fixture.componentRef.setInput('receipt', r);
+    fixture.detectChanges();
+  };
+  const withLate: FeeReceipt = {
+    ...base, amount: 1050, feeAmount: 1000, totalAmount: 1050,
+    lateFee: { decision: 'APPLIED', amount: 50, taxAmount: 0, ruleText: '₹50 for each late installment, after 5 grace days', lines: [{ feeType: 'Tuition', dueDate: '2026-04-10', daysLate: 85, daysCharged: 80, baseAmount: 1000, amount: 50 }] },
+  };
+
+  it('a receipt without a late fee reads exactly as before (one Total received line, no late fee text)', () => {
+    open(base);
+    expect(text()).toContain('Total received');
+    expect(text()).not.toContain('Late fee');
+  });
+
+  it('shows the late fee as its own line with the days late, the rule and the total that includes it', () => {
+    open(withLate);
+    expect(text()).toContain('Fee amount');
+    expect(text()).toContain('Late fee');
+    expect(text()).toContain('85 days late, 80 beyond the grace days');
+    expect(text()).toContain('Late fee rule: ₹50 for each late installment, after 5 grace days');
+    expect(text()).toContain('Total paid');
+    expect(text()).not.toContain('Total received');
+  });
+
+  it('staff see a waiver with its note, the amount and who decided; the lines are what would have been charged', () => {
+    open({ ...base, lateFee: { decision: 'WAIVED', amount: 0, taxAmount: 0, ruleText: '₹50 for each late installment', lines: [{ feeType: 'Tuition', dueDate: '2026-04-10', daysLate: 85, daysCharged: 80, baseAmount: 1000, amount: 50 }], note: 'Poor family', decidedByName: 'Office', waivedAmount: 50 } });
+    expect(text()).toContain('Late fee of ₹50.00 waived: Poor family (by Office)');
+    expect(text()).toContain('Total received');   // a waived late fee adds no line to the totals
+  });
+});

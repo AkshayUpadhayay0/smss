@@ -49,6 +49,7 @@ export class CollectPaymentDialogComponent implements OnInit {
   readonly closed = output<void>();
 
   protected readonly inr = formatInr;
+  protected readonly toPaiseOf = toPaise;
   protected readonly tone = dueStatusTone;
   protected readonly modeOptions: SelectOption[] = PAYMENT_MODES.map((m) => ({ label: m, value: m }));
 
@@ -72,6 +73,11 @@ export class CollectPaymentDialogComponent implements OnInit {
   /** The school charges a late fee on at least one fee type: only then is the server asked. */
   private readonly lateFeeOn = signal(false);
   protected readonly lateFee = signal<LateFeePreview | null>(null);
+  /** The server's answer for the current selection has not arrived yet: the payment is not offered until it has (the total to collect depends on it). */
+  protected readonly latePending = signal(false);
+  /** The cashier's decision: charge the late fee (default) or waive it, which needs a note of at least 5 characters. */
+  protected readonly applyLate = signal(true);
+  protected readonly lateNote = signal('');
   private readonly lateRequest = computed<LateFeePreviewRequest | null>(() => {
     const lines = selectedLines(this.rows());
     if (lines.length === 0) return null;
@@ -105,7 +111,17 @@ export class CollectPaymentDialogComponent implements OnInit {
   protected readonly selectedConcession = computed(() => this.concessions().find((c) => String(c.concessionId) === this.concessionId()) ?? null);
   protected readonly selectedTax = computed(() => this.taxTypes().find((t) => String(t.taxTypeId) === this.taxId()) ?? null);
   protected readonly preview = computed(() => buildPreview(this.rows(), this.selectedConcession(), this.selectedTax()));
-  protected readonly waived = computed(() => this.preview().waived);
+  /** A late fee would be charged on this selection (the server's own figure: the screen never works it out). */
+  protected readonly lateDue = computed(() => (this.lateFee()?.lines.length ?? 0) > 0);
+  /** What the late fee adds to what the student hands over: the late fee and the tax on it (only when the school's setting says tax applies to it), or nothing when it is waived. */
+  protected readonly lateAddPaise = computed(() => {
+    const lf = this.lateFee();
+    return this.lateDue() && this.applyLate() && lf ? toPaise(lf.total) + toPaise(lf.taxAmount) : 0;
+  });
+  protected readonly lateNoteMissing = computed(() => this.lateDue() && !this.applyLate() && this.lateNote().trim().length < 5);
+  /** Fee + tax + the late fee: what to collect. */
+  protected readonly grandPaise = computed(() => this.preview().totalPaise + this.lateAddPaise());
+  protected readonly waived = computed(() => this.preview().waived && this.lateAddPaise() === 0);
 
   /** "None" plus every active concession; the ones that do not apply to the selected installments are shown disabled, with the reason. */
   protected readonly concessionOptions = computed<SelectOption[]>(() => [
@@ -127,8 +143,8 @@ export class CollectPaymentDialogComponent implements OnInit {
   });
 
   protected readonly reasonError = computed(() => (this.selectedConcession() && this.reasonText().trim() === '' && this.touchedReason() ? 'A reason is required when a concession is selected' : undefined));
-  protected readonly receivedText = computed(() => this.receivedRaw() ?? rupees(this.preview().totalPaise));
-  protected readonly received = computed(() => checkReceived(this.receivedText(), this.preview().totalPaise, this.mode(), this.waived()));
+  protected readonly receivedText = computed(() => this.receivedRaw() ?? rupees(this.grandPaise()));
+  protected readonly received = computed(() => checkReceived(this.receivedText(), this.grandPaise(), this.mode(), this.waived()));
   protected readonly showReceivedError = computed(() => this.receivedRaw() !== null && !this.received().ok);
 
   protected readonly canSubmit = computed(
@@ -139,6 +155,7 @@ export class CollectPaymentDialogComponent implements OnInit {
       this.preview().grossPaise > 0 &&
       (!this.selectedConcession() || (this.reasonText().trim() !== '' && this.reasonControl.valid && this.preview().concessionPaise > 0)) &&
       this.remarksControl.valid &&
+      !this.latePending() && !this.lateNoteMissing() &&
       this.received().ok,
   );
 
@@ -146,10 +163,12 @@ export class CollectPaymentDialogComponent implements OnInit {
     // the late fee preview follows the selection (a short pause so typing an amount does not ask for every key)
     effect((onCleanup) => {
       const req = this.lateRequest();
-      if (!this.lateFeeOn() || !req) { this.lateFee.set(null); return; }
+      if (!this.lateFeeOn() || !req) { this.lateFee.set(null); this.latePending.set(false); return; }
+      this.latePending.set(true);
       let sub: { unsubscribe(): void } | undefined;
       const timer = setTimeout(() => {
-        sub = this.lateFeeApi.preview(this.studentId(), req).subscribe({ next: (p) => this.lateFee.set(p), error: () => this.lateFee.set(null) });   // a failed preview never blocks the payment
+        // a failed preview never blocks the payment: the server still works the late fee out itself, and the receipt shows what it charged
+        sub = this.lateFeeApi.preview(this.studentId(), req).subscribe({ next: (p) => { this.lateFee.set(p); this.latePending.set(false); }, error: () => { this.lateFee.set(null); this.latePending.set(false); } });
       }, 250);
       onCleanup(() => { clearTimeout(timer); sub?.unsubscribe(); });
     });
@@ -306,12 +325,14 @@ export class CollectPaymentDialogComponent implements OnInit {
         paymentMode: this.modeControl.value as PaymentMode,   // a fully waived payment keeps the default mode
         allocations: selectedLines(this.rows()).map((l) => ({ feeDueId: l.row.dueId, amount: l.paise / 100 })),
         remarks: this.remarksControl.value.trim() || null,
+        // only when a late fee would be charged: whether to charge it (and why not). Never an amount: the server works it out again.
+        ...(this.lateDue() ? { applyLateFee: this.applyLate(), ...(this.applyLate() ? {} : { lateFeeNote: this.lateNote().trim() }) } : {}),
       })
       .pipe(finalize(() => this.saving.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (receipt) => {
           // the receipt shows the server's figures; only note (without any amounts) when the preview was off
-          if (toPaise(receipt.totalAmount ?? receipt.amount ?? 0) !== p.totalPaise) console.warn('Collect payment: the preview total differed from the server total; the receipt shows the server figures.');
+          if (toPaise(receipt.totalAmount ?? receipt.amount ?? 0) !== this.grandPaise()) console.warn('Collect payment: the preview total differed from the server total; the receipt shows the server figures.');
           this.recorded.emit(receipt);
         },
         // the interceptor toasts the reason too; it stays visible here (e.g. the double-discount guard's 409) and the dialog stays open

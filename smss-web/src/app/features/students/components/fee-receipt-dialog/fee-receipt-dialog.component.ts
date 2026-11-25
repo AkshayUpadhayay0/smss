@@ -3,7 +3,7 @@ import { formatInr } from '../../../../core/utils/currency';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { FeeReceipt, ReceiptTotalLine, hasConcession, hasTax, isFullyWaived, receiptTotals, taxLabel } from '../../models/fee-payment.model';
+import { FeeReceipt, ReceiptTotalLine, hasConcession, lateFeeNotes, hasTax, isFullyWaived, receiptTotals, taxLabel } from '../../models/fee-payment.model';
 import { printReceipt } from '../../utils/receipt-print';
 
 /** A receipt on screen, with Print / Save as PDF. Used right after collecting a payment and when reopening one from the history. */
@@ -72,6 +72,9 @@ import { printReceipt } from '../../utils/receipt-print';
           </tfoot>
         </table>
 
+        @for (n of lateNotes(); track n) {
+          <p class="muted" data-late-note>{{ n }}</p>
+        }
         @if (waived()) {
           <p class="muted"><strong>Fully waived</strong>: nothing was collected on this receipt.</p>
         }
@@ -117,6 +120,11 @@ export class FeeReceiptDialogComponent {
   /** The totals block: Fee amount / Concession / Net fee / Tax / Total paid (only the lines that apply), or just "Total received" as before. */
   protected totals(): ReceiptTotalLine[] {
     return receiptTotals(this.receipt());
+  }
+
+  /** What explains the late fee: each late installment and the rule, or the waiver with its note and who decided. */
+  protected lateNotes(): string[] {
+    return lateFeeNotes(this.receipt(), this.inr);
   }
 
   protected waived(): boolean {

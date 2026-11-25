@@ -71,6 +71,34 @@ SELECT l.fee_due_id AS ""FeeDueId"", sum(l.amount) AS ""Amount""
  WHERE l.school_id = @school AND l.fee_due_id = ANY(@ids) AND p.status = 'Active' GROUP BY l.fee_due_id",
                 P("school", NpgsqlDbType.Varchar, schoolId), new NpgsqlParameter("ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint) { Value = dueIds.ToArray() }).ToListAsync(ct);
 
+        public async Task InsertPaymentLateFeesAsync(string schoolId, long paymentId, string ruleType, decimal? ruleAmount, decimal? rulePercent, int graceDays, decimal? capPerDue, IReadOnlyList<LateFeeRowWrite> rows, CancellationToken ct)
+        {
+            foreach (var r in rows)
+                await _db.Database.ExecuteSqlRawAsync(@"
+INSERT INTO public.tb_fee_payment_late_fees (school_id, payment_id, fee_due_id, amount, days_late, days_charged, base_amount, computed_total, already_collected, rule_type, rule_amount, rule_percent, grace_days, cap_per_due)
+VALUES (@school, @payment, @due, @amount, @late, @charged, @base, @total, @already, @type, @ramount, @rpercent, @grace, @cap)",
+                    new object[]
+                    {
+                        P("school", NpgsqlDbType.Varchar, schoolId), P("payment", NpgsqlDbType.Bigint, paymentId), P("due", NpgsqlDbType.Bigint, r.FeeDueId), P("amount", NpgsqlDbType.Numeric, r.Amount),
+                        P("late", NpgsqlDbType.Integer, r.DaysLate), P("charged", NpgsqlDbType.Integer, r.DaysCharged), P("base", NpgsqlDbType.Numeric, r.BaseAmount), P("total", NpgsqlDbType.Numeric, r.ComputedTotal),
+                        P("already", NpgsqlDbType.Numeric, r.AlreadyCollected), P("type", NpgsqlDbType.Varchar, ruleType), P("ramount", NpgsqlDbType.Numeric, ruleAmount), P("rpercent", NpgsqlDbType.Numeric, rulePercent),
+                        P("grace", NpgsqlDbType.Integer, graceDays), P("cap", NpgsqlDbType.Numeric, capPerDue),
+                    }, ct);
+        }
+
+        public Task<List<PaymentLateFeeLineRow>> GetPaymentLateFeeLinesAsync(string schoolId, IReadOnlyCollection<long> paymentIds, CancellationToken ct) =>
+            paymentIds.Count == 0 ? Task.FromResult(new List<PaymentLateFeeLineRow>()) :
+            _db.Database.SqlQueryRaw<PaymentLateFeeLineRow>(@"
+SELECT l.payment_id AS ""PaymentId"", l.fee_due_id AS ""FeeDueId"", COALESCE(NULLIF(btrim(a.fee_type_name_snapshot), ''), ft.fee_type_name) AS ""FeeTypeName"", d.due_date AS ""DueDate"",
+       l.days_late AS ""DaysLate"", l.days_charged AS ""DaysCharged"", l.base_amount AS ""BaseAmount"", l.amount AS ""Amount""
+  FROM public.tb_fee_payment_late_fees l
+  JOIN public.tb_student_fee_dues d ON d.fee_due_id = l.fee_due_id AND d.school_id = l.school_id
+  JOIN public.tb_student_fee_items i ON i.student_fee_item_id = d.student_fee_item_id
+  JOIN public.tb_fee_types ft ON ft.fee_type_id = i.fee_type_id
+  LEFT JOIN public.tb_fee_payment_allocations a ON a.payment_id = l.payment_id AND a.fee_due_id = l.fee_due_id
+ WHERE l.school_id = @school AND l.payment_id = ANY(@ids) ORDER BY l.payment_id, d.due_date, l.fee_due_id",
+                P("school", NpgsqlDbType.Varchar, schoolId), new NpgsqlParameter("ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint) { Value = paymentIds.ToArray() }).ToListAsync(ct);
+
         public async Task<LateFeeTaxRow?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct) =>
             (await _db.Database.SqlQueryRaw<LateFeeTaxRow>(@"SELECT tax_name AS ""Name"", rate_percent AS ""RatePercent"", is_active AS ""IsActive"" FROM public.tb_tax_types WHERE school_id = @school AND tax_type_id = @id",
                 P("school", NpgsqlDbType.Varchar, schoolId), P("id", NpgsqlDbType.Bigint, taxTypeId)).ToListAsync(ct)).FirstOrDefault();

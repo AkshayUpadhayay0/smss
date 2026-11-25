@@ -1,5 +1,5 @@
 import { formatInr } from '../../../core/utils/currency';
-import { FeeReceipt, hasConcession, hasTax, isFullyWaived, receiptTotals } from '../models/fee-payment.model';
+import { FeeReceipt, hasConcession, lateFeeNotes, hasTax, isFullyWaived, receiptTotals } from '../models/fee-payment.model';
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -28,6 +28,7 @@ export function receiptHtml(r: FeeReceipt): string {
         `<tr class="${t.total ? 'total' : 'sub-total'}"><td colspan="3">${escapeHtml(t.label)}</td><td class="num">${t.deduction ? '&minus; ' : ''}${escapeHtml(formatInr(t.amount))}</td></tr>`,
     )
     .join('\n      ');
+  const lateNotes = lateFeeNotes(r, formatInr).map((n) => `<div class="muted">${escapeHtml(n)}</div>`).join('\n  ');
   const waivedNote = isFullyWaived(r) ? '<div class="muted"><strong>Fully waived</strong>: nothing was collected on this receipt.</div>' : '';
   const concessionNote =
     hasConcession(r) && r.concessionReason?.trim()
@@ -90,6 +91,7 @@ export function receiptHtml(r: FeeReceipt): string {
     <thead><tr><th>Fee</th><th>Due date</th><th class="num">Installment</th><th class="num">Paid now</th></tr></thead>
     <tbody>${rows}${totals}</tbody>
   </table>
+  ${lateNotes}
   ${waivedNote}
   ${concessionNote}
   ${r.remarks ? `<p class="muted">Remarks: ${escapeHtml(r.remarks)}</p>` : ''}

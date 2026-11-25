@@ -16,9 +16,11 @@ namespace smss_api_service_layer.service
         private readonly IFeePaymentRepository _repo;
         private readonly IStudentFeeRepository _fees;
         private readonly ILogger<FeePaymentService> _logger;
+        private readonly ILateFeeRepository? _lateFees;
 
-        public FeePaymentService(IFeePaymentRepository repo, IStudentFeeRepository fees, ILogger<FeePaymentService> logger)
+        public FeePaymentService(IFeePaymentRepository repo, IStudentFeeRepository fees, ILogger<FeePaymentService> logger, ILateFeeRepository? lateFees = null)
         {
+            _lateFees = lateFees;
             _repo = repo;
             _fees = fees;
             _logger = logger;
@@ -163,13 +165,25 @@ namespace smss_api_service_layer.service
                         await _repo.LockReceiptNumbersAsync(schoolId, ct);   // one payment at a time per school picks its number
                         var next = await _repo.GetMaxReceiptSequenceAsync(schoolId, prefix, ct) + 1;
 
+                        // ---- the late fee: worked out HERE, after the per-school lock and inside this transaction, from what non-voided payments have already collected on these dues, so two payments
+                        // at the same moment can never both charge the same due. The client sends only whether to apply it (and a note when waiving): never an amount.
+                        var late = await DecideLateFeeAsync(schoolId, studentId, plan, req, taxType, ct);
+                        if (late.ErrorCode != 0) return Result<FeeReceiptDto>(late.ErrorCode, late.Error!, null);
+                        taxAmount += late.TaxAmount;
+
                         var payment = new TbFeePayment
                         {
                             StudentId = studentId,
                             SchoolId = schoolId,
                             PaymentDate = now,
-                            Amount = feeAmount + taxAmount,
+                            Amount = feeAmount + late.Amount + taxAmount,
                             FeeAmount = feeAmount,
+                            LateFeeAmount = late.Amount,
+                            LateFeeTaxAmount = late.TaxAmount,
+                            LateFeeDecision = late.Decision,
+                            LateFeeNote = late.Note,
+                            LateFeeDecidedBy = late.Decision == null ? null : collectedByUserId,
+                            LateFeeRuleSnapshot = late.Snapshot,
                             ConcessionAmount = concessionAmount,
                             ConcessionId = concession?.ConcessionId,
                             ConcessionNameSnapshot = concession?.ConcessionName,
@@ -202,6 +216,8 @@ namespace smss_api_service_layer.service
 
                         await _repo.AddPaymentAsync(payment, ct);
                         await _repo.SaveChangesAsync(ct);
+                        if (late.Rows.Count > 0 && late.Rule != null)
+                            await _lateFees!.InsertPaymentLateFeesAsync(schoolId, payment.PaymentId, late.Rule.RuleType!, late.Rule.Amount, late.Rule.Percent, late.Rule.GraceDays, late.Rule.CapPerDue, late.Rows, ct);
                         await tx.CommitAsync(ct);
 
                         return Result(201, "Payment recorded.", await BuildReceiptAsync(schoolId, payment.PaymentId, ct));
@@ -284,7 +300,9 @@ namespace smss_api_service_layer.service
                     ConcessionReason = payment.ConcessionReason,
                     ConcessionAppliedByName = payment.ConcessionAppliedBy is long cab ? await _repo.GetUserNameAsync(cab, ct) : null,
                     PaymentMode = payment.PaymentMode, CollectedByName = collectedBy, Remarks = payment.Remarks, DueCount = allocations.Count,
-                    Status = payment.Status, VoidedAt = payment.VoidedAt, VoidedByName = voidedByName, VoidReason = payment.VoidReason
+                    Status = payment.Status, VoidedAt = payment.VoidedAt, VoidedByName = voidedByName, VoidReason = payment.VoidReason,
+                    // a voided payment keeps its late fee line (the voided receipt prints what it was) but its late fee no longer counts as collected on any due
+                    LateFee = await LateFeeOfAsync(schoolId, payment, staffView: true, ct)
                 });
             }
             catch (Exception ex) { return Error<PaymentSummaryDto>(ex, "voiding a fee payment"); }
@@ -297,6 +315,9 @@ namespace smss_api_service_layer.service
             {
                 if (await _repo.GetStudentAsync(schoolId, studentId, ct) == null) return Result<List<PaymentSummaryDto>>(404, "Student not found.", null);
                 var rows = await _repo.GetPaymentsAsync(schoolId, studentId, ct);
+                var lateLines = _lateFees == null ? new List<PaymentLateFeeLineRow>() : await _lateFees.GetPaymentLateFeeLinesAsync(schoolId, rows.Where(r => r.Payment.LateFeeDecision == "APPLIED").Select(r => r.Payment.PaymentId).ToList(), ct);
+                var lateNames = new Dictionary<long, string?>();
+                foreach (var uid in rows.Where(r => r.Payment.LateFeeDecidedBy != null).Select(r => r.Payment.LateFeeDecidedBy!.Value).Distinct()) lateNames[uid] = await _repo.GetUserNameAsync(uid, ct);
                 return Result(200, "Successfully fetched", rows.Select(r => new PaymentSummaryDto
                 {
                     PaymentId = r.Payment.PaymentId, ReceiptNumber = r.Payment.ReceiptNumber, PaymentDate = r.Payment.PaymentDate,
@@ -307,7 +328,8 @@ namespace smss_api_service_layer.service
                     ConcessionValue = r.Payment.ConcessionValueSnapshot, ConcessionAmount = r.Payment.ConcessionAmount, ConcessionReason = r.Payment.ConcessionReason,
                     ConcessionAppliedByName = r.ConcessionAppliedByName,
                     Remarks = r.Payment.Remarks, DueCount = r.DueCount,
-                    Status = r.Payment.Status, VoidedAt = r.Payment.VoidedAt, VoidedByName = r.VoidedByName, VoidReason = r.Payment.VoidReason
+                    Status = r.Payment.Status, VoidedAt = r.Payment.VoidedAt, VoidedByName = r.VoidedByName, VoidReason = r.Payment.VoidReason,
+                    LateFee = PaymentLateFee.Build(r.Payment, lateLines.Where(l => l.PaymentId == r.Payment.PaymentId).ToList(), r.Payment.LateFeeDecidedBy is long d ? lateNames.GetValueOrDefault(d) : null, staffView: true)
                 }).ToList());
             }
             catch (Exception ex) { return Error<List<PaymentSummaryDto>>(ex, "fetching payment history"); }
@@ -385,6 +407,7 @@ namespace smss_api_service_layer.service
                 PaymentMode = payment.PaymentMode, Remarks = payment.Remarks, CollectedByName = collectedBy,
                 Status = payment.Status, VoidedAt = payment.VoidedAt, VoidReason = payment.VoidReason,
                 VoidedByName = payment.VoidedBy is long vb ? await _repo.GetUserNameAsync(vb, ct) : null,
+                LateFee = await LateFeeOfAsync(schoolId, payment, staffView, ct),
                 School = new ReceiptSchoolDto
                 {
                     Name = school?.SchoolName ?? string.Empty, Address = school?.Address, Phone = school?.Phone, Email = school?.Email, LogoUrl = school?.LogoUrl,
@@ -410,6 +433,64 @@ namespace smss_api_service_layer.service
                         };
                     }).ToList()
             };
+        }
+
+        // ================================================================== late fee at payment (5b)
+        private sealed record LateDecision(string? Decision, decimal Amount, decimal TaxAmount, string? Note, string? Snapshot, List<LateFeeRowWrite> Rows, LateFeeRuleRow? Rule, int ErrorCode = 0, string? Error = null);
+
+        /// <summary>
+        /// Works out the late fee of THIS payment from the dues it pays: only fee types flagged "applies late fee", late beyond the grace days (the school's date in India), minus what non-voided payments already
+        /// collected on that due. Nothing is charged when the rule is off or nothing is late. When the cashier waives it, a note of at least 5 characters is needed and who decided is recorded. Must be called
+        /// inside the payment's transaction, after the receipt lock.
+        /// </summary>
+        private async Task<LateDecision> DecideLateFeeAsync(string schoolId, string studentId, List<(TbStudentFeeDue Due, decimal Amount)> plan, RecordPaymentRequest req, TbTaxType? taxType, CancellationToken ct)
+        {
+            var none = new LateDecision(null, 0m, 0m, null, null, new List<LateFeeRowWrite>(), null);
+            if (_lateFees == null || plan.Count == 0) return none;
+            var rule = await _lateFees.GetRuleAsync(schoolId, ct);
+            if (rule is not { IsEnabled: true } || string.IsNullOrEmpty(rule.RuleType)) return none;
+            var today = SchoolClock.Today();
+            var flagged = (await _lateFees.GetDuesAsync(schoolId, studentId, plan.Select(p => p.Due.FeeDueId).ToList(), ct)).Where(d => d.AppliesLateFee).ToDictionary(d => d.FeeDueId);
+            if (flagged.Count == 0) return none;
+            var collected = (await _lateFees.GetCollectedAsync(schoolId, flagged.Keys.ToList(), ct)).ToDictionary(c => c.FeeDueId, c => c.Amount);
+            var values = new LateFeeRuleValues(rule.RuleType, rule.Amount, rule.Percent, rule.GraceDays, rule.CapPerDue);
+
+            var rows = new List<LateFeeRowWrite>();
+            var snapLines = new List<LateFeeSnapshotLine>();
+            foreach (var (due, applied) in plan)
+            {
+                if (!flagged.TryGetValue(due.FeeDueId, out var d)) continue;
+                var c = LateFeeMath.Charge(values, d.DueDate, today, applied, collected.GetValueOrDefault(due.FeeDueId));
+                if (c == null) continue;
+                rows.Add(new LateFeeRowWrite { FeeDueId = due.FeeDueId, Amount = c.Amount, DaysLate = c.DaysLate, DaysCharged = c.DaysCharged, BaseAmount = c.BaseAmount, ComputedTotal = c.ComputedTotal, AlreadyCollected = c.AlreadyCollected });
+                snapLines.Add(new LateFeeSnapshotLine { FeeDueId = due.FeeDueId, FeeType = d.FeeTypeName, DueDate = d.DueDate.ToString("yyyy-MM-dd"), DaysLate = c.DaysLate, DaysCharged = c.DaysCharged, BaseAmount = c.BaseAmount, ComputedTotal = c.ComputedTotal, AlreadyCollected = c.AlreadyCollected, Amount = c.Amount });
+            }
+            if (rows.Count == 0) return none;   // nothing is late: nothing is recorded and nothing is required
+            var total = rows.Sum(r => r.Amount);
+            var snapshot = PaymentLateFee.Serialize(new LateFeeSnapshot
+            {
+                RuleType = rule.RuleType, Amount = rule.Amount, Percent = rule.Percent, GraceDays = rule.GraceDays, CapPerDue = rule.CapPerDue, TaxApplies = rule.TaxApplies,
+                AsOf = today.ToString("yyyy-MM-dd"), Total = total, Lines = snapLines,
+            });
+
+            if (req.ApplyLateFee)
+            {
+                // tax on the late fee only when the school's setting says so, with the tax type the cashier chose for this payment (its rate is already snapshotted on the payment)
+                var tax = rule.TaxApplies && taxType != null ? TaxMath.TaxOn(total, taxType.RatePercent) : 0m;
+                return new LateDecision("APPLIED", total, tax, null, snapshot, rows, rule);
+            }
+            var note = req.LateFeeNote?.Trim();
+            if (string.IsNullOrEmpty(note) || note.Length < 5)
+                return new LateDecision(null, 0m, 0m, null, null, new List<LateFeeRowWrite>(), rule, 400, $"A late fee of {total:0.00} would be charged. To waive it, write a note of at least 5 characters saying why.");
+            return new LateDecision("WAIVED", 0m, 0m, note, snapshot, new List<LateFeeRowWrite>(), rule);
+        }
+
+        private async Task<PaymentLateFeeDto?> LateFeeOfAsync(string schoolId, TbFeePayment payment, bool staffView, CancellationToken ct)
+        {
+            if (payment.LateFeeDecision == null) return null;
+            var lines = _lateFees == null || payment.LateFeeDecision != "APPLIED" ? new List<PaymentLateFeeLineRow>() : await _lateFees.GetPaymentLateFeeLinesAsync(schoolId, new[] { payment.PaymentId }, ct);
+            var by = staffView && payment.LateFeeDecidedBy is long u ? await _repo.GetUserNameAsync(u, ct) : null;
+            return PaymentLateFee.Build(payment, lines, by, staffView);
         }
 
         private static ApiResponse<T> Result<T>(int code, string message, T? data) =>

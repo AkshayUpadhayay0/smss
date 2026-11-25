@@ -454,11 +454,13 @@ describe('CollectPaymentDialogComponent', () => {
     expect(el().querySelector('section[aria-labelledby="cp-installments"]')).not.toBeNull();
   });
 
-  describe('late fee preview (5a: read-only)', () => {
+  describe('late fee at payment (5b)', () => {
     const RULE_ON = { enabled: true, ruleType: 'FLAT', amount: 50, percent: null, graceDays: 5, capPerDue: null, taxApplies: false, updatedAt: null, updatedBy: null, feeTypes: [{ feeTypeId: 1, name: 'Tuition Fee', isActive: true, appliesLateFee: true }] };
     const PREVIEW = { today: '2026-11-25', ruleEnabled: true, ruleType: 'FLAT', graceDays: 5, total: 50, taxName: null, taxAmount: 0, note: null,
       lines: [{ feeDueId: 3, feeType: 'Tuition Fee', dueDate: '2026-06-10', daysLate: 168, daysCharged: 163, baseAmount: 2500, computedTotal: 50, alreadyCollected: 0, amount: 50 }] };
     const wait = () => new Promise((r) => setTimeout(r, 300));
+    const latePreview = async (body: unknown = PREVIEW) => { await wait(); http.expectOne((r) => r.method === 'POST' && r.url === `${API}/api/LateFee/preview/DPS001ST001`).flush(env(body)); tick(); };
+    const submit = () => el().querySelector<HTMLButtonElement>('[data-submit] button, app-button[data-submit] button') ?? Array.from(el().querySelectorAll('app-button')).find((b) => /record payment|collect/i.test(b.textContent ?? ''))?.querySelector('button') as HTMLButtonElement;
 
     it('asks nothing when the school charges no late fee: the payment screen works exactly as before', async () => {
       open();
@@ -466,33 +468,69 @@ describe('CollectPaymentDialogComponent', () => {
       await wait();
       http.expectNone((r) => r.url.includes('/api/LateFee/preview'));
       expect(el().querySelector('[data-late-fee]')).toBeNull();
+      expect(el().querySelector('[data-late-decision]')).toBeNull();
     });
 
-    it('shows the server late fee for the selection, sends only allocations (never an amount of late fee) and does not change the total to collect', async () => {
+    it('shows the server late fee, adds it to the total to collect, and offers no payment until the answer has arrived', async () => {
       open({ lateRule: RULE_ON });
-      const before = el().querySelector('.total dd')?.textContent;
       check(3);
-      await wait();
-      const req = http.expectOne((r) => r.method === 'POST' && r.url === `${API}/api/LateFee/preview/DPS001ST001`);
-      expect(req.request.body).toEqual({ allocations: [{ feeDueId: 3, amount: 2500 }] });
-      req.flush(env(PREVIEW));
-      tick();
+      expect(cmp()['canSubmit']()).toBe(false);                                           // the late fee for this selection is not known yet
+      await latePreview();
       expect(el().querySelector('[data-late-fee]')?.textContent).toContain('50');
       expect(el().querySelector('[data-late-lines]')?.textContent).toContain('168 days late');
-      expect(el().querySelector('.total dd')?.textContent).not.toContain('2,550');          // the payment total is still just the fees: nothing is added yet
-      expect(before).not.toBeUndefined();
+      expect(cmp()['grandPaise']()).toBe(255000);                                         // 2500 of fee + 50 of late fee
+      expect(el().querySelector('.total dd')?.textContent).toContain('2,550');
+      expect(cmp()['canSubmit']()).toBe(true);
     });
 
-    it('a failed preview never blocks the payment and a cleared selection clears the line', async () => {
+    it('sends only whether to charge it (never an amount) and the receipt shows what the server charged', async () => {
+      open({ lateRule: RULE_ON });
+      check(3);
+      await latePreview();
+      cmp()['submit']();
+      const req = http.expectOne(URL);
+      expect(req.request.body.applyLateFee).toBe(true);
+      expect(JSON.stringify(req.request.body)).not.toMatch(/lateFeeAmount|"lateFee"/);
+      expect(req.request.body.lateFeeNote).toBeUndefined();
+      expect(req.request.body.amount).toBe(2500);                                         // the fee applied to the installments, as before
+      req.flush(env({ ...RECEIPT(2550), lateFee: { decision: 'APPLIED', amount: 50, taxAmount: 0, ruleText: '₹50 for each late installment', lines: [] } }, 201));
+      expect(recorded.length).toBe(1);
+    });
+
+    it('waiving needs a note of at least 5 characters, takes the late fee off the total and sends the note', async () => {
+      open({ lateRule: RULE_ON });
+      check(3);
+      await latePreview();
+      (el().querySelector('[data-apply-late]') as HTMLInputElement).click();
+      tick();
+      expect(el().querySelector('[data-late-fee]')?.textContent).toContain('waived');
+      expect(cmp()['grandPaise']()).toBe(250000);
+      expect(cmp()['canSubmit']()).toBe(false);                                           // no note yet
+      const note = el().querySelector('[data-late-note]') as HTMLInputElement;
+      note.value = 'no'; note.dispatchEvent(new Event('input')); tick();
+      expect(cmp()['canSubmit']()).toBe(false);
+      note.value = 'Poor family'; note.dispatchEvent(new Event('input')); tick();
+      expect(cmp()['canSubmit']()).toBe(true);
+      cmp()['submit']();
+      const req = http.expectOne(URL);
+      expect(req.request.body).toMatchObject({ applyLateFee: false, lateFeeNote: 'Poor family', amount: 2500 });
+      req.flush(env(RECEIPT(2500), 201));
+    });
+
+    it('a selection with no late fee sends the same body as before, and a failed preview never blocks the payment', async () => {
+      open({ lateRule: RULE_ON });
+      check(3);
+      await latePreview({ ...PREVIEW, lines: [], total: 0 });
+      cmp()['submit']();
+      const req = http.expectOne(URL);
+      expect(req.request.body.applyLateFee).toBeUndefined();
+      req.flush(env(RECEIPT(2500), 201));
       open({ lateRule: RULE_ON });
       check(3);
       await wait();
       http.expectOne((r) => r.url === `${API}/api/LateFee/preview/DPS001ST001`).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' });
       tick();
-      expect(el().querySelector('[data-late-fee]')).toBeNull();
-      check(3, false);
-      await wait();
-      http.expectNone((r) => r.url.includes('/api/LateFee/preview'));
+      expect(cmp()['canSubmit']()).toBe(true);                                            // the server still works the late fee out and the receipt shows it
     });
   });
 });

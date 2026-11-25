@@ -45,7 +45,32 @@ namespace smss_api_db_layer.@interface
         public bool IsActive { get; set; }
     }
 
-    /// <summary>The late fee rule, the fee type flags and what the late fee preview reads. Every method takes the school id.</summary>
+    /// <summary>One due's late fee as charged by one payment (what is saved in tb_fee_payment_late_fees).</summary>
+    public class LateFeeRowWrite
+    {
+        public long FeeDueId { get; set; }
+        public decimal Amount { get; set; }
+        public int DaysLate { get; set; }
+        public int DaysCharged { get; set; }
+        public decimal BaseAmount { get; set; }
+        public decimal ComputedTotal { get; set; }
+        public decimal AlreadyCollected { get; set; }
+    }
+
+    /// <summary>A saved late fee row with what a receipt line needs.</summary>
+    public class PaymentLateFeeLineRow
+    {
+        public long PaymentId { get; set; }
+        public long FeeDueId { get; set; }
+        public string FeeTypeName { get; set; } = null!;
+        public DateOnly DueDate { get; set; }
+        public int DaysLate { get; set; }
+        public int DaysCharged { get; set; }
+        public decimal BaseAmount { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    /// <summary>The late fee rule, the fee type flags, what the late fee preview reads and what a payment writes. Every method takes the school id.</summary>
     public interface ILateFeeRepository
     {
         Task<LateFeeRuleRow?> GetRuleAsync(string schoolId, CancellationToken ct);
@@ -60,5 +85,9 @@ namespace smss_api_db_layer.@interface
         /// <summary>Late fee already collected per due by NON-VOIDED payments (a voided payment frees its amounts again).</summary>
         Task<List<LateFeeCollectedRow>> GetCollectedAsync(string schoolId, IReadOnlyCollection<long> dueIds, CancellationToken ct);
         Task<LateFeeTaxRow?> GetTaxTypeAsync(string schoolId, long taxTypeId, CancellationToken ct);
+        /// <summary>Writes one row per late due for a payment (inside the payment's transaction, after the payment row exists), with the rule that was in force.</summary>
+        Task InsertPaymentLateFeesAsync(string schoolId, long paymentId, string ruleType, decimal? ruleAmount, decimal? rulePercent, int graceDays, decimal? capPerDue, IReadOnlyList<LateFeeRowWrite> rows, CancellationToken ct);
+        /// <summary>The late fee rows of these payments, for receipts and the history.</summary>
+        Task<List<PaymentLateFeeLineRow>> GetPaymentLateFeeLinesAsync(string schoolId, IReadOnlyCollection<long> paymentIds, CancellationToken ct);
     }
 }

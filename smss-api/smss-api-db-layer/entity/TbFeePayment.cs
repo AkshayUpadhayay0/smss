@@ -38,6 +38,16 @@ namespace smss_api_db_layer.entity
         [Column("concession_reason")] public string? ConcessionReason { get; set; }
         /// <summary>The user (tb_users.user_id) who applied it, from the token.</summary>
         [Column("concession_applied_by")] public long? ConcessionAppliedBy { get; set; }
+        /// <summary>The late fee this payment charged, computed by the server (never sent by the client): 0 unless <see cref="LateFeeDecision"/> is APPLIED. Part of <see cref="Amount"/>; NOT part of <see cref="FeeAmount"/>.</summary>
+        [Column("late_fee_amount", TypeName = "numeric(12,2)")] public decimal LateFeeAmount { get; set; }
+        /// <summary>The part of <see cref="TaxAmount"/> that is tax on the late fee (only when the school's setting says tax applies to it).</summary>
+        [Column("late_fee_tax_amount", TypeName = "numeric(12,2)")] public decimal LateFeeTaxAmount { get; set; }
+        /// <summary>APPLIED, WAIVED (the cashier chose not to charge it, with a note) or null (no late fee was due).</summary>
+        [Column("late_fee_decision")][StringLength(10)] public string? LateFeeDecision { get; set; }
+        [Column("late_fee_note")] public string? LateFeeNote { get; set; }
+        [Column("late_fee_decided_by")] public long? LateFeeDecidedBy { get; set; }
+        /// <summary>The rule in force when the payment was taken, the date the days were counted to and each due's figures: a later rule change never rewrites a receipt.</summary>
+        [Column("late_fee_rule_snapshot", TypeName = "jsonb")] public string? LateFeeRuleSnapshot { get; set; }
         /// <summary>Cash, Cheque, UPI, Card, Bank Transfer or Online.</summary>
         [Column("payment_mode")][StringLength(30)] public string PaymentMode { get; set; } = null!;
         [Column("receipt_number")][StringLength(50)] public string ReceiptNumber { get; set; } = null!;

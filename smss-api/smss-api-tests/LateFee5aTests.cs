@@ -18,7 +18,7 @@ namespace smss_api_tests
     public class LateFee5aTests
     {
         private static readonly DateOnly Today = new(2026, 11, 25);
-        private static LateFeeService Svc(TaxDb db) => new(new LateFeeRepository(db.Ctx()), NullLogger<LateFeeService>.Instance);
+        internal static LateFeeService Svc(TaxDb db) => new(new LateFeeRepository(db.Ctx()), NullLogger<LateFeeService>.Instance);
         private static LateFeeRuleValues Rule(string type, decimal? amount = null, decimal? percent = null, int grace = 0, decimal? cap = null) => new(type, amount, percent, grace, cap);
 
         // ------------------------------------------------------------------------------------------------ the arithmetic (no database)
@@ -72,15 +72,15 @@ namespace smss_api_tests
         }
 
         // ------------------------------------------------------------------------------------------------ the settings
-        private static PromotionPreview4b2Tests.W World(TaxDb db, string id)
+        internal static PromotionPreview4b2Tests.W World(TaxDb db, string id)
         {
             var w = P.Build(db, id);
             db.Exec($"insert into tb_fee_types (school_id, fee_type_name, fee_type_code, is_optional, isactive) values ('{id}', 'Bus', 'BUS', true, true)");   // Build makes Tuition; late fee tests need a second fee type
             return w;
         }
-        private static SaveLateFeeRuleRequest Save(bool enabled = true, string? type = "FLAT", decimal? amount = 50, decimal? percent = null, int grace = 5, decimal? cap = 100, bool tax = false, long[]? types = null) =>
+        internal static SaveLateFeeRuleRequest Save(bool enabled = true, string? type = "FLAT", decimal? amount = 50, decimal? percent = null, int grace = 5, decimal? cap = 100, bool tax = false, long[]? types = null) =>
             new() { Enabled = enabled, RuleType = type, Amount = amount, Percent = percent, GraceDays = grace, CapPerDue = cap, TaxApplies = tax, FeeTypeIds = (types ?? Array.Empty<long>()).ToList() };
-        private static long Type(TaxDb db, string school, string code) => db.Scalar<long>($"select fee_type_id from tb_fee_types where school_id='{school}' and fee_type_code='{code}'");
+        internal static long Type(TaxDb db, string school, string code) => db.Scalar<long>($"select fee_type_id from tb_fee_types where school_id='{school}' and fee_type_code='{code}'");
 
         [DbFact]
         public async Task A_school_that_never_set_a_rule_has_it_off_and_every_fee_type_flag_off()
@@ -166,7 +166,7 @@ namespace smss_api_tests
 
         // ------------------------------------------------------------------------------------------------ the preview
         /// <summary>A student with a Tuition due of 1000 (due 1 Sep, flagged) and a Bus due of 500 (due 1 Oct, not flagged), both unpaid.</summary>
-        private static (PromotionPreview4b2Tests.W W, string Student, long Tuition, long Bus) Student(TaxDb db, string id)
+        internal static (PromotionPreview4b2Tests.W W, string Student, long Tuition, long Bus) Student(TaxDb db, string id)
         {
             var w = World(db, id);
             var s = id + "S1";
