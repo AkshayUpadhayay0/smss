@@ -53,6 +53,10 @@ namespace smss_api_db_layer.context
         public DbSet<TbStudentEnrollment> StudentEnrollments { get; set; } = null!;
         public DbSet<TbGuardian> Guardians { get; set; } = null!;
         public DbSet<TbStudentGuardian> StudentGuardians { get; set; } = null!;
+        public DbSet<TbAdmissionGuardian> AdmissionGuardians { get; set; } = null!;
+        public DbSet<TbGuardianChange> GuardianChanges { get; set; } = null!;
+        public DbSet<TbGuardianMerge> GuardianMerges { get; set; } = null!;
+        public DbSet<TbSchoolWhatsAppSender> SchoolWhatsAppSenders { get; set; } = null!;
         public DbSet<TbSubjects> Subjects { get; set; } = null!;
         public DbSet<TbEmployeeDesignations> EmployeeDesignations { get; set; } = null!;
         public DbSet<TbEmployeeDepartments> EmployeeDepartments { get; set; } = null!;

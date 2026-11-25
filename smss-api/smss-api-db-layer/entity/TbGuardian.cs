@@ -20,6 +20,10 @@ namespace smss_api_db_layer.entity
         [Column("whatsapp_number")] public string? WhatsAppNumber { get; set; }
         [Column("occupation")] public string? Occupation { get; set; }
         [Column("status_id")] public int StatusId { get; set; }
+        /// <summary>The guardian's login (tb_users), one per guardian; null until a parent account exists (a later stage).</summary>
+        [Column("user_id")] public long? UserId { get; set; }
+        /// <summary>Set when this guardian was merged into another (the survivor). A merged guardian is Inactive and is never linked to anyone again.</summary>
+        [Column("merged_into_guardian_id")] public long? MergedIntoGuardianId { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }

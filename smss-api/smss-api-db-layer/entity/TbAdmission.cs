@@ -48,6 +48,8 @@ namespace smss_api_db_layer.entity
         [Column("approved_by")] public long? ApprovedBy { get; set; }
         [Column("approved_at")] public DateTime? ApprovedAt { get; set; }
         /// <summary>Who confirmed the application (the user that created the student) and when. Set only when the application becomes ADMITTED.</summary>
+        /// <summary>The existing guardian this application reuses as its primary guardian (a sibling's parent); null when a new guardian is entered. The inline guardian columns still hold a copy for display.</summary>
+        [Column("guardian_id")] public long? GuardianId { get; set; }
         [Column("confirmed_by")] public long? ConfirmedBy { get; set; }
         [Column("confirmed_at")] public DateTime? ConfirmedAt { get; set; }
         [Column("previous_school")][StringLength(200)] public string? PreviousSchool { get; set; }

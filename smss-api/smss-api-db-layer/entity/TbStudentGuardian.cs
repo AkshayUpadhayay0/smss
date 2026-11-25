@@ -18,6 +18,8 @@ namespace smss_api_db_layer.entity
         [ForeignKey(nameof(GuardianId))] public TbGuardian? Guardian { get; set; }
         [Column("relationship")] public string Relationship { get; set; } = null!;
         [Column("is_primary")] public bool IsPrimary { get; set; }
+        /// <summary>Whether this guardian may see this child in the portal (default on; off for a custody case). It must default to TRUE in code too: EF would otherwise insert false.</summary>
+        [Column("portal_access")] public bool PortalAccess { get; set; } = true;
         [Column("is_emergency_contact")] public bool IsEmergencyContact { get; set; }
         [Column("can_pickup_student")] public bool CanPickupStudent { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }

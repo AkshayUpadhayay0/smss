@@ -10,9 +10,24 @@ namespace smss_api_service_layer.helper
     public static class PhoneNumbers
     {
         private static readonly Regex Separators = new(@"[\s\-().]", RegexOptions.Compiled);
+        private static readonly Regex NonDigits = new(@"[^0-9]", RegexOptions.Compiled);
         private static readonly Regex Digits = new(@"^[0-9]+$", RegexOptions.Compiled);
         private static readonly Regex IndianMobile = new(@"^[6-9][0-9]{9}$", RegexOptions.Compiled);
         public const string StoredPattern = @"^\+[1-9][0-9]{7,14}$";
+
+        /// <summary>
+        /// The 10-digit Indian mobile number inside "9876543210", "+91 98765 43210", "919876543210" or "09876543210": the key two guardians are compared by. Null for anything else. It is the same rule as the
+        /// database function fn_phone_key (a test keeps them equal); the stored mobile_number is never rewritten.
+        /// </summary>
+        public static string? NationalKey(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            var d = NonDigits.Replace(raw, "");
+            if (IndianMobile.IsMatch(d)) return d;
+            if (d.Length == 12 && d.StartsWith("91") && IndianMobile.IsMatch(d[2..])) return d[2..];
+            if (d.Length == 11 && d[0] == '0' && IndianMobile.IsMatch(d[1..])) return d[1..];
+            return null;
+        }
 
         /// <summary>The number as stored ("+91..."), or null when the text is blank or is not a valid number.</summary>
         public static string? Normalise(string? raw)
