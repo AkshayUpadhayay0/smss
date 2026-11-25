@@ -1,0 +1,118 @@
+<app-page-header title="Promotion" subtitle="Move a class into the next year: preview first, nothing is saved here" icon="graduation-cap" [breadcrumbs]="[{ label: 'Students', link: '/students' }, { label: 'Promotion' }]" />
+
+@if (loading()) {
+  <app-card><p role="status">Loading…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card><p role="alert">The years and classes could not be loaded. Please try again.</p></app-card>
+} @else {
+  <app-card title="Choose what to promote">
+    <div class="filters">
+      <label class="field"><span>From year</span>
+        <select data-source [value]="sourceId() ?? ''" (change)="sourceId.set(num($any($event.target).value)); reset()">
+          @for (y of years(); track y.academicYearId) { <option [value]="y.academicYearId" [selected]="y.academicYearId === sourceId()">{{ y.yearName }}{{ y.isCurrent ? ' (current)' : '' }}{{ y.isClosed ? ' (closed)' : '' }}</option> }
+        </select></label>
+      <label class="field"><span>Into year</span>
+        <select data-target [value]="targetId() ?? ''" (change)="targetId.set(num($any($event.target).value)); reset()">
+          <option value="">Choose…</option>
+          @for (y of years(); track y.academicYearId) { <option [value]="y.academicYearId" [selected]="y.academicYearId === targetId()">{{ y.yearName }}{{ y.isClosed ? ' (closed)' : '' }}</option> }
+        </select></label>
+      <label class="field"><span>Class</span>
+        <select data-class [value]="classId() ?? ''" (change)="pickClass($any($event.target).value)">
+          <option value="">Choose…</option>
+          @for (c of classes(); track c.classId) { <option [value]="c.classId" [selected]="c.classId === classId()">{{ c.className }}</option> }
+        </select></label>
+      <label class="field"><span>Section</span>
+        <select data-section [value]="sectionId() ?? ''" (change)="sectionId.set(num($any($event.target).value)); reset()">
+          <option value="">All sections</option>
+          @for (s of classSections(); track s.sectionId) { <option [value]="s.sectionId" [selected]="s.sectionId === sectionId()">{{ s.sectionName }}</option> }
+        </select></label>
+      <label class="field"><span>Promotion date</span>
+        <input type="date" data-date [value]="date()" (input)="date.set($any($event.target).value); reset()" /></label>
+      <app-button data-preview-btn [disabled]="!canPreview()" (click)="runPreview()">{{ busy() ? 'Checking…' : 'Preview' }}</app-button>
+    </div>
+    <p class="hint">The promotion date is also the dues cutoff: unpaid dues of the from year, due on or before it block a student. Leave it empty for today. A run takes up to 500 students: choose a section for a bigger class.</p>
+  </app-card>
+
+  @if (previewFailed()) { <app-card><p role="alert" data-failed>The preview could not be prepared. Check the choices above and try again.</p></app-card> }
+
+  @if (result(); as r) {
+    <app-card [title]="r.className + (r.sectionName ? ' ' + r.sectionName : '') + ': ' + r.sourceYearName + ' into ' + r.targetYearName">
+      <p class="verdict" data-readonly><app-icon name="circle-alert" [size]="16" />This is a preview. Nothing has been saved.
+        @if (r.isLastClass) { This is the last class: students can pass out or repeat. } @else { The next class is <strong>{{ r.nextClassName }}</strong>. }
+        @if (r.sourceYearClosed) { {{ r.sourceYearName }} is closed. }</p>
+      <div class="counts" data-counts>
+        <span class="chip ok">{{ r.counts.ready }} ready</span>
+        <span class="chip bad">{{ r.counts.blocked }} blocked by dues</span>
+        <span class="chip bad">{{ r.counts.needsAttention }} need attention</span>
+        <span class="chip muted">{{ r.counts.noDecision }} no decision yet</span>
+        <span class="chip muted">{{ r.counts.alreadyEnrolled + r.counts.alreadyRecorded }} skipped</span>
+        <span class="chip">{{ r.counts.total }} in all</span>
+      </div>
+      @if (r.needsFeeAcknowledgement) {
+        <p class="warn" role="alert" data-fee-warning>{{ r.classesWithoutFeeStructure.join(', ') }} {{ r.classesWithoutFeeStructure.length === 1 ? 'has' : 'have' }} no fee structure in {{ r.targetYearName }}. Students placed there will get no fees until one is set up; the run will ask you to acknowledge this.</p>
+      }
+
+      <div class="scroll">
+        <table class="rows" data-rows>
+          <thead><tr><th>Student</th><th>Now</th><th>Decision</th><th>Moves to</th><th>Roll</th><th>Dues</th><th>Status</th></tr></thead>
+          <tbody>
+            @for (row of r.rows; track row.studentId) {
+              <tr [attr.data-row]="row.studentId">
+                <td class="name">{{ row.studentName }}<small>{{ row.admissionNumber }}</small></td>
+                <td>{{ row.sourceSectionName }}<small>Roll {{ row.sourceRollNumber ?? '-' }}</small></td>
+                <td>
+                  @if (editable(row)) {
+                    <select data-decision [attr.aria-label]="'Decision for ' + row.studentName" (change)="pickDecision(row, $any($event.target).value)">
+                      <option value="" [selected]="!row.decision">No decision yet</option>
+                      @for (d of decisions; track d) { <option [value]="d" [selected]="row.decision === d">{{ decisionLabels[d] }}</option> }
+                    </select>
+                    @if (row.decisionSource === 'TEACHER') { <small>from the class teacher</small> }
+                  } @else { <small>-</small> }
+                </td>
+                <td>
+                  @if (row.target; as t) {
+                    <select data-to-class [attr.aria-label]="'Class for ' + row.studentName" [disabled]="row.decision === 'REPEAT'" (change)="pickTargetClass(row, $any($event.target).value)">
+                      @for (c of result()!.targetOptions; track c.classId) { <option [value]="c.classId" [selected]="c.classId === t.classId">{{ c.className }}</option> }
+                    </select>
+                    <select data-to-section [attr.aria-label]="'Section for ' + row.studentName" (change)="pickTargetSection(row, $any($event.target).value)">
+                      @for (s of sectionsOf(t.classId); track s.sectionId) { <option [value]="s.sectionId" [selected]="s.sectionId === t.sectionId">{{ s.sectionName }}{{ s.maxStrength ? ' (' + (s.enrolled) + '/' + s.maxStrength + ')' : '' }}</option> }
+                    </select>
+                  } @else { <small>{{ row.decision === 'PASS_OUT' ? 'Passes out' : row.decision === 'LEAVE' ? 'Leaves the school' : '-' }}</small> }
+                </td>
+                <td>
+                  @if (row.target) { <input class="roll" data-roll [value]="row.rollNumber ?? ''" [attr.aria-label]="'Roll number for ' + row.studentName" (change)="typeRoll(row, $any($event.target).value)" /> } @else { - }
+                </td>
+                <td>
+                  @if (row.outstanding > 0) {
+                    <button type="button" class="link" data-dues-toggle (click)="toggle(row.studentId)">{{ row.outstanding | currency: 'INR' : 'symbol' : '1.0-0' }} due</button>
+                  } @else { - }
+                  @if (row.notYetDue > 0) { <small>{{ row.notYetDue | currency: 'INR' : 'symbol' : '1.0-0' }} not yet due</small> }
+                </td>
+                <td><span [class]="'badge ' + badge(row.status)">{{ statusLabels[row.status] }}</span></td>
+              </tr>
+              @if (row.issues.length > 0 || row.notes.length > 0 || (expanded()[row.studentId] && row.dues.length > 0)) {
+                <tr class="detail" [attr.data-detail]="row.studentId">
+                  <td colspan="7">
+                    @for (i of row.issues; track i) { <p class="issue" role="alert">{{ i }}</p> }
+                    @for (n of row.notes; track n) { <p class="note">{{ n }}</p> }
+                    @if (expanded()[row.studentId] && row.dues.length > 0) {
+                      <table class="dues" data-dues>
+                        <thead><tr><th>Fee</th><th>Due date</th><th>Due</th><th>Paid</th><th>Left</th></tr></thead>
+                        <tbody>
+                          @for (d of row.dues; track d.feeDueId) {
+                            <tr><td>{{ d.feeType }}</td><td>{{ d.dueDate }}</td><td>{{ d.amountDue | currency: 'INR' : 'symbol' : '1.0-0' }}</td><td>{{ d.amountPaid | currency: 'INR' : 'symbol' : '1.0-0' }}</td><td>{{ d.outstanding | currency: 'INR' : 'symbol' : '1.0-0' }}</td></tr>
+                          }
+                        </tbody>
+                      </table>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (r.rows.length === 0) { <p class="hint" data-empty>No active students are enrolled in this class in {{ r.sourceYearName }}.</p> }
+    </app-card>
+  }
+}

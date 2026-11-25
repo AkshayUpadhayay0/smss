@@ -31,6 +31,9 @@ namespace smss_api.Helpers
         /// <summary>Academic Setup (what a school offers in each year): the School Admin configures it, the Principal can view it.</summary>
         public static bool CanViewAcademicSetup(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
 
+        /// <summary>Promotion of students to the next year (preview and run): School Admin and Principal only. Teachers only record a decision on the report card; they never promote.</summary>
+        public static bool CanPromoteStudents(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin, RoleNames.Principal);
+
         public static bool IsSchoolAdmin(this ClaimsPrincipal user) => HasAnyRole(user, RoleNames.SchoolAdmin);
 
         /// <summary>The Accountant role (the Accountant dashboard).</summary>
