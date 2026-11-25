@@ -90,6 +90,10 @@ export function moneyCards(d: SchoolAdminDashboard): DashboardCard[] {
     d.hasFeeSetup
       ? { id: 'income-month', label: 'Fees received this month', value: inr(d.incomeThisMonth), note: `For ${d.session?.name ?? 'the year'}, ${month}`, hint: incomeHint, icon: 'indian-rupee', tone: 'success' as const }
       : noFeeStructure('income-month', 'Fees received this month', d),
+    d.hasFeeSetup
+      ? { id: 'late-fee', label: 'Late fee collected this month', value: d.lateFeeCollectedThisMonth == null ? 'Unavailable' : inr(d.lateFeeCollectedThisMonth), note: `For ${d.session?.name ?? 'the year'}, ${month}`, icon: 'indian-rupee', tone: 'info' as const, muted: d.lateFeeCollectedThisMonth == null,
+          hint: `Late fee charged at payment this month on ${d.session?.name ?? 'the year'} installments, on payments that are not voided. It is on its own: Fees received does not include it, and the tax on it is in the tax report.`, link: { path: '/fee-reports/late-fee', query: {} } }
+      : noFeeStructure('late-fee', 'Late fee collected this month', d),
     d.session && !d.hasFeeSetup ? noFeeStructure('income-session', 'Fees received for this session', d)
     : d.session
       ? { id: 'income-session', label: 'Fees received for this session', value: inr(d.incomeThisSession ?? 0), note: session, hint: incomeHint, icon: 'indian-rupee', tone: 'success' as const }

@@ -1,0 +1,47 @@
+<app-page-header title="Late fee report" subtitle="Late fees charged at payment, and the ones that were waived" icon="indian-rupee" [breadcrumbs]="breadcrumbs" />
+
+<app-card>
+  <form class="filters" (submit)="$event.preventDefault(); apply()" aria-label="Filters">
+    <app-input label="From" type="date" [formControl]="fromControl" />
+    <app-input label="To" type="date" [formControl]="toControl" [errorText]="rangeError()" />
+    <label class="field"><span>Class</span>
+      <select data-class [value]="classId() ?? ''" (change)="pickClass($any($event.target).value)">
+        <option value="">All classes</option>
+        @for (c of classes(); track c.classId) { <option [value]="c.classId" [selected]="c.classId === classId()">{{ c.className }}</option> }
+      </select></label>
+    <div class="filter-actions">
+      <app-button type="submit" [disabled]="!!rangeError() || loading()"><app-icon name="search" [size]="16" />Show</app-button>
+    </div>
+  </form>
+</app-card>
+
+<app-card [noPadding]="true">
+  <div class="summary" data-summary>
+    <span class="figure">Charged<strong data-charged>{{ chargedCount() }} · {{ inr(chargedAmount()) }}</strong><small>late fee only, without tax (tax is in the tax report)</small></span>
+    <span class="figure">Waived<strong data-waived>{{ waivedCount() }} · {{ inr(waivedAmount()) }}</strong><small>what would have been charged</small></span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="charged" [class.on]="view() === 'charged'" [attr.aria-selected]="view() === 'charged'" (click)="setView('charged')">Charged</button>
+    <button type="button" role="tab" data-tab="waived" [class.on]="view() === 'waived'" [attr.aria-selected]="view() === 'waived'" (click)="setView('waived')">Waived</button>
+  </div>
+  <div class="toolbar">
+    <span class="count">{{ total() }} {{ view() === 'charged' ? (total() === 1 ? 'late fee' : 'late fees') : (total() === 1 ? 'waived late fee' : 'waived late fees') }}</span>
+    <app-button variant="secondary" size="sm" [disabled]="exporting() || total() === 0" (click)="exportCsv()">
+      <app-icon name="file-text" [size]="14" />{{ exporting() ? 'Preparing…' : 'Export CSV' }}
+    </app-button>
+  </div>
+
+  <app-table
+    [columns]="columns()"
+    [rows]="rows()"
+    [loading]="loading()"
+    [emptyMessage]="failed() ? 'Could not load the late fee report.' : (view() === 'charged' ? 'No late fee was charged in this period.' : 'No late fee was waived in this period.')"
+  />
+
+  @if (failed()) {
+    <div class="retry"><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div>
+  }
+
+  <app-pagination [currentPage]="page()" [totalItems]="total()" [pageSize]="pageSize()" (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+  <p class="note">Read-only. Voided payments are not in the report. A school that does not charge a late fee simply has nothing here.</p>
+</app-card>

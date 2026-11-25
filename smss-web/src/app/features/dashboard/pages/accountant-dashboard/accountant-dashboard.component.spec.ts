@@ -27,7 +27,7 @@ const months = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10
 function accountantDashboard(over: Partial<AccountantDashboard> = {}): AccountantDashboard {
   return {
     today: '2026-11-14', academicYearId: 7, academicYearName: '2026-27', academicYearIsCurrent: true, academicYearIsClosed: false, currentYearName: '2026-27', viewingNote: null, hasFeeSetup: true,
-    stats: { collectedToday: 2500, collectedThisMonth: 15000, outstanding: 40000, overdueCount: 6, overdueAmount: 12000, upcomingCount: 4, upcomingAmount: 8000, upcomingDays: 7 },
+    stats: { collectedToday: 2500, collectedThisMonth: 15000, lateFeeToday: 50, lateFeeThisMonth: 300, totalReceivedToday: 2550, totalReceivedThisMonth: 15300, outstanding: 40000, overdueCount: 6, overdueAmount: 12000, upcomingCount: 4, upcomingAmount: 8000, upcomingDays: 7 },
     collectionTrend: months.map((m, i) => ({ month: m, label: m, amount: i === 5 ? 15000 : 1000 * i })),
     recentPayments: [{ paymentId: 1, receiptNumber: 'RCP-2026-0001', studentId: 'DPS001ST001', studentName: 'Abhinav Kumar', amount: 5000, paymentMode: 'UPI', paymentDate: '2026-11-14T05:00:00Z' }],
     partsUnavailable: [],
@@ -103,7 +103,7 @@ describe('AccountantDashboardComponent', () => {
 
   it('a part the server could not load says Unavailable, never 0', () => {
     open(accountantDashboard({
-      stats: { collectedToday: null, collectedThisMonth: null, outstanding: null, overdueCount: null, overdueAmount: null, upcomingCount: null, upcomingAmount: null, upcomingDays: 7 },
+      stats: { collectedToday: null, collectedThisMonth: null, lateFeeToday: null, lateFeeThisMonth: null, totalReceivedToday: null, totalReceivedThisMonth: null, outstanding: null, overdueCount: null, overdueAmount: null, upcomingCount: null, upcomingAmount: null, upcomingDays: 7 },
       partsUnavailable: ['fees', 'collectedToday', 'payments'], collectionTrend: [], recentPayments: [],
     }));
     for (const id of ['today', 'month', 'outstanding', 'overdue', 'upcoming']) {
@@ -132,9 +132,22 @@ describe('AccountantDashboardComponent', () => {
   it('the cash cards are called cash and say all years; the dues cards follow the viewed year', () => {
     open(accountantDashboard());
     expect(card('today').textContent).toContain('Cash collected today');
-    expect(card('today').textContent).toContain('All years');
+    expect(card('today').textContent).toContain('all years');
+    expect(card('today').textContent).toContain('Fees only');
     expect(card('month').textContent).toContain('Cash collected this month');
     expect(card('outstanding').textContent).toContain('2026-27');
+  });
+
+  it('adds Late fee collected and Total received, each labelled, and says Unavailable (never 0) when they could not be read', () => {
+    open(accountantDashboard());
+    expect(card('late-today').textContent).toContain('Late fee collected today');
+    expect(card('late-today').textContent).toContain('₹50');
+    expect(card('late-month').textContent).toContain('₹300');
+    expect(card('received-today').textContent).toContain('Total received today');
+    expect(card('received-today').textContent).toContain('₹2,550');
+    expect(card('received-month').textContent).toContain('Fee + late fee + tax');
+    expect(card('today').textContent).toContain('₹2,500');                          // the cash tile is still fee only
+    http.verify();
   });
 
   it('choosing another year asks for that year and says so; the cash cards stay what the server sent', () => {

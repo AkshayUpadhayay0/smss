@@ -89,15 +89,17 @@
   </app-card>
 
   <app-card title="Collection by month">
-    <p class="asof">{{ d.academicYearName }} · as of {{ date(d.asOf) }} · money received, by payment date (voided payments excluded)</p>
+    <p class="asof">{{ d.academicYearName }} · as of {{ date(d.asOf) }} · money received, by payment date (voided payments excluded). Fee collected is fees only; Total received adds the late fee and the tax.</p>
     <table class="months" aria-label="Collection by month">
-      <thead><tr><th>Month</th><th class="trend">Trend</th><th class="num">Collected</th></tr></thead>
+      <thead><tr><th>Month</th><th class="trend">Trend</th><th class="num">Fee collected</th><th class="num">Late fee</th><th class="num">Total received</th></tr></thead>
       <tbody>
         @for (m of d.collectionByMonth; track m.month) {
           <tr>
             <td>{{ m.label }}</td>
             <td class="trend"><span class="bar" [style.width]="barWidth(m.amount)" [class.zero]="m.amount === 0"></span></td>
             <td class="num">{{ inr(m.amount) }}</td>
+            <td class="num" data-late-fee>{{ m.lateFee == null ? '—' : inr(m.lateFee) }}</td>
+            <td class="num" data-total-received>{{ m.totalReceived == null ? '—' : inr(m.totalReceived) }}</td>
           </tr>
         }
       </tbody>

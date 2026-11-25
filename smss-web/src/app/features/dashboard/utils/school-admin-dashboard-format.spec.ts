@@ -50,6 +50,15 @@ describe('school admin dashboard formatting', () => {
       expect(cards.find((c) => c.id === 'income-month')!.hint).toContain('Other income is not set up');
     });
 
+    it('has a Late fee collected tile of its own that links to the report, says Unavailable (never 0) when unread, and leaves Fees received alone', () => {
+      const ok = moneyCards(dashboard()).find((c) => c.id === 'late-fee')!;
+      expect([ok.value, ok.muted ?? false, ok.link?.path]).toEqual(['₹150', false, '/fee-reports/late-fee']);
+      expect(moneyCards(dashboard()).find((c) => c.id === 'income-month')!.value).toBe('₹2,500');
+      const down = moneyCards(dashboard({ lateFeeCollectedThisMonth: null })).find((c) => c.id === 'late-fee')!;
+      expect([down.value, down.muted]).toEqual(['Unavailable', true]);
+      expect(moneyCards(dashboard({ lateFeeCollectedThisMonth: 0 })).find((c) => c.id === 'late-fee')!.value).toBe('₹0');   // a real zero stays a zero
+    });
+
     it('names the session as "Academic Year 2026-27"', () => {
       const c = moneyCards(dashboard()).find((x) => x.id === 'income-session')!;
       expect(c.value).toBe('₹2,700');

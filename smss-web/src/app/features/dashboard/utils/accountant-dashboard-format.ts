@@ -19,8 +19,12 @@ export function buildAccountantStats(d: AccountantDashboard): DashStatCard[] {
   });
   const dues = !d.hasFeeSetup && !down(d, 'fees');
   return [
-    statCard({ id: 'today', label: 'Cash collected today', value: formatInr(s.collectedToday ?? 0), note: 'All years, payments received today', link: '/fee-dashboard', tone: 'success' }, down(d, 'collectedToday') || s.collectedToday == null),
-    statCard({ id: 'month', label: 'Cash collected this month', value: formatInr(s.collectedThisMonth ?? 0), note: `All years, in ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.collectedThisMonth == null),
+    statCard({ id: 'today', label: 'Cash collected today', value: formatInr(s.collectedToday ?? 0), note: 'Fees only, all years, received today (late fee and tax are below)', link: '/fee-dashboard', tone: 'success' }, down(d, 'collectedToday') || s.collectedToday == null),
+    statCard({ id: 'month', label: 'Cash collected this month', value: formatInr(s.collectedThisMonth ?? 0), note: `Fees only, all years, in ${monthName(d.today)}`, link: '/fee-dashboard', tone: 'success' }, down(d, 'fees') || s.collectedThisMonth == null),
+    statCard({ id: 'late-today', label: 'Late fee collected today', value: formatInr(s.lateFeeToday ?? 0), note: 'Late fee only, all years (not in the cash collected above)', link: '/fee-reports/late-fee', tone: 'success' }, down(d, 'lateFee') || s.lateFeeToday == null),
+    statCard({ id: 'late-month', label: 'Late fee collected this month', value: formatInr(s.lateFeeThisMonth ?? 0), note: `Late fee only, all years, in ${monthName(d.today)}`, link: '/fee-reports/late-fee', tone: 'success' }, down(d, 'lateFee') || s.lateFeeThisMonth == null),
+    statCard({ id: 'received-today', label: 'Total received today', value: formatInr(s.totalReceivedToday ?? 0), note: 'Fee + late fee + tax on today\'s receipts, not voided', link: '/fee-dashboard', tone: 'info' }, down(d, 'lateFee') || s.totalReceivedToday == null),
+    statCard({ id: 'received-month', label: 'Total received this month', value: formatInr(s.totalReceivedThisMonth ?? 0), note: `Fee + late fee + tax on the receipts of ${monthName(d.today)}, not voided`, link: '/fee-dashboard', tone: 'info' }, down(d, 'lateFee') || s.totalReceivedThisMonth == null),
     ...(dues ? [noFees('outstanding', 'Outstanding', 'warning'), noFees('overdue', 'Overdue', 'danger'), noFees('upcoming', `Due in the next ${s.upcomingDays} days`, 'info')] : [
     statCard({ id: 'outstanding', label: 'Outstanding', value: formatInr(s.outstanding ?? 0), note: d.academicYearName ? `Still to collect for ${d.academicYearName}` : 'Still to collect', link: '/fee-reports/class', tone: 'warning' }, down(d, 'fees') || s.outstanding == null),
     statCard(

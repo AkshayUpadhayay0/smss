@@ -151,6 +151,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-status': [ROLES.TEACHER],
   '/fee-reports/class': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
   '/fee-reports/concessions-given': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
+  // The Late fee report: School Admin, Accountant and Principal (read-only; the API re-checks).
+  '/fee-reports/late-fee': [ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PRINCIPAL],
 
   // Inventory & Stock (Stage 1). The Store Keeper and School Admin work it; the Principal only READS the Dashboard and Items (no write screen at all, and the API sends canManage = false).
   '/inventory': [ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER, ROLES.PRINCIPAL],

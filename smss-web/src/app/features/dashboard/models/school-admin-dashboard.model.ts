@@ -40,6 +40,8 @@ export interface SchoolAdminDashboard {
   studentsPaidThisMonth: number;
   studentsNotPaidThisMonth: number;
   feeCollectedThisMonth: number;
+  /** Late fee collected this month on the viewed year's installments (not voided, without its tax); null = could not be read (the tile says Unavailable). */
+  lateFeeCollectedThisMonth: number | null;
   feeOutstandingThisMonth: number;
 
   incomeThisMonth: number;

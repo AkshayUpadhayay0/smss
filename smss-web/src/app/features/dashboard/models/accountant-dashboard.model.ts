@@ -2,7 +2,7 @@ import { FeeCollectionMonth } from './dashboard-shared.model';
 
 /** GET /api/AccountantDashboard/summary (Accountant only). Mirrors AccountantDashboardDtos.cs. */
 
-export type AccountantDashboardPart = 'fees' | 'collectedToday' | 'payments';
+export type AccountantDashboardPart = 'fees' | 'collectedToday' | 'payments' | 'lateFee';
 
 /** Every number is null when its part is in partsUnavailable. */
 export interface AccountantDashboardStats {
@@ -10,6 +10,12 @@ export interface AccountantDashboardStats {
   collectedToday: number | null;
   /** CASH received this month, summed over every year's installments (the last bar of the chart). */
   collectedThisMonth: number | null;
+  /** LATE FEE collected today / this month (all years, not voided), without its tax. Separate from the cash figures above, which are fee only. */
+  lateFeeToday: number | null;
+  lateFeeThisMonth: number | null;
+  /** TOTAL RECEIVED today / this month = what the non-voided receipts add up to (fee + late fee + tax): the figure the cash drawer reconciles against. */
+  totalReceivedToday: number | null;
+  totalReceivedThisMonth: number | null;
   outstanding: number | null;
   overdueCount: number | null;
   overdueAmount: number | null;

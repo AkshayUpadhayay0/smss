@@ -7,7 +7,7 @@ import { Section } from '../../school-setup/models/section.model';
 import { AcademicYearService } from '../../school-setup/services/academic-year.service';
 import { ClassService } from '../../school-setup/services/class.service';
 import { SectionService } from '../../school-setup/services/section.service';
-import { ClassFeeReport, ConcessionsGiven, FeeDashboard } from '../models/fee-report.model';
+import { ClassFeeReport, ConcessionsGiven, FeeDashboard, LateFeeReport } from '../models/fee-report.model';
 import { SectionFeeGrid, SectionFeeStatus } from '../models/section-fee-status.model';
 
 /** Always the caller's own school: the server takes it from the token. */
@@ -48,6 +48,15 @@ export class FeeReportService {
     if (from) params['from'] = from;
     if (to) params['to'] = to;
     return this.api.get<ConcessionsGiven>('/api/FeeReports/concessions-given', params);
+  }
+
+  /** The Late fee report: charged late fees per payment and due, or (view = waived) the waived ones. India calendar days; either date may be left out (then this month). */
+  lateFeeReport(from: string | null, to: string | null, classId: number | null, view: 'charged' | 'waived', page: number, pageSize: number): Observable<LateFeeReport> {
+    const params: Record<string, string | number> = { view, page, pageSize };
+    if (from) params['from'] = from;
+    if (to) params['to'] = to;
+    if (classId) params['classId'] = classId;
+    return this.api.get<LateFeeReport>('/api/LateFee/report', params);
   }
 
   /** The year / class / section choices both screens filter by. */

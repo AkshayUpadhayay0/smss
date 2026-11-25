@@ -22,9 +22,9 @@ describe('nav: Fee Setup', () => {
 describe('nav: Fees', () => {
   const fees = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Fees');
 
-  it('lists Fee Dashboard, Class-wise Report, then Concessions given for School Admin, Accountant and Principal', () => {
+  it('lists Fee Dashboard, Class-wise Report, Concessions given, then Late fee report for School Admin, Accountant and Principal', () => {
     for (const role of ['School Admin', 'Accountant', 'Principal']) {
-      expect(fees([role])?.children?.map((c) => c.label)).toEqual(['Fee Dashboard', 'Class-wise Report', 'Concessions given']);
+      expect(fees([role])?.children?.map((c) => c.label)).toEqual(['Fee Dashboard', 'Class-wise Report', 'Concessions given', 'Late fee report']);
       expect(fees([role])?.children?.find((c) => c.label === 'Concessions given')?.route).toBe('/fee-reports/concessions-given');
     }
   });

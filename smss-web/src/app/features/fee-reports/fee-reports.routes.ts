@@ -15,6 +15,10 @@ export const FEE_REPORTS_ROUTES: Routes = [
     loadComponent: () => import('./pages/concessions-given/concessions-given.component').then((m) => m.ConcessionsGivenComponent),
   },
   {
+    path: 'fee-reports/late-fee',
+    loadComponent: () => import('./pages/late-fee-report/late-fee-report.component').then((m) => m.LateFeeReportComponent),
+  },
+  {
     path: 'fee-reports/class',
     loadComponent: () => import('./pages/class-fee-report/class-fee-report.component').then((m) => m.ClassFeeReportComponent),
   },

@@ -4,7 +4,12 @@ export interface FeeCollectionMonth {
   /** First day of the month, e.g. 2026-10-01. */
   month: string;
   label: string;
+  /** Fee collected (fee only: never includes a late fee or tax). */
   amount: number;
+  /** Late fee collected in the month on installments of the year, without its tax. Null where it could not be read. */
+  lateFee?: number | null;
+  /** Total received in the month = fee + late fee + tax (voided payments excluded). */
+  totalReceived?: number | null;
 }
 
 export interface FeeTaxBreakdown {
@@ -135,3 +140,52 @@ export interface ConcessionsGiven {
   /** Sum of the Active payments' concession over the whole date range (not only this page). */
   totalAmount: number;
 }
+
+/** One late fee charged by one payment on one due (GET /api/LateFee/report, view = charged). */
+export interface LateFeeChargedItem {
+  paymentId: number;
+  receiptNumber: string;
+  paymentDate: string;
+  studentId: string;
+  studentName: string;
+  className: string | null;
+  feeType: string;
+  dueDate: string;
+  daysLate: number;
+  /** The days beyond the grace days: the ones that were charged. */
+  daysCharged: number;
+  baseAmount: number;
+  amount: number;
+}
+
+/** A late fee a payment would have charged and the cashier waived (view = waived). */
+export interface LateFeeWaivedItem {
+  paymentId: number;
+  receiptNumber: string;
+  paymentDate: string;
+  studentId: string;
+  studentName: string;
+  className: string | null;
+  wouldHaveBeen: number;
+  waivedBy: string | null;
+  note: string | null;
+}
+
+export interface LateFeeReport {
+  from: string;
+  to: string;
+  classId: number | null;
+  view: 'charged' | 'waived';
+  page: number;
+  pageSize: number;
+  /** Rows of the viewed list over the whole range. */
+  totalItems: number;
+  /** Always both, whichever list is viewed. Voided payments are in neither; the charged amount has no tax. */
+  chargedCount: number;
+  chargedAmount: number;
+  waivedCount: number;
+  waivedAmount: number;
+  charged: LateFeeChargedItem[];
+  waived: LateFeeWaivedItem[];
+}
+
