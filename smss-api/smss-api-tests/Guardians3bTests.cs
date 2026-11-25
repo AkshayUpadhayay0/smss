@@ -216,9 +216,10 @@ namespace smss_api_tests
             var partly = (await Svc(db).ListIncompleteAsync(A, null, null, "", 1, 100, default)).Data!.Items.First(i => i.GuardianId == first.Items[1].GuardianId);
             Assert.Equal(new[] { "WhatsApp" }, partly.Missing);   // only what is missing is flagged
 
-            // an INACTIVE student's guardian and a guardian who is not primary are not in it
+            // a guardian whose student is NOT ENROLLED in the current-flagged year (passed out, left) and a guardian who is not primary are not in it
+            // (Stage 4b-4, previous decision: "active student"; new decision: enrolled in the current-flagged year, so a student who passed out stays on no list)
             var inactive = first.Items[2];
-            db.Exec($"update tb_students set status_id=(select sid from lut_status where sname='Inactive' and stype='general status') where student_id='{inactive.Students[0].StudentId}'");
+            db.Exec($"delete from tb_student_enrollments where student_id in (select student_id from tb_student_guardians where guardian_id={inactive.GuardianId} and is_primary) and academic_year_id=(select academic_year_id from tb_academic_years where school_id='{A}' and is_current)");
             var nonPrimary = first.Items[3].GuardianId;
             db.Exec($"update tb_student_guardians set is_primary=false where guardian_id={nonPrimary}");
             var ids = (await Svc(db).ListIncompleteAsync(A, null, null, null, 1, 100, default)).Data!.Items.Select(i => i.GuardianId).ToList();
@@ -244,12 +245,11 @@ namespace smss_api_tests
             var byClass = (await Svc(db).ListIncompleteAsync(A, student.ClassId, null, null, 1, 100, default)).Data!;
             Assert.All(byClass.Items, i => Assert.Contains(i.Students, s => s.ClassId == student.ClassId));
 
-            // the student has no enrolment in the current year: still listed (the guardian still needs completing), with no class, and no class filter finds them
+            // the student has no enrolment in the current year (Stage 4b-4: passed out or left, or not yet promoted): the student is no longer on the list, and no class filter finds them
             db.Exec($"delete from tb_student_enrollments where student_id='{student.StudentId}' and academic_year_id={current}");
             var afterAll = (await Svc(db).ListIncompleteAsync(A, null, null, null, 1, 100, default)).Data!;
-            var row = afterAll.Items.First(i => i.GuardianId == withClass.GuardianId);
-            Assert.Null(row.Students[0].ClassName); Assert.Null(row.Students[0].SectionId);
-            Assert.DoesNotContain(withClass.GuardianId, (await Svc(db).ListIncompleteAsync(A, student.ClassId, null, null, 1, 100, default)).Data!.Items.Select(i => i.GuardianId));
+            Assert.DoesNotContain(afterAll.Items.SelectMany(i => i.Students), s => s.StudentId == student.StudentId);
+            Assert.DoesNotContain(withClass.GuardianId, (await Svc(db).ListIncompleteAsync(A, student.ClassId, null, null, 1, 100, default)).Data!.Items.Where(i => i.Students.Any(s => s.StudentId == student.StudentId)).Select(i => i.GuardianId));
         }
 
         [DbFact]

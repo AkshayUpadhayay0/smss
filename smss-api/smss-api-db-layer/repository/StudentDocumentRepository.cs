@@ -86,12 +86,16 @@ namespace smss_api_db_layer.repository
         private async Task<Dictionary<string, List<string>>> MissingByStudentAsync(string schoolId, int activeStudentStatusId, int activeTypeStatusId, CancellationToken ct)
         {
             var missing = new Dictionary<string, List<string>>();
+            // who is on the list: students ENROLLED in the school's current-flagged year (not "every active student": a student who passed out or left stays on no list)
+            var currentYearId = await _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.IsCurrent).Select(y => (long?)y.AcademicYearId).FirstOrDefaultAsync(ct);
+            if (currentYearId == null) return missing;
             foreach (var t in await GetRequiredTypesAsync(schoolId, activeTypeStatusId, ct))
             {
                 var typeId = t.TypeId;
                 var from = t.RequiredFrom;
                 var ids = await _db.Students.AsNoTracking()
-                    .Where(s => s.SchoolId == schoolId && s.StatusId == activeStudentStatusId && s.AdmissionDate >= from)
+                    .Where(s => s.SchoolId == schoolId && s.AdmissionDate >= from
+                                && _db.StudentEnrollments.Any(e => e.SchoolId == schoolId && e.StudentId == s.StudentId && e.AcademicYearId == currentYearId && e.StatusId == activeStudentStatusId))
                     .Where(s => !_db.StudentDocuments.Any(d => d.SchoolId == schoolId && d.StudentId == s.StudentId && d.DocumentTypeId == typeId && d.VoidedAt == null))
                     .Select(s => s.StudentId).ToListAsync(ct);
                 foreach (var id in ids)

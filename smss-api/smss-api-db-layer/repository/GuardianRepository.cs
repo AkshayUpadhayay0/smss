@@ -48,29 +48,39 @@ namespace smss_api_db_layer.repository
                 .OrderByDescending(x => x.StartDate).Select(x => (long?)x.AcademicYearId).FirstOrDefaultAsync(ct);
         }
 
-        /// <summary>Active guardians who are the primary guardian of at least one active student and lack a WhatsApp number or an email.</summary>
-        private IQueryable<long> IncompleteIds(string schoolId, int activeStatusId) =>
+        /// <summary>The school's current-flagged academic year, or null: "who is on a list" means enrolled in THIS year.</summary>
+        private Task<long?> CurrentYearIdAsync(string schoolId, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.IsCurrent).Select(y => (long?)y.AcademicYearId).FirstOrDefaultAsync(ct);
+
+        /// <summary>Active guardians who are the primary guardian of at least one student ENROLLED in the current-flagged year and lack a WhatsApp number or an email.</summary>
+        private IQueryable<long> IncompleteIds(string schoolId, int activeStatusId, long currentYearId) =>
             (from l in _db.StudentGuardians.AsNoTracking()
              where l.IsPrimary
              join g in _db.Guardians.AsNoTracking() on l.GuardianId equals g.GuardianId
              where g.SchoolId == schoolId && g.StatusId == activeStatusId && (g.WhatsAppNumber == null || g.Email == null || g.Email.Trim() == "")
              join s in _db.Students.AsNoTracking() on l.StudentId equals s.StudentId
-             where s.SchoolId == schoolId && s.StatusId == activeStatusId
+             where s.SchoolId == schoolId && _db.StudentEnrollments.Any(e => e.SchoolId == schoolId && e.StudentId == s.StudentId && e.AcademicYearId == currentYearId && e.StatusId == activeStatusId)
              select g.GuardianId).Distinct();
 
-        public Task<int> CountIncompletePrimaryAsync(string schoolId, int activeStatusId, CancellationToken ct) => IncompleteIds(schoolId, activeStatusId).CountAsync(ct);
+        public async Task<int> CountIncompletePrimaryAsync(string schoolId, int activeStatusId, CancellationToken ct)
+        {
+            var year = await CurrentYearIdAsync(schoolId, ct);
+            return year == null ? 0 : await IncompleteIds(schoolId, activeStatusId, year.Value).CountAsync(ct);
+        }
 
         public async Task<List<IncompleteGuardianRow>> ListIncompletePrimaryAsync(string schoolId, int activeStatusId, long? viewedYearId, CancellationToken ct)
         {
-            var ids = await IncompleteIds(schoolId, activeStatusId).ToListAsync(ct);
+            var currentYear = await CurrentYearIdAsync(schoolId, ct);
+            if (currentYear == null) return new List<IncompleteGuardianRow>();
+            var ids = await IncompleteIds(schoolId, activeStatusId, currentYear.Value).ToListAsync(ct);
             if (ids.Count == 0) return new List<IncompleteGuardianRow>();
             var guardians = await _db.Guardians.AsNoTracking().Where(g => g.SchoolId == schoolId && ids.Contains(g.GuardianId))
                 .Select(g => new { g.GuardianId, g.FirstName, g.LastName, g.Relationship, g.MobileNumber, g.WhatsAppNumber, g.Email }).ToListAsync(ct);
-            // the students the guardian is PRIMARY for, active only
+            // the students the guardian is PRIMARY for who are enrolled in the current-flagged year
             var links = await (from l in _db.StudentGuardians.AsNoTracking()
                                where l.IsPrimary && ids.Contains(l.GuardianId)
                                join s in _db.Students.AsNoTracking() on l.StudentId equals s.StudentId
-                               where s.SchoolId == schoolId && s.StatusId == activeStatusId
+                               where s.SchoolId == schoolId && _db.StudentEnrollments.Any(e => e.SchoolId == schoolId && e.StudentId == s.StudentId && e.AcademicYearId == currentYear.Value && e.StatusId == activeStatusId)
                                select new { l.GuardianId, s.StudentId, s.FirstName, s.MiddleName, s.LastName }).ToListAsync(ct);
             var studentIds = links.Select(l => l.StudentId).Distinct().ToList();
             var classes = new Dictionary<string, (long ClassId, string ClassName, long SectionId, string SectionName)>();
