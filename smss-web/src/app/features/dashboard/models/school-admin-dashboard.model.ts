@@ -53,6 +53,8 @@ export interface SchoolAdminDashboard {
   attendanceMarkedToday: number;
   attendancePresentToday: number;
   newAdmissionsThisSession: number | null;
+  /** Students missing at least one required document; null = it could not be worked out (the tile says Unavailable, never 0). */
+  studentsWithPendingDocuments: number | null;
   employees: DashboardEmployees;
   /** 0 = no transport data: the vehicles card is hidden. */
   activeVehicles: number;

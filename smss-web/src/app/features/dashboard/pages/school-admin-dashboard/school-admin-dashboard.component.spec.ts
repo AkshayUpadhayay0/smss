@@ -188,6 +188,18 @@ describe('SchoolAdminDashboardComponent', () => {
     expect(el().querySelector('[data-note="month"]')!.textContent).toContain('Showing March 2027');
   });
 
+  it('the Pending documents tile counts the students missing a required document and links to the list', () => {
+    open(withData(dashboard({ studentsWithPendingDocuments: 4 })));
+    expect(card('pending-documents')!.textContent).toContain('4');
+    expect(card('pending-documents')!.getAttribute('href')).toBe('/student-documents');
+  });
+
+  it('the Pending documents tile says Unavailable, never 0, when the count could not be worked out', () => {
+    open(withData(dashboard({ studentsWithPendingDocuments: null })));
+    expect(card('pending-documents')!.textContent).toContain('Unavailable');
+    expect(card('pending-documents')!.textContent).not.toMatch(/0/);
+  });
+
   it('asks for the school WhatsApp number with a banner when it is missing, and shows nothing when it is set', () => {
     open(withData(dashboard({ whatsAppMissing: true })));
     expect(el().querySelector('[data-banner="whatsapp-missing"]')!.textContent).toContain('no WhatsApp number');

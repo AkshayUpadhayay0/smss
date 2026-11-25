@@ -31,6 +31,8 @@ namespace smss_api_service_layer.dto
         public string DocumentCode { get; set; } = null!;
         public string AppliesTo { get; set; } = null!;
         public bool IsRequired { get; set; }
+        /// <summary>The day the type became required; the requirement applies to students admitted on or after it. Null while not required.</summary>
+        public DateTime? RequiredFrom { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

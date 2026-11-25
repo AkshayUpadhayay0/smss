@@ -23,7 +23,7 @@ namespace smss_api_tests
 
         private static PrincipalDashboardService Service(Dictionary<string, object?>? employees = null, Dictionary<string, object?>? fees = null,
             Dictionary<string, object?>? leave = null, Dictionary<string, object?>? admissions = null, Dictionary<string, object?>? results = null, Dictionary<string, object?>? events = null,
-            Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null)
+            Dictionary<string, object?>? notices = null, Dictionary<string, object?>? repo = null, Dictionary<string, object?>? documents = null)
         {
             var today = smss_api_service_layer.helper.SchoolClock.Today();
             return new PrincipalDashboardService(
@@ -51,7 +51,19 @@ namespace smss_api_tests
                     ["GetAttendanceByDayAsync"] = new List<SchoolAttendanceDayRow> { new(today, 50, 45), new(today.AddDays(-1), 40, 30) },
                     ["CurrentYearAsync"] = Year1, ["EnrolledStudentsAsync"] = 55, ["HasFeeItemsAsync"] = true,
                 }, repo)),
-                NullLogger<PrincipalDashboardService>.Instance);
+                NullLogger<PrincipalDashboardService>.Instance, documents == null ? null : Fake.Of<IStudentDocumentService>(documents));
+        }
+
+        [Fact]
+        public async Task Students_with_pending_documents_are_counted_and_a_failure_says_unavailable_never_zero()
+        {
+            var ok = (await Service(documents: new() { ["CountPendingAsync"] = Fake.Ok(7) }).GetSummaryAsync(School, 5, null, default)).Data!;
+            Assert.Equal(7, ok.Alerts.StudentsWithPendingDocuments);
+            Assert.DoesNotContain("documents", ok.PartsUnavailable);
+            var down = (await Service(documents: new()).GetSummaryAsync(School, 5, null, default)).Data!;   // the stand-in answers 500
+            Assert.Null(down.Alerts.StudentsWithPendingDocuments);
+            Assert.Contains("documents", down.PartsUnavailable);
+            Assert.Equal(1, down.Alerts.ApplicationsWaitingToBeConfirmed);   // the other tiles are unaffected
         }
 
         [Fact]

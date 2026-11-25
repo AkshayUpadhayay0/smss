@@ -74,7 +74,7 @@ namespace smss_api_tests
             Clean(list.Single(a => a.ApplicationNumber == "ZZ2A-SWEEP").ApplicantFullName, "Dev Raj");
 
             // the dashboard's "missing a required document" list builds the applicant's name in SQL-side code of its own
-            db.Exec($"insert into tb_document_types (school_id, document_name, document_code, applies_to, is_required, status_id) values ('{A}', 'Sweep doc', 'ZZ2A', 'STUDENT', true, 1)");
+            db.Exec($"insert into tb_document_types (school_id, document_name, document_code, applies_to, is_required, required_from, status_id) values ('{A}', 'Sweep doc', 'ZZ2A', 'STUDENT', true, current_date, 1)");
             var missing = await new AdmissionDashboardRepository(db.Ctx()).GetMissingDocumentsAsync(A, new[] { "APPLICATION_SUBMITTED" }, default);
             Clean(missing.Single(m => m.ApplicationNumber == "ZZ2A-SWEEP").ApplicantName, "Dev Raj");
         }

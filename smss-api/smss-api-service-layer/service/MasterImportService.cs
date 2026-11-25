@@ -108,7 +108,7 @@ namespace smss_api_service_layer.service
                 }).ToList();
                 var newDocs = docPick.Where(d => !docs.Contains(d.Code)).Select(d => new TbDocumentType
                 {
-                    SchoolId = schoolId, DocumentCode = d.Code, DocumentName = d.Name, AppliesTo = d.AppliesTo, IsRequired = d.IsRequired,
+                    SchoolId = schoolId, DocumentCode = d.Code, DocumentName = d.Name, AppliesTo = d.AppliesTo, IsRequired = d.IsRequired, RequiredFrom = RequiredFromRules.Resolve(d.IsRequired, null, SchoolClock.Today()),
                     StatusId = activeId.Value, CreatedAt = now, UpdatedAt = now
                 }).ToList();
 

@@ -136,6 +136,8 @@ builder.Services.AddScoped<ISchoolEventRepository, SchoolEventRepository>();
 builder.Services.AddScoped<ISchoolEventService, SchoolEventService>();
 builder.Services.AddScoped<IAdmissionDocumentRepository, AdmissionDocumentRepository>();
 builder.Services.AddScoped<IAdmissionDocumentService, AdmissionDocumentService>();
+builder.Services.AddScoped<IStudentDocumentRepository, StudentDocumentRepository>();
+builder.Services.AddScoped<IStudentDocumentService, StudentDocumentService>();
 builder.Services.AddScoped<INoticeRepository, NoticeRepository>();
 builder.Services.AddScoped<INoticeService, NoticeService>();
 builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();

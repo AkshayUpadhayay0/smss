@@ -17,10 +17,11 @@ namespace smss_api_service_layer.service
         private readonly ISchoolAdminDashboardRepository _repo;
         private readonly ISchoolDashboardRepository _attendance;
         private readonly ILogger<SchoolAdminDashboardService> _logger;
+        private readonly IStudentDocumentService? _documents;
 
-        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger)
+        public SchoolAdminDashboardService(ISchoolAdminDashboardRepository repo, ISchoolDashboardRepository attendance, ILogger<SchoolAdminDashboardService> logger, IStudentDocumentService? documents = null)
         {
-            _repo = repo; _attendance = attendance; _logger = logger;
+            _repo = repo; _attendance = attendance; _logger = logger; _documents = documents;
         }
 
         public async Task<ApiResponse<SchoolAdminDashboardDto>> GetAsync(string? schoolId, CancellationToken ct, DateOnly? todayOverride = null, long? academicYearId = null)
@@ -75,6 +76,17 @@ namespace smss_api_service_layer.service
                 var att = (await _attendance.GetAttendanceByDayAsync(schoolId, today, today, PresentCode, ct)).FirstOrDefault();
                 dto.AttendanceMarkedToday = att?.Marked ?? 0;
                 dto.AttendancePresentToday = att?.Present ?? 0;
+
+                if (_documents != null)
+                {
+                    try
+                    {
+                        var pending = await _documents.CountPendingAsync(schoolId, ct);
+                        if (pending.Status) dto.StudentsWithPendingDocuments = pending.Data;
+                        else _logger.LogWarning("School admin dashboard: could not count pending documents ({StatusCode}: {Message})", pending.StatusCode, pending.Message);
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "School admin dashboard: could not count pending documents"); }   // the tile says Unavailable; the rest of the dashboard is unaffected
+                }
 
                 if (year != null) dto.NewAdmissionsThisSession = await _repo.NewAdmissionsAsync(schoolId, active, year.StartDate, year.EndDate, ct);
 

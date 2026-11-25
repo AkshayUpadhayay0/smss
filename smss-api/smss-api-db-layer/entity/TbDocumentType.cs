@@ -26,6 +26,10 @@ namespace smss_api_db_layer.entity
         [Column("is_required")]
         public bool IsRequired { get; set; }
 
+        /// <summary>The day the type became required (filled exactly when IsRequired): the requirement applies to students admitted on or after it.</summary>
+        [Column("required_from", TypeName = "date")]
+        public DateTime? RequiredFrom { get; set; }
+
         [Column("status_id")]
         public int StatusId { get; set; }
 

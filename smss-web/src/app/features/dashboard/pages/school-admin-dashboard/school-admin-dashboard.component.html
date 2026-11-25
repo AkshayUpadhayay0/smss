@@ -116,6 +116,18 @@
         </span>
       </div>
 
+      <a class="card warning" routerLink="/student-documents" title="Active students who have not submitted a required document. Documents never block anything." data-card="pending-documents">
+        <span class="ico"><app-icon name="file-text" [size]="26" /></span>
+        <span class="txt">
+          <span class="label">Pending documents</span>
+          @if (d.studentsWithPendingDocuments !== null) {
+            <strong>{{ d.studentsWithPendingDocuments }}</strong><small>{{ d.studentsWithPendingDocuments === 1 ? 'student' : 'students' }} missing a document</small>
+          } @else {
+            <strong class="small">Unavailable</strong><small>Could not be loaded</small>
+          }
+        </span>
+      </a>
+
       <div class="card info employees" title="Active employees. Teaching staff are teachers; the rest are grouped by designation (accountant, admission, driver); any other designation is other staff." data-card="employees">
         <span class="ico"><app-icon name="users" [size]="26" /></span>
         <span class="txt">

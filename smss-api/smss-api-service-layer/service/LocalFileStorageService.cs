@@ -135,6 +135,20 @@ namespace smss_api_service_layer.service
             return $"{schoolCode}/admissions/{admissionId}/documents/{fileName}";
         }
 
+        public async Task<string> SaveStudentDocumentAsync(string schoolCode, string studentId, Stream content, string extension, CancellationToken ct)
+        {
+            EnsureSafeIds(schoolCode, studentId);   // the student id becomes a folder name
+            var folder = Path.Combine(_privateRootPath, schoolCode, "students", studentId, "documents");
+            Directory.CreateDirectory(folder);
+
+            // random name: nothing about the file can be guessed, and the client file name is never used on disk
+            var fileName = $"doc_{Guid.NewGuid():N}{extension}";
+            await using var fs = new FileStream(Path.Combine(folder, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fs, ct);
+
+            return $"{schoolCode}/students/{studentId}/documents/{fileName}";
+        }
+
         public async Task<string> SavePrincipalSignatureAsync(string schoolCode, Stream content, string extension, CancellationToken ct)
         {
             if (!SchoolCodeRules.IsFolderSafe(schoolCode)) throw new InvalidOperationException("School code is not a valid folder name.");

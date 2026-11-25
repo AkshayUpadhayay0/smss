@@ -204,6 +204,10 @@ export class AdmissionListComponent implements OnInit {
     this.page.set(1);
   }
 
+  protected pendingDocuments(): void {
+    void this.router.navigate(['/student-documents']);
+  }
+
   protected newApplication(): void {
     void this.router.navigate(['/admissions/new']);
   }

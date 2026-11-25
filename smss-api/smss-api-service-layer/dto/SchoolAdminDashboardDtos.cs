@@ -66,6 +66,8 @@ namespace smss_api_service_layer.dto
         public int AttendancePresentToday { get; set; }
         /// <summary>Active students admitted as NEW_ADMISSION with an admission date inside the current academic year; null with no current year.</summary>
         public int? NewAdmissionsThisSession { get; set; }
+        /// <summary>Students missing at least one required document (admitted on or after the type's required-from date); null when it could not be worked out (the tile says Unavailable, never 0). Documents never block anything.</summary>
+        public int? StudentsWithPendingDocuments { get; set; }
         public DashboardEmployeesDto Employees { get; set; } = new();
         /// <summary>Active vehicles. 0 = the school has no transport data: the client hides the card.</summary>
         public int ActiveVehicles { get; set; }

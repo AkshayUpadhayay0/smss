@@ -27,10 +27,12 @@ namespace smss_api_service_layer.service
         private readonly INoticeService _notices;
         private readonly ISchoolDashboardRepository _repo;
         private readonly ILogger<PrincipalDashboardService> _logger;
+        private readonly IStudentDocumentService? _documents;
 
         public PrincipalDashboardService(IFeeReportService fees, IEmployeeService employees, IEmployeeLeaveService employeeLeave, IAdmissionService admissions,
-            IReportResultService results, ISchoolEventService events, INoticeService notices, ISchoolDashboardRepository repo, ILogger<PrincipalDashboardService> logger)
+            IReportResultService results, ISchoolEventService events, INoticeService notices, ISchoolDashboardRepository repo, ILogger<PrincipalDashboardService> logger, IStudentDocumentService? documents = null)
         {
+            _documents = documents;
             _fees = fees; _employees = employees; _employeeLeave = employeeLeave; _admissions = admissions;
             _results = results; _events = events; _notices = notices; _repo = repo; _logger = logger;
         }
@@ -83,6 +85,17 @@ namespace smss_api_service_layer.service
                 if (admissions != null)
                 {
                     dto.Alerts.ApplicationsWaitingToBeConfirmed = admissions.Count(a => a.StatusName == AdmissionSubmitted);
+                }
+
+                if (_documents != null)
+                {
+                    try
+                    {
+                        var pending = await _documents.CountPendingAsync(schoolId, ct);
+                        if (pending.Status) dto.Alerts.StudentsWithPendingDocuments = pending.Data;
+                        else { _logger.LogWarning("Principal dashboard: could not count pending documents ({StatusCode}: {Message})", pending.StatusCode, pending.Message); dto.PartsUnavailable.Add(PrincipalDashboardParts.Documents); }
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Principal dashboard: could not count pending documents"); dto.PartsUnavailable.Add(PrincipalDashboardParts.Documents); }
                 }
 
                 var published = await Part(() => _results.ListAsync(schoolId, new ReportCaller(callerUserId, false, true, false), null, null, ct), PrincipalDashboardParts.Results, dto);

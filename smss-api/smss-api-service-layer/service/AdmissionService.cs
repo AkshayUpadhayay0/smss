@@ -23,9 +23,11 @@ namespace smss_api_service_layer.service
         private readonly INotificationService _notify;
         private readonly IStudentFeeBillingService _billing;
         private readonly ILogger<AdmissionService> _logger;
+        private readonly IStudentDocumentService? _studentDocuments;
 
-        public AdmissionService(IAdmissionRepository repo, INotificationService notify, IStudentFeeBillingService billing, ILogger<AdmissionService> logger)
+        public AdmissionService(IAdmissionRepository repo, INotificationService notify, IStudentFeeBillingService billing, ILogger<AdmissionService> logger, IStudentDocumentService? studentDocuments = null)
         {
+            _studentDocuments = studentDocuments;
             _repo = repo;
             _notify = notify;
             _billing = billing;
@@ -415,6 +417,13 @@ namespace smss_api_service_layer.service
                         await NotifyAsync(schoolId, student.Email, admission.GuardianEmail,
                             name => EmailTemplates.StudentIdAssigned(FullName(student), studentId, name),
                             $"student id assigned {studentId}", ct);
+
+                        // The application's documents go to the student. This runs only now that the admission is committed; a failure (or a missing file) is logged and never undoes or fails it.
+                        if (_studentDocuments != null)
+                        {
+                            try { await _studentDocuments.CarryOverFromApplicationAsync(schoolId, admission.AdmissionId, studentId, confirmedByUserId, ct); }
+                            catch (Exception ex) { _logger.LogWarning(ex, "Could not carry the application documents over for {StudentId}", studentId); }
+                        }
 
                         var detail = await ToDetailAsync(admission, ct);
                         detail.FeeStructureName = assignedStructure?.StructureName;

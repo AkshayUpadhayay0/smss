@@ -55,6 +55,7 @@ namespace smss_api_service_layer.service
                     DocumentCode = code,
                     AppliesTo = request.AppliesTo.Trim().ToUpperInvariant(),
                     IsRequired = request.IsRequired,
+                    RequiredFrom = RequiredFromRules.Resolve(request.IsRequired, null, SchoolClock.Today()),
                     StatusId = activeStatusId.Value,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -89,6 +90,7 @@ namespace smss_api_service_layer.service
                 entity.DocumentCode = code;
                 entity.AppliesTo = request.AppliesTo.Trim().ToUpperInvariant();
                 entity.IsRequired = request.IsRequired;
+                entity.RequiredFrom = RequiredFromRules.Resolve(request.IsRequired, entity.RequiredFrom, SchoolClock.Today());   // set when switched on, kept while on, cleared when off
                 entity.UpdatedAt = DateTime.UtcNow;
 
                 await _repository.SaveChangesAsync(ct);
@@ -137,6 +139,7 @@ namespace smss_api_service_layer.service
             DocumentCode = e.DocumentCode,
             AppliesTo = e.AppliesTo,
             IsRequired = e.IsRequired,
+            RequiredFrom = e.RequiredFrom,
             IsActive = statusNames.TryGetValue(e.StatusId, out var name) && name == StatusNames.Active,
             CreatedAt = e.CreatedAt,
             UpdatedAt = e.UpdatedAt

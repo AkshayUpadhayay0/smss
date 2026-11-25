@@ -22,6 +22,8 @@ describe('StudentProfileComponent', () => {
     fixture = TestBed.createComponent(StudentProfileComponent);
   };
   afterEach(() => {
+    // the Documents card asks for the student's documents and the document types: this file is about the profile, so answer those with nothing
+    http.match((r) => r.url.includes('/api/StudentDocuments') || r.url.includes('/api/DocumentType')).forEach((r) => r.flush(env(null)));
     http.verify();
     clearSessions();
   });

@@ -155,6 +155,9 @@
           emptyMessage="No guardians on record."
         />
       </app-card>
+
+      <!-- Required documents: "Document not submitted" chips. The School Admin manages them; a class teacher (restricted view) only sees the statuses, and the card hides itself when the server refuses. -->
+      <app-student-documents [studentId]="s.studentId" />
     </div>
     }
 

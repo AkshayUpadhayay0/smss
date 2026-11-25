@@ -3,7 +3,7 @@ import { AttendanceTrendPoint, DashboardNotice } from './dashboard-shared.model'
 
 /** GET /api/PrincipalDashboard/summary (Principal only). Mirrors PrincipalDashboardDtos.cs. */
 
-export type PrincipalDashboardPart = 'students' | 'staff' | 'attendance' | 'fees' | 'employeeLeave' | 'admissions' | 'results' | 'events' | 'notices';
+export type PrincipalDashboardPart = 'students' | 'staff' | 'attendance' | 'fees' | 'employeeLeave' | 'admissions' | 'results' | 'events' | 'notices' | 'documents';
 
 /** Every number is null when its part is in partsUnavailable. */
 export interface PrincipalDashboardStats {
@@ -22,6 +22,8 @@ export interface PrincipalDashboardAlerts {
   pendingEmployeeLeaves: number | null;
   /** Applications that have been added and are waiting to be confirmed. */
   applicationsWaitingToBeConfirmed: number | null;
+  /** Students missing at least one required document (null with 'documents' in partsUnavailable when it could not be worked out). */
+  studentsWithPendingDocuments: number | null;
 }
 
 export interface DashboardPublication {
