@@ -11,6 +11,10 @@ export const FEE_SETUP_ROUTES: Routes = [
     loadComponent: () => import('./pages/tax-type-list/tax-type-list.component').then((m) => m.TaxTypeListComponent),
   },
   {
+    path: 'fee-setup/late-fee',
+    loadComponent: () => import('./pages/late-fee/late-fee.component').then((m) => m.LateFeeComponent),
+  },
+  {
     path: 'fee-setup/fee-structures',
     loadComponent: () => import('./pages/fee-structure-list/fee-structure-list.component').then((m) => m.FeeStructureListComponent),
   },

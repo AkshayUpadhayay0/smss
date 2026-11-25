@@ -80,6 +80,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-structures': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-concessions': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/tax-types': [ROLES.SCHOOL_ADMIN],
+  // The late fee rule and the fee type flags: School Admin only (the API lets the Principal and Accountant READ the rule; the Principal has no screen for it yet).
+  '/fee-setup/late-fee': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
   // Calendar: every role of a school reads it (the page only shows Add / Edit / Delete to School Admin and Principal; the API re-checks)

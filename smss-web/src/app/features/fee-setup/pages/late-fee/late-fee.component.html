@@ -1,0 +1,47 @@
+<app-page-header title="Late fee" subtitle="Charged at the payment screen when an installment is paid late" icon="indian-rupee" [breadcrumbs]="[{ label: 'Fee Setup' }, { label: 'Late fee' }]" />
+
+@if (loading()) {
+  <app-card><p role="status">Loading…</p></app-card>
+} @else if (loadFailed()) {
+  <app-card><p role="alert" data-failed>The late fee settings could not be loaded. Please try again.</p></app-card>
+} @else {
+  <app-card title="Rule">
+    <form [formGroup]="form" class="form" (ngSubmit)="save()" novalidate>
+      <label class="check"><input type="checkbox" data-enabled formControlName="enabled" /><span><strong>Charge a late fee</strong><small>Off by default. When off, nothing is ever charged, whatever is set below.</small></span></label>
+
+      <label class="field"><span>How it is worked out</span>
+        <select data-type formControlName="ruleType">
+          <option value="">Choose…</option>
+          @for (t of ruleTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+        </select></label>
+      @if (isAmount()) {
+        <label class="field"><span>{{ form.controls.ruleType.value === 'FLAT' ? 'Amount for each late installment (₹)' : 'Amount for each day beyond the grace days (₹)' }}</span>
+          <input type="number" min="0.01" step="0.01" data-amount formControlName="amount" /></label>
+      }
+      @if (isPercent()) {
+        <label class="field"><span>Percentage of the amount paid against the installment (%)</span>
+          <input type="number" min="0.01" max="100" step="0.01" data-percent formControlName="percent" /></label>
+      }
+      <label class="field"><span>Grace days (calendar days after the due date, no late fee)</span>
+        <input type="number" min="0" max="365" step="1" data-grace formControlName="graceDays" /></label>
+      <label class="field"><span>Most one installment can ever be charged (₹, optional)</span>
+        <input type="number" min="0.01" step="0.01" data-cap formControlName="capPerDue" /></label>
+      <label class="check"><input type="checkbox" data-tax formControlName="taxApplies" /><span><strong>The tax chosen at payment also applies to the late fee</strong><small>Off by default. A concession never reduces a late fee.</small></span></label>
+
+      <fieldset class="types" data-types>
+        <legend>Fee types that charge a late fee</legend>
+        @for (f of saved()!.feeTypes; track f.feeTypeId) {
+          <label class="check"><input type="checkbox" [attr.data-type-id]="f.feeTypeId" [checked]="flagged().has(f.feeTypeId)" (change)="toggleType(f.feeTypeId, $any($event.target).checked)" />
+            <span>{{ f.name }}{{ f.isActive ? '' : ' (inactive)' }}</span></label>
+        } @empty { <p class="hint">No fee types yet. Add them under Fee Types first.</p> }
+      </fieldset>
+
+      @if (errors().length > 0) {
+        <ul class="errors" role="alert" data-errors>@for (e of errors(); track e) { <li>{{ e }}</li> }</ul>
+      }
+      <p class="hint" data-note>A new rule applies from the next payment. Receipts already issued keep the rule they were taken under. A late fee is not a due: installments and their statuses are not changed.</p>
+      @if (saved()!.updatedAt) { <p class="hint" data-audit>Last saved {{ saved()!.updatedAt }}{{ saved()!.updatedBy ? ' by ' + saved()!.updatedBy : '' }}.</p> }
+      <div class="footer"><app-button data-save [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</app-button></div>
+    </form>
+  </app-card>
+}

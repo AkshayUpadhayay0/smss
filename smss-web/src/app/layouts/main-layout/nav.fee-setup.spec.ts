@@ -3,8 +3,8 @@ import { visibleNav } from './nav.config';
 describe('nav: Fee Setup', () => {
   const feeSetup = (roles: string[]) => visibleNav(roles).find((i) => i.label === 'Fee Setup');
 
-  it('lists Fee Types, Fee Structures, Fee Concessions, then Tax Types for a School Admin', () => {
-    expect(feeSetup(['School Admin'])?.children?.map((c) => c.label)).toEqual(['Fee Types', 'Fee Structures', 'Fee Concessions', 'Tax Types']);
+  it('lists Fee Types, Fee Structures, Fee Concessions, Tax Types, then Late Fee for a School Admin', () => {
+    expect(feeSetup(['School Admin'])?.children?.map((c) => c.label)).toEqual(['Fee Types', 'Fee Structures', 'Fee Concessions', 'Tax Types', 'Late Fee']);
   });
 
   it('Tax Types points at /fee-setup/tax-types', () => {
