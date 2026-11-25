@@ -152,26 +152,36 @@ VALUES (@batch, @school, @student, @src, @tgt, @decision, @fromCls, @fromSec, @t
    AND (e.outcome IS NULL OR e.outcome NOT IN ('PASSED_OUT', 'LEFT', 'TRANSFERRED_OUT'))
    AND NOT EXISTS (SELECT 1 FROM public.tb_student_enrollments n WHERE n.school_id = @school AND n.student_id = e.student_id AND n.academic_year_id = @current)";
 
+        /// <summary>
+        /// The pair pending promotion talks about. A real year-end promotes BEFORE the current flag is switched, so: when an open, Active year starts after the current-flagged one (the nearest such year) the pair is
+        /// current to that next year; otherwise it is the year before the current-flagged one to the current-flagged one. No current-flagged year, or neither year exists: no pair.
+        /// </summary>
         public async Task<PromoPendingYears?> GetPendingYearsAsync(string schoolId, CancellationToken ct) =>
-            (await _db.Database.SqlQueryRaw<PromoPendingYears>(@"
-SELECT cur.academic_year_id AS ""CurrentYearId"", cur.year_name AS ""CurrentYearName"", prev.academic_year_id AS ""EarlierYearId"", prev.year_name AS ""EarlierYearName""
+            (await _db.Database.SqlQueryRaw<PromoPendingYears>($@"
+SELECT CASE WHEN nxt.academic_year_id IS NOT NULL THEN cur.academic_year_id ELSE prv.academic_year_id END AS ""SourceYearId"",
+       CASE WHEN nxt.academic_year_id IS NOT NULL THEN cur.year_name ELSE prv.year_name END AS ""SourceYearName"",
+       CASE WHEN nxt.academic_year_id IS NOT NULL THEN nxt.academic_year_id WHEN prv.academic_year_id IS NOT NULL THEN cur.academic_year_id END AS ""TargetYearId"",
+       CASE WHEN nxt.academic_year_id IS NOT NULL THEN nxt.year_name WHEN prv.academic_year_id IS NOT NULL THEN cur.year_name END AS ""TargetYearName"",
+       (nxt.academic_year_id IS NULL) AS ""TargetIsCurrent""
   FROM public.tb_academic_years cur
-  LEFT JOIN LATERAL (SELECT p.academic_year_id, p.year_name FROM public.tb_academic_years p WHERE p.school_id = cur.school_id AND p.start_date < cur.start_date ORDER BY p.start_date DESC LIMIT 1) prev ON true
+  LEFT JOIN LATERAL (SELECT n.academic_year_id, n.year_name FROM public.tb_academic_years n
+                      WHERE n.school_id = cur.school_id AND n.start_date > cur.start_date AND n.closed_at IS NULL AND n.status_id = {Act} ORDER BY n.start_date LIMIT 1) nxt ON true
+  LEFT JOIN LATERAL (SELECT p.academic_year_id, p.year_name FROM public.tb_academic_years p WHERE p.school_id = cur.school_id AND p.start_date < cur.start_date ORDER BY p.start_date DESC LIMIT 1) prv ON true
  WHERE cur.school_id = @school AND cur.is_current LIMIT 1",
                 P("school", NpgsqlDbType.Varchar, schoolId)).ToListAsync(ct)).FirstOrDefault();
 
         public async Task<int> CountPendingAsync(string schoolId, DateOnly today, CancellationToken ct)
         {
             var y = await GetPendingYearsAsync(schoolId, ct);
-            if (y?.EarlierYearId == null) return 0;
+            if (y?.SourceYearId == null) return 0;
             return (await _db.Database.SqlQueryRaw<int>("SELECT count(*)::int AS \"Value\" " + PendingFrom,
-                P("school", NpgsqlDbType.Varchar, schoolId), P("earlier", NpgsqlDbType.Bigint, y.EarlierYearId), P("current", NpgsqlDbType.Bigint, y.CurrentYearId)).ToListAsync(ct)).Single();
+                P("school", NpgsqlDbType.Varchar, schoolId), P("earlier", NpgsqlDbType.Bigint, y.SourceYearId), P("current", NpgsqlDbType.Bigint, y.TargetYearId)).ToListAsync(ct)).Single();
         }
 
         public async Task<List<PromoPendingRow>> ListPendingAsync(string schoolId, DateOnly today, int limit, CancellationToken ct)
         {
             var y = await GetPendingYearsAsync(schoolId, ct);
-            if (y?.EarlierYearId == null) return new List<PromoPendingRow>();
+            if (y?.SourceYearId == null) return new List<PromoPendingRow>();
             return await _db.Database.SqlQueryRaw<PromoPendingRow>(@"
 SELECT s.student_id AS ""StudentId"", s.admission_number AS ""AdmissionNumber"", btrim(concat_ws(' ', s.first_name, s.middle_name, s.last_name)) AS ""StudentName"",
        c.class_id AS ""ClassId"", c.class_name AS ""ClassName"", sec.section_id AS ""SectionId"", sec.section_name AS ""SectionName"", e.roll_number AS ""RollNumber"",
@@ -181,7 +191,7 @@ SELECT s.student_id AS ""StudentId"", s.admission_number AS ""AdmissionNumber"",
                   WHERE d.school_id = @school AND d.student_id = s.student_id AND d.amount_due > d.amount_paid AND d.due_date <= @today), 0) AS ""Outstanding"""
                 + PendingFrom + @"
  ORDER BY c.sequence_order, sec.section_name, ""StudentName"", s.student_id LIMIT @limit",
-                P("school", NpgsqlDbType.Varchar, schoolId), P("earlier", NpgsqlDbType.Bigint, y.EarlierYearId), P("current", NpgsqlDbType.Bigint, y.CurrentYearId), P("today", NpgsqlDbType.Date, today), P("limit", NpgsqlDbType.Integer, limit)).ToListAsync(ct);
+                P("school", NpgsqlDbType.Varchar, schoolId), P("earlier", NpgsqlDbType.Bigint, y.SourceYearId), P("current", NpgsqlDbType.Bigint, y.TargetYearId), P("today", NpgsqlDbType.Date, today), P("limit", NpgsqlDbType.Integer, limit)).ToListAsync(ct);
         }
 
         // ================================================================== 4b-4: the correction of one promotion

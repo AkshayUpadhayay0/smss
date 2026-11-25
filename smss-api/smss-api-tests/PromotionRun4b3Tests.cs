@@ -351,17 +351,18 @@ namespace smss_api_tests
         }
 
         // ------------------------------------------------------------------------------------------------ pending promotion
+        // The pair: a real year-end promotes into the NEXT year before the current flag is switched. Target = the nearest open Active year after the current-flagged one when there is one (source = the current-flagged
+        // year), otherwise the current-flagged year itself (source = the year before it).
+        private static void Flag(TaxDb db, long year, long other) => db.Exec($"update tb_academic_years set is_current=false where academic_year_id={other}; update tb_academic_years set is_current=true where academic_year_id={year}");
+
         [DbFact]
-        public async Task The_pending_list_holds_students_of_the_year_before_the_current_one_who_have_no_enrolment_in_it_and_has_not_passed_out_or_left()
+        public async Task The_pending_list_holds_students_of_the_source_year_with_no_enrolment_in_the_target_and_has_not_passed_out_or_left()
         {
             using var db = new TaxDb();
             var w = P.Populate(db, "ZQQ");
-            var none = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;       // the current year is the oldest: no earlier year, the tile is hidden
-            Assert.False(none.HasEarlierYear); Assert.Equal(0, none.Total); Assert.Empty(none.Rows);
-            db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.S}");
-            db.Exec($"update tb_academic_years set is_current=true where academic_year_id={w.T}");
-            var p = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;
-            Assert.True(p.HasEarlierYear); Assert.Equal(("2026-27", "2027-28"), (p.EarlierYearName, p.CurrentYearName));
+            var p = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;       // year-end, before the switch: current = 2026-27, the next year 2027-28 is being prepared
+            Assert.True(p.HasPair); Assert.False(p.TargetIsCurrent);
+            Assert.Equal(("2026-27", "2027-28"), (p.SourceYearName, p.TargetYearName));
             Assert.Equal(10, p.Total);                                                          // P1-P6, P10 and Q1-Q3 (P7 is enrolled, P8 passed out, P9 inactive)
             Assert.Equal(10, p.Rows.Count);
             Assert.DoesNotContain(p.Rows, r => r.StudentId is var s && (s == w.School + "P7" || s == w.School + "P8" || s == w.School + "P9"));
@@ -369,14 +370,16 @@ namespace smss_api_tests
             Assert.Equal(("BLOCKED", 500m), (p4.Status, p4.Outstanding));                       // the 2027-02-01 due is not yet due today
             Assert.Equal("NO_DECISION", p.Rows.Single(r => r.StudentId == w.School + "P3").Status);
             Assert.Equal(1, p.Blocked);
-            Assert.Equal(10, (await P.Svc(db).GetPendingAsync(w.School, false, default)).Data!.Total);
-            Assert.Empty((await P.Svc(db).GetPendingAsync(w.School, false, default)).Data!.Rows);
-            // a student who is promoted or who leaves drops off the list
-            db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.T}");
-            db.Exec($"update tb_academic_years set is_current=true where academic_year_id={w.S}");
+            var summary = (await P.Svc(db).GetPendingAsync(w.School, false, default)).Data!;
+            Assert.Equal((10, true, "2026-27", "2027-28"), (summary.Total, summary.HasPair, summary.SourceYearName, summary.TargetYearName)); Assert.Empty(summary.Rows);
+            // the year-end switch changes nothing about the pair (the target is now the current-flagged year, the source the year before it) and nothing about who is waiting
+            Flag(db, w.T, w.S);
+            var switched = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;
+            Assert.True(switched.HasPair); Assert.True(switched.TargetIsCurrent);
+            Assert.Equal(("2026-27", "2027-28", 10), (switched.SourceYearName, switched.TargetYearName, switched.Total));
+            // a student who is promoted or who leaves drops off the list, whichever side of the switch
+            Flag(db, w.S, w.T);
             await Run(db, Exe(w, edits: new[] { D(w, "P3", "LEAVE") }), w.School);
-            db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.S}");
-            db.Exec($"update tb_academic_years set is_current=true where academic_year_id={w.T}");
             var after = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;
             Assert.DoesNotContain(after.Rows, r => r.StudentId == w.School + "P3");             // left
             Assert.DoesNotContain(after.Rows, r => r.StudentId == w.School + "P1");             // promoted
@@ -384,14 +387,47 @@ namespace smss_api_tests
         }
 
         [DbFact]
-        public async Task The_pending_list_is_per_school_and_a_school_with_one_year_has_no_tile()
+        public async Task The_pair_follows_the_nearest_open_active_next_year_else_the_current_year_and_the_one_before_and_the_tile_is_hidden_only_with_no_pair()
         {
             using var db = new TaxDb();
-            var a = P.Populate(db, "ZQR"); var b = P.Build(db, "ZQS");
-            Assert.False((await P.Svc(db).GetPendingAsync(b.School, false, default)).Data!.HasEarlierYear);
+            var w = P.Populate(db, "ZQT");
+            var third = db.Scalar<long>($"insert into tb_academic_years (school_id, year_name, start_date, end_date, is_current, status_id) values ('{w.School}', '2028-29', '2028-04-01', '2029-03-31', false, {Active}) returning academic_year_id");
+            var pair = async () => (await P.Svc(db).GetPendingAsync(w.School, false, default)).Data!;
+            Assert.Equal(("2026-27", "2027-28"), ((await pair()).SourceYearName, (await pair()).TargetYearName));        // current = 2026-27: the NEAREST later year, not 2028-29
+            db.Exec($"update tb_academic_years set status_id=(select sid from lut_status where sname='Inactive' and stype='general status') where academic_year_id={w.T}");
+            Assert.Equal(("2026-27", "2028-29"), ((await pair()).SourceYearName, (await pair()).TargetYearName));        // an Inactive year is skipped
+            db.Exec($"update tb_academic_years set closed_at=now(), closed_by={TaxDb.UserA} where academic_year_id={third}");
+            var none = await pair();                                                                                      // nothing open after the current year and nothing before it: no pair
+            Assert.False(none.HasPair); Assert.Equal(0, none.Total);
+            db.Exec($"update tb_academic_years set status_id={Active} where academic_year_id={w.T}");
+            Flag(db, w.T, w.S);                                                                                           // current = 2027-28, no open later year: the pair is the year before it into it
+            var back = await pair();
+            Assert.True(back.HasPair); Assert.True(back.TargetIsCurrent); Assert.Equal(("2026-27", "2027-28"), (back.SourceYearName, back.TargetYearName));
+            db.Exec($"update tb_academic_years set closed_at=null, closed_by=null where academic_year_id={third}");
+            Flag(db, third, w.T);                                                                                         // current = 2028-29, the last year: the pair is the year before it into it
+            var last = await pair();
+            Assert.True(last.HasPair); Assert.True(last.TargetIsCurrent); Assert.Equal(("2027-28", "2028-29"), (last.SourceYearName, last.TargetYearName));
+        }
+
+        [DbFact]
+        public async Task A_school_with_one_year_has_no_pair_and_a_current_year_with_no_earlier_enrolments_shows_a_real_zero_for_its_pair()
+        {
+            using var db = new TaxDb();
+            var a = P.Populate(db, "ZQR"); var b = P.Build(db, "ZQS"); var c = P.Build(db, "ZQU");
+            db.Exec($"delete from tb_fee_structures where academic_year_id={b.T}; delete from tb_academic_year_sections where academic_year_id={b.T}; delete from tb_academic_year_classes where academic_year_id={b.T}; delete from tb_academic_years where academic_year_id={b.T}");   // ZQS has only its one (current) year
+            var one = (await P.Svc(db).GetPendingAsync(b.School, false, default)).Data!;
+            Assert.False(one.HasPair); Assert.Equal(0, one.Total);
             Assert.Equal(400, (await P.Svc(db).GetPendingAsync(null, false, default)).StatusCode);
-            db.Exec($"update tb_academic_years set is_current=false where academic_year_id={a.S}; update tb_academic_years set is_current=true where academic_year_id={a.T}");
-            Assert.Equal(0, (await P.Svc(db).GetPendingAsync(b.School, true, default)).Data!.Total);
+            // the Little Angels style state: the current flag is on a year, an earlier year exists, but nobody was enrolled before: a pair with 0 waiting (shown as 0, never hidden, never Unavailable)
+            Flag(db, c.T, c.S);
+            var empty = (await P.Svc(db).GetPendingAsync(c.School, true, default)).Data!;
+            Assert.True(empty.HasPair); Assert.Equal(0, empty.Total); Assert.Empty(empty.Rows); Assert.Equal(("2026-27", "2027-28"), (empty.SourceYearName, empty.TargetYearName));
+            // and with the year-end pair the other way round (flag still on the earlier year, nobody enrolled): the same sensible zero
+            Flag(db, c.S, c.T);
+            var before = (await P.Svc(db).GetPendingAsync(c.School, false, default)).Data!;
+            Assert.True(before.HasPair); Assert.False(before.TargetIsCurrent); Assert.Equal(0, before.Total);
+            // another school's students never count
+            Assert.Equal(10, (await P.Svc(db).GetPendingAsync(a.School, false, default)).Data!.Total);
         }
     }
 }

@@ -25,10 +25,18 @@ const PREVIEW = (rows: PromotionRow[], over: Partial<PromotionPreview> = {}): Pr
   targetOptions: [{ classId: 11, className: 'Class 2', hasFeeStructure: true, sections: [{ sectionId: 200, sectionName: 'A', maxStrength: 2, enrolled: 0 }, { sectionId: 201, sectionName: 'B', maxStrength: null, enrolled: 0 }] }], rows, ...over,
 });
 
+const PENDING_PAIR = { hasPair: true, sourceYearId: 2, targetYearId: 3, sourceYearName: '2026-27', targetYearName: '2027-28', targetIsCurrent: false, total: 4, blocked: 1, rows: [] };
+
 describe('defaultYears', () => {
   it('starts from the current year and goes to the first open later one', () => {
     expect(defaultYears(YEARS as never)).toEqual({ source: 2, target: 3 });
     expect(defaultYears([YEARS[0]] as never)).toEqual({ source: 1, target: null });
+    // the year-end switch has happened: no open later year, so the pair is the year before the current one into it
+    const switched = [YEARS[0], { ...YEARS[1], isCurrent: false }, { ...YEARS[2], isCurrent: true }];
+    expect(defaultYears(switched as never)).toEqual({ source: 2, target: 3 });
+    // a closed or Inactive later year is not a target
+    expect(defaultYears([YEARS[0], YEARS[1], { ...YEARS[2], isClosed: true }] as never)).toEqual({ source: 1, target: 2 });
+    expect(defaultYears([YEARS[0], YEARS[1], { ...YEARS[2], statusName: 'Inactive' }] as never)).toEqual({ source: 1, target: 2 });
   });
 });
 
@@ -43,6 +51,7 @@ describe('PromotionComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PromotionComponent);
     fixture.detectChanges();
+    http.expectOne((r) => r.url === `${API}/api/Promotion/pending`).flush(env(PENDING_PAIR));
     http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
@@ -60,6 +69,7 @@ describe('PromotionComponent', () => {
     open();
     expect(cmp()['sourceId']()).toBe(2);
     expect(cmp()['targetId']()).toBe(3);
+    expect(root().querySelector('[data-pending-pair]')?.textContent).toContain('4 students from 2026-27 not yet in 2027-28');   // the page names the pair
     expect(cmp()['canPreview']()).toBe(false);
     cmp()['classId'].set(10);
     cmp()['runPreview']();
@@ -142,6 +152,7 @@ describe('PromotionComponent: the run', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PromotionComponent);
     fixture.detectChanges();
+    http.expectOne((r) => r.url === `${API}/api/Promotion/pending`).flush(env(PENDING_PAIR));
     http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));

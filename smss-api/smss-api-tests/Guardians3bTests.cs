@@ -222,8 +222,11 @@ namespace smss_api_tests
             db.Exec($"delete from tb_student_enrollments where student_id in (select student_id from tb_student_guardians where guardian_id={inactive.GuardianId} and is_primary) and academic_year_id=(select academic_year_id from tb_academic_years where school_id='{A}' and is_current)");
             var nonPrimary = first.Items[3].GuardianId;
             db.Exec($"update tb_student_guardians set is_primary=false where guardian_id={nonPrimary}");
+            // ...and a guardian whose student is still ENROLLED but INACTIVE is out too (both conditions are needed: an Active student AND an Active enrolment in the current-flagged year)
+            var deactivated = first.Items[4];
+            db.Exec($"update tb_students set status_id=(select sid from lut_status where sname='Inactive' and stype='general status') where student_id in (select student_id from tb_student_guardians where guardian_id={deactivated.GuardianId} and is_primary)");
             var ids = (await Svc(db).ListIncompleteAsync(A, null, null, null, 1, 100, default)).Data!.Items.Select(i => i.GuardianId).ToList();
-            Assert.DoesNotContain(inactive.GuardianId, ids); Assert.DoesNotContain(nonPrimary, ids);
+            Assert.DoesNotContain(inactive.GuardianId, ids); Assert.DoesNotContain(nonPrimary, ids); Assert.DoesNotContain(deactivated.GuardianId, ids);
         }
 
         [DbFact]

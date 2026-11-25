@@ -316,7 +316,7 @@ namespace smss_api_tests
         }
 
         [DbFact]
-        public async Task The_pending_documents_and_parent_details_lists_follow_the_current_year_enrolment_not_the_active_flag()
+        public async Task The_pending_documents_list_needs_an_active_student_AND_an_active_enrolment_in_the_current_flagged_year()
         {
             using var db = new TaxDb();
             var w = P.Populate(db, "ZRM");
@@ -327,6 +327,13 @@ namespace smss_api_tests
             Assert.Contains(inCurrent, d => d.StudentId == w.School + "P1");                                      // enrolled in the current-flagged year (2026-27)
             Assert.DoesNotContain(inCurrent, d => d.StudentId == w.School + "X1");                                // X1 is only enrolled in the NEXT year: not on the list yet
             Assert.Equal(inCurrent.Count, await docsRepo().CountPendingStudentsAsync(w.School, active, active, default));
+            // an INACTIVE student who is still enrolled is excluded (and comes back when reactivated)
+            db.Exec($"update tb_students set status_id=(select sid from lut_status where sname='Inactive' and stype='general status') where student_id='{w.School}P1'");
+            Assert.Equal(1, db.Scalar<int>($"select count(*) from tb_student_enrollments where student_id='{w.School}P1' and academic_year_id={w.S} and status_id={active}"));   // still enrolled
+            Assert.DoesNotContain(await docsRepo().ListPendingAsync(w.School, active, active, null, null, null, default), d => d.StudentId == w.School + "P1");
+            Assert.Equal(inCurrent.Count - 1, await docsRepo().CountPendingStudentsAsync(w.School, active, active, default));
+            db.Exec($"update tb_students set status_id={active} where student_id='{w.School}P1'");
+            Assert.Contains(await docsRepo().ListPendingAsync(w.School, active, active, null, null, null, default), d => d.StudentId == w.School + "P1");
             db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.S}; update tb_academic_years set is_current=true where academic_year_id={w.T}");
             var inNext = await docsRepo().ListPendingAsync(w.School, active, active, null, null, null, default);
             Assert.DoesNotContain(inNext, d => d.StudentId == w.School + "P1");                                   // P1 has no enrolment in the new current year: off the list

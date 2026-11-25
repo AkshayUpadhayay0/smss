@@ -181,9 +181,15 @@ export interface PromotionPendingRow {
 }
 
 export interface PromotionPending {
-  hasEarlierYear: boolean;
-  currentYearName: string | null;
-  earlierYearName: string | null;
+  /** False when the school has neither a next year to promote into nor an earlier year to promote from: nothing to show. */
+  hasPair: boolean;
+  /** The pair being shown: the students in the source year waiting to be promoted into the target year. */
+  sourceYearId: number | null;
+  targetYearId: number | null;
+  sourceYearName: string | null;
+  targetYearName: string | null;
+  /** The target is the current-flagged year (the year-end switch already happened) rather than the next year being prepared. */
+  targetIsCurrent: boolean;
   total: number;
   blocked: number;
   rows: PromotionPendingRow[];

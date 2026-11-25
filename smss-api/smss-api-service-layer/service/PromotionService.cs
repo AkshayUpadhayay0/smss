@@ -451,8 +451,8 @@ namespace smss_api_service_layer.service
             try
             {
                 var years = await _repo.GetPendingYearsAsync(schoolId, ct);
-                var dto = new PromotionPendingDto { HasEarlierYear = years?.EarlierYearId != null, CurrentYearId = years?.CurrentYearId, CurrentYearName = years?.CurrentYearName, EarlierYearId = years?.EarlierYearId, EarlierYearName = years?.EarlierYearName };
-                if (!dto.HasEarlierYear) return Result(200, "Successfully fetched", dto);
+                var dto = new PromotionPendingDto { HasPair = years?.SourceYearId != null && years.TargetYearId != null, SourceYearId = years?.SourceYearId, SourceYearName = years?.SourceYearName, TargetYearId = years?.TargetYearId, TargetYearName = years?.TargetYearName, TargetIsCurrent = years?.TargetIsCurrent ?? false };
+                if (!dto.HasPair) return Result(200, "Successfully fetched", dto);
                 var today = SchoolClock.Today();
                 dto.Total = await _repo.CountPendingAsync(schoolId, today, ct);
                 if (includeRows)

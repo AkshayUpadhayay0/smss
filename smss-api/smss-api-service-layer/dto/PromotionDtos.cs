@@ -238,12 +238,15 @@ namespace smss_api_service_layer.dto
     /// <summary>Students enrolled in the year before the current-flagged year with no enrolment in the current one.</summary>
     public class PromotionPendingDto
     {
-        /// <summary>False when the school has no year before the current one (or no current year): the tile is hidden.</summary>
-        public bool HasEarlierYear { get; set; }
-        public string? CurrentYearName { get; set; }
-        public string? EarlierYearName { get; set; }
-        public long? CurrentYearId { get; set; }
-        public long? EarlierYearId { get; set; }
+        /// <summary>False when the school has neither a next year to promote into nor an earlier year to promote from (or no current-flagged year): the tile is hidden.</summary>
+        public bool HasPair { get; set; }
+        /// <summary>The year the waiting students are in now, and the year they wait to be promoted into.</summary>
+        public string? SourceYearName { get; set; }
+        public string? TargetYearName { get; set; }
+        public long? SourceYearId { get; set; }
+        public long? TargetYearId { get; set; }
+        /// <summary>True when the target is the current-flagged year (the year-end switch already happened); false when it is the next year being prepared.</summary>
+        public bool TargetIsCurrent { get; set; }
         public int Total { get; set; }
         public int Blocked { get; set; }
         public List<PromotionPendingRowDto> Rows { get; set; } = new();

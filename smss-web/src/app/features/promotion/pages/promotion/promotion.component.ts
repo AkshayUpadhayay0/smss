@@ -1,6 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -11,16 +12,22 @@ import { AcademicYearService } from '../../../school-setup/services/academic-yea
 import { ClassService } from '../../../school-setup/services/class.service';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
-import { DECISION_LABELS, PromotionDecision, PromotionDecisionInput, PromotionPreview, PromotionResult, PromotionRow, PromotionRowStatus, STATUS_LABELS } from '../../models/promotion.model';
+import { DECISION_LABELS, PromotionDecision, PromotionDecisionInput, PromotionPending, PromotionPreview, PromotionResult, PromotionRow, PromotionRowStatus, STATUS_LABELS } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
 import { PromotionCorrectionComponent } from '../../components/promotion-correction/promotion-correction.component';
 
-/** The year a promotion most likely starts from (the current one) and goes to (the first later year). */
+/**
+ * The pair a promotion most likely is: a real year-end promotes into the NEXT year before the current flag is switched, so when an open, Active year starts after the current-flagged one the pair is
+ * current to the nearest such year; otherwise it is the year before the current-flagged one into the current-flagged one. (The server uses the same rule for the pending list and the tile.)
+ */
 export function defaultYears(years: AcademicYear[]): { source: number | null; target: number | null } {
   const sorted = [...years].sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const source = sorted.find((y) => y.isCurrent) ?? sorted[sorted.length - 1];
-  const target = source ? sorted.find((y) => y.startDate > source.startDate && !y.isClosed) : undefined;
-  return { source: source?.academicYearId ?? null, target: target?.academicYearId ?? null };
+  const current = sorted.find((y) => y.isCurrent) ?? sorted[sorted.length - 1];
+  if (!current) return { source: null, target: null };
+  const next = sorted.find((y) => y.startDate > current.startDate && !y.isClosed && (y.statusName ?? 'Active') === 'Active');
+  if (next) return { source: current.academicYearId, target: next.academicYearId };
+  const previous = [...sorted].reverse().find((y) => y.startDate < current.startDate);
+  return { source: previous?.academicYearId ?? current.academicYearId, target: previous ? current.academicYearId : null };
 }
 
 /**
@@ -30,7 +37,7 @@ export function defaultYears(years: AcademicYear[]): { source: number | null; ta
  */
 @Component({
   selector: 'app-promotion',
-  imports: [CurrencyPipe, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, PromotionCorrectionComponent],
+  imports: [CurrencyPipe, RouterLink, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, PromotionCorrectionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './promotion.component.scss',
   templateUrl: './promotion.component.html',
@@ -55,6 +62,8 @@ export class PromotionComponent implements OnInit {
   protected readonly loadFailed = signal(false);
   protected readonly busy = signal(false);
   protected readonly previewFailed = signal(false);
+  /** The pair the pending list, the tile and this page all talk about, with how many students are still waiting in it. */
+  protected readonly pending = signal<PromotionPending | null>(null);
 
   protected readonly sourceId = signal<number | null>(null);
   protected readonly targetId = signal<number | null>(null);
@@ -90,6 +99,7 @@ export class PromotionComponent implements OnInit {
   protected readonly canPreview = computed(() => !this.busy() && this.sourceId() != null && this.targetId() != null && this.classId() != null && this.sourceId() !== this.targetId());
 
   ngOnInit(): void {
+    this.api.pending(true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (p) => this.pending.set(p), error: () => this.pending.set(null) });
     forkJoin({ years: this.yearApi.list(), classes: this.classApi.list(), sections: this.sectionApi.list() })
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({

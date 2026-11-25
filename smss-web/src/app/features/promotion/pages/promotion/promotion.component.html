@@ -5,6 +5,11 @@
 } @else if (loadFailed()) {
   <app-card><p role="alert">The years and classes could not be loaded. Please try again.</p></app-card>
 } @else {
+  @if (pending(); as pn) {
+    @if (pn.hasPair) {
+      <p class="pairline" data-pending-pair>Pending promotion: <strong>{{ pn.total }}</strong> student{{ pn.total === 1 ? '' : 's' }} from {{ pn.sourceYearName }} not yet in {{ pn.targetYearName }}{{ pn.targetIsCurrent ? ' (the current year)' : ' (the next year, being prepared)' }}. <a routerLink="/promotion/pending">See who</a></p>
+    }
+  }
   <app-card title="Choose what to promote">
     <div class="filters">
       <label class="field"><span>From year</span>

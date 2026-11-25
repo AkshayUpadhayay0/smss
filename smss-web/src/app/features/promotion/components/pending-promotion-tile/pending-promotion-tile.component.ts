@@ -7,8 +7,8 @@ import { PromotionService } from '../../services/promotion.service';
 type TileState = { kind: 'loading' } | { kind: 'hidden' } | { kind: 'unavailable' } | { kind: 'count'; pending: PromotionPending };
 
 /**
- * "Pending promotion" tile for the School Admin and Principal dashboards: how many students were enrolled in the year before the current year and have no enrolment in the current one. It asks for itself
- * (so the dashboard it sits on is unaffected), is hidden when the school has no earlier year, and shows "Unavailable" (never 0) when the count cannot be read.
+ * "Pending promotion" tile for the School Admin and Principal dashboards: how many students are in the source year and have no enrolment in the target year of the pair it names (the next year being prepared when there is one, else the current year and the year before it). It asks for itself
+ * (so the dashboard it sits on is unaffected), is hidden when the school has no year pair (no next year to promote into and no earlier year to promote from), and shows "Unavailable" (never 0) when the count cannot be read.
  */
 @Component({
   selector: 'app-pending-promotion-tile',
@@ -20,7 +20,7 @@ type TileState = { kind: 'loading' } | { kind: 'hidden' } | { kind: 'unavailable
         <a class="tile" routerLink="/promotion/pending" data-pending-tile>
           <span class="label">Pending promotion</span>
           <strong data-pending-count>{{ count() }}</strong>
-          <small>{{ count() === 0 ? 'Everyone from ' + earlier() + ' is in ' + current() : (count() === 1 ? 'student' : 'students') + ' from ' + earlier() + ' not yet in ' + current() }}</small>
+          <small data-pair>{{ count() === 0 ? 'Everyone from ' + source() + ' is in ' + target() : (count() === 1 ? 'student' : 'students') + ' from ' + source() + ' not yet in ' + target() }}</small>
         </a>
       }
       @case ('unavailable') {
@@ -47,12 +47,12 @@ export class PendingPromotionTileComponent implements OnInit {
   protected readonly state = signal<TileState>({ kind: 'loading' });
 
   protected count(): number { const s = this.state(); return s.kind === 'count' ? s.pending.total : 0; }
-  protected earlier(): string { const s = this.state(); return s.kind === 'count' ? (s.pending.earlierYearName ?? '') : ''; }
-  protected current(): string { const s = this.state(); return s.kind === 'count' ? (s.pending.currentYearName ?? '') : ''; }
+  protected source(): string { const s = this.state(); return s.kind === 'count' ? (s.pending.sourceYearName ?? '') : ''; }
+  protected target(): string { const s = this.state(); return s.kind === 'count' ? (s.pending.targetYearName ?? '') : ''; }
 
   ngOnInit(): void {
     this.api.pending(true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (p) => this.state.set(p.hasEarlierYear ? { kind: 'count', pending: p } : { kind: 'hidden' }),
+      next: (p) => this.state.set(p.hasPair ? { kind: 'count', pending: p } : { kind: 'hidden' }),
       error: () => this.state.set({ kind: 'unavailable' }),
     });
   }

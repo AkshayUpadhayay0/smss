@@ -25,14 +25,15 @@ describe('PendingPromotionComponent', () => {
   afterEach(() => http.verify());
 
   it('lists the waiting students with BLOCKED or no decision yet', () => {
-    open((r) => r.flush(env({ hasEarlierYear: true, currentYearName: '2027-28', earlierYearName: '2026-27', total: 2, blocked: 1, rows: [ROW('S1', 'BLOCKED', 500), ROW('S2', 'NO_DECISION')] })));
+    open((r) => r.flush(env({ hasPair: true, sourceYearName: '2026-27', targetYearName: '2027-28', sourceYearId: 2, targetYearId: 3, targetIsCurrent: false, total: 2, blocked: 1, rows: [ROW('S1', 'BLOCKED', 500), ROW('S2', 'NO_DECISION')] })));
     expect(root().querySelector('[data-summary]')?.textContent).toContain('2 students');
+    expect(root().querySelector('[data-pair]')?.textContent).toContain('2026-27 into 2027-28');   // it names the pair
     expect(root().querySelector('[data-row="S1"]')?.textContent).toContain('Blocked');
     expect(root().querySelector('[data-row="S2"]')?.textContent).toContain('No decision yet');
   });
 
   it('says so when there is no earlier year or nobody waits, and shows a calm message on failure', () => {
-    open((r) => r.flush(env({ hasEarlierYear: false, currentYearName: 'x', earlierYearName: null, total: 0, blocked: 0, rows: [] })));
+    open((r) => r.flush(env({ hasPair: false, sourceYearName: null, targetYearName: null, sourceYearId: null, targetYearId: null, targetIsCurrent: false, total: 0, blocked: 0, rows: [] })));
     expect(root().querySelector('[data-no-earlier]')).not.toBeNull();
   });
 

@@ -13,7 +13,7 @@ import { PromotionService } from '../../services/promotion.service';
   imports: [CurrencyPipe, RouterLink, ButtonComponent, CardComponent, PageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="Pending promotion" subtitle="Students not yet moved into the current year" icon="graduation-cap" [breadcrumbs]="[{ label: 'Promotion', link: '/promotion' }, { label: 'Pending' }]">
+    <app-page-header title="Pending promotion" subtitle="Students waiting to be promoted into the year named below" icon="graduation-cap" [breadcrumbs]="[{ label: 'Promotion', link: '/promotion' }, { label: 'Pending' }]">
       <a routerLink="/promotion"><app-button>Go to Promotion</app-button></a>
     </app-page-header>
     <app-card>
@@ -21,12 +21,12 @@ import { PromotionService } from '../../services/promotion.service';
         <p role="status">Loading…</p>
       } @else if (failed()) {
         <p role="alert" data-failed>The list could not be loaded. Please try again.</p>
-      } @else if (!data()!.hasEarlierYear) {
-        <p data-no-earlier>This school has no academic year before the current one, so nothing is waiting for promotion.</p>
+      } @else if (!data()!.hasPair) {
+        <p data-no-earlier>This school has no next year to promote into and no earlier year to promote from, so nothing is waiting for promotion.</p>
       } @else if (data()!.total === 0) {
-        <p data-none>Everyone enrolled in {{ data()!.earlierYearName }} is already in {{ data()!.currentYearName }} (or has passed out or left).</p>
+        <p data-none data-pair>Showing {{ data()!.sourceYearName }} into {{ data()!.targetYearName }}. Everyone enrolled in {{ data()!.sourceYearName }} is already in {{ data()!.targetYearName }} (or has passed out or left).</p>
       } @else {
-        <p class="sum" data-summary>{{ data()!.total }} student{{ data()!.total === 1 ? '' : 's' }} from {{ data()!.earlierYearName }} {{ data()!.total === 1 ? 'is' : 'are' }} not yet in {{ data()!.currentYearName }}; {{ data()!.blocked }} blocked by dues.</p>
+        <p class="sum" data-summary data-pair>Showing {{ data()!.sourceYearName }} into {{ data()!.targetYearName }}{{ data()!.targetIsCurrent ? ' (the current year)' : ' (the next year, being prepared)' }}: {{ data()!.total }} student{{ data()!.total === 1 ? '' : 's' }} not yet promoted; {{ data()!.blocked }} blocked by dues.</p>
         <div class="scroll">
           <table class="rows" data-rows>
             <thead><tr><th>Student</th><th>Class</th><th>Teacher decision</th><th>Dues up to today</th><th>Status</th></tr></thead>

@@ -148,11 +148,14 @@ namespace smss_api_db_layer.@interface
 
     public class PromoPendingYears
     {
-        public long CurrentYearId { get; set; }
-        public string CurrentYearName { get; set; } = null!;
-        /// <summary>The latest year starting before the current-flagged one; null when there is none.</summary>
-        public long? EarlierYearId { get; set; }
-        public string? EarlierYearName { get; set; }
+        /// <summary>The year the students are in now (null when the school has no pair).</summary>
+        public long? SourceYearId { get; set; }
+        public string? SourceYearName { get; set; }
+        /// <summary>The year they are waiting to be promoted into.</summary>
+        public long? TargetYearId { get; set; }
+        public string? TargetYearName { get; set; }
+        /// <summary>The target is the current-flagged year (year-end already switched) rather than the next year being prepared.</summary>
+        public bool TargetIsCurrent { get; set; }
     }
 
     public class PromoCount { public int Value { get; set; } }
