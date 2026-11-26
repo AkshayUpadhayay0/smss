@@ -15,6 +15,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<StudentAttendanceHistoryDto>> GetOwnYearAsync(string? schoolId, long callerUserId, CancellationToken ct);
         /// <summary>The caller's OWN marks for a range of at most 92 days, student-safe (no audit fields). The student is the caller; there is no id to pass.</summary>
         Task<ApiResponse<StudentOwnAttendanceDto>> GetMyAsync(string? schoolId, long callerUserId, DateOnly from, DateOnly to, CancellationToken ct);
+        /// <summary>One student's own-view attendance; only for a caller the access helper has cleared.</summary>
+        Task<ApiResponse<StudentOwnAttendanceDto>> GetForStudentAsync(string? schoolId, string studentId, DateOnly from, DateOnly to, CancellationToken ct);
         Task<ApiResponse<MissingAttendanceDto>> GetMissingAsync(string? schoolId, DateOnly? date, long? academicYearId, CancellationToken ct);
         /// <summary>
         /// The monthly report of one section. `callerSeesAllSections` (School Admin / Principal, read-only) may ask for any section of the school; anyone else must be the section's

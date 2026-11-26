@@ -27,5 +27,7 @@ namespace smss_api_service_layer.@interface
         /// Assessments). 404 when they are not enrolled in the current year. No role check here: the controller restricts it to the Student role.
         /// </summary>
         Task<ApiResponse<TimetableGridDto>> GetStudentMyGridAsync(string? schoolId, long callerUserId, CancellationToken ct);
+        /// <summary>The weekly grid of one student's current section, read-only; only for a caller the access helper has cleared.</summary>
+        Task<ApiResponse<TimetableGridDto>> GetStudentGridAsync(string? schoolId, string studentId, CancellationToken ct);
     }
 }

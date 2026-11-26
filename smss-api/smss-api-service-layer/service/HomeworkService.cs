@@ -187,11 +187,23 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<HomeworkDto>>(400, TenantMessages.NoSchool, null);
             try
             {
+                var (loginId, _) = await _repo.GetUserAsync(schoolId, caller.UserId, ct);
+                return await GetForStudentAsync(schoolId, loginId ?? "", from, to, ct);
+            }
+            catch (Exception ex) { return Error<List<HomeworkDto>>(ex, "listing a student's homework"); }
+        }
+
+        /// <summary>The homework of ONE student's current section, read-only. Only for a caller the access helper has cleared (the student, or a linked parent).</summary>
+        public async Task<ApiResponse<List<HomeworkDto>>> GetForStudentAsync(string? schoolId, string studentId, DateOnly? from, DateOnly? to, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<HomeworkDto>>(400, TenantMessages.NoSchool, null);
+            try
+            {
                 var rangeError = RangeError(from, to);
                 if (rangeError != null) return Result<List<HomeworkDto>>(400, rangeError, null);
                 var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
                 if (activeId == null) return ConfigError<List<HomeworkDto>>();
-                var (sectionId, yearId) = await CurrentSectionAsync(schoolId, caller.UserId, activeId.Value, ct);
+                var (sectionId, yearId) = await CurrentSectionOfStudentAsync(schoolId, studentId, activeId.Value, ct);
                 if (sectionId == null || yearId == null) return Result(200, "Successfully fetched", new List<HomeworkDto>());   // not enrolled in the current year: nothing to show
                 var rows = await _repo.ListAsync(schoolId, new HomeworkFilter(yearId, sectionId, null, null, from, to), activeId.Value, ct);
                 return Result(200, "Successfully fetched", rows.OrderBy(r => r.DueDate).ThenBy(r => r.HomeworkId).Select(r => ToDto(r, "Active")).ToList());
@@ -314,6 +326,11 @@ namespace smss_api_service_layer.service
         private async Task<(long? SectionId, long? YearId)> CurrentSectionAsync(string schoolId, long userId, int activeId, CancellationToken ct)
         {
             var (loginId, _) = await _repo.GetUserAsync(schoolId, userId, ct);
+            return await CurrentSectionOfStudentAsync(schoolId, loginId, activeId, ct);
+        }
+
+        private async Task<(long? SectionId, long? YearId)> CurrentSectionOfStudentAsync(string schoolId, string? loginId, int activeId, CancellationToken ct)
+        {
             if (string.IsNullOrEmpty(loginId)) return (null, null);
             var year = await _repo.GetYearContainingAsync(schoolId, SchoolClock.Today(), ct);
             if (year == null) return (null, null);

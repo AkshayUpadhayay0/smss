@@ -75,8 +75,18 @@ namespace smss_api_service_layer.service
             try
             {
                 // the student is the caller: their login id IS their student id (the school and the caller both come from the token)
-                var loginId = await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct);
-                var s = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                return await GetProfileForStudentAsync(schoolId, await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct) ?? "", ct);
+            }
+            catch (Exception ex) { return Error<StudentMyProfileDto>(ex, "fetching a student's own profile"); }
+        }
+
+        /// <summary>The student-safe profile of ONE student of this school. The caller must already have been cleared by the access helper (a Student for their own record, a Guardian for a linked child).</summary>
+        public async Task<ApiResponse<StudentMyProfileDto>> GetProfileForStudentAsync(string? schoolId, string studentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentMyProfileDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var s = string.IsNullOrEmpty(studentId) ? null : await _repo.GetStudentAsync(schoolId, studentId, ct);
                 if (s == null) return Result<StudentMyProfileDto>(404, "Your student record was not found.", null);
 
                 var statuses = await _repo.GetGeneralStatusNamesAsync(ct);

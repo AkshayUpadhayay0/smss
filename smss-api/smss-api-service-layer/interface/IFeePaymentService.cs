@@ -15,5 +15,7 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<List<ConcessionChoiceDto>>> GetConcessionChoicesAsync(string? schoolId, CancellationToken ct);
         /// <summary>A Student's own receipt: the student id comes from the signed-in user (never the request). Someone else's payment, a voided one, or another school's = 404.</summary>
         Task<ApiResponse<FeeReceiptDto>> GetOwnReceiptAsync(string? schoolId, long userId, long paymentId, CancellationToken ct);
+        /// <summary>A receipt of one student's own Active payment, in the own view; 404 for any other student's payment. Only for a caller the access helper has cleared.</summary>
+        Task<ApiResponse<FeeReceiptDto>> GetReceiptForStudentAsync(string? schoolId, string studentId, long paymentId, CancellationToken ct);
     }
 }

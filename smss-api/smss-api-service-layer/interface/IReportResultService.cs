@@ -32,5 +32,9 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<List<MyReportCardDto>>> MyCardsAsync(string? schoolId, long userId, CancellationToken ct);
         Task<ApiResponse<MyReportCardDetailDto>> MyCardAsync(string? schoolId, long userId, long publicationId, CancellationToken ct);
         Task<ReportFileResult> MyCardPdfAsync(string? schoolId, long userId, long publicationId, CancellationToken ct);
+        // The same three reads for one named student: only for a caller the access helper has cleared (the student, or a linked parent). Published cards only.
+        Task<ApiResponse<List<MyReportCardDto>>> CardsForStudentAsync(string? schoolId, string studentId, CancellationToken ct);
+        Task<ApiResponse<MyReportCardDetailDto>> CardForStudentAsync(string? schoolId, string studentId, long publicationId, CancellationToken ct);
+        Task<ReportFileResult> CardPdfForStudentAsync(string? schoolId, string studentId, long publicationId, CancellationToken ct);
     }
 }

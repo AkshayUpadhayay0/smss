@@ -293,13 +293,24 @@ namespace smss_api_service_layer.service
         public async Task<ApiResponse<StudentOwnAttendanceDto>> GetMyAsync(string? schoolId, long callerUserId, DateOnly from, DateOnly to, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentOwnAttendanceDto>(400, TenantMessages.NoSchool, null);
-            if (to < from) return Result<StudentOwnAttendanceDto>(400, "'to' cannot be before 'from'.", null);
-            if (to.DayNumber - from.DayNumber + 1 > MaxOwnRangeDays) return Result<StudentOwnAttendanceDto>(400, $"The range can be at most {MaxOwnRangeDays} days.", null);
             try
             {
                 // the caller's login id IS their student id; the student is only ever the caller, never taken from the client
                 var (loginId, _) = await _repo.GetUserAsync(schoolId, callerUserId, ct);
-                var student = string.IsNullOrEmpty(loginId) ? null : await _repo.GetStudentAsync(schoolId, loginId, ct);
+                return await GetForStudentAsync(schoolId, loginId ?? "", from, to, ct);
+            }
+            catch (Exception ex) { return Error<StudentOwnAttendanceDto>(ex, "fetching a student's own attendance"); }
+        }
+
+        /// <summary>One student's own-view attendance (Present / Absent only). Only for a caller the access helper has cleared (the student, or a linked parent).</summary>
+        public async Task<ApiResponse<StudentOwnAttendanceDto>> GetForStudentAsync(string? schoolId, string studentId, DateOnly from, DateOnly to, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<StudentOwnAttendanceDto>(400, TenantMessages.NoSchool, null);
+            if (to < from) return Result<StudentOwnAttendanceDto>(400, "'to' cannot be before 'from'.", null);
+            if (to.DayNumber - from.DayNumber + 1 > MaxOwnRangeDays) return Result<StudentOwnAttendanceDto>(400, $"The range can be at most {MaxOwnRangeDays} days.", null);
+            try
+            {
+                var student = string.IsNullOrEmpty(studentId) ? null : await _repo.GetStudentAsync(schoolId, studentId, ct);
                 if (student == null) return Result<StudentOwnAttendanceDto>(403, "Your account is not linked to a student record.", null);
 
                 var history = await BuildHistoryAsync(schoolId, student, from, to, ct);

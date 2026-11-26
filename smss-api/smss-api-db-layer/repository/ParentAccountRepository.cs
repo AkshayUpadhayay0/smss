@@ -74,6 +74,28 @@ namespace smss_api_db_layer.repository
         public Task<GuardianLoginInfo?> GetGuardianByUserIdAsync(long userId, CancellationToken ct) =>
             _db.Guardians.AsNoTracking().Where(g => g.UserId == userId).Select(g => new GuardianLoginInfo(g.GuardianId, g.SchoolId, g.StatusId, g.MergedIntoGuardianId)).FirstOrDefaultAsync(ct);
 
+        public Task<List<LinkedChildRow>> ListLinkedChildrenAsync(string schoolId, long guardianId, CancellationToken ct) =>
+            (from l in _db.StudentGuardians.AsNoTracking()
+             join st in _db.Students.AsNoTracking() on l.StudentId equals st.StudentId
+             where l.GuardianId == guardianId && l.PortalAccess && st.SchoolId == schoolId
+             orderby l.IsPrimary descending, st.StudentId
+             select new LinkedChildRow(st.StudentId, st.FirstName, st.MiddleName, st.LastName, st.AdmissionNumber, st.StatusId, st.ProfilePhotoUrl, l.IsPrimary)).ToListAsync(ct);
+
+        public Task<bool> IsChildLinkedAsync(string schoolId, long guardianId, string studentId, CancellationToken ct) =>
+            (from l in _db.StudentGuardians.AsNoTracking()
+             join st in _db.Students.AsNoTracking() on l.StudentId equals st.StudentId
+             where l.GuardianId == guardianId && l.StudentId == studentId && l.PortalAccess && st.SchoolId == schoolId
+             select l.StudentGuardianId).AnyAsync(ct);
+
+        public async Task<string?> GetLatestOutcomeAsync(string schoolId, string studentId, CancellationToken ct)
+        {
+            var v = (await _db.Database.SqlQueryRaw<string>(@"
+SELECT COALESCE((SELECT e.outcome FROM public.tb_student_enrollments e JOIN public.tb_academic_years y ON y.academic_year_id = e.academic_year_id AND y.school_id = e.school_id
+                  WHERE e.school_id = @school AND e.student_id = @student ORDER BY y.start_date DESC, e.enrollment_id DESC LIMIT 1), '') AS ""Value""",
+                new Npgsql.NpgsqlParameter("school", schoolId), new Npgsql.NpgsqlParameter("student", studentId)).ToListAsync(ct)).SingleOrDefault();
+            return string.IsNullOrEmpty(v) ? null : v;
+        }
+
         public Task<List<TbMessageDelivery>> GetRecentDeliveriesAsync(string schoolId, long guardianId, int take, CancellationToken ct) =>
             _db.MessageDeliveries.AsNoTracking().Where(d => d.SchoolId == schoolId && d.GuardianId == guardianId).OrderByDescending(d => d.DeliveryId).Take(take).ToListAsync(ct);
     }

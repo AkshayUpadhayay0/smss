@@ -369,7 +369,17 @@ namespace smss_api_service_layer.service
             {
                 // A Student login's org_user_id is the student id. Another student's payment answers 404, exactly like a payment that does not exist
                 // (a 403 would confirm that the id is real, and receipt ids are small sequential numbers that could be walked).
-                var studentId = await _repo.GetUserLoginIdAsync(schoolId, userId, ct);
+                return await GetReceiptForStudentAsync(schoolId, await _repo.GetUserLoginIdAsync(schoolId, userId, ct) ?? "", paymentId, ct);
+            }
+            catch (Exception ex) { return Error<FeeReceiptDto>(ex, "fetching a student's own receipt"); }
+        }
+
+        /// <summary>A receipt of ONE student's own (Active) payment, in the own view (no concession reason, no waived late fee). 404 for any other student's payment. Only for a caller the access helper has cleared.</summary>
+        public async Task<ApiResponse<FeeReceiptDto>> GetReceiptForStudentAsync(string? schoolId, string studentId, long paymentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<FeeReceiptDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
                 var payment = string.IsNullOrEmpty(studentId) ? null : await _repo.GetPaymentAsync(schoolId, paymentId, ct);
                 // a voided receipt, and who voided it and why, is internal: the student's own fee view hides voided payments too
                 if (payment == null || payment.StudentId != studentId || payment.Status != "Active") return Result<FeeReceiptDto>(404, "Payment not found.", null);

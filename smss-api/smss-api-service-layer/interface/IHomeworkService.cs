@@ -25,6 +25,8 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<List<HomeworkDto>>> GetSectionAsync(string? schoolId, long sectionId, long? academicYearId, DateOnly? from, DateOnly? to, CancellationToken ct);
         /// <summary>A student: the homework of their own CURRENT section (current academic year, Active enrollment), every subject, read-only.</summary>
         Task<ApiResponse<List<HomeworkDto>>> GetStudentMyAsync(string? schoolId, HomeworkCaller caller, DateOnly? from, DateOnly? to, CancellationToken ct);
+        /// <summary>The homework of one student's current section, read-only; only for a caller the access helper has cleared.</summary>
+        Task<ApiResponse<List<HomeworkDto>>> GetForStudentAsync(string? schoolId, string studentId, DateOnly? from, DateOnly? to, CancellationToken ct);
 
         /// <summary>Set or replace the single attachment. Same authorization as update.</summary>
         Task<ApiResponse<HomeworkDto>> UploadAttachmentAsync(string? schoolId, HomeworkCaller caller, long id, Stream content, string fileName, long length, CancellationToken ct);

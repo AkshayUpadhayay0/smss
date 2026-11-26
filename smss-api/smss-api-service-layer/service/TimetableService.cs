@@ -192,6 +192,19 @@ namespace smss_api_service_layer.service
                 if (activeId == null) return ConfigError<TimetableGridDto>();
                 var loginId = await _repo.GetUserLoginIdAsync(schoolId, callerUserId, ct);
                 if (string.IsNullOrEmpty(loginId)) return Result<TimetableGridDto>(403, "Your account could not be found.", null);
+                return await GetStudentGridAsync(schoolId, loginId, ct);
+            }
+            catch (Exception ex) { return Error<TimetableGridDto>(ex, "fetching a student's timetable"); }
+        }
+
+        /// <summary>The weekly grid of ONE student's current section, read-only. Only for a caller the access helper has cleared (the student, or a linked parent).</summary>
+        public async Task<ApiResponse<TimetableGridDto>> GetStudentGridAsync(string? schoolId, string loginId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<TimetableGridDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var activeId = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType, ct);
+                if (activeId == null) return ConfigError<TimetableGridDto>();
                 var (year, error) = await YearAsync(schoolId, null, ct);
                 if (year == null) return Result<TimetableGridDto>(error!.Value.Code, error.Value.Message, null);
                 var sectionId = await _repo.GetStudentSectionAsync(schoolId, loginId, year.AcademicYearId, activeId.Value, ct);

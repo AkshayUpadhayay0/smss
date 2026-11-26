@@ -381,11 +381,21 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<MyReportCardDto>>(400, TenantMessages.NoSchool, null);
             try
             {
-                var me = await MyStudentIdAsync(schoolId, userId, ct);
-                if (string.IsNullOrEmpty(me)) return Result<List<MyReportCardDto>>(404, "No student record found for this login.", null);
-                return Result(200, "Successfully retrieved", (await _repo.GetMyCardsAsync(schoolId, me, ct)).Select(ToDto).ToList());
+                return await CardsForStudentAsync(schoolId, await MyStudentIdAsync(schoolId, userId, ct) ?? "", ct);
             }
             catch (Exception ex) { return Error<List<MyReportCardDto>>(ex, "listing a student's own report cards"); }
+        }
+
+        /// <summary>The PUBLISHED report cards of ONE student (current published version only). Only for a caller the access helper has cleared (the student, or a linked parent).</summary>
+        public async Task<ApiResponse<List<MyReportCardDto>>> CardsForStudentAsync(string? schoolId, string studentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<List<MyReportCardDto>>(400, TenantMessages.NoSchool, null);
+            try
+            {
+                if (string.IsNullOrEmpty(studentId)) return Result<List<MyReportCardDto>>(404, "No student record found for this login.", null);
+                return Result(200, "Successfully retrieved", (await _repo.GetMyCardsAsync(schoolId, studentId, ct)).Select(ToDto).ToList());
+            }
+            catch (Exception ex) { return Error<List<MyReportCardDto>>(ex, "listing a student's report cards"); }
         }
 
         public async Task<ApiResponse<MyReportCardDetailDto>> MyCardAsync(string? schoolId, long userId, long publicationId, CancellationToken ct)
@@ -393,7 +403,17 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Result<MyReportCardDetailDto>(400, TenantMessages.NoSchool, null);
             try
             {
-                var me = await MyStudentIdAsync(schoolId, userId, ct);
+                return await CardForStudentAsync(schoolId, await MyStudentIdAsync(schoolId, userId, ct) ?? "", publicationId, ct);
+            }
+            catch (Exception ex) { return Error<MyReportCardDetailDto>(ex, "reading a student's own report card"); }
+        }
+
+        /// <summary>One PUBLISHED report card of one student. Only for a caller the access helper has cleared.</summary>
+        public async Task<ApiResponse<MyReportCardDetailDto>> CardForStudentAsync(string? schoolId, string me, long publicationId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result<MyReportCardDetailDto>(400, TenantMessages.NoSchool, null);
+            try
+            {
                 if (string.IsNullOrEmpty(me)) return Result<MyReportCardDetailDto>(404, "No student record found for this login.", null);
                 var row = await _repo.GetMyCardAsync(schoolId, me, publicationId, ct);
                 var card = row == null ? null : await _repo.GetCardAsync(schoolId, publicationId, me, ct);
@@ -408,7 +428,17 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
             try
             {
-                var me = await MyStudentIdAsync(schoolId, userId, ct);
+                return await CardPdfForStudentAsync(schoolId, await MyStudentIdAsync(schoolId, userId, ct) ?? "", publicationId, ct);
+            }
+            catch (Exception ex) { _logger.LogError(ex, "Error while drawing a student's own report card"); return Fail(500, "Something went wrong. Please try again later."); }
+        }
+
+        /// <summary>The PDF of one PUBLISHED report card of one student. Only for a caller the access helper has cleared.</summary>
+        public async Task<ReportFileResult> CardPdfForStudentAsync(string? schoolId, string me, long publicationId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Fail(400, TenantMessages.NoSchool);
+            try
+            {
                 if (string.IsNullOrEmpty(me)) return Fail(404, "No student record found for this login.");
                 var row = await _repo.GetMyCardAsync(schoolId, me, publicationId, ct);       // current PUBLISHED version of their own card only
                 var card = row == null ? null : await _repo.GetCardAsync(schoolId, publicationId, me, ct);

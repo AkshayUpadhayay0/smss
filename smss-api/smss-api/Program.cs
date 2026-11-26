@@ -236,6 +236,8 @@ builder.Services.AddSingleton<BackgroundTaskQueue>();
 builder.Services.AddSingleton<IBackgroundTaskQueue>(sp => sp.GetRequiredService<BackgroundTaskQueue>());
 builder.Services.AddHostedService<smss_api.Helpers.QueuedWorkRunner>();
 builder.Services.AddScoped<IParentAccountService, ParentAccountService>();
+builder.Services.AddScoped<IStudentAccessService, StudentAccessService>();
+builder.Services.AddScoped<IFamilyService, FamilyService>();
 
 // File storage: relative paths resolve against the project folder
 var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";

@@ -27,8 +27,18 @@ namespace smss_api_service_layer.service
             if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
             try
             {
-                var loginId = await _students.GetUserLoginIdAsync(schoolId, callerUserId, ct);
-                var student = string.IsNullOrEmpty(loginId) ? null : await _students.GetStudentAsync(schoolId, loginId, ct);
+                return await GetFeesForStudentAsync(schoolId, await _students.GetUserLoginIdAsync(schoolId, callerUserId, ct) ?? "", ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogError(ex, "Error while building a student's own fees"); return Result(500, "Something went wrong. Please try again later.", null); }
+        }
+
+        /// <summary>The own-view fees of ONE student (never a concession reason, never a voided payment). Only for a caller the access helper has cleared (the student, or a linked parent).</summary>
+        public async Task<ApiResponse<StudentMyFeesDto>> GetFeesForStudentAsync(string? schoolId, string studentId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(schoolId)) return Result(400, TenantMessages.NoSchool, null);
+            try
+            {
+                var student = string.IsNullOrEmpty(studentId) ? null : await _students.GetStudentAsync(schoolId, studentId, ct);
                 if (student == null) return Result(404, "Your student record was not found.", null);
 
                 var items = await _billing.GetItemsAsync(schoolId, student.StudentId, ct);
