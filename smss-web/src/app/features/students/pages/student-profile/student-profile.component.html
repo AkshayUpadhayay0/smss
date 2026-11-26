@@ -164,6 +164,11 @@
     </div>
     }
 
+    @if (canSeeSectionHistory()) {
+      <!-- the School Admin and the Principal: every mid-year section change of this student (Stage 8c) -->
+      <app-card title="Section changes"><app-section-history [studentId]="s.studentId" /></app-card>
+    }
+
     @if (resetDialogOpen() && s.loginId) {
       <app-reset-password-dialog [loginId]="s.loginId" [displayName]="s.fullName" (done)="resetDialogOpen.set(false)" (closed)="resetDialogOpen.set(false)" />
     }

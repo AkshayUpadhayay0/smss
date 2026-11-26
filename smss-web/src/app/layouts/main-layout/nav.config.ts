@@ -119,6 +119,8 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Promotion', icon: 'arrow-up', route: '/promotion' },
+  { label: 'Student Leaving', icon: 'log-out', route: '/student-leaving' },
+  { label: 'Change Section', icon: 'arrow-up-down', route: '/section-change' },
   { label: 'Transfer Certificates', icon: 'file-text', route: '/transfer-certificates' },
   { label: 'School Profile', icon: 'home', route: '/school-profile' },
   { label: 'My Profile', icon: 'user', route: '/my-student-profile' },

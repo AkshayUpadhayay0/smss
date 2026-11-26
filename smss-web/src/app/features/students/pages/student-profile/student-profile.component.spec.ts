@@ -24,6 +24,8 @@ describe('StudentProfileComponent', () => {
   afterEach(() => {
     // the Documents card asks for the student's documents and the document types: this file is about the profile, so answer those with nothing
     http.match((r) => r.url.includes('/api/StudentDocuments') || r.url.includes('/api/DocumentType')).forEach((r) => r.flush(env(null)));
+    // the School Admin's and the Principal's profile also asks for the student's section-change history
+    http.match((r) => r.url.includes('/api/SectionChanges/history')).forEach((r) => r.flush(env([])));
     http.verify();
     clearSessions();
   });
@@ -45,6 +47,38 @@ describe('StudentProfileComponent', () => {
     }
   };
   const el = () => fixture.nativeElement as HTMLElement;
+
+  describe('section-change history (Stage 8c)', () => {
+    const HISTORY = [{ changeId: 1, yearName: '2026-27', fromSection: 'A', toSection: 'B', fromRoll: '3', toRoll: '11', effectiveDate: '2026-10-01', reason: 'Subject choice changed', changedBy: 'Admin', changedAt: '2026-10-01T10:00:00Z' }];
+    const isHistory = (r: { request: { url: string } }) => r.request.url.includes('/api/SectionChanges/history');
+    const open = (role: string) => {
+      setup([role]);
+      fixture.componentRef.setInput('studentId', 'DPS001ST001');
+      fixture.detectChanges();
+      http.expectOne(`${API}/api/Student/DPS261013001/DPS001ST001`).flush(env(PROFILE));
+      fixture.detectChanges();
+      // everything the profile's other cards ask for is answered with nothing; the history request is returned to the test
+      for (let i = 0; i < 6; i++) {   // the Transport card and the Fees tab load in waves
+        http.match((r) => !r.url.includes('/api/SectionChanges/history')).forEach((r) => r.flush(env(r.request.url.includes('FeePayment') ? [] : null)));
+        fixture.detectChanges();
+      }
+      return http.match((r) => r.url.includes('/api/SectionChanges/history'));
+    };
+
+    it.each([['School Admin'], ['Principal']])('%s sees every change of the student, with the reason and who made it', (role) => {
+      const reqs = open(role);
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0].request.params.get('studentId')).toBe('DPS001ST001');
+      reqs[0].flush(env(HISTORY));
+      fixture.detectChanges();
+      expect(el().querySelector('[data-history]')?.textContent).toContain('Subject choice changed');
+    });
+
+    it.each([['Accountant'], ['Teacher']])('a %s never asks for the history', (role) => {
+      expect(open(role)).toHaveLength(0);
+      expect(isHistory).toBeDefined();
+    });
+  });
 
   describe('ID card', () => {
     const buttonText = () => [...el().querySelectorAll('app-button')].map((b) => b.textContent?.trim() ?? '');

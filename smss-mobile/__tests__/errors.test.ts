@@ -6,6 +6,11 @@ describe('toApiError', () => {
     expect(e.kind).toBe('password_change_required');
     expect(toApiError(403, { message: 'Only a student can see their own homework here.' }).kind).toBe('forbidden');
   });
+  it('a student who has left is told, in the servers own words, to contact the school (a 403 at sign-in is not turned into a generic failure)', () => {
+    const e = toApiError(403, { status: false, statusCode: 403, message: 'Your account is no longer active. Please contact your school.', data: null });
+    expect(e.kind).toBe('forbidden');
+    expect(e.message).toBe('Your account is no longer active. Please contact your school.');
+  });
   it('shows the first validation message for a 400', () => {
     const e = toApiError(400, { message: 'Validation failed', data: { NewPassword: ['New password must be at least 8 characters.'] } });
     expect(e.kind).toBe('validation');

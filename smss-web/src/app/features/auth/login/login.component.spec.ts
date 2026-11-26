@@ -132,6 +132,20 @@ describe('LoginComponent', () => {
     expect(navigateByUrl).toHaveBeenCalledWith('/change-password');
   });
 
+  it('a student who has left sees the school\'s "contact your school" message inline (403), not a generic failure and not a toast', () => {
+    const toast = TestBed.inject(ToastService);
+    create();
+    fill('GHS001ST001', 'secret');
+    submit();
+    http
+      .expectOne(LOGIN)
+      .flush({ status: false, statusCode: 403, message: 'Your account is no longer active. Please contact your school.', data: null }, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+    expect(el().querySelector('[role="alert"]')?.textContent).toContain('Your account is no longer active. Please contact your school.');
+    expect(toast.toasts()).toHaveLength(0);
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('shows the server message inline on bad credentials, clears the password and does not toast', () => {
     const toast = TestBed.inject(ToastService);
     create();

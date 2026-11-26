@@ -11,6 +11,7 @@ import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
 import { ParentAccountCardComponent } from '../../../parent-account/components/parent-account-card/parent-account-card.component';
+import { SectionHistoryComponent } from '../../../student-leaving/components/section-history/section-history.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentDocumentsComponent } from '../../../student-documents/components/student-documents/student-documents.component';
 import { StudentTransportCardComponent } from '../../components/student-transport-card/student-transport-card.component';
@@ -34,7 +35,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ParentAccountCardComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, StudentTransportCardComponent, TableComponent, StudentDocumentsComponent],
+  imports: [SectionHistoryComponent, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ParentAccountCardComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, StudentTransportCardComponent, TableComponent, StudentDocumentsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -136,6 +137,8 @@ export class StudentProfileComponent implements OnInit {
    */
   protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
   /** The Profile tab is shown to a School Admin and, read-only, in restricted mode; everyone else (an Accountant) gets the Fees tab only. */
+  /** The section-change history is for the School Admin and the Principal only (a Teacher's restricted view never shows it). */
+  protected readonly canSeeSectionHistory = computed(() => !this.restricted() && this.auth.currentUserRoles().some((r) => [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL].some((x) => r.trim().toLowerCase() === x.toLowerCase())));
   protected readonly showProfile = computed(() => this.restricted() || this.isSchoolAdmin());
   /** Fees are never part of the restricted view. */
   protected readonly showFees = computed(() => !this.restricted());

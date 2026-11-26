@@ -207,9 +207,9 @@ describe('app routes', () => {
         expect(harness.routeNativeElement?.querySelector('app-student-profile')).not.toBeNull();
       });
 
-      it('sees Live Dashboard, School Setup, Fee Setup, Examinations, Transport, Employees, Fees, Inventory, the Students group, Promotion, Transfer Certificates, School Profile, then the day-to-day items (Calendar … Leave Requests) in the menu, in that order — no My Leave (the school login is not an employee), no Registered Schools, no Masters', async () => {
+      it('sees Live Dashboard, School Setup, Fee Setup, Examinations, Transport, Employees, Fees, Inventory, the Students group, Promotion, Student Leaving, Change Section, Transfer Certificates, School Profile, then the day-to-day items (Calendar … Leave Requests) in the menu, in that order — no My Leave (the school login is not an employee), no Registered Schools, no Masters', async () => {
         const { harness } = await go('/dashboard');
-        expect(nav(harness)).toBe('Dashboard | Live Dashboard | School Setup | Fee Setup | Examinations | Transport | Employees | Fees | Inventory | Students | Promotion | Transfer Certificates | School Profile | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests');
+        expect(nav(harness)).toBe('Dashboard | Live Dashboard | School Setup | Fee Setup | Examinations | Transport | Employees | Fees | Inventory | Students | Promotion | Student Leaving | Change Section | Transfer Certificates | School Profile | Calendar | Timetable | Mark Attendance | Attendance Report | Notices | My Notices | Homework | Assessments | Leave Requests');
       });
 
       it.each(['/enquiries', '/schools', '/schools/add', '/schools/sch2026001/edit', '/schools/sch2026001/view', '/subscriptions', '/invoices', '/company/overview', '/company/employees', '/company/expenses', '/masters/board-type', '/masters/school-type', '/masters/school-level', '/masters/status', '/masters/role', '/dev/components-preview'])(

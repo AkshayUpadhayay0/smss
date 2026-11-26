@@ -1,4 +1,4 @@
-import { resolveRole } from '../src/auth/roles';
+﻿import { resolveRole } from '../src/auth/roles';
 import { cardChip, chipLabel, classLabel, lastThirtyDays, monthWindow, passwordProblem, readOnlyBanner, rupees, unreadBadge } from '../src/features/family/rules';
 import { FORGOT_PATH, webPageUrl } from '../src/lib/webLinks';
 
@@ -52,6 +52,8 @@ describe('guardian role', () => {
 describe('family rules', () => {
   it('words the chips and the read-only banner', () => {
     expect(chipLabel('PASSED_OUT')).toBe('Passed out');
+    expect(chipLabel('LEFT')).toBe('Left the school');
+    expect(chipLabel('TRANSFERRED_OUT')).toBe('Transferred out');
     expect(readOnlyBanner(null)).toBeNull();
     expect(readOnlyBanner('LEFT')).toContain('read-only');
     expect(readOnlyBanner('PENDING_PROMOTION')).toContain('not been moved');
