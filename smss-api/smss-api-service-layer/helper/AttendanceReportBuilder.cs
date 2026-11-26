@@ -45,24 +45,39 @@ namespace smss_api_service_layer.helper
             {
                 var active = r.EnrollmentStatusId == activeStatusId && r.StudentStatusId == activeStatusId;
                 var hasMarks = byStudent.ContainsKey(r.StudentId);
-                if (!(active && r.EnrollmentDate <= last) && !hasMarks) continue;
+                // a student who moved between sections (Stage 8c) belongs to THIS section only during their spans: they are listed, and counted, for those days (and for any day they were marked here)
+                var spans = r.Spans;
+                bool InSection(DateOnly d) => spans == null ? d >= r.EnrollmentDate : spans.Any(s => d >= s.From && (s.Until == null || d < s.Until));
+                var inThisMonth = spans == null ? r.EnrollmentDate <= last : spans.Any(s => s.From <= last && (s.Until == null || s.Until > first));
+                if (!(active && inThisMonth) && !hasMarks) continue;
+                DateOnly? firstDay = spans == null ? r.EnrollmentDate : spans.Where(s => s.From <= last && (s.Until == null || s.Until > first)).Select(s => (DateOnly?)s.From).OrderBy(x => x).FirstOrDefault();
 
                 var dto = new AttendanceReportStudentDto
                 {
-                    StudentId = r.StudentId, FullName = FullName(r.FirstName, r.MiddleName, r.LastName), RollNumber = r.RollNumber, IsActive = active,
-                    EnrolledFrom = r.EnrollmentDate > first ? r.EnrollmentDate : null
+                    StudentId = r.StudentId, FullName = FullName(r.FirstName, r.MiddleName, r.LastName), RollNumber = r.RollNumber, IsActive = active && inThisMonth,
+                    EnrolledFrom = firstDay != null && firstDay > first ? firstDay : null
                 };
                 var own = byStudent.GetValueOrDefault(r.StudentId);
                 foreach (var day in days)
                 {
                     string cell;
                     var code = own != null && own.TryGetValue(day.Date, out var c) ? c : null;
-                    if (day.Date < r.EnrollmentDate) cell = NotEnrolled;
-                    else if (code != null) cell = code == PresentCode ? Present : code == AbsentCode ? Absent : NotMarked;
+                    if (spans == null)
+                    {
+                        if (day.Date < r.EnrollmentDate) cell = NotEnrolled;
+                        else if (code != null) cell = code == PresentCode ? Present : code == AbsentCode ? Absent : NotMarked;
+                        else cell = day.IsWorkingDay ? NotMarked : NonWorking;
+                    }
+                    else if (code != null) cell = code == PresentCode ? Present : code == AbsentCode ? Absent : NotMarked;   // a mark made in this section always shows
+                    else if (!InSection(day.Date)) cell = NotEnrolled;                                                     // before they came here, or after they moved on
                     else cell = day.IsWorkingDay ? NotMarked : NonWorking;
                     dto.Marks.Add(cell);
 
-                    if (!AttendanceDayRules.CountsForStudent(new DayClass(day.Date, day.DayOfWeek, day.IsWorkingDay, day.NonWorkingReason, day.HolidayName), r.EnrollmentDate)) continue;   // counts for nothing
+                    if (spans == null)
+                    {
+                        if (!AttendanceDayRules.CountsForStudent(new DayClass(day.Date, day.DayOfWeek, day.IsWorkingDay, day.NonWorkingReason, day.HolidayName), r.EnrollmentDate)) continue;   // counts for nothing
+                    }
+                    else if (cell is NotEnrolled or NonWorking) continue;
                     if (cell == Present) dto.PresentDays++;
                     else if (cell == Absent) dto.AbsentDays++;
                     else if (!day.IsFuture) dto.NotMarkedDays++;

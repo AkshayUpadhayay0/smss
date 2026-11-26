@@ -457,7 +457,7 @@ namespace smss_api_service_layer.service
                 if (activeId == null) return ConfigError<MonthlyAttendanceReportDto>();
 
                 // three grouped reads, whatever the class size
-                var roster = await _repo.GetReportRosterAsync(schoolId, ay.AcademicYearId, sectionId, ct);
+                var roster = await _repo.GetMonthlyReportRosterAsync(schoolId, ay.AcademicYearId, sectionId, ct);
                 var marks = await _repo.GetMonthMarksAsync(schoolId, sectionId, first, last, ct);
                 var holidays = await _repo.GetHolidaysAsync(schoolId, first, last, activeId.Value, ct);
 

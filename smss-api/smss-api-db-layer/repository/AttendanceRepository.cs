@@ -186,6 +186,43 @@ namespace smss_api_db_layer.repository
             return rows.Select(r => new ReportRosterRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, DateOnly.FromDateTime(r.EnrollmentDate), r.EnrollmentStatus, r.StudentStatus)).ToList();
         }
 
+        private sealed class SecChangeRow { public string StudentId { get; set; } = null!; public long FromSectionId { get; set; } public long ToSectionId { get; set; } public DateOnly EffectiveDate { get; set; } }
+
+        public async Task<List<ReportRosterRow>> GetMonthlyReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct)
+        {
+            // the students enrolled in this section now, plus the ones with attendance rows in it who are enrolled in another section of the year
+            var rows = await (
+                from e in _db.StudentEnrollments.AsNoTracking()
+                join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
+                where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId
+                      && (e.ClassSectionId == sectionId || _db.StudentAttendance.Any(a => a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.SectionId == sectionId && a.StudentId == e.StudentId))
+                select new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, e.EnrollmentDate, e.ClassSectionId, EnrollmentStatus = e.StatusId, StudentStatus = s.StatusId }).ToListAsync(ct);
+            var ids = rows.Select(r => r.StudentId).ToArray();
+            var changes = ids.Length == 0 ? new List<SecChangeRow>() : await _db.Database.SqlQueryRaw<SecChangeRow>(@"
+SELECT student_id AS ""StudentId"", from_section_id AS ""FromSectionId"", to_section_id AS ""ToSectionId"", effective_date AS ""EffectiveDate""
+  FROM public.tb_student_section_changes WHERE school_id = @school AND academic_year_id = @year AND student_id = ANY(@ids) ORDER BY student_id, effective_date, change_id",
+                new Npgsql.NpgsqlParameter("school", schoolId), new Npgsql.NpgsqlParameter("year", academicYearId), new Npgsql.NpgsqlParameter("ids", ids)).ToListAsync(ct);
+            var byStudent = changes.GroupBy(c => c.StudentId).ToDictionary(g => g.Key, g => g.ToList());
+            return rows.Select(r =>
+            {
+                var enrolled = DateOnly.FromDateTime(r.EnrollmentDate);
+                List<SectionSpan>? spans = null;
+                if (byStudent.TryGetValue(r.StudentId, out var list))
+                {
+                    // walk the moves: [start, effective) in the section the student was leaving, then on from the effective day in the one they went to
+                    spans = new List<SectionSpan>();
+                    var start = enrolled; var current = list[0].FromSectionId;
+                    foreach (var c in list)
+                    {
+                        if (current == sectionId) spans.Add(new SectionSpan(start, c.EffectiveDate));
+                        start = c.EffectiveDate; current = c.ToSectionId;
+                    }
+                    if (current == sectionId) spans.Add(new SectionSpan(start, null));
+                }
+                return new ReportRosterRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, enrolled, r.EnrollmentStatus, r.StudentStatus, spans);
+            }).ToList();
+        }
+
         public Task<List<MonthMarkRow>> GetMonthMarksAsync(string schoolId, long sectionId, DateOnly fromDate, DateOnly toDate, CancellationToken ct) =>
             (from a in _db.StudentAttendance.AsNoTracking()
              where a.SchoolId == schoolId && a.SectionId == sectionId && a.AttendanceDate >= fromDate && a.AttendanceDate <= toDate

@@ -12,7 +12,9 @@ namespace smss_api_db_layer.@interface
     public record StudentDayRow(DateOnly Date, long SectionId, string ClassName, string SectionName, string StatusCode, string StatusName, DateTime? CorrectedAt, string? CorrectionReason);
     public record UnmarkedSectionRow(long SectionId, long ClassId, string ClassName, string SectionName, int RosterCount, string? ClassTeacherId, string? ClassTeacherName);
     /// <summary>One enrollment of the section for the year (any status) with the student's own status, for the monthly report.</summary>
-    public record ReportRosterRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, DateOnly EnrollmentDate, int EnrollmentStatusId, int StudentStatusId);
+    /// <param name="Spans">The stretches (from the first day, to the day it ended, exclusive; null = still) the student belonged to THIS section during the year, when they moved between sections (Stage 8c). Null = no move: the whole stay from the enrolment date.</param>
+    public record ReportRosterRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, DateOnly EnrollmentDate, int EnrollmentStatusId, int StudentStatusId, IReadOnlyList<SectionSpan>? Spans = null);
+    public record SectionSpan(DateOnly From, DateOnly? Until);
     /// <summary>One mark of the section: who, which day, and the status code (PRESENT / ABSENT).</summary>
     public record MonthMarkRow(string StudentId, DateOnly Date, string StatusCode);
     /// <summary>A Holiday calendar event (Active) overlapping the month.</summary>
@@ -66,6 +68,11 @@ namespace smss_api_db_layer.@interface
         Task<long?> GetCurrentYearIdAsync(string schoolId, CancellationToken ct);
         /// <summary>Every enrollment of the section for the year (any status) with its student's status.</summary>
         Task<List<ReportRosterRow>> GetReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
+        /// <summary>
+        /// The roster of the MONTHLY attendance report: the students enrolled in the section AND the students who have attendance rows in it for the year but have since moved to another section (the rows store
+        /// their own class and section). A student who moved sections carries the stretches they were in this section.
+        /// </summary>
+        Task<List<ReportRosterRow>> GetMonthlyReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
         /// <summary>The section's marks between two dates, one row per mark.</summary>
         Task<List<MonthMarkRow>> GetMonthMarksAsync(string schoolId, long sectionId, DateOnly from, DateOnly to, CancellationToken ct);
         /// <summary>Active calendar events of the Holiday category that overlap the dates (school-wide).</summary>
