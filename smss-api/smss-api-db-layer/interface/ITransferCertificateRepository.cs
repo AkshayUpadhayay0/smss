@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Storage;
+﻿using Microsoft.EntityFrameworkCore.Storage;
 
 namespace smss_api_db_layer.@interface
 {
@@ -43,6 +43,9 @@ namespace smss_api_db_layer.@interface
         public string? SchoolEmail { get; set; }
         public string? SchoolMobile { get; set; }
         public string? Website { get; set; }
+        public string? AffiliationNumber { get; set; }
+        public string? UdiseCode { get; set; }
+        public string? BoardSchoolCode { get; set; }
         public string? PrincipalName { get; set; }
         // the parents
         public string? GuardianName { get; set; }

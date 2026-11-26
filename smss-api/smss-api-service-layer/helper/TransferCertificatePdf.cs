@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -37,6 +37,19 @@ namespace smss_api_service_layer.helper
         public string? Remarks { get; set; }
         public string IssueDate { get; set; } = "";
         public string PrincipalName { get; set; } = "";
+        // Optional: only in the snapshot of the certificate they were typed for, printed only when filled in (an older certificate simply has none of them)
+        public string? Affiliation { get; set; }
+        public string? UdiseCode { get; set; }
+        public string? BoardSchoolCode { get; set; }
+        public string? Nationality { get; set; }
+        public string? Religion { get; set; }
+        public string? Category { get; set; }
+        public string? QualifiedForPromotion { get; set; }     // "Yes" / "Yes, to Class 6" / "No"
+        public string? WorkingDays { get; set; }
+        public string? DaysPresent { get; set; }
+        public string? FeeConcession { get; set; }
+        public string? ApplicationDate { get; set; }
+        public string? BoardConduct { get; set; }
     }
 
     /// <summary>Dates in words for the certificate ("Fifth March Two Thousand Twelve").</summary>
@@ -83,6 +96,9 @@ namespace smss_api_service_layer.helper
                 ("Admission number", s.AdmissionNumber),
             };
             if (!string.IsNullOrWhiteSpace(s.Gender)) rows.Add(("Gender", s.Gender!));
+            if (!string.IsNullOrWhiteSpace(s.Nationality)) rows.Add(("Nationality", s.Nationality!));
+            if (!string.IsNullOrWhiteSpace(s.Religion)) rows.Add(("Religion", s.Religion!));
+            if (!string.IsNullOrWhiteSpace(s.Category)) rows.Add(("Category", s.Category!));
             rows.Add(("Name of parent / guardian", parents));
             rows.Add(("Date of birth (in figures)", s.DateOfBirth));
             rows.Add(("Date of birth (in words)", s.DateOfBirthInWords));
@@ -92,10 +108,25 @@ namespace smss_api_service_layer.helper
             rows.Add(("Reason for leaving", s.LeavingReason ?? s.Outcome));
             rows.Add(("Date of leaving", s.LeavingDate));
             rows.Add(("Promotion", s.PromotionStatus));
+            if (!string.IsNullOrWhiteSpace(s.QualifiedForPromotion)) rows.Add(("Qualified for promotion to the higher class", s.QualifiedForPromotion!));
+            if (!string.IsNullOrWhiteSpace(s.WorkingDays)) rows.Add(("Total working days", s.WorkingDays!));
+            if (!string.IsNullOrWhiteSpace(s.DaysPresent)) rows.Add(("Days present", s.DaysPresent!));
+            if (!string.IsNullOrWhiteSpace(s.FeeConcession)) rows.Add(("Fee concession availed", s.FeeConcession!));
+            if (!string.IsNullOrWhiteSpace(s.ApplicationDate)) rows.Add(("Date of application for the certificate", s.ApplicationDate!));
             rows.Add(("Conduct", s.Conduct));
+            if (!string.IsNullOrWhiteSpace(s.BoardConduct)) rows.Add(("General conduct (board wording)", s.BoardConduct!));
             rows.Add(("Fee dues", s.FeeDues));
             if (!string.IsNullOrWhiteSpace(s.Remarks)) rows.Add(("Remarks", s.Remarks!));
             return rows;
+        }
+
+        /// <summary>"Affiliation No. X  |  UDISE Code Y  |  Board School Code Z", only the ones filled in; null when none.</summary>
+        public static string? SchoolIds(TcSnapshot s)
+        {
+            var parts = new[] { string.IsNullOrWhiteSpace(s.Affiliation) ? null : "Affiliation No. " + s.Affiliation, string.IsNullOrWhiteSpace(s.UdiseCode) ? null : "UDISE Code " + s.UdiseCode,
+                                string.IsNullOrWhiteSpace(s.BoardSchoolCode) ? null : "Board School Code " + s.BoardSchoolCode }.Where(p => p != null);
+            var text = string.Join("  |  ", parts);
+            return text.Length == 0 ? null : text;
         }
 
         public static List<string> Lines(TcSnapshot s, int duplicateNo)
@@ -103,6 +134,8 @@ namespace smss_api_service_layer.helper
             var lines = new List<string> { s.SchoolName };
             lines.AddRange(s.SchoolAddress);
             if (!string.IsNullOrWhiteSpace(s.Board)) lines.Add(s.Board!);
+            var ids = SchoolIds(s);
+            if (ids != null) lines.Add(ids);
             if (!string.IsNullOrWhiteSpace(s.SchoolContact)) lines.Add(s.SchoolContact!);
             lines.Add("TRANSFER CERTIFICATE");
             lines.Add("Certificate No. " + s.CertificateNumber);
@@ -129,6 +162,8 @@ namespace smss_api_service_layer.helper
                     col.Item().AlignCenter().Text(s.SchoolName).FontFamily("PT Serif").FontSize(18).Bold();
                     foreach (var a in s.SchoolAddress) col.Item().AlignCenter().Text(a).FontSize(10);
                     if (!string.IsNullOrWhiteSpace(s.Board)) col.Item().AlignCenter().Text(s.Board!).FontSize(10);
+                    var schoolIds = SchoolIds(s);
+                    if (schoolIds != null) col.Item().AlignCenter().Text(schoolIds).FontSize(10);
                     if (!string.IsNullOrWhiteSpace(s.SchoolContact)) col.Item().AlignCenter().Text(s.SchoolContact!).FontSize(9).FontColor("#5B5870");
                     col.Item().PaddingTop(10).AlignCenter().Text("TRANSFER CERTIFICATE").FontFamily("PT Serif").FontSize(16).Bold().LetterSpacing(0.05f);
                     col.Item().AlignCenter().Text("Certificate No. " + s.CertificateNumber).FontSize(11).SemiBold();

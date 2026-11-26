@@ -324,6 +324,9 @@ namespace smss_api_service_layer.service
                 school.SchoolLevelId = req.SchoolLevelId;
                 school.BoardTypeId = req.BoardTypeId;
                 school.SchoolEstablishYear = req.SchoolEstablishYear;
+                school.AffiliationNumber = Clean(req.AffiliationNumber);
+                school.UdiseCode = Clean(req.UdiseCode);
+                school.BoardSchoolCode = Clean(req.BoardSchoolCode);
                 school.SchoolGstin = gstin;
                 school.SchoolPan = pan;
                 school.CountryId = req.CountryId;
@@ -467,6 +470,9 @@ namespace smss_api_service_layer.service
             s.SchoolLevelId = r.SchoolLevelId;
             s.BoardTypeId = r.BoardTypeId;
             s.SchoolEstablishYear = r.SchoolEstablishYear;
+            s.AffiliationNumber = Clean(r.AffiliationNumber);
+            s.UdiseCode = Clean(r.UdiseCode);
+            s.BoardSchoolCode = Clean(r.BoardSchoolCode);
             s.CountryId = r.CountryId;
             s.StateId = r.StateId;
             s.DistrictId = r.DistrictId;

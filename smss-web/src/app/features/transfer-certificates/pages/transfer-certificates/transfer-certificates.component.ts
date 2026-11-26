@@ -5,7 +5,7 @@ import { Observable, finalize } from 'rxjs';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, CardComponent, PageHeaderComponent } from '../../../../shared/components';
-import { TcCheck, TransferCertificate } from '../../models/transfer-certificate.model';
+import { IssueTcExtras, TcCheck, TransferCertificate } from '../../models/transfer-certificate.model';
 import { TransferCertificateService } from '../../services/transfer-certificate.service';
 
 /**
@@ -38,6 +38,22 @@ import { TransferCertificateService } from '../../services/transfer-certificate.
             }
             <label class="field"><span>Conduct</span><input data-conduct maxlength="100" [value]="conduct()" (input)="conduct.set($any($event.target).value)" /></label>
             <label class="field wide"><span>Remarks (optional)</span><textarea data-remarks rows="2" maxlength="500" [value]="remarks()" (input)="remarks.set($any($event.target).value)"></textarea></label>
+            <details class="more" data-more>
+              <summary>More details for a board certificate (optional, printed only when filled in)</summary>
+              <div class="row">
+                <label class="field"><span>Nationality</span><input data-nationality maxlength="60" [value]="x('nationality')" (input)="setX('nationality', $any($event.target).value)" /></label>
+                <label class="field"><span>Religion</span><input data-religion maxlength="60" [value]="x('religion')" (input)="setX('religion', $any($event.target).value)" /></label>
+                <label class="field"><span>Category</span><input data-category maxlength="60" [value]="x('category')" (input)="setX('category', $any($event.target).value)" /></label>
+                <label class="field"><span>Qualified for promotion?</span>
+                  <select data-qualified (change)="setX('qualified', $any($event.target).value)"><option value="">Not stated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+                <label class="field"><span>Promoted to class</span><input data-promoted-to maxlength="60" [value]="x('promotedToClass')" (input)="setX('promotedToClass', $any($event.target).value)" /></label>
+                <label class="field"><span>Total working days</span><input data-working-days type="number" min="0" max="366" [value]="x('workingDays')" (input)="setX('workingDays', $any($event.target).value)" /></label>
+                <label class="field"><span>Days present</span><input data-days-present type="number" min="0" max="366" [value]="x('daysPresent')" (input)="setX('daysPresent', $any($event.target).value)" /></label>
+                <label class="field"><span>Fee concession availed</span><input data-concession maxlength="200" [value]="x('feeConcession')" (input)="setX('feeConcession', $any($event.target).value)" /></label>
+                <label class="field"><span>Date of application</span><input data-application-date type="date" [value]="x('applicationDate')" (input)="setX('applicationDate', $any($event.target).value)" /></label>
+                <label class="field"><span>General conduct (board wording)</span><input data-board-conduct maxlength="200" [value]="x('boardConduct')" (input)="setX('boardConduct', $any($event.target).value)" /></label>
+              </div>
+            </details>
             <app-button data-issue-btn [disabled]="busy() || (c.requiresOverride && (!overrideDues() || overrideReason().trim().length < 10))" (click)="issue(c)">{{ busy() ? 'Issuing…' : 'Issue certificate' }}</app-button>
           }
         </div>
@@ -94,6 +110,7 @@ import { TransferCertificateService } from '../../services/transfer-certificate.
     .wide { min-width: 100%; textarea { width: 100%; } }
     .check { display: flex; gap: var(--space-2); align-items: center; font-size: var(--text-sm); margin: var(--space-2) 0; }
     .issue { color: #991b1b; margin: var(--space-2) 0; }
+    .more { margin: var(--space-3) 0; summary { cursor: pointer; font-size: var(--text-sm); } }
     .scroll { overflow-x: auto; }
     .rows { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
     .rows th, .rows td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border); vertical-align: top; }
@@ -116,6 +133,25 @@ export class TransferCertificatesComponent implements OnInit {
   protected readonly conduct = signal('Good');
   protected readonly remarks = signal('');
   protected readonly busy = signal(false);
+  private readonly extras = signal<Record<string, string>>({});
+  protected x(key: string): string { return this.extras()[key] ?? ''; }
+  protected setX(key: string, value: string): void { this.extras.update((e) => ({ ...e, [key]: value })); }
+
+  /** Only the boxes that were filled in are sent. */
+  private extraBody(): IssueTcExtras {
+    const e = this.extras(); const t = (k: string) => (e[k] ?? '').trim(); const out: IssueTcExtras = {};
+    if (t('nationality')) out.nationality = t('nationality');
+    if (t('religion')) out.religion = t('religion');
+    if (t('category')) out.category = t('category');
+    if (t('qualified') === 'yes') out.qualifiedForPromotion = true; else if (t('qualified') === 'no') out.qualifiedForPromotion = false;
+    if (t('promotedToClass') && t('qualified') === 'yes') out.promotedToClass = t('promotedToClass');
+    if (t('workingDays')) out.workingDays = Number(t('workingDays'));
+    if (t('daysPresent')) out.daysPresent = Number(t('daysPresent'));
+    if (t('feeConcession')) out.feeConcession = t('feeConcession');
+    if (t('applicationDate')) out.applicationDate = t('applicationDate');
+    if (t('boardConduct')) out.boardConduct = t('boardConduct');
+    return out;
+  }
 
   protected readonly list = signal<TransferCertificate[]>([]);
   protected readonly status = signal('');
@@ -151,10 +187,10 @@ export class TransferCertificatesComponent implements OnInit {
     this.busy.set(true);
     this.api
       .issue({ studentId: c.studentId, conduct: this.conduct().trim() || undefined, remarks: this.remarks().trim() || undefined, confirm: true, overrideDues: c.requiresOverride ? this.overrideDues() : undefined,
-               overrideReason: c.requiresOverride ? this.overrideReason().trim() : undefined })
+               overrideReason: c.requiresOverride ? this.overrideReason().trim() : undefined, ...this.extraBody() })
       .pipe(finalize(() => this.busy.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (t) => { this.toast.success(`Certificate ${t.certificateNumber} is issued.`); this.reset(); this.remarks.set(''); this.studentId.set(''); this.load(); },
+        next: (t) => { this.toast.success(`Certificate ${t.certificateNumber} is issued.`); this.reset(); this.remarks.set(''); this.extras.set({}); this.studentId.set(''); this.load(); },
         error: () => undefined,   // the server's plain reason is toasted; nothing was issued
       });
   }

@@ -30,6 +30,9 @@ export interface SchoolBase {
   schoolEstablishYear?: number | null;
   schoolGstin?: string | null;
   schoolPan?: string | null;
+  affiliationNumber?: string | null;
+  udiseCode?: string | null;
+  boardSchoolCode?: string | null;
   countryId?: number | null;
   stateId?: number | null;
   districtId?: number | null;

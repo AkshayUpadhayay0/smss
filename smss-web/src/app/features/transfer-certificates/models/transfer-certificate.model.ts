@@ -14,4 +14,10 @@ export interface TransferCertificate {
   issuedAt: string; issuedBy: string | null; voidedAt: string | null; voidedBy: string | null; voidReason: string | null; duplicates: number; copies?: TcCopy[] | null;
 }
 
-export interface IssueTcRequest { studentId: string; conduct?: string; remarks?: string; confirm: boolean; overrideDues?: boolean; overrideReason?: string }
+/** The optional typed boxes live only in that certificate's snapshot (never on the student record) and are printed only when filled in. */
+export interface IssueTcExtras {
+  nationality?: string; religion?: string; category?: string; qualifiedForPromotion?: boolean; promotedToClass?: string; workingDays?: number; daysPresent?: number;
+  feeConcession?: string; applicationDate?: string; boardConduct?: string;
+}
+
+export interface IssueTcRequest extends IssueTcExtras { studentId: string; conduct?: string; remarks?: string; confirm: boolean; overrideDues?: boolean; overrideReason?: string }

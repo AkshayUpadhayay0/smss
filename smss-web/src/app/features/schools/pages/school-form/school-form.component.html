@@ -60,6 +60,9 @@
       <div class="grid">
         <app-input label="GSTIN" placeholder="15-character GSTIN" formControlName="schoolGstin" [errorText]="err('schoolGstin')" helpText="Optional. Saved in uppercase." />
         <app-input label="PAN" placeholder="10-character PAN" formControlName="schoolPan" [errorText]="err('schoolPan')" helpText="Optional. Saved in uppercase." />
+        <app-input label="Affiliation number" placeholder="Board affiliation number" formControlName="affiliationNumber" helpText="Optional." />
+        <app-input label="UDISE code" placeholder="UDISE code" formControlName="udiseCode" helpText="Optional." />
+        <app-input label="Board school code" placeholder="The board's school code" formControlName="boardSchoolCode" helpText="Optional." />
       </div>
     </app-card>
 

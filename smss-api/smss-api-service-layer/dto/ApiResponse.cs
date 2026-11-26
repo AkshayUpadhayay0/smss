@@ -40,6 +40,9 @@ namespace smss_api_service_layer.dto
         public short? SchoolEstablishYear { get; set; }
         public string? SchoolGstin { get; set; }
         public string? SchoolPan { get; set; }
+        public string? AffiliationNumber { get; set; }
+        public string? UdiseCode { get; set; }
+        public string? BoardSchoolCode { get; set; }
         public int? CountryId { get; set; }
         public int? StateId { get; set; }
         public int? DistrictId { get; set; }

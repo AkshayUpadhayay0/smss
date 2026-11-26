@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace smss_api_service_layer.dto
 {
@@ -36,6 +36,20 @@ namespace smss_api_service_layer.dto
         public bool OverrideDues { get; set; }
         /// <summary>At least 10 characters when dues are overridden; stored on the certificate row (never printed).</summary>
         [StringLength(500)] public string? OverrideReason { get; set; }
+
+        // Optional typed boxes. They are kept ONLY in this certificate's snapshot (never on the student record) and printed only when filled in.
+        [StringLength(60)] public string? Nationality { get; set; }
+        [StringLength(60)] public string? Religion { get; set; }
+        [StringLength(60)] public string? Category { get; set; }
+        /// <summary>Qualified for promotion to the higher class: true = yes, false = no, null = not stated.</summary>
+        public bool? QualifiedForPromotion { get; set; }
+        [StringLength(60)] public string? PromotedToClass { get; set; }
+        [Range(0, 366)] public int? WorkingDays { get; set; }
+        [Range(0, 366)] public int? DaysPresent { get; set; }
+        [StringLength(200)] public string? FeeConcession { get; set; }
+        public DateOnly? ApplicationDate { get; set; }
+        /// <summary>The board's wording for general conduct, when it differs from the plain conduct above.</summary>
+        [StringLength(200)] public string? BoardConduct { get; set; }
     }
 
     public class TcCopyDto

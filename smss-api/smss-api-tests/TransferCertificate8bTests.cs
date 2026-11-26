@@ -283,6 +283,47 @@ namespace smss_api_tests
             Assert.True(ok.Status, ok.Message);
         }
 
+        // ------------------------------------------------------------------------------------------------ the optional boxes (8b follow-up)
+        [DbFact]
+        public async Task The_optional_school_fields_and_typed_boxes_are_printed_only_when_filled_in_live_only_in_the_snapshot_and_never_change_the_student_record()
+        {
+            using var db = new TaxDb(); var s = await Left(db); var s2 = await Left(db, 1);
+            db.Exec($"update tb_schools set affiliation_number = '2730123', udise_code = '05010100101', board_school_code = '60123' where school_id = {Q(A)}");
+            var studentsBefore = db.Scalar<string>("select md5(string_agg(concat_ws('|', t.*), ',' order by student_id)) from tb_students t");
+            var plain = (await Tc(db).IssueAsync(A, UserA, Req(s2), default)).Data!;
+            var req = Req(s, conduct: "Good"); req.Nationality = "Indian"; req.Religion = "Hindu"; req.Category = "General"; req.QualifiedForPromotion = true; req.PromotedToClass = "Class 6";
+            req.WorkingDays = 220; req.DaysPresent = 198; req.FeeConcession = "Sibling discount"; req.ApplicationDate = SchoolClock.Today().AddDays(-3); req.BoardConduct = "Satisfactory";
+            var r = await Tc(db).IssueAsync(A, UserA, req, default);
+            Assert.True(r.Status, r.Message);
+            var lines = TransferCertificatePdf.Lines(SnapshotOf(db, r.Data!.CertificateId), 0);
+            Assert.Contains(lines, l => l == "Affiliation No. 2730123  |  UDISE Code 05010100101  |  Board School Code 60123");
+            foreach (var want in new[] { "Nationality: Indian", "Religion: Hindu", "Category: General", "Qualified for promotion to the higher class: Yes, to Class 6", "Total working days: 220", "Days present: 198",
+                                         "Fee concession availed: Sibling discount", "General conduct (board wording): Satisfactory" })
+                Assert.Contains(lines, l => l.EndsWith(want));
+            Assert.Contains(lines, l => l.Contains("Date of application for the certificate:"));
+            // nothing was filled for the other student's certificate, so none of those rows exist on it (the school ids were set later, so they are not on it either)
+            var plainLines = TransferCertificatePdf.Lines(SnapshotOf(db, plain.CertificateId), 0);
+            Assert.DoesNotContain(plainLines, l => l.Contains("Nationality") || l.Contains("Religion") || l.Contains("Category") || l.Contains("working days") || l.Contains("Days present") || l.Contains("concession"));
+            Assert.Equal(studentsBefore, db.Scalar<string>("select md5(string_agg(concat_ws('|', t.*), ',' order by student_id)) from tb_students t"));    // tb_students is untouched
+            // a later change of the school ids cannot change the issued certificate
+            var hash = db.Scalar<string>($"select md5(snapshot::text) from tb_transfer_certificates where certificate_id = {r.Data.CertificateId}");
+            db.Exec($"update tb_schools set affiliation_number = 'CHANGED', udise_code = 'CHANGED' where school_id = {Q(A)}");
+            Assert.Equal(lines, TransferCertificatePdf.Lines(SnapshotOf(db, r.Data.CertificateId), 0));
+            Assert.Equal(hash, db.Scalar<string>($"select md5(snapshot::text) from tb_transfer_certificates where certificate_id = {r.Data.CertificateId}"));
+            Assert.Equal(200, (await Tc(db).OriginalPdfAsync(A, UserA, r.Data.CertificateId, default)).StatusCode);
+        }
+
+        [DbFact]
+        public async Task The_optional_boxes_are_checked_days_present_cannot_exceed_working_days_and_the_application_date_cannot_be_in_the_future()
+        {
+            using var db = new TaxDb(); var s = await Left(db);
+            var a = Req(s); a.WorkingDays = 100; a.DaysPresent = 101;
+            Assert.Equal(400, (await Tc(db).IssueAsync(A, UserA, a, default)).StatusCode);
+            var b = Req(s); b.ApplicationDate = SchoolClock.Today().AddDays(1);
+            Assert.Equal(400, (await Tc(db).IssueAsync(A, UserA, b, default)).StatusCode);
+            Assert.Equal(0, db.Scalar<int>("select count(*) from tb_transfer_certificates"));
+        }
+
         // ------------------------------------------------------------------------------------------------ the printed words
         [Fact]
         public void The_date_of_birth_in_words_reads_like_a_certificate()

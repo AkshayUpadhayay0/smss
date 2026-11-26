@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using smss_api_db_layer.@interface;
@@ -61,7 +61,7 @@ namespace smss_api_service_layer.service
         private static string Fmt(DateOnly d) => d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
         /// <summary>Everything that will be printed, as text, as at this moment.</summary>
-        private static TcSnapshot Snapshot(TcContext c, string number, DateOnly leaving, string conduct, string? remarks, bool cleared, DateOnly today)
+        private static TcSnapshot Snapshot(TcContext c, string number, DateOnly leaving, string conduct, string? remarks, bool cleared, DateOnly today, IssueTcRequest? extra = null)
         {
             var address = new List<string>();
             var l1 = string.Join(", ", new[] { c.AddressLine1, c.AddressLine2 }.Where(p => !string.IsNullOrWhiteSpace(p)));
@@ -83,8 +83,15 @@ namespace smss_api_service_layer.service
                 AdmissionDate = c.AdmissionDate == null ? "" : Fmt(c.AdmissionDate.Value), LastClass = lastClass, AcademicYear = c.YearName, Outcome = OutcomeLabel(c.Outcome),
                 LeavingDate = Fmt(leaving), LeavingReason = string.IsNullOrWhiteSpace(c.LeavingReason) ? null : c.LeavingReason, PromotionStatus = promotion, Conduct = conduct,
                 FeeDues = cleared ? "Cleared" : "Not cleared", Remarks = string.IsNullOrWhiteSpace(remarks) ? null : remarks, IssueDate = Fmt(today), PrincipalName = c.PrincipalName ?? "",
+                Affiliation = Opt(c.AffiliationNumber), UdiseCode = Opt(c.UdiseCode), BoardSchoolCode = Opt(c.BoardSchoolCode),
+                Nationality = Opt(extra?.Nationality), Religion = Opt(extra?.Religion), Category = Opt(extra?.Category),
+                QualifiedForPromotion = extra?.QualifiedForPromotion == null ? null : extra.QualifiedForPromotion == true ? (Opt(extra.PromotedToClass) == null ? "Yes" : "Yes, to " + Opt(extra.PromotedToClass)) : "No",
+                WorkingDays = extra?.WorkingDays?.ToString(CultureInfo.InvariantCulture), DaysPresent = extra?.DaysPresent?.ToString(CultureInfo.InvariantCulture), FeeConcession = Opt(extra?.FeeConcession),
+                ApplicationDate = extra?.ApplicationDate == null ? null : Fmt(extra.ApplicationDate.Value), BoardConduct = Opt(extra?.BoardConduct),
             };
         }
+
+        private static string? Opt(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
         private static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..].ToLowerInvariant();
 
@@ -108,6 +115,8 @@ namespace smss_api_service_layer.service
             var remarks = string.IsNullOrWhiteSpace(request.Remarks) ? null : request.Remarks.Trim();
             if (conduct.Length > 100 || (remarks?.Length ?? 0) > 500) return Result<TcDto>(400, "The conduct can be at most 100 characters and the remarks at most 500.", null);
             if (!request.Confirm) return Result<TcDto>(400, "Issuing a certificate uses up a certificate number: confirm first.", null);
+            if (request.WorkingDays != null && request.DaysPresent != null && request.DaysPresent > request.WorkingDays) return Result<TcDto>(400, "Days present cannot be more than the total working days.", null);
+            if (request.ApplicationDate != null && request.ApplicationDate > SchoolClock.Today()) return Result<TcDto>(400, "The date of application cannot be in the future.", null);
             try
             {
                 var b = await BuildAsync(schoolId, request.StudentId.Trim(), ct);
@@ -120,7 +129,7 @@ namespace smss_api_service_layer.service
                 await using var tx = await _repo.BeginTransactionAsync(ct);
                 var seq = await _repo.AllocateNumberAsync(schoolId, ctx.YearName, ct);
                 var number = $"{ctx.SchoolCode}/TC/{ctx.YearName}/{seq:D4}";
-                var snapshot = Snapshot(ctx, number, dto.LeavingDate, conduct, remarks, !overridden, SchoolClock.Today());
+                var snapshot = Snapshot(ctx, number, dto.LeavingDate, conduct, remarks, !overridden, SchoolClock.Today(), request);
                 long id;
                 try
                 {

@@ -29,6 +29,10 @@ namespace smss_api_db_layer.entity
 
         [Column("school_gstin")][StringLength(15)] public string? SchoolGstin { get; set; }
         [Column("school_pan")][StringLength(10)] public string? SchoolPan { get; set; }
+        /// <summary>Board affiliation number, UDISE code and the board's school code: optional, printed on a transfer certificate only when filled in.</summary>
+        [Column("affiliation_number")][StringLength(50)] public string? AffiliationNumber { get; set; }
+        [Column("udise_code")][StringLength(20)] public string? UdiseCode { get; set; }
+        [Column("board_school_code")][StringLength(30)] public string? BoardSchoolCode { get; set; }
 
         [Column("country_id")] public int? CountryId { get; set; }
         [Column("state_id")] public int? StateId { get; set; }

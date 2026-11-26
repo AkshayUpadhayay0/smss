@@ -104,6 +104,11 @@
             <app-input label="GSTIN" placeholder="15-character GSTIN" prefixIcon="building-2" formControlName="schoolGstin" [errorText]="err('schoolGstin')" helpText="Optional. Saved in uppercase." />
             <app-input label="PAN" placeholder="10-character PAN" prefixIcon="id-card" formControlName="schoolPan" [errorText]="err('schoolPan')" helpText="Optional. Saved in uppercase." />
           </div>
+          <div class="fields two">
+            <app-input label="Affiliation number" placeholder="Board affiliation number" formControlName="affiliationNumber" helpText="Optional. Printed on transfer certificates when filled in." />
+            <app-input label="UDISE code" placeholder="UDISE code" formControlName="udiseCode" helpText="Optional." />
+            <app-input label="Board school code" placeholder="The board's school code" formControlName="boardSchoolCode" helpText="Optional."  />
+          </div>
         </section>
       }
 

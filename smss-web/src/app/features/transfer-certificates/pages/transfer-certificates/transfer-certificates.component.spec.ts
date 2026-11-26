@@ -125,6 +125,25 @@ describe('TransferCertificatesComponent', () => {
     http.expectOne((r) => r.url === `${API}/api/TransferCertificates`).flush(env([CERT(1, { duplicates: 1 })]));
   });
 
+  it('the optional boxes are sent only when filled in, and "qualified: yes" carries the class', async () => {
+    open();
+    type('[data-student]', 'S1');
+    q<HTMLButtonElement>('[data-check-btn] button')!.click();
+    http.expectOne((r) => r.url === `${API}/api/TransferCertificates/check`).flush(env(CHECK()));
+    fixture.detectChanges();
+    type('[data-nationality]', 'Indian');
+    type('[data-working-days]', '220');
+    type('[data-days-present]', '198');
+    const sel = q<HTMLSelectElement>('[data-qualified]')!; sel.value = 'yes'; sel.dispatchEvent(new Event('change')); fixture.detectChanges();
+    type('[data-promoted-to]', 'Class 6');
+    q<HTMLButtonElement>('[data-issue-btn] button')!.click();
+    await fixture.whenStable();
+    const issue = http.expectOne(`${API}/api/TransferCertificates/issue`);
+    expect(issue.request.body).toEqual({ studentId: 'S1', conduct: 'Good', confirm: true, nationality: 'Indian', qualifiedForPromotion: true, promotedToClass: 'Class 6', workingDays: 220, daysPresent: 198 });
+    issue.flush(env(CERT(5)));
+    http.expectOne((r) => r.url === `${API}/api/TransferCertificates`).flush(env([]));
+  });
+
   it('only the School Admin and the Principal open it', () => {
     expect(canAccess('/transfer-certificates', ['School Admin'])).toBe(true);
     expect(canAccess('/transfer-certificates', ['Principal'])).toBe(true);

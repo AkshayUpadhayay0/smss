@@ -51,6 +51,9 @@ namespace smss_api_service_layer.dto
 
         [RegularExpression(Rx.Gstin, ErrorMessage = "Invalid GSTIN.")] public string? SchoolGstin { get; set; }
         [RegularExpression(Rx.Pan, ErrorMessage = "Invalid PAN.")] public string? SchoolPan { get; set; }
+        [StringLength(50)] public string? AffiliationNumber { get; set; }
+        [StringLength(20)] public string? UdiseCode { get; set; }
+        [StringLength(30)] public string? BoardSchoolCode { get; set; }
 
         public int? CountryId { get; set; }
         public int? StateId { get; set; }
@@ -135,6 +138,9 @@ namespace smss_api_service_layer.dto
 
         [RegularExpression(Rx.Gstin, ErrorMessage = "Invalid GSTIN.")] public string? SchoolGstin { get; set; }
         [RegularExpression(Rx.Pan, ErrorMessage = "Invalid PAN.")] public string? SchoolPan { get; set; }
+        [StringLength(50)] public string? AffiliationNumber { get; set; }
+        [StringLength(20)] public string? UdiseCode { get; set; }
+        [StringLength(30)] public string? BoardSchoolCode { get; set; }
 
         public int? CountryId { get; set; }
         public int? StateId { get; set; }

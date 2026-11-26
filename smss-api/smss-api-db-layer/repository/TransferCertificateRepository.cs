@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using NpgsqlTypes;
@@ -26,7 +26,7 @@ SELECT s.student_id AS ""StudentId"", s.first_name AS ""FirstName"", s.middle_na
        pi.decision AS ""EnteredBy"", fc.class_name AS ""FromClassName"", tc.certificate_id AS ""ExistingCertificateId"", tc.certificate_number AS ""ExistingCertificateNumber"",
        sch.school_name AS ""SchoolName"", sch.school_code AS ""SchoolCode"", bt.board_name AS ""BoardName"", sch.school_establish_year AS ""EstablishYear"", sch.address_line1 AS ""AddressLine1"",
        sch.address_line2 AS ""AddressLine2"", ci.city_name AS ""CityName"", st.sname AS ""StateName"", sch.pincode AS ""Pincode"", sch.email AS ""SchoolEmail"", sch.mobile_number AS ""SchoolMobile"",
-       sch.website AS ""Website"",
+       sch.website AS ""Website"", sch.affiliation_number AS ""AffiliationNumber"", sch.udise_code AS ""UdiseCode"", sch.board_school_code AS ""BoardSchoolCode"",
        (SELECT u.display_name FROM public.tb_users u JOIN public.tb_user_roles ur ON ur.user_id = u.user_id JOIN public.lut_roles r ON r.role_id = ur.role_id AND r.role_code = 'PRINCIPAL'
          WHERE u.school_id = @school AND u.status_id = (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status') ORDER BY u.user_id LIMIT 1) AS ""PrincipalName"",
        (SELECT btrim(concat_ws(' ', gd.first_name, gd.last_name)) FROM public.tb_student_guardians l JOIN public.tb_guardians gd ON gd.guardian_id = l.guardian_id AND gd.school_id = @school
