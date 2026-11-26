@@ -1,4 +1,4 @@
-using smss_api_db_layer.entity;
+﻿using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.@interface
 {
@@ -35,6 +35,16 @@ namespace smss_api_db_layer.@interface
         Task<bool> IsChildLinkedAsync(string schoolId, long guardianId, string studentId, CancellationToken ct);
         /// <summary>The outcome (PROMOTED, REPEATED, PASSED_OUT, TRANSFERRED_OUT, LEFT) of the student's most recent enrolment, or null when none was recorded.</summary>
         Task<string?> GetLatestOutcomeAsync(string schoolId, string studentId, CancellationToken ct);
+        /// <summary>What decides whether a STUDENT login may sign in: the student's status and the outcome of the latest enrolment with whether its year is current. Null when there is no such student in the school.</summary>
+        Task<StudentLoginState?> GetStudentLoginStateAsync(string schoolId, string studentId, CancellationToken ct);
         Task<List<TbMessageDelivery>> GetRecentDeliveriesAsync(string schoolId, long guardianId, int take, CancellationToken ct);
+    }
+
+    public class StudentLoginState
+    {
+        public bool StudentActive { get; set; }
+        /// <summary>Outcome of the latest enrolment (LEFT, TRANSFERRED_OUT, PASSED_OUT, ...), or null (an open enrolment, or none).</summary>
+        public string? Outcome { get; set; }
+        public bool YearIsCurrent { get; set; }
     }
 }

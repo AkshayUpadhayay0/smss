@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.@interface;
@@ -49,7 +50,7 @@ namespace smss_api_db_layer.repository
         public Task<int> EnrolledStudentsAsync(string schoolId, long academicYearId, CancellationToken ct)
         {
             var active = _db.LutStatus.Where(s => s.Sname == ActiveName && s.Stype == GeneralType).Select(s => (int?)s.Sid).FirstOrDefault();
-            return (from e in _db.StudentEnrollments.AsNoTracking()
+            return (from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                     join s in _db.Students.AsNoTracking() on new { e.StudentId, e.SchoolId } equals new { s.StudentId, s.SchoolId }
                     where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == active && s.StatusId == active
                     select e.StudentId).Distinct().CountAsync(ct);

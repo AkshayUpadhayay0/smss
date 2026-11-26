@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -95,7 +96,7 @@ namespace smss_api_db_layer.repository
                 var from = t.RequiredFrom;
                 var ids = await _db.Students.AsNoTracking()
                     .Where(s => s.SchoolId == schoolId && s.StatusId == activeStudentStatusId && s.AdmissionDate >= from
-                                && _db.StudentEnrollments.Any(e => e.SchoolId == schoolId && e.StudentId == s.StudentId && e.AcademicYearId == currentYearId && e.StatusId == activeStudentStatusId))
+                                && _db.StudentEnrollments.LiveOutcome(_db.AcademicYears).Any(e => e.SchoolId == schoolId && e.StudentId == s.StudentId && e.AcademicYearId == currentYearId && e.StatusId == activeStudentStatusId))
                     .Where(s => !_db.StudentDocuments.Any(d => d.SchoolId == schoolId && d.StudentId == s.StudentId && d.DocumentTypeId == typeId && d.VoidedAt == null))
                     .Select(s => s.StudentId).ToListAsync(ct);
                 foreach (var id in ids)

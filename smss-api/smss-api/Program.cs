@@ -85,6 +85,8 @@ builder.Services.AddScoped<ILateFeeReportService, LateFeeReportService>();
 builder.Services.AddScoped<ILateFeeService, LateFeeService>();
 builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
+builder.Services.AddScoped<ILeavingRepository, LeavingRepository>();
+builder.Services.AddScoped<ILeavingService, LeavingService>();
 builder.Services.AddScoped<IFeeRepairRepository, FeeRepairRepository>();
 builder.Services.AddScoped<IFeeRepairService, FeeRepairService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();

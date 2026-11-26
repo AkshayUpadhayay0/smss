@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -76,7 +77,7 @@ namespace smss_api_db_layer.repository
         // ------------------------------------------------------------------ roster and entries
         public async Task<List<RosterStudent>> GetRosterAsync(string schoolId, long academicYearId, long sectionId, int activeStatusId, CancellationToken ct)
         {
-            var rows = await (from e in _db.StudentEnrollments.AsNoTracking()
+            var rows = await (from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                               join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
                               where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == sectionId
                                     && e.StatusId == activeStatusId && s.StatusId == activeStatusId

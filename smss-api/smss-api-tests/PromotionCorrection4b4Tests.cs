@@ -302,12 +302,15 @@ namespace smss_api_tests
             Assert.Equal(status, Rows(db, $"select student_id, status_id from tb_students where school_id='{w.School}'"));   // tb_students.status is unchanged
             Assert.Equal(("PASSED_OUT", "LEFT"), (R.Outcome(db, w, "P2", w.S), R.Outcome(db, w, "P3", w.S)));
             // the old year still shows both (the roster, the student's year tabs)
-            var roster = await new StudentRepository(db.Ctx()).GetEnrolledStudentsAsync(w.School, w.S, w.C1A, default);
-            Assert.Contains(roster, r => r.StudentId == w.School + "P2"); Assert.Contains(roster, r => r.StudentId == w.School + "P3");
+            // (Stage 8: while year S is still the CURRENT year the live roster hides the leaver and keeps the passed-out student; once it is an old year it shows both, below)
+            var live = await new StudentRepository(db.Ctx()).GetEnrolledStudentsAsync(w.School, w.S, w.C1A, default);
+            Assert.Contains(live, r => r.StudentId == w.School + "P2"); Assert.DoesNotContain(live, r => r.StudentId == w.School + "P3");
             Assert.Single(await new StudentRepository(db.Ctx()).GetEnrollmentsAsync(w.School, w.School + "P2", default));
             // once the new year is the current one they are in none of its rosters, lists or counts
             db.Exec($"update tb_academic_years set is_current=false where academic_year_id={w.S}");
             db.Exec($"update tb_academic_years set is_current=true where academic_year_id={w.T}");
+            var oldYear = await new StudentRepository(db.Ctx()).GetEnrolledStudentsAsync(w.School, w.S, w.C1A, default);                  // the old year is history: both are still in it
+            Assert.Contains(oldYear, r => r.StudentId == w.School + "P2"); Assert.Contains(oldYear, r => r.StudentId == w.School + "P3");
             Assert.Empty((await new StudentRepository(db.Ctx()).GetEnrolledStudentsAsync(w.School, w.T, w.C1A, default)).Where(r => r.StudentId == w.School + "P2" || r.StudentId == w.School + "P3"));
             var pending = (await P.Svc(db).GetPendingAsync(w.School, true, default)).Data!;
             Assert.DoesNotContain(pending.Rows, r => r.StudentId == w.School + "P2" || r.StudentId == w.School + "P3");

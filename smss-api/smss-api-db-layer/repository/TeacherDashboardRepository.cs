@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.@interface;
@@ -18,7 +19,7 @@ namespace smss_api_db_layer.repository
             var sections = sectionIds.ToArray();
             // the roster is the same one Attendance / Assessments use; school id on every table so another school's rows can never be counted
             return await (
-                from e in _db.StudentEnrollments.AsNoTracking()
+                from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                 join st in _db.Students.AsNoTracking() on e.StudentId equals st.StudentId
                 where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && sections.Contains(e.ClassSectionId)
                       && e.StatusId == activeStatusId && st.StatusId == activeStatusId && st.SchoolId == schoolId

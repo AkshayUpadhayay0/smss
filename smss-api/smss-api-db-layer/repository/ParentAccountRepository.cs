@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
@@ -95,6 +95,15 @@ SELECT COALESCE((SELECT e.outcome FROM public.tb_student_enrollments e JOIN publ
                 new Npgsql.NpgsqlParameter("school", schoolId), new Npgsql.NpgsqlParameter("student", studentId)).ToListAsync(ct)).SingleOrDefault();
             return string.IsNullOrEmpty(v) ? null : v;
         }
+
+        public async Task<StudentLoginState?> GetStudentLoginStateAsync(string schoolId, string studentId, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<StudentLoginState>(@"
+SELECT (s.status_id = (SELECT sid FROM public.lut_status WHERE sname = 'Active' AND stype = 'general status')) AS ""StudentActive"", le.outcome AS ""Outcome"", COALESCE(le.is_current, false) AS ""YearIsCurrent""
+  FROM public.tb_students s
+  LEFT JOIN LATERAL (SELECT e.outcome, y.is_current FROM public.tb_student_enrollments e JOIN public.tb_academic_years y ON y.academic_year_id = e.academic_year_id AND y.school_id = e.school_id
+                      WHERE e.school_id = s.school_id AND e.student_id = s.student_id ORDER BY y.start_date DESC, e.enrollment_id DESC LIMIT 1) le ON true
+ WHERE s.school_id = @school AND s.student_id = @student",
+                new Npgsql.NpgsqlParameter("school", schoolId), new Npgsql.NpgsqlParameter("student", studentId)).ToListAsync(ct)).FirstOrDefault();
 
         public Task<List<TbMessageDelivery>> GetRecentDeliveriesAsync(string schoolId, long guardianId, int take, CancellationToken ct) =>
             _db.MessageDeliveries.AsNoTracking().Where(d => d.SchoolId == schoolId && d.GuardianId == guardianId).OrderByDescending(d => d.DeliveryId).Take(take).ToListAsync(ct);

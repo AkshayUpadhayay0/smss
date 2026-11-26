@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -64,7 +65,7 @@ namespace smss_api_db_layer.repository
         {
             // Filtered by school on BOTH tables, so an enrollment row can never pull in another school's student (same query as Attendance)
             var rows = await (
-                from e in _db.StudentEnrollments.AsNoTracking()
+                from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                 join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
                 where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == sectionId
                       && e.StatusId == activeStatusId && s.StatusId == activeStatusId
@@ -75,7 +76,7 @@ namespace smss_api_db_layer.repository
         }
 
         public Task<long?> GetStudentSectionAsync(string schoolId, string studentId, long academicYearId, int activeStatusId, CancellationToken ct) =>
-            (from e in _db.StudentEnrollments.AsNoTracking()
+            (from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
              join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
              where e.SchoolId == schoolId && s.SchoolId == schoolId && e.StudentId == studentId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId && s.StatusId == activeStatusId
              select (long?)e.ClassSectionId).FirstOrDefaultAsync(ct);

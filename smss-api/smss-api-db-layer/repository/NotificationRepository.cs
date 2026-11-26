@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
@@ -135,7 +136,7 @@ namespace smss_api_db_layer.repository
             if (activeId == null) return new();
             var rows = await (
                 from s in _db.Students.AsNoTracking()
-                join e in _db.StudentEnrollments.AsNoTracking() on s.StudentId equals e.StudentId
+                join e in _db.StudentEnrollments.AsNoTracking().LiveOutcome(_db.AcademicYears) on s.StudentId equals e.StudentId
                 join u in _db.Users.AsNoTracking() on s.StudentId equals u.OrgUserId
                 where s.SchoolId == schoolId && e.SchoolId == schoolId && u.SchoolId == schoolId
                       && s.StatusId == activeId && e.StatusId == activeId && e.AcademicYearId == academicYearId

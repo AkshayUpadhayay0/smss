@@ -40,6 +40,9 @@ Run each with `psql -h <host> -U <user> -d <db> -v ON_ERROR_STOP=1 -f Docs/<file
 | 24 | `smss-st-4b4-RUN-ME.sql` | 4b-1 (stops with a message if missing) | yes | 4b-4 (correction) |
 | 25 | `smss-st-5a1-RUN-ME.sql` | tax types (1) | yes | 5a to 5c (late fee) |
 | 26 | `smss-st-6a-RUN-ME.sql` | guardians (3a), users | yes | 6a to 7b (parent accounts, messaging) |
+| 27 | `smss-st-8a-RUN-ME.sql` | 4b-1 (outcome columns) | **no: not yet run on smss-db** | 8a (record leaving) |
+
+Stage 8a (script 27) was added after the scratch proof in section 1; it was run twice on a scratch copy of the 6a template (second run prints ALREADY MIGRATED).
 
 Stages 3b, 3c, 3e, 4a-1, 4a-2, 4b-2, 4b-3, 5a-2, 5b, 5c, 6b, 6c, 7a and 7b have **no migration**.
 

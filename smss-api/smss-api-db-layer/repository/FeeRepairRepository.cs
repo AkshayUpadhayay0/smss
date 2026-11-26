@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;
@@ -23,6 +24,7 @@ SELECT s.student_id AS ""StudentId"",
   JOIN public.tb_sections sec ON sec.section_id = e.class_section_id AND sec.school_id = @school
   JOIN public.tb_classes cl ON cl.class_id = sec.class_id AND cl.school_id = @school
  WHERE e.school_id = @school AND e.academic_year_id = @year AND e.status_id = {Act}
+   AND {LiveEnrolment.SqlForYear("e")}
    AND NOT EXISTS (SELECT 1 FROM public.tb_student_fee_structure f WHERE f.school_id = @school AND f.student_id = s.student_id AND f.academic_year_id = @year)
  ORDER BY cl.class_name, sec.section_name, ""StudentName"", s.student_id",
                 new NpgsqlParameter("school", NpgsqlDbType.Varchar) { Value = schoolId }, new NpgsqlParameter("year", NpgsqlDbType.Bigint) { Value = academicYearId }).ToListAsync(ct);

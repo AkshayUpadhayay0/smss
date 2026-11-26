@@ -236,12 +236,16 @@ namespace smss_api_tests
                     if (changes) writers.Add(Path.GetFileName(f));
                 }
             // admission creates the FIRST enrolment of a new student (the services refuse a closed year); promotion adds the next year's and records the outcome. Nothing updates or deletes an enrolment.
-            Assert.Equal(new[] { "AdmissionRepository.cs", "PromotionRepository.cs" }, writers.Distinct().OrderBy(x => x).ToArray());
+            Assert.Equal(new[] { "AdmissionRepository.cs", "LeavingRepository.cs", "PromotionRepository.cs" }, writers.Distinct().OrderBy(x => x).ToArray());
             var promotion = File.ReadAllText(Directory.EnumerateFiles(dir!.FullName, "PromotionRepository.cs", SearchOption.AllDirectories).First());
             Assert.Contains("SET outcome = @o, outcome_at = CURRENT_TIMESTAMP WHERE enrollment_id = @id AND school_id = @school AND outcome IS NULL", promotion);
             // the ONE delete is the correction of a promotion (4b-4): it removes only the NEW-year enrolment of a year that is not closed (the service checks), by id and school
             Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(promotion, "DELETE FROM public.tb_student_enrollments").Count);
             Assert.Contains("DELETE FROM public.tb_student_enrollments WHERE enrollment_id = @id AND school_id = @school", promotion);
+            // Record leaving (8a) writes LEFT / TRANSFERRED_OUT only while there is no outcome (its service refuses a closed year) and never deletes
+            var leaving = File.ReadAllText(Directory.EnumerateFiles(dir!.FullName, "LeavingRepository.cs", SearchOption.AllDirectories).First());
+            Assert.Contains("WHERE enrollment_id = @enr AND school_id = @school AND student_id = @student AND outcome IS NULL", leaving);
+            Assert.DoesNotContain("DELETE FROM", leaving);
             var admission = File.ReadAllText(Directory.EnumerateFiles(dir.FullName, "AdmissionRepository.cs", SearchOption.AllDirectories).First());
             Assert.DoesNotMatch(@"StudentEnrollments\s*\.\s*(Update|Remove)", admission);
         }

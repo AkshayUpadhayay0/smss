@@ -22,5 +22,13 @@ namespace smss_api_db_layer.entity
         [Column("status_id")] public int StatusId { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
+        /// <summary>PROMOTED, REPEATED, PASSED_OUT, TRANSFERRED_OUT, LEFT, or null while the enrolment is open. Written by promotion and by "Record leaving" only.</summary>
+        [Column("outcome")][StringLength(20)] public string? Outcome { get; set; }
+        [Column("outcome_at")] public DateTime? OutcomeAt { get; set; }
+        [Column("leaving_date", TypeName = "date")] public DateTime? LeavingDate { get; set; }
+        [Column("leaving_reason")][StringLength(500)] public string? LeavingReason { get; set; }
+        [Column("outcome_by")] public long? OutcomeBy { get; set; }
+        [Column("leaving_override_reason")][StringLength(500)] public string? LeavingOverrideReason { get; set; }
+        [Column("leaving_outstanding")] public decimal? LeavingOutstanding { get; set; }
     }
 }

@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.@interface;
@@ -34,7 +35,7 @@ namespace smss_api_db_layer.repository
 
         // School id on every table in the join, so a row of another school can never be pulled in
         private IQueryable<IdCardStudentRow> Rows(string schoolId, long academicYearId, long? sectionId, string? studentId) =>
-            from e in _db.StudentEnrollments.AsNoTracking()
+            from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
             join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
             join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
             join c in _db.Classes.AsNoTracking() on sec.ClassId equals c.ClassId

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Storage;
+﻿using Microsoft.EntityFrameworkCore.Storage;
 
 namespace smss_api_db_layer.@interface
 {
@@ -163,6 +163,8 @@ namespace smss_api_db_layer.@interface
     /// <summary>Everything the correction needs to know about one student's promotion out of a year.</summary>
     public class PromoCorrectionContext
     {
+        /// <summary>The outcome (for example LEFT, written by Record leaving) already on the NEW-year enrolment this correction would remove; null when none.</summary>
+        public string? TargetOutcome { get; set; }
         public string StudentName { get; set; } = null!;
         public long SourceEnrollmentId { get; set; }
         public string SourceYearName { get; set; } = null!;

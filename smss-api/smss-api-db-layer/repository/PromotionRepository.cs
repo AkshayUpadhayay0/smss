@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using NpgsqlTypes;
@@ -200,7 +200,7 @@ SELECT s.student_id AS ""StudentId"", s.admission_number AS ""AdmissionNumber"",
 SELECT btrim(concat_ws(' ', s.first_name, s.middle_name, s.last_name)) AS ""StudentName"", e.enrollment_id AS ""SourceEnrollmentId"", sy.year_name AS ""SourceYearName"", (sy.closed_at IS NOT NULL) AS ""SourceYearClosed"",
        e.outcome AS ""Outcome"", i.item_id AS ""ItemId"", i.batch_id AS ""BatchId"", i.decision AS ""Decision"", t.enrollment_id AS ""TargetEnrollmentId"", ty.academic_year_id AS ""TargetYearId"", ty.year_name AS ""TargetYearName"",
        COALESCE(ty.closed_at IS NOT NULL, false) AS ""TargetYearClosed"", tc.class_id AS ""TargetClassId"", tc.class_name AS ""TargetClassName"", ts.section_id AS ""TargetSectionId"", ts.section_name AS ""TargetSectionName"",
-       t.roll_number AS ""TargetRoll"", t.enrollment_date AS ""TargetEnrollmentDate""
+       t.roll_number AS ""TargetRoll"", t.enrollment_date AS ""TargetEnrollmentDate"", t.outcome AS ""TargetOutcome""
   FROM public.tb_student_enrollments e
   JOIN public.tb_students s ON s.student_id = e.student_id AND s.school_id = @school
   JOIN public.tb_academic_years sy ON sy.academic_year_id = e.academic_year_id AND sy.school_id = @school

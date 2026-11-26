@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
@@ -141,7 +142,7 @@ namespace smss_api_db_layer.repository
         public async Task<List<ClassStudentRow>> GetClassStudentsAsync(string schoolId, long academicYearId, long classId, long? sectionId, CancellationToken ct)
         {
             var rows = await (
-                from e in _db.StudentEnrollments.AsNoTracking()
+                from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                 join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
                 join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
                 where e.SchoolId == schoolId && s.SchoolId == schoolId && sec.SchoolId == schoolId

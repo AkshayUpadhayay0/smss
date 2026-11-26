@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -30,7 +31,7 @@ namespace smss_api_db_layer.repository
             _db.AcademicYearSections.Where(o => o.SchoolId == schoolId && o.AcademicYearId == academicYearId).ToListAsync(ct);
 
         public async Task<Dictionary<long, int>> EnrolmentsBySectionAsync(string schoolId, long academicYearId, int activeStatusId, CancellationToken ct) =>
-            (await _db.StudentEnrollments.AsNoTracking().Where(e => e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId)
+            (await _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears).Where(e => e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.StatusId == activeStatusId)
                 .GroupBy(e => e.ClassSectionId).Select(g => new { SectionId = g.Key, N = g.Count() }).ToListAsync(ct)).ToDictionary(x => x.SectionId, x => x.N);
 
         public async Task<HashSet<long>> FeeStructureClassIdsAsync(string schoolId, long academicYearId, CancellationToken ct) =>

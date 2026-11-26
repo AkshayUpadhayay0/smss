@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -66,7 +67,7 @@ namespace smss_api_db_layer.repository
             var staff = await employeeTypes.CountAsync(t => t != "Teaching", ct);
 
             var hasYear = await _db.AcademicYears.AsNoTracking().AnyAsync(y => y.SchoolId == schoolId && y.IsCurrent, ct);
-            var students = await (from en in _db.StudentEnrollments.AsNoTracking()
+            var students = await (from en in _db.StudentEnrollments.AsNoTracking().LiveOutcome(_db.AcademicYears)
                                   join y in _db.AcademicYears.AsNoTracking() on en.AcademicYearId equals y.AcademicYearId
                                   join st in _db.Students.AsNoTracking() on en.StudentId equals st.StudentId
                                   where en.SchoolId == schoolId && y.SchoolId == schoolId && y.IsCurrent && en.StatusId == activeStatusId && st.StatusId == activeStatusId
@@ -279,7 +280,7 @@ namespace smss_api_db_layer.repository
                                    select new { SchoolId = g.Key, Teachers = g.Count(x => x.EmployeeType == "Teaching"), Staff = g.Count(x => x.EmployeeType != "Teaching") }).ToListAsync(ct);
             foreach (var x in employees) result[x.SchoolId] = result[x.SchoolId] with { Teachers = x.Teachers, Staff = x.Staff };
 
-            var students = await (from en in _db.StudentEnrollments.AsNoTracking()
+            var students = await (from en in _db.StudentEnrollments.AsNoTracking().LiveOutcome(_db.AcademicYears)
                                   join y in _db.AcademicYears.AsNoTracking() on en.AcademicYearId equals y.AcademicYearId
                                   join st in _db.Students.AsNoTracking() on en.StudentId equals st.StudentId
                                   where ids.Contains(en.SchoolId) && y.SchoolId == en.SchoolId && y.IsCurrent && en.StatusId == activeStatusId && st.StatusId == activeStatusId

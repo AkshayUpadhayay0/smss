@@ -1,3 +1,4 @@
+﻿using smss_api_db_layer.helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
@@ -49,7 +50,7 @@ namespace smss_api_db_layer.repository
         {
             // Filtered by school on BOTH tables, so an enrollment row can never pull in another school's student
             var rows = await (
-                from e in _db.StudentEnrollments.AsNoTracking()
+                from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
                 join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
                 where e.SchoolId == schoolId && s.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == sectionId
                       && e.StatusId == activeStatusId && s.StatusId == activeStatusId
@@ -121,7 +122,7 @@ namespace smss_api_db_layer.repository
                 join c in _db.Classes.AsNoTracking() on s.ClassId equals c.ClassId
                 where s.SchoolId == schoolId && c.SchoolId == schoolId && s.StatusId == activeStatusId && c.StatusId == activeStatusId
                       && _db.AcademicYearSections.Any(o => o.AcademicYearId == academicYearId && o.SectionId == s.SectionId && o.StatusId == activeStatusId)   // offered in that year
-                let roster = (from e in _db.StudentEnrollments
+                let roster = (from e in _db.StudentEnrollments.LiveForYear(_db.AcademicYears)
                               join st in _db.Students on e.StudentId equals st.StudentId
                               where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == s.SectionId && e.StatusId == activeStatusId && st.StatusId == activeStatusId
                               select e.EnrollmentId).Count()
@@ -154,7 +155,7 @@ namespace smss_api_db_layer.repository
                 select new
                 {
                     s.SectionId, s.ClassId, c.ClassName, s.SectionName,
-                    Roster = (from e in _db.StudentEnrollments
+                    Roster = (from e in _db.StudentEnrollments.LiveForYear(_db.AcademicYears)
                               join st in _db.Students on e.StudentId equals st.StudentId
                               where e.SchoolId == schoolId && e.AcademicYearId == academicYearId && e.ClassSectionId == s.SectionId && e.StatusId == activeStatusId && st.StatusId == activeStatusId
                               select e.EnrollmentId).Count(),

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using smss_api_db_layer.helper;
 using smss_api_db_layer.@interface;
 using smss_api_service_layer.dto;
@@ -495,6 +495,7 @@ namespace smss_api_service_layer.service
                 dto.WillRemove = new PromotionCorrectionRemovalDto { Enrolment = true, NewYearName = c.TargetYearName, ClassName = c.TargetClassName, SectionName = c.TargetSectionName, RollNumber = c.TargetRoll };
                 var year = c.TargetYearId!.Value;
                 if (c.TargetYearClosed) dto.Blockers.Add($"{c.TargetYearName} is closed: its enrolments cannot be removed.");
+                if (!string.IsNullOrEmpty(c.TargetOutcome)) dto.Blockers.Add($"The student already has the outcome {c.TargetOutcome} in {c.TargetYearName}: correct that first.");
                 var b = await _repo.GetCorrectionBlockersAsync(schoolId, studentId, year, ct);
                 if (b.Attendance > 0) dto.Blockers.Add($"{b.Attendance} attendance record{(b.Attendance == 1 ? " exists" : "s exist")} in {c.TargetYearName}.");
                 if (b.PaymentAllocations > 0 || b.PaidDues > 0) dto.Blockers.Add($"A payment has been recorded against the {c.TargetYearName} fees.");

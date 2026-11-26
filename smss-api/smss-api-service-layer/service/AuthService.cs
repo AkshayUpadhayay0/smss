@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
 using smss_api_service_layer.dto;
@@ -45,6 +45,17 @@ namespace smss_api_service_layer.service
             if (_accounts == null) return null;
             var info = await _accounts.GetGuardianByUserIdAsync(user.UserId, CancellationToken.None);
             return info != null && info.StatusId == activeId && info.MergedIntoGuardianId == null ? info.GuardianId : null;
+        }
+
+        /// <summary>
+        /// A Student login is refused once the student is Inactive, or has LEFT or been TRANSFERRED_OUT, or has passed out of a year that is no longer current (LeavingRules.StudentLoginBlocked). Checked at sign-in AND
+        /// at refresh. Other user types are not affected. With no way to look the student up (no account repository: only in unit-test wiring) or no student row, nothing is blocked.
+        /// </summary>
+        private async Task<bool> StudentLoginBlockedAsync(TbUsers user)
+        {
+            if (user.UserType != UserTypes.Student || _accounts == null || string.IsNullOrWhiteSpace(user.SchoolId) || string.IsNullOrWhiteSpace(user.OrgUserId)) return false;
+            var state = await _accounts.GetStudentLoginStateAsync(user.SchoolId, user.OrgUserId, CancellationToken.None);
+            return state != null && LeavingRules.StudentLoginBlocked(state.StudentActive, state.Outcome, state.YearIsCurrent);
         }
 
         public async Task<ApiResponse<object>> LoginAsync(LoginRequest req, string? clientKey = null)
@@ -96,6 +107,7 @@ namespace smss_api_service_layer.service
                     return Fail(403, InactiveAccount);
                 var guardianId = await GuardianIdForAsync(user, activeId.Value);
                 if (guardianId == null) return Fail(403, InactiveAccount);
+                if (await StudentLoginBlockedAsync(user)) return Fail(403, LeavingRules.LoginBlockedMessage);
 
                 var now = DateTime.UtcNow;
                 await _repo.DeleteExpiredRefreshTokensAsync(user.UserId, now);
@@ -145,6 +157,11 @@ namespace smss_api_service_layer.service
                 {
                     await _repo.RevokeAllRefreshTokensAsync(user.UserId, now);   // a merged / inactive guardian's sessions end
                     return Fail(403, InactiveAccount);
+                }
+                if (await StudentLoginBlockedAsync(user))
+                {
+                    await _repo.RevokeAllRefreshTokensAsync(user.UserId, now);   // a student who left: the session ends at the next refresh
+                    return Fail(403, LeavingRules.LoginBlockedMessage);
                 }
 
                 // Rotate: the presented token is single-use
@@ -209,6 +226,7 @@ namespace smss_api_service_layer.service
                 var activeForGuardian = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
                 var guardianOfUser = activeForGuardian == null ? null : await GuardianIdForAsync(user, activeForGuardian.Value);
                 if (guardianOfUser == null) return Fail(403, InactiveAccount);
+                if (await StudentLoginBlockedAsync(user)) return Fail(403, LeavingRules.LoginBlockedMessage);
                 var response = await IssueTokensAsync(user, school, rememberMe: false, guardianId: guardianOfUser);
 
                 return Ok(200, "Password changed successfully", response);
