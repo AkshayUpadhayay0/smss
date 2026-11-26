@@ -85,7 +85,36 @@ Do **not** set `Bootstrap__Enabled=true` except for the moment you create the ve
 | `Firebase__CredentialsPath` (path to a secret file), `Firebase__DryRun` (`true` until real pushes are wanted) | for push notifications | the file: **yes** |
 | `Bootstrap__Enabled` = `false` (leave `Bootstrap__SuperAdminSetupKey` unset) | yes | the key: **yes** |
 | `AllowedHosts` | recommended | no |
-| `WhatsApp__Enabled`, `WhatsApp__Sender` (`Log` or `Cloud`), `WhatsApp__AccessToken`, `WhatsApp__PhoneNumberId`, `WhatsApp__BusinessAccountId`, `WhatsApp__ApiVersion`, `WhatsApp__AppSecret`, `WhatsApp__WebhookVerifyToken`, and one `WhatsApp__Template__<name>` per approved template | **planned (guardian stages), not read by the API yet**; default is the log-only sender | AccessToken, AppSecret, WebhookVerifyToken: **yes** |
+| `WhatsApp__*` and `ParentAccounts__*` (every key is in "WhatsApp and parent accounts" below) | only to turn real WhatsApp sending on; **not needed for the API to start**: the default is the log-only sender | AccessToken, AppSecret, WebhookVerifyToken: **yes** |
+
+## WhatsApp and parent accounts (stage 6a, 26 Nov 2026)
+
+Everything is **off or empty in the committed file**; with the defaults nothing is ever sent to Meta (the log-only sender writes a delivery-log row with status `LOGGED` and sends nothing) and the webhook answers 404. Secrets go in user-secrets (Development) or environment variables (server) only; `TrackedConfigHasNoSecretsTests` fails the build if a committed file holds a value under a secret-looking key. No secret is ever logged, put in the delivery log, or put in a message.
+
+| Setting | Secret? | Default | What it does |
+|---|---|---|---|
+| `WhatsApp:Enabled` | no | `false` | Master switch. `false` = log-only sender, webhook off. |
+| `WhatsApp:Sender` | no | `Log` | `Log` or `Cloud`. `Cloud` also needs `Enabled`, `AccessToken` and `PhoneNumberId`; if any is missing the log-only sender is used (the delivery log's sender kind then says `LOG`). |
+| `WhatsApp:AccessToken` | **yes** | empty | Permanent System User token of the Meta app. Sent only in the Authorization header of the call to Meta. |
+| `WhatsApp:PhoneNumberId` | no | empty | The platform's default sending number (Meta phone number id). Used until a school's own sender status is ACTIVE (set by the Super Admin on the school's WhatsApp sender screen). |
+| `WhatsApp:BusinessAccountId` | no | empty | The WhatsApp Business Account id (recorded for operations; not needed to send). |
+| `WhatsApp:ApiVersion` | no | `v21.0` | Graph API version, `vNN.N`. |
+| `WhatsApp:BaseUrl` | no | `https://graph.facebook.com` | Meta's address (a setting so tests and a proxy can replace it). |
+| `WhatsApp:AppSecret` | **yes** | empty | The Meta app secret that signs webhook calls (`X-Hub-Signature-256`). **Without it the webhook is disabled (404).** |
+| `WhatsApp:WebhookVerifyToken` | **yes** | empty | The string Meta sends once when the webhook is registered; must equal the value typed in Meta's dashboard. |
+| `WhatsApp:Language` | no | `en` | Template language code sent with every message. |
+| `WhatsApp:TimeoutSeconds` | no | `15` | How long one call to Meta may take (1 to 60). |
+| `WhatsApp:TemplateParentAccountReady`, `…ParentChildAdded`, `…ParentLoginCode`, `…ParentStudentLoginReady` | no | `parent_account_ready`, `parent_child_added`, `parent_login_code`, `parent_student_login_ready` | The template names as approved by Meta. Change only if Meta made you use another name. Texts and variables: `Docs/whatsapp-templates.md`. |
+| `ParentAccounts:SetPasswordLinkHours` | no | `72` | How long a set-password link works. Single use. |
+| `ParentAccounts:ResetLinkMinutes` | no | `60` | How long a reset link works. Single use. |
+| `ParentAccounts:ResendLimitPer24Hours` | no | `3` | Resends per guardian and purpose in 24 hours (enforced in stage 6b). |
+| `ParentAccounts:WebBaseUrl` | no | empty | The website address the links point at (for example `https://smss-erp.digital`). Empty = the parent-account features refuse to build a link. |
+
+Environment-variable form: `WhatsApp__Enabled=true`, `WhatsApp__Sender=Cloud`, `WhatsApp__AccessToken=…`, `WhatsApp__PhoneNumberId=…`, `WhatsApp__AppSecret=…`, `WhatsApp__WebhookVerifyToken=…`, `ParentAccounts__WebBaseUrl=https://…`. Development: `dotnet user-secrets set "WhatsApp:AccessToken" "…" --project smss-api/smss-api` (the same for the other secrets).
+
+**The webhook** is `GET/POST /api/webhooks/whatsapp` (anonymous because Meta calls it). It is guarded by the signature on every POST, answers Meta's raw contract (not the API envelope), reads at most 256 KB, logs only counts, and changes nothing but the status of the delivery-log row with the same provider message id (forward only: SENT, DELIVERED, READ; FAILED only after SENT).
+
+**Tokens in URLs:** the one-time links carry their token in the query of a WEBSITE page (`/parent/set-password?t=…`); that page posts the token in a request BODY to the API and removes it from the address bar. The API itself never receives a token in a URL, and the committed log levels (`Microsoft.AspNetCore` at Warning) do not log request paths or queries. If a reverse proxy in front of the site logs full URLs, configure it to drop the query string for `/parent/*`.
 
 The tuning settings (rate limits, `LoginThrottle__*`, `PartnerSchools__*`, `TransportLive__*`) have safe defaults in the committed file; see `Docs/DEPLOY-CHECKLIST.md` section 2.
 

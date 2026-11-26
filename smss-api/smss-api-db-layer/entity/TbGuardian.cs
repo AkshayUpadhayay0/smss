@@ -24,6 +24,10 @@ namespace smss_api_db_layer.entity
         [Column("user_id")] public long? UserId { get; set; }
         /// <summary>Set when this guardian was merged into another (the survivor). A merged guardian is Inactive and is never linked to anyone again.</summary>
         [Column("merged_into_guardian_id")] public long? MergedIntoGuardianId { get; set; }
+        /// <summary>When the guardian's consent to be contacted (parent account messages) was recorded, by whom (a user) and how (ADMISSION_FORM, BULK_CONFIRMED, MANUAL). All three are set together or not at all (database check); null = no consent on record.</summary>
+        [Column("consent_given_at")] public DateTime? ConsentGivenAt { get; set; }
+        [Column("consent_recorded_by")] public long? ConsentRecordedBy { get; set; }
+        [Column("consent_source")] public string? ConsentSource { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
         [Column("updated_at")] public DateTime UpdatedAt { get; set; }
     }

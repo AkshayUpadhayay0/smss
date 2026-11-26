@@ -57,6 +57,7 @@ namespace smss_api_db_layer.context
         public DbSet<TbGuardianChange> GuardianChanges { get; set; } = null!;
         public DbSet<TbGuardianMerge> GuardianMerges { get; set; } = null!;
         public DbSet<TbSchoolWhatsAppSender> SchoolWhatsAppSenders { get; set; } = null!;
+        public DbSet<TbMessageDelivery> MessageDeliveries { get; set; } = null!;
         public DbSet<TbSubjects> Subjects { get; set; } = null!;
         public DbSet<TbEmployeeDesignations> EmployeeDesignations { get; set; } = null!;
         public DbSet<TbEmployeeDepartments> EmployeeDepartments { get; set; } = null!;

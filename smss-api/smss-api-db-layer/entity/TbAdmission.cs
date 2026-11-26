@@ -39,6 +39,9 @@ namespace smss_api_db_layer.entity
         [Column("guardian_email")] public string? GuardianEmail { get; set; }
         /// <summary>The guardian's WhatsApp number WITH the country code; null on an application made before it was collected (Confirm needs it).</summary>
         [Column("guardian_whatsapp_number")] public string? GuardianWhatsAppNumber { get; set; }
+        /// <summary>The consent tick on the admission form: when, and the user who recorded it. Both set together or neither; copied to the guardian when the application is confirmed.</summary>
+        [Column("guardian_consent_at")] public DateTime? GuardianConsentAt { get; set; }
+        [Column("guardian_consent_recorded_by")] public long? GuardianConsentRecordedBy { get; set; }
         [Column("application_date", TypeName = "date")] public DateTime ApplicationDate { get; set; }
         [Column("status_id")] public int StatusId { get; set; }
         [Column("reviewed_by")] public long? ReviewedBy { get; set; }

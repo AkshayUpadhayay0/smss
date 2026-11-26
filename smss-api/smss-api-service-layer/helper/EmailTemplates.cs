@@ -146,5 +146,57 @@ namespace smss_api_service_layer.helper
 
             return (subject, html);
         }
+
+        // ------------------------------------------------------------------------------------------------ parent accounts (stage 6): a one-time LINK, never a password
+        private static string LinkButton(string link, string text) => $"<p><a href=\"{Enc(link)}\">{Enc(text)}</a></p>";
+
+        public static (string Subject, string Html) ParentAccountReady(string guardianName, string childName, string schoolName, string loginId, string link, int linkHours)
+        {
+            var subject = $"Your parent login for {schoolName}";
+            var html = $@"
+                <p>Hello {Enc(guardianName)},</p>
+                <p><strong>{Enc(childName)}</strong> has been admitted to <strong>{Enc(schoolName)}</strong>. A parent login has been created for you.</p>
+                <p><strong>Your login ID:</strong> {Enc(loginId)}</p>
+                <p>Use the link below to choose your own password. The link works once and expires in {linkHours} hours.</p>
+                {LinkButton(link, "Set your password")}
+                <p>If you did not expect this message, you can ignore it.</p>";
+            return (subject, html);
+        }
+
+        public static (string Subject, string Html) ParentChildAdded(string guardianName, string childName, string schoolName, string loginId, string? loginUrl)
+        {
+            var subject = $"{childName} was added to your parent login";
+            var html = $@"
+                <p>Hello {Enc(guardianName)},</p>
+                <p><strong>{Enc(childName)}</strong> of <strong>{Enc(schoolName)}</strong> has been added to your parent login. Sign in to see all your children.</p>
+                <p><strong>Your login ID:</strong> {Enc(loginId)}</p>
+                {(string.IsNullOrEmpty(loginUrl) ? "" : LinkButton(loginUrl, "Open the login page"))}";
+            return (subject, html);
+        }
+
+        public static (string Subject, string Html) ParentLoginHelp(string guardianName, string schoolName, string loginId, string link, int linkMinutes)
+        {
+            var subject = "Your parent login details";
+            var html = $@"
+                <p>Hello {Enc(guardianName)},</p>
+                <p>We received a request to recover your parent login for <strong>{Enc(schoolName)}</strong>.</p>
+                <p><strong>Your login ID:</strong> {Enc(loginId)}</p>
+                <p>Use the link below to choose a new password. The link works once and expires in {linkMinutes} minutes.</p>
+                {LinkButton(link, "Choose a new password")}
+                <p>If you did not ask for this, you can ignore it: your password has not changed.</p>";
+            return (subject, html);
+        }
+
+        public static (string Subject, string Html) ParentStudentLoginReady(string guardianName, string studentName, string schoolName, string studentLoginId, string link, int linkHours)
+        {
+            var subject = $"Student login for {studentName} - {schoolName}";
+            var html = $@"
+                <p>Hello {Enc(guardianName)},</p>
+                <p>A student login has been created for <strong>{Enc(studentName)}</strong> at <strong>{Enc(schoolName)}</strong>.</p>
+                <p><strong>The student's login ID:</strong> {Enc(studentLoginId)}</p>
+                <p>Use the link below to set the student's password. The link works once and expires in {linkHours} hours.</p>
+                {LinkButton(link, "Set the student's password")}";
+            return (subject, html);
+        }
     }
 }

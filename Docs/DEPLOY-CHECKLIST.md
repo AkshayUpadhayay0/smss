@@ -21,6 +21,8 @@ These are the only scripts newer than the 14Nov dump. Each was run twice on a sc
 | 6 | `smss-push-notifications.sql` | Push-notification tables (`tb_user_devices`, `tb_school_notification_settings`, `tb_push_notification_log`). |
 | 7 | `smss-partner-schools.sql` | `tb_schools.show_on_website` (default FALSE) and its index, for the Partner Schools section. |
 
+**Stage scripts since then** (`smss-yc-*`, `smss-acad-*`, `smss-st-*`, each a self-contained idempotent RUN-ME with its own header) are run in stage order on any database that lacks them. The newest, **`smss-st-6a-RUN-ME.sql`** (parent accounts and messaging foundations: one-time link tokens, the delivery log, the guardian login counter, consent columns), changes no existing row and creates no account or message. Its API build also reads the new `WhatsApp` / `ParentAccounts` settings: all optional and off by default (see `Docs/configuration.md`, "WhatsApp and parent accounts"); nothing is sent to Meta until `WhatsApp__Enabled=true` and `WhatsApp__Sender=Cloud` are set with a token and phone number id, and the templates in `Docs/whatsapp-templates.md` are approved.
+
 Already in the 14Nov dump, no need to run (re-running changes nothing): enquiries, password-reset audit, transport (all four scripts), timetable, leave, homework, assessments, notices, report cards, subscriptions, employees, attendance and the rest of `Docs/smss-*.sql`.
 
 **Never run on production:**

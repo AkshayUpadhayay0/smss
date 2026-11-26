@@ -218,6 +218,19 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Parent accounts and messaging (stage 6a). EVERYTHING here is off / empty by default: WhatsApp:Enabled false and Sender "Log" mean nothing is ever sent to Meta (the log-only sender writes a delivery row and nothing else);
+// WhatsApp:AccessToken / AppSecret / WebhookVerifyToken come ONLY from user-secrets / environment variables. See Docs/configuration.md.
+builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection(WhatsAppOptions.Section));
+builder.Services.Configure<ParentAccountsOptions>(builder.Configuration.GetSection(ParentAccountsOptions.Section));
+builder.Services.AddScoped<LogOnlyWhatsAppSender>();
+builder.Services.AddHttpClient<MetaCloudWhatsAppSender>();
+builder.Services.AddScoped<IWhatsAppSender, ConfiguredWhatsAppSender>();
+builder.Services.AddScoped<IMessagingRepository, MessagingRepository>();
+builder.Services.AddScoped<IUserActionTokenService, UserActionTokenService>();
+builder.Services.AddScoped<IGuardianLoginIdService, GuardianLoginIdService>();
+builder.Services.AddScoped<IParentMessageDispatcher, ParentMessageDispatcher>();
+builder.Services.AddScoped<IWhatsAppWebhookService, WhatsAppWebhookService>();
+
 // File storage: relative paths resolve against the project folder
 var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";
 if (!Path.IsPathRooted(uploadsRoot))
