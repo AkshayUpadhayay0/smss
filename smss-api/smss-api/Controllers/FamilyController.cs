@@ -98,5 +98,17 @@ namespace smss_api.Controllers
         // GET api/Family/notices?unreadOnly=   the school's notices for the Guardian tier (not per child)
         [HttpGet("notices")]
         public async Task<IActionResult> Notices([FromQuery] bool unreadOnly, CancellationToken ct) => Caller() is { } c ? Reply(await _service.NoticesAsync(c, unreadOnly, ct)) : Unauthorized();
+
+        // GET api/Family/notices/unread-count   the badge on the School Notifications button
+        [HttpGet("notices/unread-count")]
+        public async Task<IActionResult> UnreadNotices(CancellationToken ct) => Caller() is { } c ? Reply(await _service.UnreadNoticesAsync(c, ct)) : Unauthorized();
+
+        // GET api/Family/notices/{noticeId}   opening a notice marks it read for the parent (as for every reader); one that is not for the Guardian tier is a 404
+        [HttpGet("notices/{noticeId:long}")]
+        public async Task<IActionResult> Notice(long noticeId, CancellationToken ct) => Caller() is { } c ? Reply(await _service.NoticeAsync(c, noticeId, ct)) : Unauthorized();
+
+        // GET api/Family/calendar?from=&to=   the school calendar, read only (school from the token; at most 400 days)
+        [HttpGet("calendar")]
+        public async Task<IActionResult> Calendar([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) => Caller() is { } c ? Reply(await _service.CalendarAsync(c, from, to, ct)) : Unauthorized();
     }
 }

@@ -24,7 +24,13 @@ Base route `api/Family`, `[Authorize]`, every action a `GET`. **Nothing takes a 
 | `.../receipts/{paymentId}` | `ResolveAsync` | `IFeePaymentService.GetReceiptForStudentAsync` — only an Active payment of THIS child (another child's = 404), own view |
 | `.../leave?status&from&to` | `ResolveAsync` | `IStudentLeaveService.GetForStudentAsync` (read only) |
 | `.../photo` | `ResolveAsync` | `IStudentPhotoService.GetAsync` (private storage) |
-| `GET /api/Family/notices` | guardian only (403 for a student) | `INoticeService.GetMyAsync` with the guardian's own login (Guardian tier; school-wide, no child id) |
+| `GET /api/Family/notices` | guardian only (403 for a student) | `INoticeService.GetMyAsync` with the guardian's own login (Guardian tier; school-wide, no child id); returns the trimmed `FamilyNoticeDto` (title, body, date, read flag, who posted: no audience tier, no author id) |
+| `GET /api/Family/notices/unread-count` | guardian only | `INoticeService.GetUnreadCountAsync` (the badge on School Notifications) |
+| `GET /api/Family/notices/{noticeId}` | guardian only | `INoticeService.GetAsync` (opening a notice marks it read; a notice that is not for the Guardian tier is a 404) |
+| `GET /api/Family/calendar?from&to` | guardian only | `ISchoolEventService.GetRangeAsync`, school from the token, trimmed `FamilyEventDto` (no creator) |
+
+(Added in 7a: the notice unread count and the staff calendar read endpoints already allowed any signed-in school user, but the parent screens ask ONLY `api/Family`, so these are thin read-only wrappers.)
+The own-view fees payment carries `paymentId` so a parent can open that payment's receipt through `.../receipts/{paymentId}` (still a 404 for any other child's payment).
 
 Each `*ForStudent*` method is the old "my" method split in two: the "my" method still resolves the student from the login and then calls it, so the existing student endpoints behave exactly as before.
 

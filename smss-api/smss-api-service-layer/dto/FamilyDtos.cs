@@ -62,6 +62,32 @@ namespace smss_api_service_layer.dto
         public string? Address { get; set; }
     }
 
+    /// <summary>A notice as a parent sees it: the words and the date, never who wrote it as an id and never the audience tier.</summary>
+    public class FamilyNoticeDto
+    {
+        public long NoticeId { get; set; }
+        public string Title { get; set; } = null!;
+        public string Body { get; set; } = null!;
+        public DateTime PublishedAt { get; set; }
+        public bool IsRead { get; set; }
+        public string? PostedBy { get; set; }
+    }
+
+    /// <summary>A school calendar event as a parent sees it (read only).</summary>
+    public class FamilyEventDto
+    {
+        public long EventId { get; set; }
+        public string Title { get; set; } = null!;
+        public DateOnly StartDate { get; set; }
+        public DateOnly EndDate { get; set; }
+        public bool IsAllDay { get; set; }
+        public TimeOnly? StartTime { get; set; }
+        public TimeOnly? EndTime { get; set; }
+        public string CategoryName { get; set; } = null!;
+        public string ColorHex { get; set; } = null!;
+        public string? Description { get; set; }
+    }
+
     public class FamilyExamDto
     {
         public string TermName { get; set; } = null!;

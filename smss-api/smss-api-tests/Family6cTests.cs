@@ -57,14 +57,15 @@ namespace smss_api_tests
             public readonly IFeePaymentService Payments = Fake.Of<IFeePaymentService>(new() { ["GetReceiptForStudentAsync"] = Fake.Ok(new FeeReceiptDto()) });
             public readonly IStudentLeaveService Leave = Fake.Of<IStudentLeaveService>(new() { ["GetForStudentAsync"] = Fake.Ok(new List<StudentLeaveDto>()) });
             public readonly IStudentPhotoService Photos = Fake.Of<IStudentPhotoService>(new() { ["GetAsync"] = new StudentPhotoResult { Content = new MemoryStream(new byte[] { 1 }), ContentType = "image/png", ETag = "\"x\"", StatusCode = 200 } });
-            public readonly INoticeService Notices = Fake.Of<INoticeService>(new() { ["GetMyAsync"] = Fake.Ok(new List<NoticeDto>()) });
+            public readonly INoticeService Notices = Fake.Of<INoticeService>(new() { ["GetMyAsync"] = Fake.Ok(new List<NoticeDto>()), ["GetUnreadCountAsync"] = Fake.Ok(new UnreadCountDto { Count = 3 }), ["GetAsync"] = Fake.Ok(new NoticeDto { NoticeId = 4, Title = "T", Body = "B", Audience = "STUDENTS_GUARDIANS", CreatedBy = 99, CreatedByName = "Office", StatusName = "Active" }) });
+            public readonly ISchoolEventService Events = Fake.Of<ISchoolEventService>(new() { ["GetRangeAsync"] = Fake.Ok(new List<SchoolEventDto> { new() { EventId = 1, EventTitle = "PTM", CategoryName = "PTM", CategoryCode = "PTM", ColorHex = "#f59e0b", CreatedByName = "Admin", AcademicYearId = 41 } }) });
 
-            public int Calls => new object[] { Students, Attendance, Homework, Timetable, Reports, Schedule, Fees, Payments, Leave, Photos, Notices }.Sum(f => Fake.ProxyOf(f).Calls.Count);
+            public int Calls => new object[] { Students, Attendance, Homework, Timetable, Reports, Schedule, Fees, Payments, Leave, Photos, Notices, Events }.Sum(f => Fake.ProxyOf(f).Calls.Count);
 
             public FamilyService Service(TaxDb db)
             {
                 var ctx = db.Ctx(); var accounts = new ParentAccountRepository(ctx); var students = new StudentRepository(ctx); var guardians = new GuardianRepository(ctx);
-                return new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, Students, Attendance, Homework, Timetable, Reports, Schedule, Fees, Payments, Leave, Photos, Notices, NullLogger<FamilyService>.Instance);
+                return new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, Students, Attendance, Homework, Timetable, Reports, Schedule, Fees, Payments, Leave, Photos, Notices, Events, NullLogger<FamilyService>.Instance);
             }
         }
 
@@ -253,7 +254,7 @@ namespace smss_api_tests
             var svc = new Probe { };
             var custom = Fake.Of<IReportScheduleService>(new() { ["GetAsync"] = Fake.Ok(schemes) });
             var ctx = db.Ctx(); var accounts = new ParentAccountRepository(ctx); var students = new StudentRepository(ctx); var guardians = new GuardianRepository(ctx);
-            var family = new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, probe.Students, probe.Attendance, probe.Homework, probe.Timetable, probe.Reports, custom, probe.Fees, probe.Payments, probe.Leave, probe.Photos, probe.Notices, NullLogger<FamilyService>.Instance);
+            var family = new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, probe.Students, probe.Attendance, probe.Homework, probe.Timetable, probe.Reports, custom, probe.Fees, probe.Payments, probe.Leave, probe.Photos, probe.Notices, probe.Events, NullLogger<FamilyService>.Instance);
             var r = await family.ExamScheduleAsync(Guardian(A, p), s1, default);
             var only = Assert.Single(r.Data!);
             Assert.Equal("Mine", only.SchemeName);
@@ -344,7 +345,7 @@ namespace smss_api_tests
             var seen = new List<string>();
             var att = Fake.Of<IAttendanceService>(new() { ["GetForStudentAsync"] = (Func<object?[], object?>)(a => { seen.Add((string)a[1]!); return Fake.Ok(new StudentOwnAttendanceDto { Days = new() { new StudentOwnAttendanceDayDto { Date = today, StatusCode = "PRESENT", StatusName = "Present" } } }); }) });
             var ctx = db.Ctx(); var accounts = new ParentAccountRepository(ctx); var students = new StudentRepository(ctx); var guardians = new GuardianRepository(ctx);
-            var family = new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, probe.Students, att, probe.Homework, probe.Timetable, probe.Reports, probe.Schedule, probe.Fees, probe.Payments, probe.Leave, probe.Photos, probe.Notices, NullLogger<FamilyService>.Instance);
+            var family = new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, probe.Students, att, probe.Homework, probe.Timetable, probe.Reports, probe.Schedule, probe.Fees, probe.Payments, probe.Leave, probe.Photos, probe.Notices, probe.Events, NullLogger<FamilyService>.Instance);
             var r = await family.ListChildrenAsync(Guardian(A, p), default);
             Assert.Equal("Present", r.Data!.Children.Single().AttendanceToday);
             Assert.Equal(new[] { s1 }, seen);
@@ -363,6 +364,27 @@ namespace smss_api_tests
             Assert.True(ok.Allowed); Assert.Equal(200, photo!.StatusCode);
             var (denied, none) = await probe.Service(db).PhotoAsync(Guardian(A, p), s2, default);
             Assert.False(denied.Allowed); Assert.Null(none); Assert.Equal(404, denied.StatusCode);
+        }
+
+        [DbFact]
+        public async Task The_notices_calendar_and_unread_count_are_for_a_parent_login_only_show_trimmed_fields_and_take_the_school_from_the_token()
+        {
+            using var db = new TaxDb();
+            var p = Parent(db, A, "GHS001GD001", Student(db, A));
+            var probe = new Probe(); var svc = probe.Service(db); var caller = Guardian(A, p);
+            Assert.Equal(3, (await svc.UnreadNoticesAsync(caller, default)).Data!.Count);
+            var n = (await svc.NoticeAsync(caller, 4, default)).Data!;
+            Assert.Equal("Office", n.PostedBy);
+            Assert.DoesNotContain("STUDENTS_GUARDIANS", JsonSerializer.Serialize(n)); Assert.DoesNotContain("99", JsonSerializer.Serialize(n));   // no audience tier, no author id
+            var ev = Assert.Single((await svc.CalendarAsync(caller, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), default)).Data!);
+            Assert.Equal("PTM", ev.Title);
+            Assert.DoesNotContain("Admin", JsonSerializer.Serialize(ev));                                                              // who created the event stays internal
+            var student = new AccessCaller(A, UserA, true, false);
+            Assert.Equal(403, (await svc.UnreadNoticesAsync(student, default)).StatusCode);
+            Assert.Equal(403, (await svc.NoticeAsync(student, 4, default)).StatusCode);
+            Assert.Equal(403, (await svc.CalendarAsync(student, null, null, default)).StatusCode);
+            Assert.Equal(new[] { "Description", "CategoryName", "ColorHex", "EndDate", "EndTime", "EventId", "IsAllDay", "StartDate", "StartTime", "Title" }.OrderBy(x => x), Names<FamilyEventDto>());
+            Assert.Equal(new[] { "Body", "IsRead", "NoticeId", "PostedBy", "PublishedAt", "Title" }, Names<FamilyNoticeDto>());
         }
 
         [Fact]

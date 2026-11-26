@@ -67,14 +67,15 @@ namespace smss_api_service_layer.service
         private readonly IStudentLeaveService _leave;
         private readonly IStudentPhotoService _photos;
         private readonly INoticeService _notices;
+        private readonly ISchoolEventService _events;
         private readonly ILogger<FamilyService> _logger;
 
         public FamilyService(IStudentAccessService access, IParentAccountRepository accounts, IStudentRepository students, IGuardianRepository guardians, IStudentService studentService, IAttendanceService attendance,
             IHomeworkService homework, ITimetableService timetable, IReportResultService reports, IReportScheduleService schedule, IStudentMyFeesService fees, IFeePaymentService payments, IStudentLeaveService leave,
-            IStudentPhotoService photos, INoticeService notices, ILogger<FamilyService> logger)
+            IStudentPhotoService photos, INoticeService notices, ISchoolEventService events, ILogger<FamilyService> logger)
         {
             _access = access; _accounts = accounts; _students = students; _guardians = guardians; _studentService = studentService; _attendance = attendance; _homework = homework; _timetable = timetable;
-            _reports = reports; _schedule = schedule; _fees = fees; _payments = payments; _leave = leave; _photos = photos; _notices = notices; _logger = logger;
+            _reports = reports; _schedule = schedule; _fees = fees; _payments = payments; _leave = leave; _photos = photos; _notices = notices; _events = events; _logger = logger;
         }
 
         private static ApiResponse<T> Refused<T>(AccessDecision d) => new() { Status = false, StatusCode = d.StatusCode, Message = d.Message, Data = default };
@@ -218,11 +219,37 @@ namespace smss_api_service_layer.service
             return (d, await _photos.GetAsync(d.Access.SchoolId, caller.UserId, PhotoViewer.Staff, d.Access.StudentId, ct));
         }
 
-        public async Task<ApiResponse<List<NoticeDto>>> NoticesAsync(AccessCaller caller, bool unreadOnly, CancellationToken ct)
+        private static FamilyNoticeDto ToNotice(NoticeDto n) => new() { NoticeId = n.NoticeId, Title = n.Title, Body = n.Body, PublishedAt = n.PublishedAt, IsRead = n.IsRead, PostedBy = n.CreatedByName };
+        private static bool ParentOnly(AccessCaller c) => c.IsGuardian && !c.IsStudent;
+
+        public async Task<ApiResponse<List<FamilyNoticeDto>>> NoticesAsync(AccessCaller caller, bool unreadOnly, CancellationToken ct)
         {
-            if (!caller.IsGuardian || caller.IsStudent) return Refused<List<NoticeDto>>(new(null, 403, "Only a parent login uses the family notices."));
+            if (!ParentOnly(caller)) return Refused<List<FamilyNoticeDto>>(new(null, 403, "Only a parent login uses the family notices."));
             // school-wide, not per child: the Guardian tier of the existing notice service, for the guardian's own login (no child id exists here to be probed)
-            return await _notices.GetMyAsync(caller.SchoolId, new NoticeCaller(caller.UserId, false, false), unreadOnly, null, null, ct);
+            var r = await _notices.GetMyAsync(caller.SchoolId, new NoticeCaller(caller.UserId, false, false), unreadOnly, null, null, ct);
+            return new ApiResponse<List<FamilyNoticeDto>> { Status = r.Status, StatusCode = r.StatusCode, Message = r.Message, Data = r.Data?.Select(ToNotice).ToList() };
+        }
+
+        public async Task<ApiResponse<UnreadCountDto>> UnreadNoticesAsync(AccessCaller caller, CancellationToken ct) =>
+            !ParentOnly(caller) ? Refused<UnreadCountDto>(new(null, 403, "Only a parent login uses the family notices."))
+                                : await _notices.GetUnreadCountAsync(caller.SchoolId, new NoticeCaller(caller.UserId, false, false), ct);
+
+        public async Task<ApiResponse<FamilyNoticeDto>> NoticeAsync(AccessCaller caller, long noticeId, CancellationToken ct)
+        {
+            if (!ParentOnly(caller)) return Refused<FamilyNoticeDto>(new(null, 403, "Only a parent login uses the family notices."));
+            var r = await _notices.GetAsync(caller.SchoolId, new NoticeCaller(caller.UserId, false, false), noticeId, ct);   // the notice service checks the Guardian tier and marks it read
+            return new ApiResponse<FamilyNoticeDto> { Status = r.Status, StatusCode = r.StatusCode, Message = r.Message, Data = r.Data == null ? null : ToNotice(r.Data) };
+        }
+
+        public async Task<ApiResponse<List<FamilyEventDto>>> CalendarAsync(AccessCaller caller, DateOnly? from, DateOnly? to, CancellationToken ct)
+        {
+            if (!ParentOnly(caller)) return Refused<List<FamilyEventDto>>(new(null, 403, "Only a parent login uses the family calendar."));
+            var r = await _events.GetRangeAsync(caller.SchoolId, null, from, to, ct);   // the school is the token's; no event id or school id comes from the request
+            return new ApiResponse<List<FamilyEventDto>>
+            {
+                Status = r.Status, StatusCode = r.StatusCode, Message = r.Message,
+                Data = r.Data?.Select(e => new FamilyEventDto { EventId = e.EventId, Title = e.EventTitle, StartDate = e.StartDate, EndDate = e.EndDate, IsAllDay = e.IsAllDay, StartTime = e.StartTime, EndTime = e.EndTime, CategoryName = e.CategoryName, ColorHex = e.ColorHex, Description = e.Description }).ToList(),
+            };
         }
     }
 }

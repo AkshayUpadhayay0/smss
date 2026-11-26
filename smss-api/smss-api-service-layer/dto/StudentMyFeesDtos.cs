@@ -48,6 +48,8 @@ namespace smss_api_service_layer.dto
 
     public class MyFeePaymentDto : PaymentTaxFields
     {
+        /// <summary>The payment id, so the receipt of THIS payment can be opened (the receipt endpoint re-checks that it is this student's own Active payment).</summary>
+        public long PaymentId { get; set; }
         public DateTime PaymentDate { get; set; }
         public decimal Amount { get; set; }
         public string ReceiptNumber { get; set; } = null!;

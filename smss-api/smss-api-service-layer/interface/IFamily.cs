@@ -43,6 +43,12 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<List<StudentLeaveDto>>> LeaveAsync(AccessCaller caller, string studentId, string? status, DateOnly? from, DateOnly? to, CancellationToken ct);
         Task<(AccessDecision Decision, StudentPhotoResult? Photo)> PhotoAsync(AccessCaller caller, string studentId, CancellationToken ct);
         /// <summary>The school's notices for the Guardian tier (school-wide, not per child): the existing notice service with the guardian's own login.</summary>
-        Task<ApiResponse<List<NoticeDto>>> NoticesAsync(AccessCaller caller, bool unreadOnly, CancellationToken ct);
+        Task<ApiResponse<List<FamilyNoticeDto>>> NoticesAsync(AccessCaller caller, bool unreadOnly, CancellationToken ct);
+        /// <summary>How many notices addressed to the Guardian tier the parent has not opened yet (for the badge).</summary>
+        Task<ApiResponse<UnreadCountDto>> UnreadNoticesAsync(AccessCaller caller, CancellationToken ct);
+        /// <summary>Opens one notice (this marks it read for the parent); a notice that is not for the Guardian tier is a 404.</summary>
+        Task<ApiResponse<FamilyNoticeDto>> NoticeAsync(AccessCaller caller, long noticeId, CancellationToken ct);
+        /// <summary>The school calendar for a date range (at most 400 days, like the staff calendar), school from the token, read only.</summary>
+        Task<ApiResponse<List<FamilyEventDto>>> CalendarAsync(AccessCaller caller, DateOnly? from, DateOnly? to, CancellationToken ct);
     }
 }
