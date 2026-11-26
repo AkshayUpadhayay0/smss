@@ -85,6 +85,8 @@ namespace smss_api_service_layer.dto
         public string MaskedMobile { get; set; } = null!;
         public bool HasWhatsApp { get; set; }
         public bool HasEmail { get; set; }
+        /// <summary>When the parent consent was recorded; null when none is on record.</summary>
+        public DateTime? ConsentGivenAt { get; set; }
     }
 
     public class AdmissionDecisionRequestDto

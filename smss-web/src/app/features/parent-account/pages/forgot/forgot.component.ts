@@ -20,7 +20,7 @@ import { ParentAccountService } from '../../services/parent-account.service';
     @if (sent()) {
       <div class="ok" role="status" data-state="sent">
         <p><strong>Check your WhatsApp or email.</strong></p>
-        <p>If that matches a parent account, we have sent your login ID and a link to choose a new password. The link works once and expires in an hour.</p>
+        <p>If that matches a parent account, we are sending your login ID and a link to choose a new password. The link works once and expires in an hour. If nothing arrives within a few minutes, please contact your school.</p>
         <a class="button-link" routerLink="/login" data-link="login">Back to sign in</a>
       </div>
     } @else {

@@ -31,6 +31,14 @@ namespace smss_api_service_layer.@interface
         Task<ApiResponse<PasswordSetDto>> SetPasswordAsync(SetParentPasswordRequest request, CancellationToken ct);
         /// <summary>"Forgot id or password". ALWAYS the same 200 answer, whether or not the contact matches an account, and whatever limit was hit.</summary>
         Task<ApiResponse<object>> ForgotAsync(ForgotLoginRequest request, string clientKey, CancellationToken ct);
+        /// <summary>The second half of "forgot": makes the reset link and sends it for the matched accounts. Called from the background queue AFTER the answer has gone; never throws.</summary>
+        Task SendRecoveryMessagesAsync(IReadOnlyList<smss_api_db_layer.@interface.AccountContactRow> rows, string? whatsApp, string? email, CancellationToken ct);
+    }
+
+    /// <summary>Work to do after the response: a plain in-process queue (no new infrastructure). Each item runs in its own DI scope; a failure is logged and never reaches a caller.</summary>
+    public interface IBackgroundTaskQueue
+    {
+        void Enqueue(Func<IServiceProvider, CancellationToken, Task> work);
     }
 
     /// <summary>The per-contact limiter for the public recovery endpoint (in memory, per API instance): a contact can ask only a few times an hour, whatever address the requests come from.</summary>

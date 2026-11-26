@@ -132,7 +132,7 @@ namespace smss_api_service_layer.service
                 return Result(200, "Successfully fetched", rows.Select(s => new SiblingStudentDto
                 {
                     StudentId = s.StudentId, StudentName = s.StudentName, ClassName = s.ClassName, SectionName = s.SectionName,
-                    Guardians = s.Guardians.Select(g => new SiblingGuardianDto { GuardianId = g.GuardianId, Name = g.Name, Relationship = g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.Mobile), HasWhatsApp = g.HasWhatsApp, HasEmail = g.HasEmail, IsPrimary = g.IsPrimary }).ToList(),
+                    Guardians = s.Guardians.Select(g => new SiblingGuardianDto { GuardianId = g.GuardianId, Name = g.Name, Relationship = g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.Mobile), HasWhatsApp = g.HasWhatsApp, HasEmail = g.HasEmail, IsPrimary = g.IsPrimary, ConsentGivenAt = g.ConsentGivenAt }).ToList(),
                 }).ToList());
             }
             catch (Exception ex) { return Error<List<SiblingStudentDto>>(ex, "searching students for the sibling pick"); }

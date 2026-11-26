@@ -102,6 +102,8 @@ namespace smss_api_service_layer.dto
         public bool HasWhatsApp { get; set; }
         public bool HasEmail { get; set; }
         public bool IsPrimary { get; set; }
+        /// <summary>When the parent consent was recorded, or null when none is on record (the form then asks for the tick). The date only: never who recorded it.</summary>
+        public DateTime? ConsentGivenAt { get; set; }
     }
 
     public class SiblingStudentDto

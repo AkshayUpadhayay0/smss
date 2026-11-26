@@ -94,6 +94,8 @@ export interface PickedGuardian {
   maskedMobile: string;
   hasWhatsApp: boolean;
   hasEmail: boolean;
+  /** When the parent consent is already on record (the form then shows it ticked, read-only). */
+  consentGivenAt?: string | null;
 }
 
 /** The picked sibling's parents: the existing PRIMARY guardian (null when a new person typed in is primary) and the other existing guardians to link. */

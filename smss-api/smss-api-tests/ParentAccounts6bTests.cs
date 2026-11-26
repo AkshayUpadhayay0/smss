@@ -83,6 +83,8 @@ namespace smss_api_tests
             public readonly TaxDb Db; public readonly Sender Wa = new(); public readonly Mail Email = new(); public readonly CapLog Log = new();
             public ParentAccountsOptions Opt = new() { WebBaseUrl = "https://site.example" };
             public readonly ContactThrottle Throttle = new();
+            /// <summary>When set, "forgot" queues its sending like production; null = inline (the older tests).</summary>
+            public IBackgroundTaskQueue? Queue;
             public Env(TaxDb db) => Db = db;
 
             public ParentMessageDispatcher Dispatcher(dbContext ctx) => new(new MessagingRepository(ctx), new SchoolWhatsAppSenderRepository(ctx), Wa, Email, Log.For<ParentMessageDispatcher>(), Options.Create(Opt));
@@ -90,7 +92,7 @@ namespace smss_api_tests
             public ParentAccountService Svc()
             {
                 var ctx = Db.Ctx(); var messaging = new MessagingRepository(ctx);
-                return new ParentAccountService(new GuardianRepository(ctx), new ParentAccountRepository(ctx), messaging, new GuardianLoginIdService(messaging), Tokens(ctx), Dispatcher(ctx), new AuthRepository(ctx), Email, Throttle, Options.Create(Opt), Log.For<ParentAccountService>());
+                return new ParentAccountService(new GuardianRepository(ctx), new ParentAccountRepository(ctx), messaging, new GuardianLoginIdService(messaging), Tokens(ctx), Dispatcher(ctx), new AuthRepository(ctx), Email, Throttle, Options.Create(Opt), Log.For<ParentAccountService>(), Queue);
             }
             public StudentLoginService Students(IMyStudentsService? mine = null)
             {
@@ -840,6 +842,91 @@ namespace smss_api_tests
                 Assert.Contains(m.GetParameters(), p => p.GetCustomAttributes(true).Any(a => a is FromBodyAttribute));
                 Assert.DoesNotContain(m.GetParameters(), p => p.GetCustomAttributes(true).Any(a => a is FromQueryAttribute || a is FromRouteAttribute));   // nothing secret in a URL
             }
+        }
+
+        // ------------------------------------------------------------------------------------------------ timing: the answer never waits for a send
+        private sealed class TestQueue : IBackgroundTaskQueue
+        {
+            public readonly List<Func<IServiceProvider, CancellationToken, Task>> Work = new();
+            public void Enqueue(Func<IServiceProvider, CancellationToken, Task> work) => Work.Add(work);
+            private sealed class Sp : IServiceProvider
+            {
+                private readonly IParentAccountService _svc; public Sp(IParentAccountService svc) => _svc = svc;
+                public object? GetService(Type serviceType) => serviceType == typeof(IParentAccountService) ? _svc : null;
+            }
+            public async Task RunAllAsync(IParentAccountService svc) { var sp = new Sp(svc); foreach (var w in Work.ToList()) await w(sp, default); Work.Clear(); }
+        }
+
+        private sealed class SlowSender : IWhatsAppSender
+        {
+            public int Calls; public TimeSpan Delay = TimeSpan.FromSeconds(8);
+            public async Task<WhatsAppSendResult> SendAsync(WhatsAppMessage message, CancellationToken ct) { Calls++; await Task.Delay(Delay, ct); return new WhatsAppSendResult(true, "LOG", null, null, null); }
+        }
+
+        [DbFact]
+        public async Task Forgot_answers_before_anything_is_made_or_sent_and_a_matching_and_a_non_matching_contact_do_the_same_work_before_answering()
+        {
+            using var db = new TaxDb(); var e = new Env(db);
+            await ActiveAccount(e);
+            var queue = new TestQueue(); e.Queue = queue;
+            var match = await e.Svc().ForgotAsync(new ForgotLoginRequest { Contact = "9876543210" }, "ip1", default);
+            Assert.Equal(1, queue.Work.Count);
+            Assert.Empty(e.Wa.Sent);                                                                                                     // nothing sent yet
+            Assert.Equal(0, db.Scalar<int>("select count(*) from tb_user_action_tokens where purpose = 'RESET_PASSWORD'"));              // not even the link is made yet
+            var unknown = await e.Svc().ForgotAsync(new ForgotLoginRequest { Contact = "9000000001" }, "ip2", default);
+            var junk = await e.Svc().ForgotAsync(new ForgotLoginRequest { Contact = "nonsense" }, "ip3", default);
+            Assert.Equal(1, queue.Work.Count);                                                                                           // a non-match queues nothing
+            Assert.Equal(Json(match), Json(unknown)); Assert.Equal(Json(match), Json(junk));
+            Assert.Contains("contact your school", match.Message);
+            await queue.RunAllAsync(e.Svc());
+            Assert.Single(e.Wa.Sent);
+            Assert.Equal(1, db.Scalar<int>("select count(*) from tb_user_action_tokens where purpose = 'RESET_PASSWORD'"));
+        }
+
+        [DbFact]
+        public async Task Forgot_does_not_wait_for_a_slow_sender_and_a_failing_send_changes_nothing_for_the_caller()
+        {
+            using var db = new TaxDb(); var e = new Env(db);
+            await ActiveAccount(e);
+            var queue = new TestQueue(); e.Queue = queue;
+            var slow = new SlowSender();
+            var ctx = db.Ctx(); var messaging = new MessagingRepository(ctx);
+            var dispatcher = new ParentMessageDispatcher(messaging, new SchoolWhatsAppSenderRepository(ctx), slow, e.Email, e.Log.For<ParentMessageDispatcher>(), Options.Create(e.Opt));
+            var svc = new ParentAccountService(new GuardianRepository(ctx), new ParentAccountRepository(ctx), messaging, new GuardianLoginIdService(messaging), e.Tokens(ctx), dispatcher, new AuthRepository(ctx), e.Email, new ContactThrottle(), Options.Create(e.Opt), e.Log.For<ParentAccountService>(), queue);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var answer = await svc.ForgotAsync(new ForgotLoginRequest { Contact = "9876543210" }, "ip", default);
+            sw.Stop();
+            Assert.True(sw.Elapsed < TimeSpan.FromSeconds(4), $"the answer waited for the sender ({sw.Elapsed})");
+            Assert.Equal(0, slow.Calls);
+            Assert.Equal(200, answer.StatusCode);
+
+            // a send that fails in the background: the answer a caller got is the same as for a contact that does not exist, and running the queue does not throw
+            e.Wa.Throw = true; e.Email.Succeeds = false;
+            var failing = new TestQueue(); e.Queue = failing;
+            var a = await e.Svc().ForgotAsync(new ForgotLoginRequest { Contact = "asha@example.com" }, "ip5", default);
+            var b = await e.Svc().ForgotAsync(new ForgotLoginRequest { Contact = "nobody@example.com" }, "ip6", default);
+            Assert.Equal(Json(a), Json(b));
+            await failing.RunAllAsync(e.Svc());                                                                                          // no exception
+            Assert.Equal("FAILED", db.Scalar<string>("select status from tb_message_deliveries order by delivery_id desc limit 1"));
+        }
+
+        [DbFact]
+        public async Task The_set_password_endpoint_answers_every_unusable_link_the_same_way_and_never_sends_anything()
+        {
+            using var db = new TaxDb(); var e = new Env(db);
+            var (g, _, used) = await Account(e);
+            await e.Svc().SetPasswordAsync(new SetParentPasswordRequest { Token = used, NewPassword = Strong }, default);
+            var revoked = (await e.Tokens(db.Ctx()).IssueAsync(UserOf(db, g), A, ActionTokenPurposes.ResetPassword, null, default)).Token;
+            await e.Tokens(db.Ctx()).IssueAsync(UserOf(db, g), A, ActionTokenPurposes.ResetPassword, null, default);   // the newer link revokes the one above
+            var expired = (await e.Tokens(db.Ctx()).IssueAsync(UserOf(db, g), A, ActionTokenPurposes.SetPassword, null, default)).Token;
+            db.Exec($"update tb_user_action_tokens set created_at = now() - interval '5 days', expires_at = now() - interval '1 day' where token_hash = '{UserActionTokens.Hash(expired)}'");
+            var sentBefore = e.Wa.Sent.Count + e.Email.Sent.Count;
+            var answers = new List<string>();
+            foreach (var t in new[] { used, revoked, expired, UserActionTokens.NewToken(), "garbage", "" })
+                answers.Add(Json(await e.Svc().SetPasswordAsync(new SetParentPasswordRequest { Token = t, NewPassword = "Another-Pass-3" }, default)));
+            Assert.Single(answers.Distinct());
+            Assert.Equal(sentBefore, e.Wa.Sent.Count + e.Email.Sent.Count);
+            Assert.Single(new[] { Json(await e.Svc().CheckLinkAsync(used, default)), Json(await e.Svc().CheckLinkAsync("garbage", default)), Json(await e.Svc().CheckLinkAsync(expired, default)) }.Distinct());
         }
 
         // ------------------------------------------------------------------------------------------------ no token or link in any log

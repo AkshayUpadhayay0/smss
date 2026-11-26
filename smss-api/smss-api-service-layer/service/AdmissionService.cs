@@ -658,7 +658,7 @@ namespace smss_api_service_layer.service
             if (a.StudentId != null) dto.PrimaryGuardianId = await _repo.GetPrimaryGuardianIdOfStudentAsync(a.SchoolId, a.StudentId, ct);   // the confirmed application's parent, for the Parent account card
             var extraRows = await _repo.GetAdmissionGuardiansAsync(a.SchoolId, a.AdmissionId, false, ct);
             var shown = await _repo.GetGuardiansReadOnlyAsync(a.SchoolId, extraRows.Select(r => r.GuardianId).Concat(a.GuardianId is long gid ? new[] { gid } : Array.Empty<long>()).ToList(), ct);
-            GuardianPickDto Pick(TbGuardian g, string? relationship) => new() { GuardianId = g.GuardianId, Name = GuardianReuse.Display(g), Relationship = relationship ?? g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.MobileNumber), HasWhatsApp = !string.IsNullOrWhiteSpace(g.WhatsAppNumber), HasEmail = !string.IsNullOrWhiteSpace(g.Email) };
+            GuardianPickDto Pick(TbGuardian g, string? relationship) => new() { GuardianId = g.GuardianId, Name = GuardianReuse.Display(g), Relationship = relationship ?? g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.MobileNumber), HasWhatsApp = !string.IsNullOrWhiteSpace(g.WhatsAppNumber), HasEmail = !string.IsNullOrWhiteSpace(g.Email), ConsentGivenAt = g.ConsentGivenAt };
             if (a.GuardianId is long primaryId && shown.FirstOrDefault(g => g.GuardianId == primaryId) is { } primary) dto.ExistingGuardian = Pick(primary, a.GuardianRelationship);
             dto.AdditionalGuardians = extraRows.Select(r => shown.FirstOrDefault(g => g.GuardianId == r.GuardianId) is { } g ? Pick(g, r.Relationship) : null).Where(p => p != null).Select(p => p!).ToList();
             dto.PreviousSchool = a.PreviousSchool;

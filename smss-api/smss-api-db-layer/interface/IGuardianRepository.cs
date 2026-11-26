@@ -8,7 +8,7 @@ namespace smss_api_db_layer.@interface
     public record IncompleteStudentRef(string StudentId, string StudentName, long? ClassId, string? ClassName, long? SectionId, string? SectionName);
     public record IncompleteGuardianRow(long GuardianId, string Name, string Relationship, string Mobile, string? WhatsApp, string? Email, List<IncompleteStudentRef> Students);
 
-    public record SiblingGuardianRow(long GuardianId, string Name, string Relationship, string Mobile, bool HasWhatsApp, bool HasEmail, bool IsPrimary);
+    public record SiblingGuardianRow(long GuardianId, string Name, string Relationship, string Mobile, bool HasWhatsApp, bool HasEmail, bool IsPrimary, DateTime? ConsentGivenAt = null);
     public record SiblingStudentRow(string StudentId, string StudentName, string? ClassName, string? SectionName, List<SiblingGuardianRow> Guardians);
 
     public record DuplicateStudentRef(string StudentId, string StudentName, string AdmissionNumber, string? ClassName, string? SectionName, bool IsPrimary);

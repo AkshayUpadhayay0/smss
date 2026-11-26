@@ -24,6 +24,7 @@ const newForm = () =>
     guardianWhatsAppNumber: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     guardianWhatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
     guardianEmail: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    guardianConsent: new FormControl(false, { nonNullable: true, validators: [Validators.requiredTrue] }),
   });
 
 describe('GuardianFieldsComponent (the sibling pick)', () => {
@@ -137,6 +138,23 @@ describe('GuardianFieldsComponent (the sibling pick)', () => {
     cmp()['remove'](1);
     cmp()['remove'](2);
     expect(emitted.at(-1)).toEqual({ primary: null, extras: [] });
+  });
+
+  it('a picked parent whose consent is already on record shows it ticked and read-only with its date and is not asked again; one without consent is asked', () => {
+    open({ primary: { guardianId: 2, name: 'Anil Rao', relationship: 'FATHER', maskedMobile: '98XXXXXX10', hasWhatsApp: true, hasEmail: true, consentGivenAt: '2026-11-20T10:00:00Z' }, extras: [] });
+    expect(el().querySelector('[data-field="guardian-consent-on-record"]')).not.toBeNull();
+    expect(el().querySelector('[data-section="consent"]')?.textContent).toContain('20 Nov 2026');
+    expect(el().querySelector('[data-field="guardian-consent"]')).toBeNull();
+    expect(form.controls.guardianConsent.disabled).toBe(true);
+    expect(form.controls.guardianConsent.value).toBe(true);
+    expect(form.valid || form.controls.guardianConsent.valid).toBe(true);
+  });
+
+  it('without a pick, or with a pick that has no consent on record, the box is asked and must be ticked', () => {
+    open({ primary: { guardianId: 1, name: 'Meera Rao', relationship: 'MOTHER', maskedMobile: '97XXXXXX11', hasWhatsApp: true, hasEmail: true, consentGivenAt: null }, extras: [] });
+    expect(el().querySelector('[data-field="guardian-consent"]')).not.toBeNull();
+    expect(form.controls.guardianConsent.enabled).toBe(true);
+    expect(form.controls.guardianConsent.valid).toBe(false);
   });
 
   it('an edited application starts from its saved pick', () => {

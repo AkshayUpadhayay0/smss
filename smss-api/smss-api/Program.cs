@@ -232,6 +232,9 @@ builder.Services.AddScoped<IParentMessageDispatcher, ParentMessageDispatcher>();
 builder.Services.AddScoped<IWhatsAppWebhookService, WhatsAppWebhookService>();
 builder.Services.AddScoped<IParentAccountRepository, ParentAccountRepository>();
 builder.Services.AddSingleton<IContactThrottle, ContactThrottle>();
+builder.Services.AddSingleton<BackgroundTaskQueue>();
+builder.Services.AddSingleton<IBackgroundTaskQueue>(sp => sp.GetRequiredService<BackgroundTaskQueue>());
+builder.Services.AddHostedService<smss_api.Helpers.QueuedWorkRunner>();
 builder.Services.AddScoped<IParentAccountService, ParentAccountService>();
 
 // File storage: relative paths resolve against the project folder

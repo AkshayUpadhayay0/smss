@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ export type GuardianFormGroup = FormGroup;
  */
 @Component({
   selector: 'app-guardian-fields',
-  imports: [ReactiveFormsModule, ButtonComponent, IconComponent, InputComponent, SelectComponent, WhatsAppFieldComponent],
+  imports: [DatePipe, ReactiveFormsModule, ButtonComponent, IconComponent, InputComponent, SelectComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './guardian-fields.component.scss',
   template: `
@@ -96,8 +97,12 @@ export type GuardianFormGroup = FormGroup;
     </div>
     @if (form().get('guardianConsent'); as consent) {
       <div class="consent" data-section="consent">
+        @if (primary()?.consentGivenAt; as given) {
+          <label><input type="checkbox" checked disabled data-field="guardian-consent-on-record" /> The parent agreed to be contacted by WhatsApp and email on {{ given | date: 'd MMM yyyy' }}. <span class="meta">(on record: no need to tick again)</span></label>
+        } @else {
         <label><input type="checkbox" [formControl]="asControl(consent)" data-field="guardian-consent" /> The parent agrees to be contacted by WhatsApp and email about the account and the child. <span class="meta">(required)</span></label>
         @if (consent.invalid && consent.touched) { <p class="hint" role="alert" data-note="consent-error">Tick the box to confirm the parent has agreed.</p> }
+        }
       </div>
     }
   `,
@@ -183,12 +188,12 @@ export class GuardianFieldsComponent implements OnInit {
       });
   }
 
-  protected toggle(g: { guardianId: number; name: string; relationship: string; maskedMobile: string; hasWhatsApp: boolean; hasEmail: boolean }): void {
+  protected toggle(g: { guardianId: number; name: string; relationship: string; maskedMobile: string; hasWhatsApp: boolean; hasEmail: boolean; consentGivenAt?: string | null }): void {
     if (this.isPicked(g.guardianId)) {
       this.remove(g.guardianId);
       return;
     }
-    this.picks.update((l) => [...l, { guardianId: g.guardianId, name: g.name, relationship: g.relationship, maskedMobile: g.maskedMobile, hasWhatsApp: g.hasWhatsApp, hasEmail: g.hasEmail }]);
+    this.picks.update((l) => [...l, { guardianId: g.guardianId, name: g.name, relationship: g.relationship, maskedMobile: g.maskedMobile, hasWhatsApp: g.hasWhatsApp, hasEmail: g.hasEmail, consentGivenAt: g.consentGivenAt ?? null }]);
     if (this.picks().length === 1 && this.primaryId() === null) this.primaryId.set(g.guardianId);   // the first parent picked is the primary guardian unless the admin chooses otherwise
     this.apply();
   }
@@ -213,6 +218,9 @@ export class GuardianFieldsComponent implements OnInit {
     toggle('guardianEmail', !p || !p.hasEmail);
     toggle('guardianWhatsAppNumber', !p || !p.hasWhatsApp);
     toggle('guardianWhatsAppSameAsMobile', !p || !p.hasWhatsApp);
+    // consent already on record for the picked parent: shown ticked and read-only with its date, not asked again
+    const consent = this.form().get('guardianConsent');
+    if (consent) { if (p?.consentGivenAt) { consent.setValue(true, { emitEvent: false }); consent.disable({ emitEvent: false }); } else if (consent.disabled) { consent.setValue(false, { emitEvent: false }); consent.enable({ emitEvent: false }); } }
     if (p && !this.c('guardianRelationship').value) this.c('guardianRelationship').setValue(p.relationship);
     this.form().updateValueAndValidity({ emitEvent: false });
     const extras = this.picks().filter((g) => g.guardianId !== this.primaryId());

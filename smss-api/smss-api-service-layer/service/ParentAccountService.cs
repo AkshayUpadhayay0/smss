@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using smss_api_db_layer.entity;
@@ -34,7 +35,7 @@ namespace smss_api_service_layer.service
     public class ParentAccountService : IParentAccountService
     {
         public const int BulkMaxPerRun = 100;
-        private const string GenericForgot = "If that matches a parent account, we have sent the login ID and a link to choose a new password to the registered WhatsApp number or email.";
+        private const string GenericForgot = "If that matches a parent account, we are sending the login ID and a link to choose a new password to the registered WhatsApp number or email. If nothing arrives within a few minutes, please contact your school.";
         private const string BadLink = "This link is not valid any more. Ask the school for a new one, or use \"Forgot ID or password\".";
 
         private readonly IGuardianRepository _guardians;
@@ -48,12 +49,13 @@ namespace smss_api_service_layer.service
         private readonly IContactThrottle _throttle;
         private readonly ParentAccountsOptions _opt;
         private readonly ILogger<ParentAccountService> _logger;
+        private readonly IBackgroundTaskQueue? _queue;
 
         public ParentAccountService(IGuardianRepository guardians, IParentAccountRepository accounts, IMessagingRepository messaging, IGuardianLoginIdService loginIds, IUserActionTokenService tokens,
-            IParentMessageDispatcher dispatcher, IAuthRepository auth, INotificationService notify, IContactThrottle throttle, IOptions<ParentAccountsOptions> options, ILogger<ParentAccountService> logger)
+            IParentMessageDispatcher dispatcher, IAuthRepository auth, INotificationService notify, IContactThrottle throttle, IOptions<ParentAccountsOptions> options, ILogger<ParentAccountService> logger, IBackgroundTaskQueue? queue = null)
         {
             _guardians = guardians; _accounts = accounts; _messaging = messaging; _loginIds = loginIds; _tokens = tokens; _dispatcher = dispatcher; _auth = auth; _notify = notify; _throttle = throttle;
-            _opt = options.Value; _logger = logger;
+            _opt = options.Value; _logger = logger; _queue = queue;
         }
 
         // ------------------------------------------------------------------------------------------------ rules
@@ -367,33 +369,41 @@ namespace smss_api_service_layer.service
                 string? whatsApp = null, email = null;
                 if (contact.Contains('@')) { if (PhoneNumbers.EmailError(contact, "x") == null) email = contact.ToLowerInvariant(); }
                 else whatsApp = PhoneNumbers.Normalise(contact);
-                if (whatsApp == null && email == null) return generic;
-                if (!_throttle.Allow("contact:" + (whatsApp ?? email), 5) || !_throttle.Allow("ip:" + clientKey, 20)) return generic;   // the same answer: a limit is never visible
-
+                // the same work whatever was typed: the throttle is only CHECKED here, and the one lookup always runs (a malformed or throttled contact simply finds nothing to act on)
+                var allowed = (whatsApp != null || email != null) && _throttle.Allow("contact:" + (whatsApp ?? email), 5) & _throttle.Allow("ip:" + clientKey, 20);
                 var activeId = await _guardians.GetGeneralStatusIdAsync(StatusNames.Active, ct);
                 if (activeId == null) return generic;
                 var rows = await _accounts.FindAccountsByContactAsync(whatsApp, email, activeId.Value, ct);   // every school this contact is a parent in: each gets its own message
-                foreach (var row in rows)
-                {
-                    try
-                    {
-                        var user = await _accounts.GetUserAsync(row.UserId, false, ct);
-                        if (user == null || user.PasswordHash == null) continue;   // an account that never chose a password gets its set-password link from the school (resend), not from here
-                        var count = await _messaging.CountTokensSinceAsync(row.UserId, ActionTokenPurposes.ResetPassword, DateTime.UtcNow.AddHours(-24), ct);
-                        if (count >= _opt.MaxLinksPer24Hours) continue;
-                        var issued = await _tokens.IssueAsync(row.UserId, row.SchoolId, ActionTokenPurposes.ResetPassword, null, ct);
-                        var link = _tokens.BuildLink(ActionTokenPurposes.ResetPassword, issued.Token);
-                        // only the channel the contact was typed for: a number gets WhatsApp, an email address gets email
-                        var message = new ParentMessage(row.SchoolId, row.GuardianId, row.UserId, ParentTemplateCodes.LoginHelp, MessagePurposes.ResetPassword,
-                            whatsApp != null ? row.WhatsApp : null, whatsApp != null ? ParentTemplates.LoginHelp(row.Name, row.SchoolName, row.LoginId, _opt.ResetLinkMinutes, issued.Token) : null,
-                            email != null ? row.Email : null, email != null && link != null ? EmailTemplates.ParentLoginHelp(row.Name, row.SchoolName, row.LoginId, link, _opt.ResetLinkMinutes) : null, null);
-                        await _dispatcher.SendAsync(message, ct);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogWarning("A recovery message for guardian {GuardianId} could not be sent ({Error})", row.GuardianId, ex.GetType().Name); }
-                }
+                if (!allowed || rows.Count == 0) return generic;
+                // Everything after the lookup (the link, the message) happens AFTER the answer has gone, so a matching and a non-matching contact take the same time and do the same work before they are answered.
+                if (_queue != null) _queue.Enqueue((sp, token) => sp.GetRequiredService<IParentAccountService>().SendRecoveryMessagesAsync(rows, whatsApp, email, token));
+                else await SendRecoveryMessagesAsync(rows, whatsApp, email, ct);   // no queue wired (older constructors, tests): done inline
             }
             catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogWarning("Forgot id or password failed ({Error})", ex.GetType().Name); }
             return generic;
+        }
+
+        /// <summary>Makes the reset link and sends it, per matched account. Runs after the answer (queued), in its own scope; it never throws.</summary>
+        public async Task SendRecoveryMessagesAsync(IReadOnlyList<AccountContactRow> rows, string? whatsApp, string? email, CancellationToken ct)
+        {
+            foreach (var row in rows)
+            {
+                try
+                {
+                    var user = await _accounts.GetUserAsync(row.UserId, false, ct);
+                    if (user == null || user.PasswordHash == null) continue;   // never chose a password: the school resends that link
+                    var count = await _messaging.CountTokensSinceAsync(row.UserId, ActionTokenPurposes.ResetPassword, DateTime.UtcNow.AddHours(-24), ct);
+                    if (count >= _opt.MaxLinksPer24Hours) continue;
+                    var issued = await _tokens.IssueAsync(row.UserId, row.SchoolId, ActionTokenPurposes.ResetPassword, null, ct);
+                    var link = _tokens.BuildLink(ActionTokenPurposes.ResetPassword, issued.Token);
+                    // only the channel the contact was typed for: a number gets WhatsApp, an email address gets email
+                    var message = new ParentMessage(row.SchoolId, row.GuardianId, row.UserId, ParentTemplateCodes.LoginHelp, MessagePurposes.ResetPassword,
+                        whatsApp != null ? row.WhatsApp : null, whatsApp != null ? ParentTemplates.LoginHelp(row.Name, row.SchoolName, row.LoginId, _opt.ResetLinkMinutes, issued.Token) : null,
+                        email != null ? row.Email : null, email != null && link != null ? EmailTemplates.ParentLoginHelp(row.Name, row.SchoolName, row.LoginId, link, _opt.ResetLinkMinutes) : null, null);
+                    await _dispatcher.SendAsync(message, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogWarning("A recovery message for guardian {GuardianId} could not be sent ({Error})", row.GuardianId, ex.GetType().Name); }
+            }
         }
 
         private ApiResponse<T> Failure<T>(Exception ex, string action)

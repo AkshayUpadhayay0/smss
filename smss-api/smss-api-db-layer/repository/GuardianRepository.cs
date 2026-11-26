@@ -127,10 +127,10 @@ namespace smss_api_db_layer.repository
                                join g in _db.Guardians.AsNoTracking() on l.GuardianId equals g.GuardianId
                                where g.SchoolId == schoolId && g.StatusId == activeStatusId && g.MergedIntoGuardianId == null
                                orderby l.IsPrimary descending, g.GuardianId
-                               select new { l.StudentId, l.Relationship, l.IsPrimary, g.GuardianId, g.FirstName, g.LastName, g.MobileNumber, g.WhatsAppNumber, g.Email }).ToListAsync(ct);
+                               select new { l.StudentId, l.Relationship, l.IsPrimary, g.GuardianId, g.FirstName, g.LastName, g.MobileNumber, g.WhatsAppNumber, g.Email, g.ConsentGivenAt }).ToListAsync(ct);
             return students.Select(s => new SiblingStudentRow(s.StudentId, Name(s.FirstName, s.MiddleName, s.LastName), s.ClassName, s.SectionName,
                 links.Where(l => l.StudentId == s.StudentId).Select(l => new SiblingGuardianRow(l.GuardianId, Name(l.FirstName, null, l.LastName), l.Relationship, l.MobileNumber,
-                    !string.IsNullOrWhiteSpace(l.WhatsAppNumber), !string.IsNullOrWhiteSpace(l.Email), l.IsPrimary)).ToList())).ToList();
+                    !string.IsNullOrWhiteSpace(l.WhatsAppNumber), !string.IsNullOrWhiteSpace(l.Email), l.IsPrimary, l.ConsentGivenAt)).ToList())).ToList();
         }
 
         // ---------------------------------------------------------------- duplicates and merge
