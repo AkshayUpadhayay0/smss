@@ -98,6 +98,8 @@ export class AdmissionFormComponent implements OnInit {
     guardianWhatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
     guardianWhatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
     guardianEmail: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.email, Validators.maxLength(150)] }),
+    // the parent agrees to be contacted by WhatsApp and email (recorded with the date and who ticked it)
+    guardianConsent: new FormControl(false, { nonNullable: true, validators: [Validators.requiredTrue] }),
   });
 
   protected readonly submitted = signal(false);
@@ -161,7 +163,7 @@ export class AdmissionFormComponent implements OnInit {
         genderId: s(a.genderId), bloodGroupId: s(a.bloodGroupId), studentCategoryId: s(a.studentCategoryId), studentNationId: s(a.studentNationId),
         academicYearId: s(a.academicYearId), appliedClassId: s(a.appliedClassId), admissionTypeId: s(a.admissionTypeId), previousSchool: s(a.previousSchool),
         email: s(a.email), mobileNumber: s(a.mobileNumber), addressLine1: s(a.addressLine1), addressLine2: s(a.addressLine2), pincode: s(a.pincode),
-        guardianName: a.guardianName, guardianRelationship: a.guardianRelationship, guardianMobileNumber: a.guardianMobileNumber, guardianEmail: s(a.guardianEmail), guardianWhatsAppNumber: s(a.guardianWhatsAppNumber),
+        guardianName: a.guardianName, guardianRelationship: a.guardianRelationship, guardianMobileNumber: a.guardianMobileNumber, guardianEmail: s(a.guardianEmail), guardianWhatsAppNumber: s(a.guardianWhatsAppNumber), guardianConsent: !!a.guardianConsentRecorded,
       },
       { emitEvent: false },
     );
@@ -340,6 +342,7 @@ export class AdmissionFormComponent implements OnInit {
       guardianEmail: str(v.guardianEmail),
       guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
       guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
+      guardianConsent: v.guardianConsent,
       ...picksToRequest(this.picks()),
       previousSchool: str(v.previousSchool),
     };

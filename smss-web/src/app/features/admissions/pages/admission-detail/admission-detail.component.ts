@@ -2,7 +2,10 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
+import { ROLES } from '../../../../core/config/route-roles';
+import { AuthService } from '../../../../core/services/auth.service';
 import { MasterDataService } from '../../../../core/services/master-data.service';
+import { ParentAccountCardComponent } from '../../../parent-account/components/parent-account-card/parent-account-card.component';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { AdmissionActionsComponent } from '../../components/admission-actions/admission-actions.component';
 import { AdmissionDocumentsComponent } from '../../components/admission-documents/admission-documents.component';
@@ -18,7 +21,7 @@ interface Step {
 
 @Component({
   selector: 'app-admission-detail',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent, AdmissionDocumentsComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent, AdmissionDocumentsComponent, ParentAccountCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-detail.component.scss',
   templateUrl: './admission-detail.component.html',
@@ -26,6 +29,7 @@ interface Step {
 export class AdmissionDetailComponent implements OnInit {
   private readonly service = inject(AdmissionService);
   private readonly master = inject(MasterDataService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -117,6 +121,9 @@ export class AdmissionDetailComponent implements OnInit {
         error: () => this.loadFailed.set(true), // already toasted by the interceptor
       });
   }
+
+  /** Only the School Admin may send a reset link. */
+  protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r.trim().toLowerCase() === ROLES.SCHOOL_ADMIN.toLowerCase()));
 
   protected onChanged(updated: AdmissionDetail): void {
     this.admission.set(updated);

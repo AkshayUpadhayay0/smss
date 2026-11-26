@@ -10,6 +10,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { saveBlob } from '../../../homework/utils/homework-format';
 import { StudentFeesTabComponent } from '../../components/student-fees-tab/student-fees-tab.component';
 import { ResetPasswordDialogComponent } from '../../../password-reset/reset-password-dialog/reset-password-dialog.component';
+import { ParentAccountCardComponent } from '../../../parent-account/components/parent-account-card/parent-account-card.component';
 import { StudentLoginDialogComponent } from '../../components/student-login-dialog/student-login-dialog.component';
 import { StudentDocumentsComponent } from '../../../student-documents/components/student-documents/student-documents.component';
 import { StudentTransportCardComponent } from '../../components/student-transport-card/student-transport-card.component';
@@ -33,7 +34,7 @@ const titleCase = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s
 /** Read-only student profile (only the photo can be changed here; other student edits aren't built on the backend yet). */
 @Component({
   selector: 'app-student-profile',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, StudentTransportCardComponent, TableComponent, StudentDocumentsComponent],
+  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, ParentAccountCardComponent, ResetPasswordDialogComponent, SecureImageComponent, StudentFeesTabComponent, StudentLoginDialogComponent, StudentPhotoDialogComponent, StudentTransportCardComponent, TableComponent, StudentDocumentsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './student-profile.component.scss',
   templateUrl: './student-profile.component.html',
@@ -158,6 +159,8 @@ export class StudentProfileComponent implements OnInit {
   }
 
   protected readonly loginDialogOpen = signal(false);
+  /** The primary guardian, whose parent account the School Admin can look at. */
+  protected readonly primaryGuardianId = computed(() => this.student()?.guardians?.find((g) => g.isPrimary)?.guardianId ?? null);
   protected readonly resetDialogOpen = signal(false);
 
   /** The user has seen the credentials: close the dialog and show the Login ID on the profile. */

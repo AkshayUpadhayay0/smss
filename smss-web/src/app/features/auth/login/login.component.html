@@ -17,4 +17,5 @@
   </label>
 
   <app-button type="submit" [block]="true" size="lg" [disabled]="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</app-button>
+  <a class="forgot" routerLink="/parent/forgot" data-link="parent-forgot">Parent? Forgot ID or password</a>
 </form>

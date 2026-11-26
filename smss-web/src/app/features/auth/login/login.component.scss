@@ -44,3 +44,9 @@
     accent-color: var(--color-primary);
   }
 }
+
+.forgot {
+  align-self: center;
+  font-size: var(--text-sm);
+  color: var(--color-primary-700, var(--color-primary));
+}

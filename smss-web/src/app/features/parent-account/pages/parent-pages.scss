@@ -1,0 +1,63 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+
+  app-icon {
+    margin-top: 2px;
+  }
+}
+
+.ok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-md);
+  background: var(--color-success-soft);
+
+  code {
+    font-weight: 600;
+  }
+}
+
+.link {
+  color: var(--color-primary-700, var(--color-primary));
+  font-size: var(--text-sm);
+  text-decoration: underline;
+}
+
+.button-link {
+  display: inline-block;
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-700, var(--color-primary));
+  color: #fff;
+  text-decoration: none;
+}

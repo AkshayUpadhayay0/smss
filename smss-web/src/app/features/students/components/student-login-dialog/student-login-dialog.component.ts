@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { finalize } from 'rxjs';
-import { ToastService } from '../../../../core/services/toast.service';
 import { ButtonComponent, IconComponent, ModalComponent } from '../../../../shared/components';
+import { deliveryLabel } from '../../../parent-account/models/parent-account.model';
 import { StudentLoginCreated } from '../../models/student.model';
 import { StudentService } from '../../services/student.service';
 
 /**
- * Creates the student's login. Step 1 asks for confirmation; step 2 shows the generated Login ID and temporary
- * password ONCE (the server cannot return the password again), same behaviour as the school registration result.
+ * Creates the student's login. There is NO password to copy: the login is made without one and the PRIMARY GUARDIAN is sent a one-time link (WhatsApp and email) to choose it. Step 1 asks for confirmation;
+ * step 2 shows the login ID and what happened to the link, with the reason when it could not be sent (no parent consent, no WhatsApp or email on file). A class teacher can do this for their own section.
  */
 @Component({
   selector: 'app-student-login-dialog',
@@ -17,38 +17,22 @@ import { StudentService } from '../../services/student.service';
   template: `
     @if (result(); as r) {
       <app-modal title="Student login created" [dismissible]="false">
-        <div class="warning" role="alert">
-          <app-icon name="triangle-alert" [size]="18" />
-          <span>
-            <strong>Copy these credentials now.</strong> The temporary password is shown only once and cannot be viewed again.
-            The student must change it the first time they sign in.
-          </span>
-        </div>
-
         <dl class="credentials">
           <div class="row">
             <dt>Login ID</dt>
-            <dd><code>{{ r.orgUserId }}</code></dd>
-            <app-button variant="secondary" size="sm" aria-label="Copy login ID" (click)="copy(r.orgUserId, 'Login ID')">
-              <app-icon name="copy" [size]="14" />Copy
-            </app-button>
-          </div>
-          <div class="row">
-            <dt>Temporary password</dt>
-            <dd><code>{{ r.temporaryPassword }}</code></dd>
-            <app-button variant="secondary" size="sm" aria-label="Copy password" (click)="copy(r.temporaryPassword, 'Password')">
-              <app-icon name="copy" [size]="14" />Copy
-            </app-button>
+            <dd><code data-field="login-id">{{ r.orgUserId }}</code></dd>
           </div>
         </dl>
 
-        <p class="email-note" [class.sent]="r.emailSent">
-          @if (r.emailSent) {
-            <app-icon name="mail" [size]="16" /> Credentials were also emailed to {{ r.emailSentTo }}.
-          } @else {
-            <app-icon name="info" [size]="16" /> No email was sent (no student or primary guardian email on record), so share these credentials directly.
-          }
+        <p class="email-note" [class.sent]="r.linkSent" data-note="link" role="status">
+          <app-icon [name]="r.linkSent ? 'mail' : 'info'" [size]="16" /> {{ r.message }}
         </p>
+        @if (r.deliveries.length > 0) {
+          <ul data-list="deliveries">
+            @for (d of r.deliveries; track d.channel) { <li>{{ label(d) }}</li> }
+          </ul>
+        }
+        <p class="hint">The student can sign in with this login ID once the parent has chosen the password. Nobody, including you, can see it.</p>
 
         <ng-container modal-footer>
           <app-button (click)="created.emit(r)">Done</app-button>
@@ -57,13 +41,13 @@ import { StudentService } from '../../services/student.service';
     } @else {
       <app-modal title="Create student login" [dismissible]="!saving()" (closed)="closed.emit()">
         <p>
-          Create a login for <strong>{{ studentName() }}</strong>? A Login ID and a temporary password will be generated and shown once.
+          Create a login for <strong>{{ studentName() }}</strong>? The student's own ID becomes the login ID.
         </p>
-        <p class="hint">The temporary password is built from the student's name and date of birth, and must be changed on first sign-in.</p>
+        <p class="hint">No password is made. The primary guardian is sent a one-time link on WhatsApp and email to choose the password.</p>
 
         <ng-container modal-footer>
           <app-button variant="secondary" [disabled]="saving()" (click)="closed.emit()">Cancel</app-button>
-          <app-button [disabled]="saving()" (click)="create()">{{ saving() ? 'Creating…' : 'Create login' }}</app-button>
+          <app-button [disabled]="saving()" (click)="create()" data-action="create">{{ saving() ? 'Creating…' : 'Create login' }}</app-button>
         </ng-container>
       </app-modal>
     }
@@ -71,17 +55,17 @@ import { StudentService } from '../../services/student.service';
 })
 export class StudentLoginDialogComponent {
   private readonly students = inject(StudentService);
-  private readonly toast = inject(ToastService);
 
   readonly studentId = input.required<string>();
   readonly studentName = input<string>('');
 
-  /** Emitted when the user is done with the credentials. */
+  /** Emitted when the user is done. */
   readonly created = output<StudentLoginCreated>();
   readonly closed = output<void>();
 
   protected readonly saving = signal(false);
   protected readonly result = signal<StudentLoginCreated | null>(null);
+  protected readonly label = deliveryLabel;
 
   protected create(): void {
     if (this.saving()) return;
@@ -91,16 +75,7 @@ export class StudentLoginDialogComponent {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (r) => this.result.set(r),
-        error: () => undefined, // the server's reason (already has a login, no short code, ...) is toasted by the interceptor
+        error: () => undefined, // the server's reason (already has a login, not your section, ...) is toasted by the interceptor
       });
-  }
-
-  protected async copy(value: string, label: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(value);
-      this.toast.success(`${label} copied to clipboard.`);
-    } catch {
-      this.toast.warning('Could not copy automatically — please select and copy it manually.');
-    }
   }
 }

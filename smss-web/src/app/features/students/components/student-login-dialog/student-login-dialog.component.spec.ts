@@ -38,20 +38,21 @@ describe('StudentLoginDialogComponent', () => {
     http.expectNone(() => true);
   });
 
-  it('posts to the school-scoped create-login endpoint and shows the Login ID and password once', () => {
+  it('posts to the school-scoped create-login endpoint and shows the Login ID and what happened to the parent link, never a password', () => {
     button('Create login').click();
     const req = http.expectOne(`${API}/api/Student/DPS261013001/DPS001ST007/create-login`);
     expect(req.request.method).toBe('POST');
     req.flush(
-      env({ studentId: 'DPS001ST007', displayName: 'Abhinav Kumar', orgUserId: 'DPS001ST007', temporaryPassword: 'ABHI0807', emailSent: false }),
+      env({ studentId: 'DPS001ST007', displayName: 'Abhinav Kumar', orgUserId: 'DPS001ST007', linkSent: true, message: 'The login was created and a link to set the password was sent to the parent.', deliveries: [{ deliveryId: 1, channel: 'WHATSAPP', status: 'SENT', templateCode: 'parent_student_login_ready', purpose: 'STUDENT_LOGIN', senderKind: 'CLOUD', createdAt: '2026-11-26T00:00:00Z' }] }),
     );
     fixture.detectChanges();
 
     const text = el().textContent ?? '';
     expect(text).toContain('Login ID');
     expect(text).toContain('DPS001ST007');
-    expect(text).toContain('ABHI0807');
-    expect(text).toContain('shown only once');
+    expect(text).toContain('a link to set the password was sent to the parent');
+    expect(text).toContain('WhatsApp: sent');
+    expect(text).not.toMatch(/temporary password|ABHI0807|copy/i);
 
     button('Done').click();
     expect(created).toHaveLength(1);
@@ -64,7 +65,6 @@ describe('StudentLoginDialogComponent', () => {
       .expectOne(`${API}/api/Student/DPS261013001/DPS001ST007/create-login`)
       .flush({ status: false, statusCode: 409, message: 'This student already has a login.', data: null }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(el().textContent).not.toContain('ABHI0807');
     expect(button('Create login')).toBeTruthy();
   });
 });

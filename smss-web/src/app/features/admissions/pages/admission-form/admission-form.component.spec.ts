@@ -16,7 +16,7 @@ const TYPES = [{ admissionTypeId: 1, typeCode: 'NEW_ADMISSION', typeName: 'New A
 const DETAIL = (statusName: string) => ({
   admissionId: 7, applicationNumber: 'ADM20260007', applicantFullName: 'Anil Kumar Applicant', statusName, applicationDate: '2026-10-20', academicYearId: 5, appliedClassId: 4, admissionTypeId: 1,
   applicantFirstName: 'Anil', applicantMiddleName: 'Kumar', applicantLastName: 'Applicant', dateOfBirth: '2018-05-06T00:00:00', genderId: 2, aadharNumberMasked: 'XXXX XXXX 7777', email: 'a@example.com',
-  mobileNumber: '9123400000', countryId: null, guardianName: 'Gita Applicant', guardianRelationship: 'MOTHER', guardianMobileNumber: '9123400001', guardianEmail: 'g@example.com', guardianWhatsAppNumber: '+919123400001', previousSchool: 'Little Steps',
+  mobileNumber: '9123400000', countryId: null, guardianName: 'Gita Applicant', guardianRelationship: 'MOTHER', guardianMobileNumber: '9123400001', guardianEmail: 'g@example.com', guardianWhatsAppNumber: '+919123400001', guardianConsentRecorded: true, previousSchool: 'Little Steps',
 });
 
 describe('AdmissionFormComponent', () => {
@@ -87,7 +87,7 @@ describe('AdmissionFormComponent', () => {
     answer();
     expect(cmp()['editing']()).toBe(false);
     expect(cmp()['form'].controls.academicYearId.value).toBe('6');
-    cmp()['form'].patchValue({ applicantFirstName: 'Anil', applicantLastName: 'Applicant', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', previousSchool: ' Little Steps ', guardianName: 'Gita', guardianRelationship: 'MOTHER', guardianMobileNumber: '9123400001', guardianEmail: 'g@example.com', guardianWhatsAppSameAsMobile: true });
+    cmp()['form'].patchValue({ applicantFirstName: 'Anil', applicantLastName: 'Applicant', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', previousSchool: ' Little Steps ', guardianName: 'Gita', guardianRelationship: 'MOTHER', guardianMobileNumber: '9123400001', guardianEmail: 'g@example.com', guardianWhatsAppSameAsMobile: true, guardianConsent: true });
     cmp()['submit']();
     const post = http.expectOne(`${API}/api/Admission/S/submit`);
     expect(post.request.body).toMatchObject({ applicantFirstName: 'Anil', appliedClassId: 3, academicYearId: 6, previousSchool: 'Little Steps' });
@@ -99,7 +99,7 @@ describe('AdmissionFormComponent', () => {
     open();
     answer();
     cmp()['picks'].set({ primary: { guardianId: 41, name: 'Meera Rao', relationship: 'MOTHER', maskedMobile: '98XXXXXX10', hasWhatsApp: true, hasEmail: true }, extras: [{ guardianId: 42, name: 'Anil Rao', relationship: 'FATHER', maskedMobile: '97XXXXXX11', hasWhatsApp: false, hasEmail: false }] });
-    cmp()['form'].patchValue({ applicantFirstName: 'Anil', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianRelationship: 'MOTHER' });
+    cmp()['form'].patchValue({ applicantFirstName: 'Anil', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianRelationship: 'MOTHER', guardianConsent: true });
     cmp()['form'].controls.guardianName.disable(); cmp()['form'].controls.guardianMobileNumber.disable(); cmp()['form'].controls.guardianEmail.disable();
     cmp()['form'].controls.guardianWhatsAppNumber.disable(); cmp()['form'].controls.guardianWhatsAppSameAsMobile.disable();
     cmp()['submit']();
@@ -112,7 +112,7 @@ describe('AdmissionFormComponent', () => {
     open();
     answer();
     const form = cmp()['form'];
-    form.patchValue({ applicantFirstName: 'Anil', applicantLastName: '   ', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianName: 'Gita', guardianRelationship: 'MOTHER', guardianMobileNumber: '9876543210', guardianEmail: 'g@example.com', guardianWhatsAppSameAsMobile: true });
+    form.patchValue({ applicantFirstName: 'Anil', applicantLastName: '   ', dateOfBirth: '2018-05-06', appliedClassId: '3', admissionTypeId: '1', guardianName: 'Gita', guardianRelationship: 'MOTHER', guardianMobileNumber: '9876543210', guardianEmail: 'g@example.com', guardianWhatsAppSameAsMobile: true, guardianConsent: true });
     expect(form.controls.applicantLastName.valid).toBe(true);
     cmp()['submit']();
     const post = http.expectOne(`${API}/api/Admission/S/submit`);

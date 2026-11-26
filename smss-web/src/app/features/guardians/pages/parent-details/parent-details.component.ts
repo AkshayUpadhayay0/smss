@@ -20,6 +20,7 @@ import {
 } from '../../../../shared/components';
 import { SectionService } from '../../../school-setup/services/section.service';
 import { Section } from '../../../school-setup/models/section.model';
+import { BulkParentAccountsDialogComponent } from '../../../parent-account/components/bulk-parent-accounts-dialog/bulk-parent-accounts-dialog.component';
 import { GuardianEditDialogComponent } from '../../components/guardian-edit-dialog/guardian-edit-dialog.component';
 import { IncompleteGuardian } from '../../models/guardian.model';
 import { GuardianService } from '../../services/guardian.service';
@@ -31,11 +32,14 @@ import { GuardianService } from '../../services/guardian.service';
  */
 @Component({
   selector: 'app-parent-details',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, GuardianEditDialogComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, SelectComponent],
+  imports: [ReactiveFormsModule, BulkParentAccountsDialogComponent, ButtonComponent, CardComponent, GuardianEditDialogComponent, IconComponent, InputComponent, PageHeaderComponent, PaginationComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './parent-details.component.scss',
   template: `
     <app-page-header title="Complete parent details" subtitle="Parents whose WhatsApp number or email is still missing" icon="users" [breadcrumbs]="breadcrumbs">
+      @if (isSchoolAdmin()) {
+        <app-button variant="secondary" (click)="bulkOpen.set(true)" data-action="bulk-accounts"><app-icon name="users" [size]="16" />Create parent accounts</app-button>
+      }
       @if (canMerge()) {
         <app-button variant="secondary" (click)="duplicates()" data-link="duplicates"><app-icon name="copy" [size]="16" />Duplicate parents</app-button>
       }
@@ -102,6 +106,9 @@ import { GuardianService } from '../../services/guardian.service';
     @if (editing(); as g) {
       <app-guardian-edit-dialog [guardianId]="g.guardianId" (saved)="onSaved()" (closed)="editing.set(null)" />
     }
+    @if (bulkOpen()) {
+      <app-bulk-parent-accounts-dialog (closed)="bulkOpen.set(false)" (done)="bulkOpen.set(false)" />
+    }
   `,
 })
 export class ParentDetailsComponent implements OnInit {
@@ -114,6 +121,8 @@ export class ParentDetailsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   /** The duplicate report and the merge are for the School Admin and the Principal only. */
+  protected readonly isSchoolAdmin = computed(() => this.auth.currentUserRoles().some((r) => r === ROLES.SCHOOL_ADMIN));
+  protected readonly bulkOpen = signal(false);
   protected readonly canMerge = computed(() => this.auth.currentUserRoles().some((r) => r === ROLES.SCHOOL_ADMIN || r === ROLES.PRINCIPAL));
   protected duplicates(): void {
     void this.router.navigate(['/duplicate-parents']);

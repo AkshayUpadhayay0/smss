@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { OnboardingService } from '../../../core/services/onboarding.service';
@@ -13,7 +13,7 @@ export function safeReturnUrl(url: string | undefined): string | null {
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, ButtonComponent, IconComponent, InputComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, IconComponent, InputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './login.component.scss',
   templateUrl: './login.component.html',

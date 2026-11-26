@@ -34,7 +34,7 @@ const site = match[1].replace(/\/+$/, '');
 
 const PUBLIC_PATHS = ['/', '/contact', '/request-demo', '/privacy-policy', '/terms'];
 // Authenticated root segments that are not (or not only) keys of ROUTE_ROLES
-const EXTRA_PRIVATE = ['/login'];
+const EXTRA_PRIVATE = ['/login', '/parent'];   // /parent = the one-time-link pages (set / reset password, forgot id): never for search engines
 
 // Keys of the ROUTE_ROLES object: lines like   '/school-setup/classes': [ROLES.SCHOOL_ADMIN],
 const routeRoles = /export const ROUTE_ROLES[^=]*=\s*\{([\s\S]*?)\n\};/.exec(read('src/app/core/config/route-roles.ts'));

@@ -36,6 +36,8 @@ export interface DirectStudentEntryRequest {
   /** The WhatsApp number as typed; null when "same as mobile number" is ticked (the server then uses the mobile number). */
   guardianWhatsAppNumber: string | null;
   guardianWhatsAppSameAsMobile: boolean;
+  /** The consent tick (required). */
+  guardianConsent: boolean;
   /** Fee configuration chosen at admission (installment plan per fee head). Omitted = the fee structure's defaults. */
   feeItems?: FeeItemSelection[] | null;
   /** The date fees are charged from (yyyy-MM-dd); omitted = today. An earlier date needs confirmBackdating and a reason. */

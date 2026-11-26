@@ -91,6 +91,7 @@ export class ExistingStudentFormComponent implements OnInit {
     guardianWhatsAppNumber: new FormControl('', { nonNullable: true, validators: [whatsAppValidator] }),
     guardianWhatsAppSameAsMobile: new FormControl(false, { nonNullable: true }),
     guardianEmail: new FormControl('', { nonNullable: true, validators: [requiredTrimmed, Validators.email, Validators.maxLength(150)] }),
+    guardianConsent: new FormControl(false, { nonNullable: true, validators: [Validators.requiredTrue] }),
   });
 
   protected readonly submitted = signal(false);
@@ -272,6 +273,7 @@ export class ExistingStudentFormComponent implements OnInit {
       guardianEmail: str(v.guardianEmail),
       guardianWhatsAppNumber: v.guardianWhatsAppSameAsMobile ? null : str(v.guardianWhatsAppNumber),
       guardianWhatsAppSameAsMobile: v.guardianWhatsAppSameAsMobile,
+      guardianConsent: v.guardianConsent,
       ...picksToRequest(this.picks()),
       feeItems: this.feeSelections.length ? this.feeSelections : null,
       chargeFrom: v.chargeFrom || null,

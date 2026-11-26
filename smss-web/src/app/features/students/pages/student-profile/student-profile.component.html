@@ -126,7 +126,7 @@
         </dl>
       </app-card>
 
-      @if (!restricted()) {
+      <!-- A class teacher (restricted view) may create the login of a student of their own section; everything else about the login is the School Admin's. -->
       <app-card title="Login">
         @if (s.loginId) {
           <dl class="grid">
@@ -140,12 +140,15 @@
         } @else {
           <div class="login-empty">
             <p class="hint">This student does not have a login yet.</p>
-            <app-button variant="secondary" (click)="loginDialogOpen.set(true)">
+            <app-button variant="secondary" (click)="loginDialogOpen.set(true)" data-action="create-login">
               <app-icon name="user" [size]="16" />Create Login
             </app-button>
           </div>
         }
       </app-card>
+
+      @if (isSchoolAdmin() && primaryGuardianId(); as pg) {
+        <app-parent-account-card [guardianId]="pg" [canReset]="true" />
       }
 
       <app-card title="Guardians" [noPadding]="true">

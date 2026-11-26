@@ -94,6 +94,12 @@ export type GuardianFormGroup = FormGroup;
         <div class="linked" data-note="email-on-file"><span class="label">Guardian email</span><span class="meta">On record: no need to enter it again.</span></div>
       }
     </div>
+    @if (form().get('guardianConsent'); as consent) {
+      <div class="consent" data-section="consent">
+        <label><input type="checkbox" [formControl]="asControl(consent)" data-field="guardian-consent" /> The parent agrees to be contacted by WhatsApp and email about the account and the child. <span class="meta">(required)</span></label>
+        @if (consent.invalid && consent.touched) { <p class="hint" role="alert" data-note="consent-error">Tick the box to confirm the parent has agreed.</p> }
+      </div>
+    }
   `,
 })
 export class GuardianFieldsComponent implements OnInit {
@@ -103,6 +109,7 @@ export class GuardianFieldsComponent implements OnInit {
 
   readonly form = input.required<GuardianFormGroup>();
   protected c(name: string): FormControl { return this.form().get(name) as FormControl; }
+  protected asControl(control: unknown): FormControl { return control as FormControl; }
   /** The form's error text for a control (the form owns the "show errors after submit" rule). */
   readonly errorOf = input<(name: string) => string | undefined>(() => undefined);
   /** The pick to start from (editing an application that already reuses guardians). */

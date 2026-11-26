@@ -66,6 +66,10 @@
         }
       </app-card>
 
+      @if (a.statusName === 'ADMITTED' && a.primaryGuardianId; as pg) {
+        <app-parent-account-card [guardianId]="pg" [canReset]="isSchoolAdmin()" />
+      }
+
       <app-card title="Applicant Details">
         <dl class="grid">
           <div><dt>Full name</dt><dd>{{ a.applicantFullName }}</dd></div>

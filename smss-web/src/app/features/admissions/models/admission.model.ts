@@ -1,3 +1,4 @@
+import { ParentAccountResult } from '../../parent-account/models/parent-account.model';
 import { FeeItemSelection } from '../../students/models/student-billing.model';
 
 // Mirrors AdmissionResponseDto / AdmissionDetailDto / SubmitAdmissionRequestDto / ConfirmAdmissionRequestDto.
@@ -83,6 +84,12 @@ export interface AdmissionDetail extends Admission {
   guardianEmail?: string | null;
   /** With the country code; null on an application made before it was collected (it must be added before the application can be confirmed). */
   guardianWhatsAppNumber?: string | null;
+  /** True when the consent tick was recorded on this application. */
+  guardianConsentRecorded?: boolean;
+  /** Only for a confirmed application: the student's primary guardian (for the Parent account card). */
+  primaryGuardianId?: number | null;
+  /** Set only on the response of a confirmation: what happened to the parent account (never a link or password). */
+  parentAccount?: ParentAccountResult | null;
   /** The existing guardian this application reuses as the primary guardian (a sibling's parent), shown with a MASKED mobile number; null when the primary guardian was typed in. */
   guardianId?: number | null;
   existingGuardian?: { guardianId: number; name: string; relationship: string; maskedMobile: string; hasWhatsApp: boolean; hasEmail: boolean } | null;
@@ -134,6 +141,8 @@ export interface SubmitAdmissionRequest {
   /** The WhatsApp number as typed (10 digits or with the country code); null when "same as mobile number" is ticked. */
   guardianWhatsAppNumber: string | null;
   guardianWhatsAppSameAsMobile: boolean;
+  /** The consent tick: the parent agrees to be contacted by WhatsApp and email. Required. */
+  guardianConsent: boolean;
   previousSchool: string | null;
 }
 

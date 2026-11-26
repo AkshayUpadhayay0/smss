@@ -1,3 +1,4 @@
+import { accountSummary } from '../../../parent-account/models/parent-account.model';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Observable, catchError, finalize, map, of, switchMap } from 'rxjs';
@@ -172,6 +173,10 @@ export class AdmissionActionsComponent {
         this.dialog.set(null);
         this.toast.success(successMessage);
         for (const w of updated.warnings ?? []) this.toast.warning(w, 'Fee structure not assigned');
+        if (updated.parentAccount) {   // what happened to the parent account (never a link or password); a problem is shown with where to resend
+          const s = accountSummary(updated.parentAccount);
+          if (s.kind === 'success') this.toast.success(s.text); else this.toast.warning(s.text, 'Parent account');
+        }
         this.changed.emit(updated);
       },
       // The server's refusal (e.g. the status changed meanwhile) is already toasted by the interceptor

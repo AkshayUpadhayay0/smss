@@ -200,15 +200,16 @@ describe('StudentProfileComponent', () => {
       expect(el().textContent).toContain('Abhinav Kumar');
     });
 
-    it('is read-only: no Fees tab, no photo change, no login card or Create Login button, no Aadhaar row', () => {
+    it('is read-only: no Fees tab, no photo change, no Reset Password or parent account card, no Aadhaar row; a class teacher can still create the login of their own student', () => {
       openRestricted();
       expect([...el().querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())).toEqual(['Profile']);
       expect(el().querySelector('app-student-fees-tab')).toBeNull();
       const t = el().textContent ?? '';
       expect(t).not.toMatch(/(Add|Update) Photo/);
-      expect(t).not.toContain('Create Login');
+      expect(t).toContain('Create Login');
+      expect(t).not.toContain('Reset Password');
+      expect(el().querySelector('app-parent-account-card')).toBeNull();
       expect(t).not.toContain('Aadhaar');
-      expect(t).not.toContain('Login ID');
     });
 
     it('still shows what a class teacher needs: class, roll number, guardians', () => {

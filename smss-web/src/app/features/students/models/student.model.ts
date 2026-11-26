@@ -1,3 +1,4 @@
+import { ParentDelivery } from '../../parent-account/models/parent-account.model';
 // Mirrors StudentListItemDto / StudentProfileDto / GuardianSummaryDto.
 // studentId is the business id string (e.g. DPS001ST001), never a number.
 
@@ -109,10 +110,11 @@ export interface StudentLoginCreated {
   displayName: string;
   /** The Login ID to sign in with (e.g. DPS001ST001). */
   orgUserId: string;
-  /** Shown once; the server cannot return it again. */
-  temporaryPassword: string;
-  emailSent: boolean;
-  emailSentTo?: string | null;
+  /** True when a one-time link to choose the password was sent to the primary guardian (no password exists until the parent chooses one). */
+  linkSent: boolean;
+  /** What happened and what to do next (for example "no parent consent is on record"). */
+  message?: string | null;
+  deliveries: ParentDelivery[];
 }
 
 /** Table row for the guardians list on the profile page. */

@@ -92,3 +92,15 @@
     font-weight: var(--weight-semibold);
   }
 }
+
+.consent {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+
+  label {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    cursor: pointer;
+  }
+}
