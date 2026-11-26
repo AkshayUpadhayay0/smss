@@ -55,7 +55,11 @@ namespace smss_api.Controllers
         private IActionResult? RefuseTeacherOnly() =>
             User.IsTeacher() && !User.IsSchoolAdmin() && !User.IsPrincipal() ? this.Forbidden("Teachers see their own students under My Students.") : null;
 
-        // Writes (photo upload / remove, create login): School Admin only.
+        // Student logins: a School Admin, or a Teacher (the service then limits a teacher to the sections they are class teacher of). Nobody else, and never a Student, Guardian or Driver login.
+        private IActionResult? RefuseUnlessAdminOrTeacher(string what) =>
+            (User.IsSchoolAdmin() || User.IsTeacher()) && !User.IsStudentOrGuardianLogin() && !User.IsDriver() ? null : this.Forbidden($"Only a School Admin or a class teacher can {what}.");
+
+        // Writes (photo upload / remove): School Admin only.
         private IActionResult? RefuseUnlessSchoolAdmin(string what) =>
             User.IsSchoolAdmin() ? null : this.Forbidden($"Only a School Admin can {what}.");
 
@@ -181,13 +185,26 @@ namespace smss_api.Controllers
         }
 
         // POST api/Student/{schoolId}/{studentId}/create-login
-        // Returns the generated login id + temporary password ONCE (it is never stored in plain text).
+        // Creates the login WITHOUT a password and sends the primary guardian a one-time link to set it (WhatsApp / email): no password, token or link is returned.
+        // School Admin for any student of the school; a class teacher only for students of a section they are class teacher of (the service decides).
         [HttpPost("{schoolId}/{studentId:length(1,20)}/create-login")]
         public async Task<IActionResult> CreateLogin(string schoolId, string studentId, CancellationToken ct)
         {
-            if (RefuseUnlessSchoolAdmin("create a student login") is { } refusedWrite) return refusedWrite;
+            if (RefuseUnlessAdminOrTeacher("create a student login") is { } refusedWrite) return refusedWrite;
             if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
-            var response = await _loginService.CreateStudentLoginAsync(own, studentId, ct);
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _loginService.CreateStudentLoginAsync(own, studentId, userId, User.IsSchoolAdmin(), ct);
+            return StatusCode(response.StatusCode, response);
+        }
+
+        // POST api/Student/{schoolId}/{studentId}/resend-login-link   (a new set-password link for a login whose password was never chosen; 3 resends per 24 hours)
+        [HttpPost("{schoolId}/{studentId:length(1,20)}/resend-login-link")]
+        public async Task<IActionResult> ResendLoginLink(string schoolId, string studentId, CancellationToken ct)
+        {
+            if (RefuseUnlessAdminOrTeacher("resend a student login link") is { } refusedWrite) return refusedWrite;
+            if (RejectForeignSchool(schoolId, out var own) is { } rejected) return rejected;
+            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var response = await _loginService.ResendLoginLinkAsync(own, studentId, userId, User.IsSchoolAdmin(), ct);
             return StatusCode(response.StatusCode, response);
         }
 

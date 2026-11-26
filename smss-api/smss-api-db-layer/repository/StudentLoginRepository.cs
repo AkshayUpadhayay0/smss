@@ -29,6 +29,9 @@ namespace smss_api_db_layer.repository
             return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         }
 
+        public Task<long?> GetUserIdByLoginIdAsync(string schoolId, string loginId, CancellationToken ct) =>
+            _db.Users.AsNoTracking().Where(u => u.SchoolId == schoolId && u.OrgUserId == loginId).Select(u => (long?)u.UserId).FirstOrDefaultAsync(ct);
+
         public Task<int?> GetStatusIdByNameAsync(string statusName, string statusType, CancellationToken ct) =>
             _db.LutStatus.AsNoTracking()
                 .Where(s => s.Sname == statusName && s.Stype == statusType)

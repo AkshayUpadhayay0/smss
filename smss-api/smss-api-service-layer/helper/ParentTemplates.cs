@@ -5,9 +5,9 @@ namespace smss_api_service_layer.helper
     {
         public const string AccountReady = "parent_account_ready";
         public const string ChildAdded = "parent_child_added";
-        public const string LoginCode = "parent_login_code";
+        public const string LoginHelp = "parent_login_help";
         public const string StudentLoginReady = "parent_student_login_ready";
-        public static readonly string[] All = { AccountReady, ChildAdded, LoginCode, StudentLoginReady };
+        public static readonly string[] All = { AccountReady, ChildAdded, LoginHelp, StudentLoginReady };
     }
 
     /// <summary>What a purpose is called in the delivery log (the resend limit counts deliveries per guardian and purpose).</summary>
@@ -33,9 +33,9 @@ namespace smss_api_service_layer.helper
         public static WhatsAppContent ChildAdded(string guardianName, string childName, string schoolName, string loginId) =>
             new(ParentTemplateCodes.ChildAdded, new[] { guardianName, childName, schoolName, loginId }, null);
 
-        /// <summary>parent_login_code (login help: the login id and a reset link): {{1}} guardian, {{2}} school, {{3}} login id, {{4}} minutes the link works; button = the reset token.</summary>
+        /// <summary>parent_login_help (login help: the login id and a reset link): {{1}} guardian, {{2}} school, {{3}} login id, {{4}} minutes the link works; button = the reset token.</summary>
         public static WhatsAppContent LoginHelp(string guardianName, string schoolName, string loginId, int linkMinutes, string token) =>
-            new(ParentTemplateCodes.LoginCode, new[] { guardianName, schoolName, loginId, linkMinutes.ToString() }, token);
+            new(ParentTemplateCodes.LoginHelp, new[] { guardianName, schoolName, loginId, linkMinutes.ToString() }, token);
 
         /// <summary>parent_student_login_ready: {{1}} guardian, {{2}} student, {{3}} school, {{4}} the student's login id, {{5}} hours the link works; button = the set-password token.</summary>
         public static WhatsAppContent StudentLoginReady(string guardianName, string studentName, string schoolName, string studentLoginId, int linkHours, string token) =>
@@ -46,7 +46,7 @@ namespace smss_api_service_layer.helper
         {
             ParentTemplateCodes.AccountReady => 5,
             ParentTemplateCodes.ChildAdded => 4,
-            ParentTemplateCodes.LoginCode => 4,
+            ParentTemplateCodes.LoginHelp => 4,
             ParentTemplateCodes.StudentLoginReady => 5,
             _ => throw new ArgumentOutOfRangeException(nameof(code)),
         };

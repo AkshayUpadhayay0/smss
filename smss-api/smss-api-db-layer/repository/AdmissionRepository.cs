@@ -154,6 +154,12 @@ namespace smss_api_db_layer.repository
 
         public async Task AddGuardianChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct) => await _db.GuardianChanges.AddRangeAsync(changes, ct);
 
+        public async Task<long?> GetPrimaryGuardianIdOfStudentAsync(string schoolId, string studentId, CancellationToken ct) =>
+            await (from l in _db.StudentGuardians.AsNoTracking()
+                   join g in _db.Guardians.AsNoTracking() on l.GuardianId equals g.GuardianId
+                   where l.StudentId == studentId && l.IsPrimary && g.SchoolId == schoolId
+                   select (long?)g.GuardianId).FirstOrDefaultAsync(ct);
+
         public Task<List<TbAdmissionGuardian>> GetAdmissionGuardiansAsync(string schoolId, long admissionId, bool tracked, CancellationToken ct)
         {
             var q = tracked ? _db.AdmissionGuardians.AsTracking() : _db.AdmissionGuardians.AsNoTracking();

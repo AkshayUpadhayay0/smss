@@ -41,7 +41,7 @@ namespace smss_api_tests
             ApplicantFirstName = first, DateOfBirth = new DateTime(2018, 3, 3),
             ExistingGuardianId = primary,
             GuardianName = primary == null ? "Typed Parent" : "ignored when an existing guardian is picked", GuardianRelationship = "MOTHER", GuardianMobileNumber = primary == null ? "9876543210" : "9000000000",
-            GuardianEmail = email, GuardianWhatsAppNumber = whatsapp, GuardianWhatsAppSameAsMobile = same,
+            GuardianConsent = true, GuardianEmail = email, GuardianWhatsAppNumber = whatsapp, GuardianWhatsAppSameAsMobile = same,
             AdditionalGuardians = extras.Select(e => new ExistingGuardianPickDto { GuardianId = e.Id, Relationship = e.Relationship }).ToList(),
         };
 
@@ -349,7 +349,7 @@ namespace smss_api_tests
             {
                 AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = Y, ClassSectionId = section, FirstName = first, DateOfBirth = new DateTime(2016, 1, 2),
                 ExistingGuardianId = primary, GuardianName = primary == null ? "Typed Parent" : "ignored", GuardianRelationship = "FATHER", GuardianMobileNumber = primary == null ? "9876543211" : "9000000000",
-                GuardianEmail = email, GuardianWhatsAppSameAsMobile = same,
+                GuardianConsent = true, GuardianEmail = email, GuardianWhatsAppSameAsMobile = same,
                 AdditionalGuardians = extras.Select(e => new ExistingGuardianPickDto { GuardianId = e.Id, Relationship = e.Relationship }).ToList(),
             };
         }
@@ -403,9 +403,9 @@ namespace smss_api_tests
         {
             using var wb = new XLWorkbook();
             var ws = wb.AddWorksheet("Students");
-            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email" };
+            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email", "Parent consent (Yes/No)" };
             for (var c = 0; c < headers.Length; c++) ws.Cell(1, c + 1).Value = headers[c];
-            for (var r = 0; r < rows.Length; r++) for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c];
+            for (var r = 0; r < rows.Length; r++) { for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c]; ws.Cell(r + 2, 12).Value = "Yes"; }
             using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
         }
 

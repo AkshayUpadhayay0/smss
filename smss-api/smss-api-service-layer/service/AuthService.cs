@@ -24,13 +24,27 @@ namespace smss_api_service_layer.service
         private readonly JwtTokenGenerator _jwt;
         private readonly ILogger<AuthService> _logger;
         private readonly ILoginThrottle _throttle;
+        private readonly IParentAccountRepository? _accounts;
 
-        public AuthService(IAuthRepository repo, JwtTokenGenerator jwt, ILogger<AuthService> logger, ILoginThrottle throttle)
+        public AuthService(IAuthRepository repo, JwtTokenGenerator jwt, ILogger<AuthService> logger, ILoginThrottle throttle, IParentAccountRepository? accounts = null)
         {
             _repo = repo;
             _jwt = jwt;
             _logger = logger;
             _throttle = throttle;
+            _accounts = accounts;
+        }
+
+        /// <summary>
+        /// A Guardian login may sign in only while its guardian record is Active and has not been merged into another (a merged guardian's login moves to the survivor). Returns the guardian id for the token,
+        /// or null when this login must be refused. Fails closed: with no way to look the guardian up, a Guardian login is refused. Other user types return 0 (not a guardian).
+        /// </summary>
+        private async Task<long?> GuardianIdForAsync(TbUsers user, int activeId)
+        {
+            if (user.UserType != UserTypes.Guardian) return 0;
+            if (_accounts == null) return null;
+            var info = await _accounts.GetGuardianByUserIdAsync(user.UserId, CancellationToken.None);
+            return info != null && info.StatusId == activeId && info.MergedIntoGuardianId == null ? info.GuardianId : null;
         }
 
         public async Task<ApiResponse<object>> LoginAsync(LoginRequest req, string? clientKey = null)
@@ -80,12 +94,14 @@ namespace smss_api_service_layer.service
                 // Credentials were correct, so it's safe to tell the user why they can't get in
                 if (!IsActive(user, school, activeId.Value))
                     return Fail(403, InactiveAccount);
+                var guardianId = await GuardianIdForAsync(user, activeId.Value);
+                if (guardianId == null) return Fail(403, InactiveAccount);
 
                 var now = DateTime.UtcNow;
                 await _repo.DeleteExpiredRefreshTokensAsync(user.UserId, now);
 
                 user.LastLoginAt = now;
-                var response = await IssueTokensAsync(user, school, req.RememberMe);
+                var response = await IssueTokensAsync(user, school, req.RememberMe, guardianId: guardianId);
 
                 return Ok(200, "Login successful", response);
             }
@@ -124,9 +140,15 @@ namespace smss_api_service_layer.service
                     await _repo.RevokeAllRefreshTokensAsync(user.UserId, now);
                     return Fail(403, InactiveAccount);
                 }
+                var guardianId = await GuardianIdForAsync(user, activeId.Value);
+                if (guardianId == null)
+                {
+                    await _repo.RevokeAllRefreshTokensAsync(user.UserId, now);   // a merged / inactive guardian's sessions end
+                    return Fail(403, InactiveAccount);
+                }
 
                 // Rotate: the presented token is single-use
-                var response = await IssueTokensAsync(user, school, stored.RememberMe, rotateFrom: stored);
+                var response = await IssueTokensAsync(user, school, stored.RememberMe, rotateFrom: stored, guardianId: guardianId);
 
                 return Ok(200, "Token refreshed", response);
             }
@@ -184,7 +206,10 @@ namespace smss_api_service_layer.service
 
                 await _repo.RevokeAllRefreshTokensAsync(userId, now);
                 var school = await GetSchoolAsync(user);
-                var response = await IssueTokensAsync(user, school, rememberMe: false);
+                var activeForGuardian = await _repo.GetStatusIdByNameAsync(StatusNames.Active, StatusNames.GeneralType);
+                var guardianOfUser = activeForGuardian == null ? null : await GuardianIdForAsync(user, activeForGuardian.Value);
+                if (guardianOfUser == null) return Fail(403, InactiveAccount);
+                var response = await IssueTokensAsync(user, school, rememberMe: false, guardianId: guardianOfUser);
 
                 return Ok(200, "Password changed successfully", response);
             }
@@ -194,10 +219,10 @@ namespace smss_api_service_layer.service
         // ---------------- helpers ----------------
 
         // Builds the access + refresh pair, stores the refresh hash and saves (together with any pending user changes)
-        private async Task<LoginResponse> IssueTokensAsync(TbUsers user, TbSchools? school, bool rememberMe, TbRefreshTokens? rotateFrom = null)
+        private async Task<LoginResponse> IssueTokensAsync(TbUsers user, TbSchools? school, bool rememberMe, TbRefreshTokens? rotateFrom = null, long? guardianId = null)
         {
             var roles = (await _repo.GetRolesByUserIdAsync(user.UserId)).Select(r => r.RoleName).ToList();
-            var (accessToken, accessExpires) = _jwt.Generate(user.UserId, user.DisplayName ?? user.OrgUserId ?? string.Empty, user.UserType, user.SchoolId, roles);
+            var (accessToken, accessExpires) = _jwt.Generate(user.UserId, user.DisplayName ?? user.OrgUserId ?? string.Empty, user.UserType, user.SchoolId, roles, guardianId is > 0 ? guardianId : null);
             var refresh = _jwt.GenerateRefreshToken(rememberMe);
 
             var now = DateTime.UtcNow;

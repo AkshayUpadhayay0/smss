@@ -35,7 +35,8 @@ namespace smss_api_service_layer.service
             ("fname", "Father name", 24), ("fphone", "Father phone", 15), ("mname", "Mother name", 24), ("mphone", "Mother phone", 15),
             ("gname", "Guardian name", 24), ("gphone", "Guardian phone", 15), ("addr", "Address", 36),
             ("admdate", "Admission date", 15),
-            ("pwa", "Primary guardian WhatsApp", 24), ("pemail", "Primary guardian email", 28),   // optional; appended so a file made from the older template (without it) still imports
+            ("pwa", "Primary guardian WhatsApp", 24), ("pemail", "Primary guardian email", 28),   // appended so a file made from the older template still opens; the primary guardian's WhatsApp, email and consent are required per row
+            ("pconsent", "Parent consent (Yes/No)", 22),
         };
         private static readonly string[] RequiredKeys = { "name", "gender", "dob", "cls", "sec" };
         private static readonly Dictionary<string, string> HeaderAliases = new()
@@ -52,6 +53,7 @@ namespace smss_api_service_layer.service
             ["address"] = "addr",
             ["primaryguardianwhatsapp"] = "pwa", ["guardianwhatsapp"] = "pwa", ["whatsapp"] = "pwa", ["whatsappnumber"] = "pwa",
             ["primaryguardianemail"] = "pemail", ["guardianemail"] = "pemail",
+            ["parentconsent"] = "pconsent", ["parentconsentyesno"] = "pconsent", ["primaryguardianconsentyesno"] = "pconsent", ["primaryguardianconsent"] = "pconsent", ["consent"] = "pconsent",
             ["admissiondate"] = "admdate", ["dateofadmission"] = "admdate", ["dateofjoining"] = "admdate", ["joiningdate"] = "admdate",
         };
         private static readonly string[] DateFormats = { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd" };
@@ -90,6 +92,7 @@ namespace smss_api_service_layer.service
             public string First = ""; public string? Last;
             public string? Middle, Adm, Roll, Address;
             public List<Guardian> Guardians = new();
+            public bool Consent;                 // the primary guardian's consent column said Yes
         }
 
         private sealed class Context
@@ -141,7 +144,7 @@ namespace smss_api_service_layer.service
         }
 
         // ============================================================================ commit
-        public async Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct)
+        public async Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct, long userId = 0)
         {
             try
             {
@@ -191,6 +194,8 @@ namespace smss_api_service_layer.service
                                 Guardians = r.Guardians.Select(g => new OnboardingGuardianInput { Name = g.Name, Relationship = g.Relationship, Mobile = g.Mobile, WhatsApp = g.WhatsApp, Email = g.Email }).ToList(),
                                 Now = now
                             });
+                            if (r.Consent && userId > 0 && graph.Guardians.Count > 0)   // the primary guardian's consent: who ticked it (the importing user) and when
+                            { var pg = graph.Guardians[0]; pg.ConsentGivenAt = now; pg.ConsentRecordedBy = userId; pg.ConsentSource = GuardianConsentRules.SourceAdmissionForm; }
                             all.Add(graph.Student); all.Add(graph.Enrollment);
                             all.AddRange(graph.Guardians); all.AddRange(graph.Links);
                             created.Add((r, studentId));
@@ -490,6 +495,9 @@ namespace smss_api_service_layer.service
                 var emailRaw = G("pemail").Trim();
                 var emailError = PhoneNumbers.EmailError(emailRaw, "Primary guardian");
                 if (emailError != null) Err(emailError); else primary.Email = emailRaw;
+                var consentRaw = G("pconsent").Trim();
+                if (consentRaw.Equals("YES", StringComparison.OrdinalIgnoreCase) || consentRaw.Equals("Y", StringComparison.OrdinalIgnoreCase) || consentRaw.Equals("TRUE", StringComparison.OrdinalIgnoreCase)) r.Consent = true;
+                else Err("Parent consent is required: enter YES when the parent has agreed to be contacted by WhatsApp and email about the account and the child.");
             }
             r.Dto = new ImportRowDto
             {
@@ -669,7 +677,7 @@ namespace smss_api_service_layer.service
                 ("Gender: pick Male, Female or Other from the drop-down.", false),
                 ("Class and Section: pick from the drop-downs. The section must belong to the class (see the Lists sheet).", false),
                 ("Phone: a 10-digit Indian mobile number starting 6-9. +91 or a leading 0 is removed for you.", false),
-                ("Primary guardian WhatsApp: a 10-digit number, or a number with its country code (+91 98765 43210), or the word SAME when it is the same as the mobile number. Primary guardian email: a normal email address (the same email may be used for several students).", false),
+                ("Primary guardian WhatsApp: a 10-digit number, or a number with its country code (+91 98765 43210), or the word SAME when it is the same as the mobile number. Primary guardian email: a normal email address (the same email may be used for several students). Parent consent: YES when the parent has agreed to be contacted by WhatsApp and email about the account and the child (required for every row).", false),
                 ("Admission date: optional, dd/mm/yyyy (a real Excel date also works). It cannot be in the future or before the date of birth. Leave it blank and the start of the current academic year is used.", false),
                 ("Admission number: optional. Leave it blank and the system gives the next number (ADMNO + year + 4 digits).", false),
                 ("Roll number: optional, but it cannot repeat inside a section.", false),

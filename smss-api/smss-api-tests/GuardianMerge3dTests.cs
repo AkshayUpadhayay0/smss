@@ -178,7 +178,7 @@ namespace smss_api_tests
             var req = new SubmitAdmissionRequestDto
             {
                 AcademicYearId = Y, AppliedClassId = db.Scalar<long>($"select min(class_id) from tb_classes where school_id='{A}'"), AdmissionTypeId = db.Scalar<long>("select min(admission_type_id) from lut_admission_type"),
-                ApplicantFirstName = "Pending", DateOfBirth = new DateTime(2018, 3, 3), ExistingGuardianId = absorbed, GuardianRelationship = "MOTHER", GuardianEmail = "p@example.com", GuardianWhatsAppSameAsMobile = true,
+                ApplicantFirstName = "Pending", DateOfBirth = new DateTime(2018, 3, 3), ExistingGuardianId = absorbed, GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianEmail = "p@example.com", GuardianWhatsAppSameAsMobile = true,
                 AdditionalGuardians = new() { new ExistingGuardianPickDto { GuardianId = extraOnly, Relationship = "FATHER" } },
             };
             var submitted = await Admissions(db).SubmitAsync(A, req, default);
@@ -188,7 +188,7 @@ namespace smss_api_tests
             var second = await Admissions(db).SubmitAsync(A, new SubmitAdmissionRequestDto
             {
                 AcademicYearId = Y, AppliedClassId = req.AppliedClassId, AdmissionTypeId = req.AdmissionTypeId, ApplicantFirstName = "Second", DateOfBirth = new DateTime(2017, 1, 1),
-                ExistingGuardianId = survivor, GuardianRelationship = "MOTHER", GuardianEmail = "p@example.com", GuardianWhatsAppSameAsMobile = true,
+                ExistingGuardianId = survivor, GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianEmail = "p@example.com", GuardianWhatsAppSameAsMobile = true,
                 AdditionalGuardians = new() { new ExistingGuardianPickDto { GuardianId = absorbed, Relationship = "FATHER" } },
             }, default);
             Assert.True(second.Status, second.Message);

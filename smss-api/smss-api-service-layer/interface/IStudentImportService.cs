@@ -17,7 +17,7 @@ namespace smss_api_service_layer.@interface
         /// <summary>Dry run: validates everything, writes nothing.</summary>
         Task<ApiResponse<ImportPreviewDto>> PreviewAsync(string schoolId, byte[] file, CancellationToken ct);
         /// <summary>Re-validates the file from scratch and, only if there is no error, writes every student in one transaction.</summary>
-        Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct);
+        Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct, long userId = 0);
         /// <summary>The uploaded rows again, with a Status and Messages column, in the same layout so it can be fixed and uploaded again.</summary>
         Task<ImportFileResult> ErrorReportAsync(string schoolId, byte[] file, CancellationToken ct);
     }

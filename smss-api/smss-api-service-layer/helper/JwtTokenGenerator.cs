@@ -15,7 +15,7 @@ namespace smss_api_service_layer.helper
         public JwtTokenGenerator(IOptions<JwtSettings> settings) => _settings = settings.Value;
 
         public (string Token, DateTime ExpiresAtUtc) Generate(
-            long userId, string displayName, string userType, string? schoolId, IEnumerable<string> roles)
+            long userId, string displayName, string userType, string? schoolId, IEnumerable<string> roles, long? guardianId = null)
         {
             var expires = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes);
 
@@ -28,6 +28,8 @@ namespace smss_api_service_layer.helper
                 new("user_type", userType)
             };
             if (!string.IsNullOrEmpty(schoolId)) claims.Add(new Claim("school_id", schoolId));
+            // a parent login carries WHO the guardian is, never which children they have: the children are always looked up on the server (stage 6c)
+            if (guardianId != null) claims.Add(new Claim("guardian_id", guardianId.Value.ToString()));
             claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
             var creds = new SigningCredentials(

@@ -27,7 +27,7 @@ namespace smss_api_tests
         {
             AcademicYearId = Y, AppliedClassId = db.Scalar<long>($"select min(class_id) from tb_classes where school_id='{A}'"),
             AdmissionTypeId = db.Scalar<long>("select min(admission_type_id) from lut_admission_type"),
-            ApplicantFirstName = first, DateOfBirth = new DateTime(2018, 3, 3), GuardianName = "Mother", GuardianRelationship = "MOTHER", GuardianMobileNumber = "9876543210",
+            ApplicantFirstName = first, DateOfBirth = new DateTime(2018, 3, 3), GuardianName = "Mother", GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianMobileNumber = "9876543210",
             GuardianEmail = "g@example.com", GuardianWhatsAppSameAsMobile = true,
         };
 

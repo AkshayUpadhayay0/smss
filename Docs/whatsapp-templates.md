@@ -36,10 +36,11 @@ Status: for the owner to submit. Written 26 Nov 2026 with stage 6a. Nothing is s
 - **Button:** **Call to action → Visit website → Static**. Text `Open SMSS`. URL `https://YOUR-SITE/login` (no variable).
 - **Sample values:** `Asha Rao`, `Meera Rao`, `Green Valley School`, `GVS001GD001`
 
-## 3. `parent_login_code`  (login help: "Forgot id or password")
+## 3. `parent_login_help`  (login help: "Forgot id or password")
 - **Category:** Utility  **Language:** English (en)
 - **Sent when:** a parent asks for their login ID or a new password with their registered WhatsApp number or email. It carries the login ID and a one-hour reset link. The answer on screen is the same whether or not the number matched; a number that matches parents in several schools gets one message per school.
-- **Why this is Utility and not Authentication:** the name `parent_login_code` was fixed by the owner, but an Authentication template may carry only a one-time code and a copy-code button, never a link or a login ID, and the approved design sends a **link** (decision 4, 26 Nov 2026). If the owner prefers a real one-time code instead, tell the developers before the template is submitted: the code would then be typed into the web page, which changes the reset flow.
+- **Why this is Utility and not Authentication:** it carries the login ID and a reset **link**, not a code, and an Authentication template may carry only a one-time code and a copy-code button (decision of 26 Nov 2026: renamed from `parent_login_code` to `parent_login_help`).
+- **If Meta rejects or re-categorises a template**, no code change is needed: the channel used for each purpose is a setting (`ParentAccounts:Channels:<PURPOSE>`, see `Docs/configuration.md`), so for example the reset link can go by email only until the template is approved.
 - **Body:**
   ```
   Hello {{1}}, we received a request to recover your parent login for {{2}}. Your login ID is {{3}}. Use the button below to choose a new password. The link works once and expires in {{4}} minutes. If you did not ask for this, please ignore this message.
@@ -69,7 +70,7 @@ Status: for the owner to submit. Written 26 Nov 2026 with stage 6a. Nothing is s
 |---|---|---|
 | `parent_account_ready` | `SET_PASSWORD` | 6b (account creation) |
 | `parent_child_added` | `CHILD_ADDED` | 6b (sibling link) |
-| `parent_login_code` | `RESET_PASSWORD` | 6b (forgot id or password) |
+| `parent_login_help` | `RESET_PASSWORD` | 6b (forgot id or password) |
 | `parent_student_login_ready` | `STUDENT_LOGIN` | 6b (student login by link) |
 
 In stage 6a the sender, the templates' variable builders, the delivery log and the webhook exist and are tested; nothing calls them yet except the tests.

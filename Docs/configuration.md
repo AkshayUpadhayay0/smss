@@ -104,11 +104,13 @@ Everything is **off or empty in the committed file**; with the defaults nothing 
 | `WhatsApp:WebhookVerifyToken` | **yes** | empty | The string Meta sends once when the webhook is registered; must equal the value typed in Meta's dashboard. |
 | `WhatsApp:Language` | no | `en` | Template language code sent with every message. |
 | `WhatsApp:TimeoutSeconds` | no | `15` | How long one call to Meta may take (1 to 60). |
-| `WhatsApp:TemplateParentAccountReady`, `…ParentChildAdded`, `…ParentLoginCode`, `…ParentStudentLoginReady` | no | `parent_account_ready`, `parent_child_added`, `parent_login_code`, `parent_student_login_ready` | The template names as approved by Meta. Change only if Meta made you use another name. Texts and variables: `Docs/whatsapp-templates.md`. |
+| `WhatsApp:TemplateParentAccountReady`, `…ParentChildAdded`, `…ParentLoginHelp`, `…ParentStudentLoginReady` | no | `parent_account_ready`, `parent_child_added`, `parent_login_help`, `parent_student_login_ready` | The template names as approved by Meta. Change only if Meta made you use another name. Texts and variables: `Docs/whatsapp-templates.md`. |
 | `ParentAccounts:SetPasswordLinkHours` | no | `72` | How long a set-password link works. Single use. |
 | `ParentAccounts:ResetLinkMinutes` | no | `60` | How long a reset link works. Single use. |
 | `ParentAccounts:ResendLimitPer24Hours` | no | `3` | Resends per guardian and purpose in 24 hours (enforced in stage 6b). |
 | `ParentAccounts:WebBaseUrl` | no | empty | The website address the links point at (for example `https://smss-erp.digital`). Empty = the parent-account features refuse to build a link. |
+| `ParentAccounts:Channels:<PURPOSE>` | no | not set (both channels) | Which channels carry which kind of message: `WHATSAPP`, `EMAIL` or `WHATSAPP,EMAIL`. Purposes: `SET_PASSWORD`, `RESET_PASSWORD`, `CHILD_ADDED`, `STUDENT_LOGIN`. Env form `ParentAccounts__Channels__RESET_PASSWORD=EMAIL`. Use it when Meta rejects or re-categorises one template: that purpose goes by email only until it is approved, with no code change. A switched-off channel is logged as `SKIPPED / CHANNEL_OFF`. |
+| `RateLimiting:ParentAuth:PermitLimit`, `RateLimiting:ParentAuth:WindowMinutes` | no | `10` per `10` minutes | Per client address, on the public `api/parent/auth/*` endpoints (set-password, check-link, forgot). On top of it: a contact can ask for recovery 5 times an hour, and a guardian can be sent at most the first link plus `ResendLimitPer24Hours` (3) resends per kind in 24 hours. |
 
 Environment-variable form: `WhatsApp__Enabled=true`, `WhatsApp__Sender=Cloud`, `WhatsApp__AccessToken=…`, `WhatsApp__PhoneNumberId=…`, `WhatsApp__AppSecret=…`, `WhatsApp__WebhookVerifyToken=…`, `ParentAccounts__WebBaseUrl=https://…`. Development: `dotnet user-secrets set "WhatsApp:AccessToken" "…" --project smss-api/smss-api` (the same for the other secrets).
 

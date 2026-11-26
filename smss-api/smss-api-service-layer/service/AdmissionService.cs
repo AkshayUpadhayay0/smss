@@ -24,10 +24,12 @@ namespace smss_api_service_layer.service
         private readonly IStudentFeeBillingService _billing;
         private readonly ILogger<AdmissionService> _logger;
         private readonly IStudentDocumentService? _studentDocuments;
+        private readonly IParentAccountService? _parentAccounts;
 
-        public AdmissionService(IAdmissionRepository repo, INotificationService notify, IStudentFeeBillingService billing, ILogger<AdmissionService> logger, IStudentDocumentService? studentDocuments = null)
+        public AdmissionService(IAdmissionRepository repo, INotificationService notify, IStudentFeeBillingService billing, ILogger<AdmissionService> logger, IStudentDocumentService? studentDocuments = null, IParentAccountService? parentAccounts = null)
         {
             _studentDocuments = studentDocuments;
+            _parentAccounts = parentAccounts;
             _repo = repo;
             _notify = notify;
             _billing = billing;
@@ -94,6 +96,7 @@ namespace smss_api_service_layer.service
                 var bad = (string.IsNullOrWhiteSpace(p.WhatsAppNumber) ? PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, p.MobileNumber, "The guardian's") : null)
                           ?? (string.IsNullOrWhiteSpace(p.Email) ? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's") : null);
                 if (bad != null) return (null, (400, bad));
+                if (p.ConsentGivenAt == null && !req.GuardianConsent) return (null, (400, GuardianConsentRules.Required));   // an existing guardian with consent on record needs no new tick
                 req.GuardianWhatsAppNumber = wa; req.GuardianWhatsAppSameAsMobile = false; req.GuardianEmail = email;   // what the application will show and Confirm will write where the record has none
             }
             return (new ReuseChoice(load.Primary?.GuardianId, load.Extras.Select(x => (x.Guardian.GuardianId, x.Relationship ?? x.Guardian.Relationship)).ToList()), null);
@@ -132,14 +135,17 @@ namespace smss_api_service_layer.service
                 var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
                               ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
                 if (contact != null) return contact;
+                if (!req.GuardianConsent) return GuardianConsentRules.Required;
                 if (string.IsNullOrWhiteSpace(req.GuardianName) || string.IsNullOrWhiteSpace(req.GuardianRelationship) || string.IsNullOrWhiteSpace(req.GuardianMobileNumber)) return "The guardian's name, relationship and mobile number are required.";
             }
             return null;
         }
 
         /// <summary>Copies the applicant's details onto the row (never the number, date, status or decision trail).</summary>
-        private static void ApplyDetails(TbAdmission e, SubmitAdmissionRequestDto req)
+        private static void ApplyDetails(TbAdmission e, SubmitAdmissionRequestDto req, long userId)
         {
+            // the consent tick is recorded once, with who ticked it (the database keeps date and user together); an edit never removes it
+            if (req.GuardianConsent && userId > 0 && e.GuardianConsentAt == null) { e.GuardianConsentAt = DateTime.UtcNow; e.GuardianConsentRecordedBy = userId; }
             e.AcademicYearId = req.AcademicYearId;
             e.AppliedClassId = req.AppliedClassId;
             e.AdmissionTypeId = req.AdmissionTypeId!.Value;   // always filled in by Submit / Update before this runs
@@ -170,7 +176,7 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- submit ----------------
-        public async Task<ApiResponse<AdmissionDetailDto>> SubmitAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        public async Task<ApiResponse<AdmissionDetailDto>> SubmitAsync(string schoolId, SubmitAdmissionRequestDto req, CancellationToken ct, long userId = 0)
         {
             try
             {
@@ -199,7 +205,7 @@ namespace smss_api_service_layer.service
                     var next = await _repo.GetMaxApplicationSequenceAsync(schoolId, prefix, ct) + 1;
 
                     var entity = new TbAdmission { SchoolId = schoolId, ApplicationNumber = $"{prefix}{next:D4}", ApplicationDate = now.Date, StatusId = submittedId.Value, CreatedAt = now, UpdatedAt = now };
-                    ApplyDetails(entity, req);
+                    ApplyDetails(entity, req, userId);
                     entity.GuardianId = reuse?.PrimaryId;
 
                     try
@@ -234,7 +240,7 @@ namespace smss_api_service_layer.service
         }
 
         // ---------------- edit ----------------
-        public async Task<ApiResponse<AdmissionDetailDto>> UpdateAsync(string schoolId, long admissionId, SubmitAdmissionRequestDto req, CancellationToken ct)
+        public async Task<ApiResponse<AdmissionDetailDto>> UpdateAsync(string schoolId, long admissionId, SubmitAdmissionRequestDto req, CancellationToken ct, long userId = 0)
         {
             try
             {
@@ -265,7 +271,7 @@ namespace smss_api_service_layer.service
                     return Result<AdmissionDetailDto>(409, $"This application is {StatusLabel(current)}, so it can no longer be edited. Only an application that has been added (not yet confirmed, rejected or withdrawn) can be changed.", null);
 
                 var storedAadhaar = admission.AadharNumber;
-                ApplyDetails(admission, req);
+                ApplyDetails(admission, req, userId);
                 if (string.IsNullOrWhiteSpace(req.AadharNumber)) admission.AadharNumber = storedAadhaar;   // the form only ever sees it masked, so a blank box means keep it
                 admission.UpdatedAt = DateTime.UtcNow;
                 admission.GuardianId = reuse?.PrimaryId;   // the pick can be changed until the application is confirmed
@@ -402,6 +408,8 @@ namespace smss_api_service_layer.service
                                                                    string.IsNullOrWhiteSpace(reusedPrimary.Email) ? admission.GuardianEmail : reusedPrimary.Email);
                             if (notComplete != null) return Result<AdmissionDetailDto>(409, notComplete, null);
                             guardianChanges.AddRange(GuardianReuse.ApplyContact(reusedPrimary, admission.GuardianWhatsAppNumber, admission.GuardianEmail, confirmedByUserId, schoolId, DateTime.UtcNow));
+                            if (reusedPrimary.ConsentGivenAt == null && admission.GuardianConsentAt != null && admission.GuardianConsentRecordedBy != null)
+                            { reusedPrimary.ConsentGivenAt = admission.GuardianConsentAt; reusedPrimary.ConsentRecordedBy = admission.GuardianConsentRecordedBy; reusedPrimary.ConsentSource = GuardianConsentRules.SourceAdmissionForm; }
                         }
                     }
                     try
@@ -458,6 +466,8 @@ namespace smss_api_service_layer.service
                             MobileNumber = admission.GuardianMobileNumber,
                             Email = admission.GuardianEmail,
                             WhatsAppNumber = admission.GuardianWhatsAppNumber,
+                            ConsentGivenAt = admission.GuardianConsentAt, ConsentRecordedBy = admission.GuardianConsentRecordedBy,
+                            ConsentSource = admission.GuardianConsentAt != null && admission.GuardianConsentRecordedBy != null ? GuardianConsentRules.SourceAdmissionForm : null,
                             StatusId = activeId.Value,
                             CreatedAt = now,
                             UpdatedAt = now
@@ -513,6 +523,22 @@ namespace smss_api_service_layer.service
                         }
 
                         var detail = await ToDetailAsync(admission, ct);
+                        // The admission is committed. A parent account (or the "child added" message) is made now, best effort: whatever happens is in the result and never fails or undoes the admission.
+                        if (_parentAccounts != null)
+                        {
+                            try
+                            {
+                                var primaryGuardianId = reusedPrimary?.GuardianId ?? guardian?.GuardianId ?? 0;
+                                if (primaryGuardianId > 0) detail.ParentAccount = await _parentAccounts.OnAdmissionConfirmedAsync(schoolId, primaryGuardianId, studentId, confirmedByUserId, ct);
+                                foreach (var (extra, _) in reusedExtras.Where(e => e.Guardian.UserId != null))   // another parent who already has an account is told too; extras never get a new account here
+                                    await _parentAccounts.OnAdmissionConfirmedAsync(schoolId, extra.GuardianId, studentId, confirmedByUserId, ct);
+                            }
+                            catch (Exception ex) when (ex is not OperationCanceledException)
+                            {
+                                _logger.LogError("The parent account step after admission {AdmissionId} failed ({Error}); the admission is saved", admission.AdmissionId, ex.GetType().Name);
+                                detail.ParentAccount = new ParentAccountResultDto { Outcome = "FAILED", Reason = "The parent account could not be created. The admission itself is saved; use Resend on the Parent details screen to try again.", CanResend = true };
+                            }
+                        }
                         detail.FeeStructureName = assignedStructure?.StructureName;
                         if (feeWarning != null) detail.Warnings.Add(feeWarning);
                         return Result(200, "Application confirmed. Student and enrollment created.", detail);
@@ -627,7 +653,9 @@ namespace smss_api_service_layer.service
             dto.GuardianMobileNumber = a.GuardianMobileNumber;
             dto.GuardianEmail = a.GuardianEmail;
             dto.GuardianWhatsAppNumber = a.GuardianWhatsAppNumber;
+            dto.GuardianConsentRecorded = a.GuardianConsentAt != null;
             dto.GuardianId = a.GuardianId;
+            if (a.StudentId != null) dto.PrimaryGuardianId = await _repo.GetPrimaryGuardianIdOfStudentAsync(a.SchoolId, a.StudentId, ct);   // the confirmed application's parent, for the Parent account card
             var extraRows = await _repo.GetAdmissionGuardiansAsync(a.SchoolId, a.AdmissionId, false, ct);
             var shown = await _repo.GetGuardiansReadOnlyAsync(a.SchoolId, extraRows.Select(r => r.GuardianId).Concat(a.GuardianId is long gid ? new[] { gid } : Array.Empty<long>()).ToList(), ct);
             GuardianPickDto Pick(TbGuardian g, string? relationship) => new() { GuardianId = g.GuardianId, Name = GuardianReuse.Display(g), Relationship = relationship ?? g.Relationship, MaskedMobile = PhoneNumbers.Mask(g.MobileNumber), HasWhatsApp = !string.IsNullOrWhiteSpace(g.WhatsAppNumber), HasEmail = !string.IsNullOrWhiteSpace(g.Email) };

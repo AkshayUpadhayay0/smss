@@ -27,7 +27,7 @@ namespace smss_api_service_layer.helper
 
         public string TemplateParentAccountReady { get; set; } = ParentTemplateCodes.AccountReady;
         public string TemplateParentChildAdded { get; set; } = ParentTemplateCodes.ChildAdded;
-        public string TemplateParentLoginCode { get; set; } = ParentTemplateCodes.LoginCode;
+        public string TemplateParentLoginHelp { get; set; } = ParentTemplateCodes.LoginHelp;
         public string TemplateParentStudentLoginReady { get; set; } = ParentTemplateCodes.StudentLoginReady;
 
         public bool IsCloudSender => Enabled && string.Equals(Sender, "Cloud", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(AccessToken) && !string.IsNullOrWhiteSpace(PhoneNumberId);
@@ -38,7 +38,7 @@ namespace smss_api_service_layer.helper
         {
             ParentTemplateCodes.AccountReady => Pick(TemplateParentAccountReady, code),
             ParentTemplateCodes.ChildAdded => Pick(TemplateParentChildAdded, code),
-            ParentTemplateCodes.LoginCode => Pick(TemplateParentLoginCode, code),
+            ParentTemplateCodes.LoginHelp => Pick(TemplateParentLoginHelp, code),
             ParentTemplateCodes.StudentLoginReady => Pick(TemplateParentStudentLoginReady, code),
             _ => code,
         };
@@ -54,5 +54,19 @@ namespace smss_api_service_layer.helper
         public int ResendLimitPer24Hours { get; set; } = 3;
         /// <summary>The website's address the links in the messages point at (for example https://smss-erp.digital). Empty by default; the parent-account features refuse to build a link without it.</summary>
         public string? WebBaseUrl { get; set; }
+        /// <summary>
+        /// Which channels carry which kind of message, by purpose (SET_PASSWORD, RESET_PASSWORD, CHILD_ADDED, STUDENT_LOGIN): "WHATSAPP", "EMAIL" or "WHATSAPP,EMAIL". A purpose that is not listed uses both. So a
+        /// template Meta rejected or re-categorised is switched off for ONE purpose by configuration (for example ParentAccounts__Channels__RESET_PASSWORD=EMAIL), with no code change.
+        /// </summary>
+        public Dictionary<string, string> Channels { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool ChannelAllowed(string purpose, string channel)
+        {
+            if (!Channels.TryGetValue(purpose, out var list) || string.IsNullOrWhiteSpace(list)) return true;
+            return list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(channel, StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>The most links a guardian can be sent per purpose in 24 hours: the first one plus ResendLimitPer24Hours resends.</summary>
+        public int MaxLinksPer24Hours => Math.Max(1, ResendLimitPer24Hours) + 1;
     }
 }

@@ -47,7 +47,7 @@ namespace smss_api_tests
         private static DirectStudentEntryRequestDto Direct(long section, string? roll, string first = "Roll") => new()
         {
             AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = Y, ClassSectionId = section, RollNumber = roll,
-            FirstName = first, LastName = "Test", DateOfBirth = new DateTime(2018, 5, 5), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
+            FirstName = first, LastName = "Test", DateOfBirth = new DateTime(2018, 5, 5), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianConsent = true, GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
         };
 
         // ----------------------------------------------------------------------------------------------- database keys and roll numbers
@@ -347,12 +347,13 @@ namespace smss_api_tests
         {
             using var wb = new XLWorkbook();
             var ws = wb.AddWorksheet("Students");
-            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email" };
+            var headers = new[] { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone", "Primary guardian WhatsApp", "Primary guardian email", "Parent consent (Yes/No)" };
             for (var c = 0; c < headers.Length; c++) ws.Cell(1, c + 1).Value = headers[c];
             for (var r = 0; r < rows.Length; r++)
             {
                 var cells = rows[r].Length == 9 ? rows[r].Concat(new[] { "SAME", "guardian@example.com" }).ToArray() : rows[r];   // a 9-column row gets the two guardian columns filled in
                 for (var c = 0; c < cells.Length; c++) ws.Cell(r + 2, c + 1).Value = cells[c];
+                ws.Cell(r + 2, 12).Value = "Yes";
             }
             using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
         }

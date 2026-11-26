@@ -230,6 +230,9 @@ builder.Services.AddScoped<IUserActionTokenService, UserActionTokenService>();
 builder.Services.AddScoped<IGuardianLoginIdService, GuardianLoginIdService>();
 builder.Services.AddScoped<IParentMessageDispatcher, ParentMessageDispatcher>();
 builder.Services.AddScoped<IWhatsAppWebhookService, WhatsAppWebhookService>();
+builder.Services.AddScoped<IParentAccountRepository, ParentAccountRepository>();
+builder.Services.AddSingleton<IContactThrottle, ContactThrottle>();
+builder.Services.AddScoped<IParentAccountService, ParentAccountService>();
 
 // File storage: relative paths resolve against the project folder
 var uploadsRoot = builder.Configuration["FileStorage:RootPath"] ?? "uploads";
@@ -324,6 +327,13 @@ builder.Services.AddRateLimiter(options =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = partnerLimit, Window = partnerWindow, QueueLimit = 0, AutoReplenishment = true }));
+    // Public parent / student account endpoints (set-password, check-link, forgot): per client address (appsettings RateLimiting:ParentAuth). The per-contact and per-guardian limits are in ParentAccountService.
+    var parentAuthLimit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:ParentAuth:PermitLimit") ?? 10);
+    var parentAuthWindow = TimeSpan.FromMinutes(Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:ParentAuth:WindowMinutes") ?? 10));
+    options.AddPolicy(smss_api.Controllers.ParentAuthController.RateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            smss_api_service_layer.helper.ClientAddress.PartitionKey(httpContext.Connection.RemoteIpAddress),
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = parentAuthLimit, Window = parentAuthWindow, QueueLimit = 0, AutoReplenishment = true }));
     // Driver location pings: a coarse shield per tracking token (hashed: the raw token is never used as a key), per client address when there is none.
     // The authoritative minimum interval is enforced in DriverDutyService; this only stops a flood.
     var driverPermit = Math.Max(1, builder.Configuration.GetValue<int?>("RateLimiting:DriverLocation:PermitLimit") ?? 12);

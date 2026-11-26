@@ -68,6 +68,10 @@ UPDATE public.tb_user_action_tokens SET revoked_at = now()
  WHERE user_id = @user AND used_at IS NULL AND revoked_at IS NULL AND (@purpose::varchar IS NULL OR purpose = @purpose)",
                 new object[] { P("user", NpgsqlDbType.Bigint, userId), P("purpose", NpgsqlDbType.Varchar, purpose) }, ct);
 
+        public async Task<int> CountTokensSinceAsync(long userId, string purpose, DateTime sinceUtc, CancellationToken ct) =>
+            (await _db.Database.SqlQueryRaw<int>(@"SELECT count(*)::int AS ""Value"" FROM public.tb_user_action_tokens WHERE user_id = @user AND purpose = @purpose AND created_at >= @since",
+                P("user", NpgsqlDbType.Bigint, userId), P("purpose", NpgsqlDbType.Varchar, purpose), P("since", NpgsqlDbType.TimestampTz, sinceUtc)).ToListAsync(ct)).Single();
+
         // ------------------------------------------------------------------------------------------------ the delivery log
         public async Task<long> AddDeliveryAsync(TbMessageDelivery row, CancellationToken ct)
         {

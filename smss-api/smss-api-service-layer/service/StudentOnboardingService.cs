@@ -58,6 +58,7 @@ namespace smss_api_service_layer.service
                     var contact = PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, req.GuardianMobileNumber, "The guardian's")
                                   ?? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's");
                     if (contact != null) return Result(400, contact, null);
+                    if (!req.GuardianConsent) return Result(400, GuardianConsentRules.Required, null);
                     if (string.IsNullOrWhiteSpace(req.GuardianName) || string.IsNullOrWhiteSpace(req.GuardianRelationship) || string.IsNullOrWhiteSpace(req.GuardianMobileNumber))
                         return Result(400, "The guardian's name, relationship and mobile number are required.", null);
                 }
@@ -123,7 +124,9 @@ namespace smss_api_service_layer.service
                             var bad = (string.IsNullOrWhiteSpace(existing.WhatsAppNumber) ? PhoneNumbers.WhatsAppError(req.GuardianWhatsAppNumber, req.GuardianWhatsAppSameAsMobile, existing.MobileNumber, "The guardian's") : null)
                                       ?? (string.IsNullOrWhiteSpace(existing.Email) ? PhoneNumbers.EmailError(req.GuardianEmail, "The guardian's") : null);
                             if (bad != null) return Result(400, bad, null);
+                            if (existing.ConsentGivenAt == null && !req.GuardianConsent) return Result(400, GuardianConsentRules.Required, null);   // consent already on record needs no new tick
                             guardianChanges.AddRange(GuardianReuse.ApplyContact(existing, wa, em, userId, schoolId, DateTime.UtcNow));
+                            if (existing.ConsentGivenAt == null && userId > 0) { existing.ConsentGivenAt = DateTime.UtcNow; existing.ConsentRecordedBy = userId; existing.ConsentSource = GuardianConsentRules.SourceAdmissionForm; }
                         }
                     }
                     try
@@ -159,6 +162,7 @@ namespace smss_api_service_layer.service
                         var student = graph.Student;
                         var enrollment = graph.Enrollment;
                         var guardian = graph.Guardians.FirstOrDefault();   // null when the primary guardian is an existing one
+                        if (guardian != null && req.GuardianConsent && userId > 0) { guardian.ConsentGivenAt = now; guardian.ConsentRecordedBy = userId; guardian.ConsentSource = GuardianConsentRules.SourceAdmissionForm; }
 
                         await _repo.AddStudentAsync(student, ct);
                         await _repo.AddEnrollmentAsync(enrollment, ct);

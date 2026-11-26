@@ -90,6 +90,8 @@ namespace smss_api_db_layer.@interface
         Task<List<TbGuardian>> LockGuardiansAsync(string schoolId, IReadOnlyCollection<long> guardianIds, CancellationToken ct);
         Task AddGuardianChangesAsync(IEnumerable<TbGuardianChange> changes, CancellationToken ct);
         Task<List<TbAdmissionGuardian>> GetAdmissionGuardiansAsync(string schoolId, long admissionId, bool tracked, CancellationToken ct);
+        /// <summary>The primary guardian of a student of this school (the confirmed application's parent), or null.</summary>
+        Task<long?> GetPrimaryGuardianIdOfStudentAsync(string schoolId, string studentId, CancellationToken ct);
         Task AddAdmissionGuardianAsync(TbAdmissionGuardian entity, CancellationToken ct);
         void RemoveAdmissionGuardian(TbAdmissionGuardian entity);
 

@@ -55,7 +55,8 @@ namespace smss_api.Controllers
             if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
             var (bytes, error) = await ReadUploadAsync(file, ct);
             if (bytes == null) return error!;
-            var response = await _service.CommitAsync(school, bytes, ct);
+            long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId);   // who is importing: recorded as the one who ticked the parent consent
+            var response = await _service.CommitAsync(school, bytes, ct, userId);
             return StatusCode(response.StatusCode, response);
         }
 

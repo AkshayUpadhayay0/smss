@@ -50,6 +50,8 @@ namespace smss_api_service_layer.dto
         [MaxLength(25)] public string? GuardianWhatsAppNumber { get; set; }
         /// <summary>"Same as mobile number": the server then uses the guardian's mobile number as the WhatsApp number.</summary>
         public bool GuardianWhatsAppSameAsMobile { get; set; }
+        /// <summary>The consent tick: the parent agrees to be contacted by WhatsApp and email. Required for a new primary guardian and for an existing one with no consent on record; recorded with the date and the user who ticked it.</summary>
+        public bool GuardianConsent { get; set; }
         /// <summary>
         /// The EXISTING guardian who is this student's primary guardian (a sibling's parent, picked from the sibling search). Null = the primary guardian is the person typed in below. When it is set the guardian's
         /// name and mobile come from the guardian record (what is sent for them is ignored), WhatsApp and email are needed only where the record has none, and those are written to the shared record.
@@ -65,6 +67,7 @@ namespace smss_api_service_layer.dto
             if (string.IsNullOrWhiteSpace(GuardianName)) yield return new ValidationResult("The GuardianName field is required.", new[] { nameof(GuardianName) });
             if (string.IsNullOrWhiteSpace(GuardianRelationship)) yield return new ValidationResult("The GuardianRelationship field is required.", new[] { nameof(GuardianRelationship) });
             if (string.IsNullOrWhiteSpace(GuardianMobileNumber)) yield return new ValidationResult("The GuardianMobileNumber field is required.", new[] { nameof(GuardianMobileNumber) });
+            if (!GuardianConsent) yield return new ValidationResult(smss_api_service_layer.helper.GuardianConsentRules.Required, new[] { nameof(GuardianConsent) });
             var w = smss_api_service_layer.helper.PhoneNumbers.WhatsAppError(GuardianWhatsAppNumber, GuardianWhatsAppSameAsMobile, GuardianMobileNumber, "The guardian's");
             if (w != null) yield return new ValidationResult(w, new[] { nameof(GuardianWhatsAppNumber) });
             var e = smss_api_service_layer.helper.PhoneNumbers.EmailError(GuardianEmail, "The guardian's");

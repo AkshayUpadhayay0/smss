@@ -69,18 +69,27 @@ namespace smss_api_service_layer.service
         private readonly IWhatsAppSender _whatsApp;
         private readonly INotificationService _email;
         private readonly ILogger<ParentMessageDispatcher> _logger;
+        private readonly ParentAccountsOptions _options;
 
-        public ParentMessageDispatcher(IMessagingRepository repo, ISchoolWhatsAppSenderRepository senders, IWhatsAppSender whatsApp, INotificationService email, ILogger<ParentMessageDispatcher> logger)
+        public ParentMessageDispatcher(IMessagingRepository repo, ISchoolWhatsAppSenderRepository senders, IWhatsAppSender whatsApp, INotificationService email, ILogger<ParentMessageDispatcher> logger, IOptions<ParentAccountsOptions>? options = null)
         {
-            _repo = repo; _senders = senders; _whatsApp = whatsApp; _email = email; _logger = logger;
+            _repo = repo; _senders = senders; _whatsApp = whatsApp; _email = email; _logger = logger; _options = options?.Value ?? new ParentAccountsOptions();
         }
 
         public async Task<IReadOnlyList<DeliveryOutcome>> SendAsync(ParentMessage m, CancellationToken ct)
         {
             var outcomes = new List<DeliveryOutcome>();
-            if (m.WhatsApp != null) outcomes.Add(await SendWhatsAppAsync(m, ct));
-            if (m.Email != null) outcomes.Add(await SendEmailAsync(m, ct));
+            if (m.WhatsApp != null) outcomes.Add(_options.ChannelAllowed(m.Purpose, "WHATSAPP") ? await SendWhatsAppAsync(m, ct) : await ChannelOffAsync(m, "WHATSAPP", m.WhatsAppNumber, ct));
+            if (m.Email != null) outcomes.Add(_options.ChannelAllowed(m.Purpose, "EMAIL") ? await SendEmailAsync(m, ct) : await ChannelOffAsync(m, "EMAIL", m.EmailAddress, ct));
             return outcomes;
+        }
+
+        /// <summary>A channel switched off by configuration for this kind of message (ParentAccounts:Channels): nothing is sent, and the log says why.</summary>
+        private async Task<DeliveryOutcome> ChannelOffAsync(ParentMessage m, string channel, string? recipient, CancellationToken ct)
+        {
+            var row = Row(m, channel, recipient);
+            row.Status = "SKIPPED"; row.SenderKind = channel == "EMAIL" ? "SMTP" : "LOG"; row.ErrorCode = "CHANNEL_OFF"; row.ErrorMessage = "This channel is switched off for this kind of message.";
+            return await SaveAsync(row, ct);
         }
 
         private async Task<DeliveryOutcome> SendWhatsAppAsync(ParentMessage m, CancellationToken ct)

@@ -42,6 +42,8 @@ namespace smss_api_service_layer.dto
         [MaxLength(25)] public string? GuardianWhatsAppNumber { get; set; }
         /// <summary>"Same as mobile number": the server then uses the guardian's mobile number as the WhatsApp number.</summary>
         public bool GuardianWhatsAppSameAsMobile { get; set; }
+        /// <summary>The consent tick: the parent agrees to be contacted by WhatsApp and email (parent account messages). Required for a new primary guardian, and for an existing one who has no consent on record. Recorded with the date and the user who ticked it.</summary>
+        public bool GuardianConsent { get; set; }
         /// <summary>
         /// The EXISTING guardian who is this student's primary guardian (a sibling's parent, picked from the sibling search). Null = the primary guardian is the person typed in below. When it is set the guardian's
         /// name and mobile come from the guardian record (what is sent for them is ignored), WhatsApp and email are needed only where the record has none, and those are written to the shared record.
@@ -59,6 +61,7 @@ namespace smss_api_service_layer.dto
             if (string.IsNullOrWhiteSpace(GuardianName)) yield return new ValidationResult("The GuardianName field is required.", new[] { nameof(GuardianName) });
             if (string.IsNullOrWhiteSpace(GuardianRelationship)) yield return new ValidationResult("The GuardianRelationship field is required.", new[] { nameof(GuardianRelationship) });
             if (string.IsNullOrWhiteSpace(GuardianMobileNumber)) yield return new ValidationResult("The GuardianMobileNumber field is required.", new[] { nameof(GuardianMobileNumber) });
+            if (!GuardianConsent) yield return new ValidationResult(smss_api_service_layer.helper.GuardianConsentRules.Required, new[] { nameof(GuardianConsent) });
             var w = smss_api_service_layer.helper.PhoneNumbers.WhatsAppError(GuardianWhatsAppNumber, GuardianWhatsAppSameAsMobile, GuardianMobileNumber, "The guardian's");
             if (w != null) yield return new ValidationResult(w, new[] { nameof(GuardianWhatsAppNumber) });
             var e = smss_api_service_layer.helper.PhoneNumbers.EmailError(GuardianEmail, "The guardian's");
@@ -168,10 +171,16 @@ namespace smss_api_service_layer.dto
         public string? GuardianEmail { get; set; }
         /// <summary>The existing guardian this application reuses as the primary guardian (a sibling's parent); null when the primary guardian is a person typed in.</summary>
         public long? GuardianId { get; set; }
+        /// <summary>Only for a confirmed application: the student's primary guardian, whose parent account the staff can look at.</summary>
+        public long? PrimaryGuardianId { get; set; }
         public GuardianPickDto? ExistingGuardian { get; set; }
         public List<GuardianPickDto> AdditionalGuardians { get; set; } = new();
         /// <summary>With the country code; null on an application made before it was collected.</summary>
         public string? GuardianWhatsAppNumber { get; set; }
+        /// <summary>True when the consent tick was recorded on this application (the date and who ticked it are in the database).</summary>
+        public bool GuardianConsentRecorded { get; set; }
+        /// <summary>Set only by a confirmation: what happened to the parent account (created, child added, or why not) with the delivery status and whether Resend is possible. Never a link, token or password.</summary>
+        public ParentAccountResultDto? ParentAccount { get; set; }
 
         public string? PreviousSchool { get; set; }
         public string? ReviewNotes { get; set; }

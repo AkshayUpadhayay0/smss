@@ -648,7 +648,7 @@ namespace smss_api_tests
             var d = Dispatcher(db, new FakeSender(), new FakeMail());
             var first = (await d.SendAsync(WaOnly(), default)).Single();
             await d.SendAsync(WaOnly() with { ResendOfDeliveryId = first.DeliveryId }, default);
-            await d.SendAsync(WaOnly() with { Purpose = MessagePurposes.ResetPassword, TemplateCode = ParentTemplateCodes.LoginCode }, default);
+            await d.SendAsync(WaOnly() with { Purpose = MessagePurposes.ResetPassword, TemplateCode = ParentTemplateCodes.LoginHelp }, default);
             var since = DateTime.UtcNow.AddHours(-24);
             Assert.Equal(2, await Repo(db).CountDeliveriesSinceAsync(A, 191, MessagePurposes.SetPassword, since, default));
             Assert.Equal(1, await Repo(db).CountDeliveriesSinceAsync(A, 191, MessagePurposes.ResetPassword, since, default));

@@ -17,6 +17,8 @@ namespace smss_api_db_layer.@interface
         Task<ActionTokenInfo?> PeekTokenAsync(string tokenHash, CancellationToken ct);
         /// <summary>Revokes every unused link of the user (optionally of one purpose): for example after the user was made Inactive. Returns how many.</summary>
         Task<int> RevokeTokensAsync(long userId, string? purpose, CancellationToken ct);
+        /// <summary>How many links of this purpose were issued to the user since the time (the resend limit counts these: one link is issued per send).</summary>
+        Task<int> CountTokensSinceAsync(long userId, string purpose, DateTime sinceUtc, CancellationToken ct);
 
         // ---- the delivery log
         Task<long> AddDeliveryAsync(TbMessageDelivery row, CancellationToken ct);

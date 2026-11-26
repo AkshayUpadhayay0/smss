@@ -11,6 +11,8 @@ namespace smss_api_db_layer.@interface
         Task<bool> StudentHasLoginAsync(string schoolId, string studentId, CancellationToken ct);
         /// <summary>Email of the student's primary guardian, or null when there is none / it is blank.</summary>
         Task<string?> GetPrimaryGuardianEmailAsync(string schoolId, string studentId, CancellationToken ct);
+        /// <summary>The user id of the login with this login id in this school, or null.</summary>
+        Task<long?> GetUserIdByLoginIdAsync(string schoolId, string loginId, CancellationToken ct);
         Task<int?> GetStatusIdByNameAsync(string statusName, string statusType, CancellationToken ct);
         Task<long?> GetRoleIdByNameAsync(string roleName, CancellationToken ct);
         Task AddUserAsync(TbUsers user, CancellationToken ct);

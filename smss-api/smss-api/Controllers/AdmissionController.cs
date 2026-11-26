@@ -78,7 +78,8 @@ namespace smss_api.Controllers
         {
             if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
             if (await this.RequireSetupAsync(_onboarding, ct) is { } setupIncomplete) return setupIncomplete;
-            return Reply(await _service.SubmitAsync(own, req, ct));
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            return Reply(await _service.SubmitAsync(own, req, ct, userId));
         }
 
         // PUT api/Admission/{schoolId}/{admissionId}   Body: the same fields as submit. Only while the application is added (409 once it is confirmed, rejected or withdrawn).
@@ -86,7 +87,8 @@ namespace smss_api.Controllers
         public async Task<IActionResult> Update(string schoolId, long admissionId, [FromBody] SubmitAdmissionRequestDto req, CancellationToken ct)
         {
             if (Gate(schoolId, User.CanManageApplications(), ManageRefusal, out var own) is { } refused) return refused;
-            return Reply(await _service.UpdateAsync(own, admissionId, req, ct));
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            return Reply(await _service.UpdateAsync(own, admissionId, req, ct, userId));
         }
 
         // POST .../reject   Body: { remarks }   (only an added application; the reason is required)

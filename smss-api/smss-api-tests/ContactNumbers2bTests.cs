@@ -65,7 +65,7 @@ namespace smss_api_tests
         {
             var app = new SubmitAdmissionRequestDto
             {
-                AcademicYearId = 1, AppliedClassId = 1, ApplicantFirstName = "A", DateOfBirth = new DateTime(2018, 1, 1), GuardianName = "G", GuardianRelationship = "MOTHER", GuardianMobileNumber = "9876543210",
+                AcademicYearId = 1, AppliedClassId = 1, ApplicantFirstName = "A", DateOfBirth = new DateTime(2018, 1, 1), GuardianName = "G", GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianMobileNumber = "9876543210",
             };
             var errors = Validate(app).Select(r => r.ErrorMessage).ToList();
             Assert.Contains(errors, m => m!.Contains("WhatsApp number is required"));
@@ -79,7 +79,7 @@ namespace smss_api_tests
 
             var direct = new DirectStudentEntryRequestDto
             {
-                AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = 1, ClassSectionId = 1, FirstName = "A", DateOfBirth = new DateTime(2018, 1, 1), GuardianName = "G", GuardianRelationship = "MOTHER", GuardianMobileNumber = "9876543210",
+                AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = 1, ClassSectionId = 1, FirstName = "A", DateOfBirth = new DateTime(2018, 1, 1), GuardianName = "G", GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianMobileNumber = "9876543210",
             };
             Assert.Equal(2, Validate(direct).Count);
             direct.GuardianEmail = "g@example.com"; direct.GuardianWhatsAppSameAsMobile = true;
@@ -93,7 +93,7 @@ namespace smss_api_tests
         private static SubmitAdmissionRequestDto App(TaxDb db, string first = "Rhea", string? email = "g@example.com", string? whatsapp = null, bool same = true) => new()
         {
             AcademicYearId = Y, AppliedClassId = db.Scalar<long>($"select min(class_id) from tb_classes where school_id='{A}'"), AdmissionTypeId = db.Scalar<long>("select min(admission_type_id) from lut_admission_type"),
-            ApplicantFirstName = first, DateOfBirth = new DateTime(2018, 3, 3), GuardianName = "Mother", GuardianRelationship = "MOTHER", GuardianMobileNumber = "9876543210",
+            ApplicantFirstName = first, DateOfBirth = new DateTime(2018, 3, 3), GuardianName = "Mother", GuardianRelationship = "MOTHER", GuardianConsent = true, GuardianMobileNumber = "9876543210",
             GuardianEmail = email, GuardianWhatsAppNumber = whatsapp, GuardianWhatsAppSameAsMobile = same,
         };
 
@@ -179,7 +179,7 @@ namespace smss_api_tests
         private static DirectStudentEntryRequestDto Direct(long section, string first, string? email = "g@example.com", string? wa = null, bool same = true) => new()
         {
             AdmissionDate = DateTime.UtcNow.Date, AcademicYearId = Y, ClassSectionId = section, FirstName = first, DateOfBirth = new DateTime(2018, 5, 5), GuardianName = "G", GuardianRelationship = "FATHER",
-            GuardianMobileNumber = "9876543210", GuardianEmail = email, GuardianWhatsAppNumber = wa, GuardianWhatsAppSameAsMobile = same,
+            GuardianConsent = true, GuardianMobileNumber = "9876543210", GuardianEmail = email, GuardianWhatsAppNumber = wa, GuardianWhatsAppSameAsMobile = same,
         };
 
         [DbFact]
@@ -206,9 +206,9 @@ namespace smss_api_tests
             using var wb = new XLWorkbook();
             var ws = wb.AddWorksheet("Students");
             var headers = new List<string> { "Admission number", "Full name", "Gender", "Date of birth", "Class", "Section", "Roll number", "Father name", "Father phone" };
-            if (withGuardianColumns) headers.AddRange(new[] { "Primary guardian WhatsApp", "Primary guardian email" });
+            if (withGuardianColumns) headers.AddRange(new[] { "Primary guardian WhatsApp", "Primary guardian email", "Parent consent (Yes/No)" });
             for (var c = 0; c < headers.Count; c++) ws.Cell(1, c + 1).Value = headers[c];
-            for (var r = 0; r < rows.Length; r++) for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c];
+            for (var r = 0; r < rows.Length; r++) { for (var c = 0; c < rows[r].Length; c++) ws.Cell(r + 2, c + 1).Value = rows[r][c]; if (withGuardianColumns) ws.Cell(r + 2, 12).Value = "Yes"; }
             using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
         }
 

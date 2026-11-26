@@ -44,7 +44,7 @@ namespace smss_api_tests
         private static DirectStudentEntryRequestDto Req(string first, DateOnly admission, DateOnly? chargeFrom = null, bool confirm = false, string? reason = null) => new()
         {
             AdmissionDate = admission.ToDateTime(TimeOnly.MinValue), AcademicYearId = TaxDb.YearA, ClassSectionId = NurserySection,
-            FirstName = first, LastName = "Onboarded", DateOfBirth = new DateTime(2020, 1, 15), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
+            FirstName = first, LastName = "Onboarded", DateOfBirth = new DateTime(2020, 1, 15), GuardianName = "Guardian", GuardianRelationship = "Father", GuardianConsent = true, GuardianMobileNumber = "9876543210", GuardianEmail = "guardian@example.com", GuardianWhatsAppSameAsMobile = true, 
             ChargeFrom = chargeFrom, ConfirmBackdating = confirm, BackdatingReason = reason,
         };
 
