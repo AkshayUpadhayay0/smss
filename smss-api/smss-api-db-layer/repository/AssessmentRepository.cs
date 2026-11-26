@@ -137,7 +137,7 @@ namespace smss_api_db_layer.repository
 
         public async Task<List<StudentResultRow>> GetStudentResultsAsync(string schoolId, string studentId, long academicYearId, long sectionId, int activeStatusId, DateOnly? from, DateOnly? to, CancellationToken ct)
         {
-            var tests = _db.ClassAssessments.AsNoTracking().Where(a => a.SchoolId == schoolId && a.StatusId == activeStatusId && a.AcademicYearId == academicYearId && a.SectionId == sectionId);
+            var tests = _db.ClassAssessments.AsNoTracking().Where(a => a.SchoolId == schoolId && a.StatusId == activeStatusId && a.AcademicYearId == academicYearId);   // not limited to the CURRENT section: the student's own mark rows decide, so tests taken before a section change (Stage 8c) stay in the list
             if (from != null) tests = tests.Where(a => a.TestDate >= from);
             if (to != null) tests = tests.Where(a => a.TestDate <= to);
             // ONLY this student's own mark rows: nothing about anyone else is read

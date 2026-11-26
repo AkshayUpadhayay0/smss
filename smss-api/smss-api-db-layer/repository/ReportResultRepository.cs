@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.context;
 using smss_api_db_layer.entity;
@@ -66,10 +66,10 @@ namespace smss_api_db_layer.repository
         }
 
         public Task<List<TbReportStudentActivityGrade>> GetActivityGradesAsync(long schemeId, long sectionId, CancellationToken ct) =>
-            _db.ReportActivityGrades.AsNoTracking().Where(g => g.SchemeId == schemeId && g.SectionId == sectionId).ToListAsync(ct);
+            _db.ReportActivityGrades.AsNoTracking().Where(g => g.SchemeId == schemeId && (g.SectionId == sectionId || _db.StudentEnrollments.Any(e => e.StudentId == g.StudentId && e.ClassSectionId == sectionId && _db.ReportSchemes.Any(sc => sc.SchemeId == g.SchemeId && sc.AcademicYearId == e.AcademicYearId)))).ToListAsync(ct);   // a student moved here from another section (8c) keeps the rows entered before
 
         public Task<List<TbReportTermStudent>> GetTermInputsAsync(long schemeId, long sectionId, CancellationToken ct) =>
-            _db.ReportTermStudents.AsNoTracking().Where(g => g.SchemeId == schemeId && g.SectionId == sectionId).ToListAsync(ct);
+            _db.ReportTermStudents.AsNoTracking().Where(g => g.SchemeId == schemeId && (g.SectionId == sectionId || _db.StudentEnrollments.Any(e => e.StudentId == g.StudentId && e.ClassSectionId == sectionId && _db.ReportSchemes.Any(sc => sc.SchemeId == g.SchemeId && sc.AcademicYearId == e.AcademicYearId)))).ToListAsync(ct);
 
         public async Task<Dictionary<long, string>> GetSubjectNamesAsync(string schoolId, IReadOnlyCollection<long> subjectIds, CancellationToken ct)
         {

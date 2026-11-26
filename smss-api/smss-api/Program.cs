@@ -89,6 +89,8 @@ builder.Services.AddScoped<ILeavingRepository, LeavingRepository>();
 builder.Services.AddScoped<ILeavingService, LeavingService>();
 builder.Services.AddScoped<ITransferCertificateRepository, TransferCertificateRepository>();
 builder.Services.AddScoped<ITransferCertificateService, TransferCertificateService>();
+builder.Services.AddScoped<ISectionChangeRepository, SectionChangeRepository>();
+builder.Services.AddScoped<ISectionChangeService, SectionChangeService>();
 builder.Services.AddScoped<IFeeRepairRepository, FeeRepairRepository>();
 builder.Services.AddScoped<IFeeRepairService, FeeRepairService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();

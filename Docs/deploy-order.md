@@ -43,6 +43,7 @@ Run each with `psql -h <host> -U <user> -d <db> -v ON_ERROR_STOP=1 -f Docs/<file
 | 27 | `smss-st-8a-RUN-ME.sql` | 4b-1 (outcome columns) | yes (26 Nov, backup taken, two runs, fingerprint clean) | 8a (record leaving) |
 | 28 | `smss-st-8b-RUN-ME.sql` | 8a | yes (26 Nov, backup taken, two runs, fingerprint clean) | 8b (transfer certificates; the 8a correction also reads its table) |
 | 29 | `smss-st-8b2-RUN-ME.sql` | none | yes (26 Nov, backup taken, two runs, fingerprint identical) | 8b follow-up (three optional school fields: affiliation number, UDISE code, board school code) |
+| 30 | `smss-st-8c-RUN-ME.sql` | none | yes (26 Nov, backup taken, two runs, fingerprint clean) | 8c (mid-year section change history) |
 
 Stage 8 scripts 27 to 30 were added after the scratch proof in section 1; it was run twice on a scratch copy of the 6a template (second run prints ALREADY MIGRATED).
 

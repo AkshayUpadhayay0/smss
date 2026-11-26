@@ -250,19 +250,20 @@ namespace smss_api_db_layer.repository
 
         public Task<List<TbReportStudentActivityGrade>> GetActivityGradesAsync(long termId, long sectionId, bool track, CancellationToken ct)
         {
-            var q = _db.ReportActivityGrades.Where(g => g.TermId == termId && g.SectionId == sectionId);
+            // the rows were entered under the section the student was in at the time: a student who has since moved to this section (Stage 8c) keeps theirs
+            var q = _db.ReportActivityGrades.Where(g => g.TermId == termId && (g.SectionId == sectionId || _db.StudentEnrollments.Any(e => e.StudentId == g.StudentId && e.ClassSectionId == sectionId && _db.ReportSchemes.Any(sc => sc.SchemeId == g.SchemeId && sc.AcademicYearId == e.AcademicYearId))));
             return (track ? q : q.AsNoTracking()).ToListAsync(ct);
         }
 
         public Task<List<TbReportTermStudent>> GetTermStudentsAsync(long termId, long sectionId, bool track, CancellationToken ct)
         {
-            var q = _db.ReportTermStudents.Where(g => g.TermId == termId && g.SectionId == sectionId);
+            var q = _db.ReportTermStudents.Where(g => g.TermId == termId && (g.SectionId == sectionId || _db.StudentEnrollments.Any(e => e.StudentId == g.StudentId && e.ClassSectionId == sectionId && _db.ReportSchemes.Any(sc => sc.SchemeId == g.SchemeId && sc.AcademicYearId == e.AcademicYearId))));
             return (track ? q : q.AsNoTracking()).ToListAsync(ct);
         }
 
         public Task<List<TbReportYearStudent>> GetYearStudentsAsync(long schemeId, long sectionId, bool track, CancellationToken ct)
         {
-            var q = _db.ReportYearStudents.Where(g => g.SchemeId == schemeId && g.SectionId == sectionId);
+            var q = _db.ReportYearStudents.Where(g => g.SchemeId == schemeId && (g.SectionId == sectionId || _db.StudentEnrollments.Any(e => e.StudentId == g.StudentId && e.ClassSectionId == sectionId && _db.ReportSchemes.Any(sc => sc.SchemeId == g.SchemeId && sc.AcademicYearId == e.AcademicYearId))));
             return (track ? q : q.AsNoTracking()).ToListAsync(ct);
         }
 
