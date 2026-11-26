@@ -1,6 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { api } from '../api';
+import { reportCardPdfPath } from '../api/family';
 import { ApiError } from '../api/errors';
 
 const FOLDER = 'attachments';
@@ -28,6 +29,19 @@ export async function openHomeworkAttachment(homeworkId: number, fileName: strin
     throw new ApiError('unknown', "This device can't open files from the app.");
   }
   await Sharing.shareAsync(file.uri, { mimeType: contentType, dialogTitle: fileName ?? 'Attachment' });
+}
+
+/** A parent's child's PUBLISHED report card as a PDF: the same authenticated download to the cache folder (purged on sign-out), then the share / open sheet. */
+export async function openReportCardPdf(studentId: string, publicationId: number): Promise<void> {
+  const { bytes, contentType } = await api.download(reportCardPdfPath(studentId, publicationId));
+  const dir = new Directory(Paths.cache, FOLDER);
+  if (!dir.exists) dir.create();
+  const file = new File(dir, safeName(publicationId, 'report-card.pdf'));
+  if (file.exists) file.delete();
+  file.create();
+  file.write(new Uint8Array(bytes));
+  if (!(await Sharing.isAvailableAsync())) throw new ApiError('unknown', "This device can't open files from the app.");
+  await Sharing.shareAsync(file.uri, { mimeType: contentType, dialogTitle: 'Report card' });
 }
 
 /** Removes every downloaded attachment (called on sign-out: the next user must not find the previous user's files). */

@@ -14,5 +14,7 @@ export default function Index() {
   if (role === 'TEACHER') return <Redirect href="/(teacher)/(tabs)" />;
   if (role === 'DRIVER') return <Redirect href="/(driver)" />;
   if (role === 'SCHOOL_ADMIN') return <Redirect href={'/(admin)' as Href} />;
+  // a parent always lands on the family screen, even with one child
+  if (role === 'GUARDIAN') return <Redirect href={'/(family)/(tabs)' as Href} />;
   return <Redirect href="/unsupported" />;
 }

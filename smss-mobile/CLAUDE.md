@@ -22,7 +22,7 @@ TODO: retry WITHOUT `--legacy-peer-deps` after the next Expo SDK update, and dro
 
 ## Layout
 ```
-app/            Expo Router routes: (auth) sign-in + change-password, (student) tabs, (teacher) tabs, (driver) home + setup screens, unsupported, index (the anchor redirect)
+app/            Expo Router routes: (auth) sign-in + change-password, (student) tabs, (teacher) tabs, (driver) home + setup screens, (family) parent app (tabs: Family, Notices, Calendar, Account; child/[studentId]; change-password), unsupported, index (the anchor redirect)
 src/api/        client.ts (fetch + envelope + refresh lock), errors.ts, types.ts, auth.ts, one typed endpoint module per feature
 src/auth/       session.tsx (context), roles.ts (resolveRole), storage.ts (secure store)
 src/config/     env.ts (API base URL, validated)
@@ -80,7 +80,7 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
 ## Roles
 - The API returns role **names** (`"Student"`, `"Teacher"`, `"School Admin"`, ...), not codes. `src/auth/roles.ts#resolveRole` is the ONLY place
   that compares role names (case-insensitive, trimmed). **No role-name string comparisons anywhere else.**
-- Multi-role: Student wins, then Teacher, then Driver (`DRIVER`, the app in "Driver duty" below), otherwise the "not supported in the mobile app yet" screen with a sign-out button. A School Admin who is
+- Multi-role: Student wins, then Teacher, then Driver (`DRIVER`, the app in "Driver duty" below), School Admin, then Guardian, otherwise the "not supported in the mobile app yet" screen with a sign-out button. A School Admin who is
   also a Teacher lands in the Teacher app (acceptable: the server still enforces what they can do). TODO: role switcher (not built).
 - **Known fragility:** if a role is ever renamed in `lut_roles`, the app breaks. The proper long-term fix is a `roleCodes` field in the auth
   response (`AuthUserResponse` in smss-api). Deliberately NOT changed now.
@@ -88,7 +88,8 @@ The tunnel is for development only, and only with throwaway accounts. Quick tunn
   (`SCHOOL_ADMIN` in `resolveRole`, ranked after Student / Teacher / Driver, so an admin who is also a teacher still lands in the Teacher app). It reads the one endpoint
   `GET /api/Dashboard/school-admin` (numbers only; "Not set up yet" for expenses, vehicles card hidden when there are none). No fee report screen exists in the app, so the
   "Not paid" card is a plain card. Everything else for the School Admin stays on the web.
-- SUPER_ADMIN, PRINCIPAL, ACCOUNTANT (and Guardian, Admission Staff) stay on the web.
+- GUARDIAN (parent): `app/(family)` + `src/features/family/`, ranked LAST in `resolveRole` (the server never gives a Guardian the Student role). A parent signs in with the generated guardian id on the same login endpoint and always lands on the family screen. The app calls ONLY `GET /api/Family/*` (`src/api/family.ts`; asserted by a unit test): no writes, no homework attachments. Root-layout guards keep Guardian out of the staff/student groups and the other roles out of `(family)` (fail closed). Set-password and forgot-password stay on the web: the sign-in screen links to `<origin of EXPO_PUBLIC_PRIVACY_POLICY_URL>/parent/forgot` (`src/lib/webLinks.ts`; hidden when that URL is not set). Report-card PDFs use the authenticated download + share sheet (`openReportCardPdf`).
+- SUPER_ADMIN, PRINCIPAL, ACCOUNTANT (and Admission Staff) stay on the web.
 
 ## Design system (matches smss-web)
 Tokens in `src/theme/tokens.ts`: primary `#6D28D9`, deep `#4C1D95`, text `#5B21B6`, tint `#EDE9FE`/border `#C4B5FD`, background `#FAF9FF`,

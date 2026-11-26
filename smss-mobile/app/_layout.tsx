@@ -59,6 +59,9 @@ function RootStack() {
       <Stack.Protected guard={inApp && role === 'SCHOOL_ADMIN'}>
         <Stack.Screen name="(admin)" />
       </Stack.Protected>
+      <Stack.Protected guard={inApp && role === 'GUARDIAN'}>
+        <Stack.Screen name="(family)" />
+      </Stack.Protected>
       <Stack.Protected guard={inApp && role === 'UNSUPPORTED'}>
         <Stack.Screen name="unsupported" />
       </Stack.Protected>

@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { messageOf } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
@@ -9,11 +9,14 @@ import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { PrivacyPolicyLink } from '../../src/components/PrivacyPolicyLink';
 import { Text } from '../../src/components/Text';
+import { env } from '../../src/config/env';
+import { FORGOT_PATH, webPageUrl } from '../../src/lib/webLinks';
 import { colors, fonts } from '../../src/theme/tokens';
 
 export default function SignIn() {
   const { signIn, status } = useSession();
   const insets = useSafeAreaInsets();
+  const parentUrl = webPageUrl(env.privacyPolicyUrl, FORGOT_PATH);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -87,6 +90,19 @@ export default function SignIn() {
           <Text variant="small" style={styles.center}>
             Forgot your password? Ask your school office to reset it.
           </Text>
+          <Text variant="small" style={styles.center}>
+            Parents: sign in with the login ID the school sent you (not your phone number or email).
+          </Text>
+          {parentUrl ? (
+            <View style={styles.links}>
+              <Pressable accessibilityRole="link" accessibilityLabel="Set up your account, opens in your browser" hitSlop={8} style={styles.link} onPress={() => void Linking.openURL(parentUrl).catch(() => undefined)}>
+                <Text variant="small" color={colors.primaryText} weight="semibold" style={styles.underline}>Set up your account</Text>
+              </Pressable>
+              <Pressable accessibilityRole="link" accessibilityLabel="Forgot ID or password, opens in your browser" hitSlop={8} style={styles.link} onPress={() => void Linking.openURL(parentUrl).catch(() => undefined)}>
+                <Text variant="small" color={colors.primaryText} weight="semibold" style={styles.underline}>Forgot ID or password</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <PrivacyPolicyLink />
         </View>
       </ScrollView>
@@ -103,4 +119,7 @@ const styles = StyleSheet.create({
   logoLetter: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 32, color: colors.primaryText },
   sheet: { flexGrow: 1, backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16, marginTop: -24 },
   center: { textAlign: 'center' },
+  links: { flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap' },
+  link: { minHeight: 44, justifyContent: 'center' },
+  underline: { textDecorationLine: 'underline' },
 });

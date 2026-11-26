@@ -5,7 +5,7 @@ import { Card } from '../src/components/Card';
 import { EmptyState } from '../src/components/EmptyState';
 import { Screen } from '../src/components/Screen';
 
-/** Any account that is neither a Student nor a Teacher (School Admin, Principal, Accountant, ...) lands here. Those roles stay on the web. */
+/** Any account the app has no screens for (Principal, Accountant, Super Admin, ...) lands here. Those roles stay on the web. A Guardian no longer lands here: parents have the family screens. */
 export default function Unsupported() {
   const { signOut, user } = useSession();
   return (
@@ -14,7 +14,7 @@ export default function Unsupported() {
         <EmptyState
           icon="monitor"
           title="This account is not supported in the mobile app yet"
-          message={`${user?.displayName ?? 'This account'} can use the SMSS website instead. The mobile app is for students and teachers.`}
+          message={`${user?.displayName ?? 'This account'} can use the SMSS website instead. The mobile app is for students, teachers, drivers and parents.`}
         />
         <Button title="Sign out" icon="log-out" onPress={signOut} />
       </Card>

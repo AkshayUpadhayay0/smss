@@ -25,8 +25,16 @@ describe('resolveRole', () => {
     expect(resolveRole(['School Admin', 'Driver'])).toBe('DRIVER');
     expect(resolveRole(['School Admin', 'Student'])).toBe('STUDENT');
   });
-  it.each([[['Principal']], [['Accountant']], [['Super Admin']], [['Guardian']], [[]]])('is unsupported for %j', (roles) => {
+  it.each([[['Principal']], [['Accountant']], [['Super Admin']], [[]]])('is unsupported for %j', (roles) => {
     expect(resolveRole(roles)).toBe('UNSUPPORTED');
+  });
+  it('maps a Guardian (a parent) to the family app, case-insensitively, and ranks it below every other supported role', () => {
+    expect(resolveRole(['Guardian'])).toBe('GUARDIAN');
+    expect(resolveRole(['  guardian '])).toBe('GUARDIAN');
+    expect(resolveRole(['Guardian', 'Student'])).toBe('STUDENT');
+    expect(resolveRole(['Guardian', 'Teacher'])).toBe('TEACHER');
+    expect(resolveRole(['Guardian', 'School Admin'])).toBe('SCHOOL_ADMIN');
+    expect(resolveRole(['Guardian', 'Principal'])).toBe('GUARDIAN');
   });
   it('is unsupported for missing roles', () => {
     expect(resolveRole(undefined)).toBe('UNSUPPORTED');
