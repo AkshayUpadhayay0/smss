@@ -21,6 +21,15 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
 
+  // Parent shell: its own minimal navigation, no staff sidebar. Signed-in users only; the roleGuard (ROUTE_ROLES, fail closed) lets only a Guardian in.
+  {
+    path: 'family',
+    canActivate: [authGuard],
+    canActivateChild: [roleGuard],
+    loadComponent: () => import('./features/family/layout/parent-layout.component').then((m) => m.ParentLayoutComponent),
+    loadChildren: () => import('./features/family/family.routes').then((m) => m.FAMILY_ROUTES),
+  },
+
   // Main layout branch: sidebar + topbar. Everything inside requires a signed-in user.
   {
     path: '',

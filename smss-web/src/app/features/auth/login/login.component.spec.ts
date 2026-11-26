@@ -59,6 +59,22 @@ describe('LoginComponent', () => {
     clearSessions();
   });
 
+  it('tells parents to use the login id they received and shows the Forgot ID or password link', () => {
+    create();
+    expect(el().querySelector('[data-note="parent-hint"]')?.textContent).toContain('login ID the school sent you');
+    expect(el().querySelector('[data-note="parent-hint"]')?.textContent).toContain('not your phone number or email');
+    expect(el().querySelector('[data-link="parent-forgot"]')?.getAttribute('href')).toBe('/parent/forgot');
+  });
+
+  it('a parent always lands on the family screen, with no dashboard or setup detour', () => {
+    create();
+    fill('GHS001GD001', 'Sunny-Day-2026');
+    submit();
+    http.expectOne(LOGIN).flush({ status: true, statusCode: 200, message: 'ok', data: makeLoginResponse({ user: makeUser({ schoolId: 'S', roles: ['Guardian'], userType: 'Guardian', orgUserId: 'GHS001GD001' }) }) });
+    expect(navigateByUrl).toHaveBeenCalledWith('/family');
+    expect(navigateByUrl).toHaveBeenCalledTimes(1);
+  });
+
   it('does not call the API with empty fields and shows what is missing', () => {
     create();
     submit();

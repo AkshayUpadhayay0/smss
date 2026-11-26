@@ -13,9 +13,13 @@ const ROLE_SETS: Record<string, string[]> = {
 const INVENTORY_ROUTES = ['/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
 const isInventory = (route: string) => route === '/inventory' || route.startsWith('/inventory/');
 /** Pages added after Inventory, on purpose, by other modules. The frozen golden predates them, so they are set aside here (never added to the golden). */
-const ADDED_AFTER_INVENTORY = ['/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/fee-setup/late-fee', '/fee-reports/late-fee', '/schools/:schoolId/whatsapp'];
+const ADDED_AFTER_INVENTORY = ['/family', '/family/children/:studentId', '/family/notices', '/family/calendar', '/family/account', '/family/account/change-password', '/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/fee-setup/late-fee', '/fee-reports/late-fee', '/schools/:schoolId/whatsapp'];
 /** Top-level menu items that are not part of the frozen golden: Inventory itself and the later flat Promotion item (School Admin and Principal). */
 const AFTER_INVENTORY_ITEMS = ['Inventory', 'Promotion'];
+/** Stage 7a, on purpose: a parent no longer opens the staff Calendar, My Notices and School Profile pages (they have the parent shell: /family/calendar, /family/notices); the frozen golden for the Guardian is read without them. */
+const PARENT_MOVED_ROUTES = ['/calendar', '/notices/my', '/school-profile'];
+const PARENT_MOVED_LABELS = ['Calendar', 'My Notices', 'School Profile', 'School profile'];
+const forGuardian = <T extends { route: string | null; label: string }>(name: string, items: T[]) => (name === ROLES.GUARDIAN ? items.filter((i) => !PARENT_MOVED_ROUTES.includes(i.route ?? '') && !PARENT_MOVED_LABELS.includes(i.label)) : items);
 const shape = (items: ReturnType<typeof visibleNav>) => items.map((i) => ({ label: i.label, route: i.route ?? null, children: i.children?.filter((c) => !ADDED_AFTER_INVENTORY.includes(c.route ?? '')).map((c) => `${c.label}|${c.route}`) ?? null }));
 
 describe('Inventory leaves every other role exactly as it was', () => {
@@ -29,13 +33,13 @@ describe('Inventory leaves every other role exactly as it was', () => {
       const golden = PRE_INVENTORY_GOLDEN[name];
 
       it('sees the same menu, apart from the new Inventory group', () => {
-        expect(shape(visibleNav(roles, true).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)))).toEqual(golden.menu);
-        expect(visibleNav(roles, false).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)).map((i) => i.label)).toEqual(golden.menuNoEmployeeRecord);
+        expect(shape(visibleNav(roles, true).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)))).toEqual(forGuardian(name, golden.menu as { route: string | null; label: string }[]));
+        expect(visibleNav(roles, false).filter((i) => !AFTER_INVENTORY_ITEMS.includes(i.label)).map((i) => i.label)).toEqual(name === ROLES.GUARDIAN ? golden.menuNoEmployeeRecord.filter((l: string) => !PARENT_MOVED_LABELS.includes(l)) : golden.menuNoEmployeeRecord);
       });
 
       it('can open exactly the same routes, apart from the /inventory ones', () => {
         const now = Object.keys(ROUTE_ROLES).filter((p) => !isInventory(p) && !ADDED_AFTER_INVENTORY.includes(p) && canAccess(p, roles)).sort();
-        expect(now).toEqual(golden.routes);
+        expect(now).toEqual(name === ROLES.GUARDIAN ? golden.routes.filter((r: string) => !PARENT_MOVED_ROUTES.includes(r)) : golden.routes);
       });
 
       it('gets Inventory only if it is School Admin, Principal (read-only) or Store Keeper', () => {
@@ -94,7 +98,7 @@ describe('Inventory access by role', () => {
   it('adding the Store Keeper to Calendar, My Notices, My Leave and My Profile changed nobody else: each page is open to exactly the roles the golden snapshot says', () => {
     const sharedPages = ['/calendar', '/notices/my', '/leave/my', '/my-profile'];
     for (const route of sharedPages) {
-      const before = Object.entries(PRE_INVENTORY_GOLDEN).filter(([, g]) => g.routes.includes(route)).map(([name]) => name).sort();
+      const before = Object.entries(PRE_INVENTORY_GOLDEN).filter(([, g]) => g.routes.includes(route)).map(([name]) => name).filter((name) => !(name === ROLES.GUARDIAN && PARENT_MOVED_ROUTES.includes(route))).sort();
       const now = Object.entries(ROLE_SETS).filter(([, roles]) => canAccess(route, roles)).map(([name]) => name).sort();
       expect([route, now]).toEqual([route, before]);
       expect([route, canAccess(route, [ROLES.STORE_KEEPER])]).toEqual([route, true]);

@@ -46,6 +46,8 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
 export class DashboardPageComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  // a Guardian has no dashboard here: the family screen is their home
+  private readonly toFamily = effect(() => { const roles = this.auth.currentUserRoles(); if (roles.includes(ROLES.GUARDIAN) && !roles.includes(ROLES.STUDENT)) void this.router.navigateByUrl('/family'); });
 
   // route `data`, bound to inputs (withComponentInputBinding), passed straight on to the placeholder
   readonly title = input('Dashboard');

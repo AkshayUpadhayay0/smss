@@ -56,8 +56,8 @@ describe('route-roles', () => {
 
   describe('school profile', () => {
     it('/school-profile: every role of a school may open it; the Super Admin (no school) and a custom role may not. /schools/:id/profile is Super Admin only', () => {
-      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF]) expect(canAccess('/school-profile', [role])).toBe(true);
-      for (const role of [ROLES.SUPER_ADMIN, 'Test Role']) expect(canAccess('/school-profile', [role])).toBe(false);
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ADMISSION_STAFF]) expect(canAccess('/school-profile', [role])).toBe(true);
+      for (const role of [ROLES.SUPER_ADMIN, ROLES.GUARDIAN, 'Test Role']) expect(canAccess('/school-profile', [role])).toBe(false);
       expect(canAccess('/schools/sch1/profile', [ROLES.SUPER_ADMIN])).toBe(true);
       expect(canAccess('/schools/sch1/profile', [ROLES.SCHOOL_ADMIN])).toBe(false);
     });
@@ -65,8 +65,9 @@ describe('route-roles', () => {
 
   describe('calendar', () => {
     it('/calendar: every role of a school may open it; a Super Admin (no school) and a custom role may not', () => {
-      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN]) expect(canAccess('/calendar', [role])).toBe(true);
-      for (const role of [ROLES.SUPER_ADMIN, 'Test Role']) expect(canAccess('/calendar', [role])).toBe(false);
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT]) expect(canAccess('/calendar', [role])).toBe(true);
+      // a parent has their own calendar in the parent shell (/family/calendar)
+      for (const role of [ROLES.SUPER_ADMIN, ROLES.GUARDIAN, 'Test Role']) expect(canAccess('/calendar', [role])).toBe(false);
     });
   });
 
@@ -106,8 +107,9 @@ describe('route-roles', () => {
     it('/notices: School Admin and Principal only; /notices/my: every school role, but not the Super Admin', () => {
       for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL]) expect(canAccess('/notices', [role])).toBe(true);
       for (const role of [ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF, ROLES.SUPER_ADMIN]) expect(canAccess('/notices', [role])).toBe(false);
-      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF]) expect(canAccess('/notices/my', [role])).toBe(true);
+      for (const role of [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ADMISSION_STAFF]) expect(canAccess('/notices/my', [role])).toBe(true);
       expect(canAccess('/notices/my', [ROLES.SUPER_ADMIN])).toBe(false);
+      expect(canAccess('/notices/my', [ROLES.GUARDIAN])).toBe(false);   // a parent reads notices in the parent shell (/family/notices)
     });
 
     it('/homework: Teacher and School Admin; /homework/my: Student only. Principal, Accountant, Guardian and Super Admin get neither', () => {
@@ -163,7 +165,7 @@ describe('route-roles', () => {
     const SCHOOL = [ROLES.SCHOOL_ADMIN];
 
     it('Super Admin reaches everything that is listed except school-side pages', () => {
-      const schoolSide = ['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers', '/school-profile', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/fee-setup/late-fee', '/fee-reports/late-fee', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/academic-setup', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/notifications', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/tax-types', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/fee-reports/concessions-given', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my', '/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
+      const schoolSide = ['/transport/live', '/transport/areas', '/transport/vehicles', '/transport/drivers', '/school-profile', '/family', '/family/children/:studentId', '/family/notices', '/family/calendar', '/family/account', '/family/account/change-password', '/students', '/students/:studentId', '/students/onboard-existing', '/students/import', '/my-students', '/my-students/:studentId', '/my-profile', '/my-student-profile', '/my-fees', '/my-report-cards', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/fee-setup/late-fee', '/fee-reports/late-fee', '/admissions', '/admissions/new', '/admissions/:admissionId', '/school-setup/import-masters', '/school-setup/academic-year', '/school-setup/academic-setup', '/school-setup/classes', '/school-setup/sections', '/school-setup/subjects', '/school-setup/document-types', '/school-setup/id-card', '/school-setup/notifications', '/school-setup/class-subjects', '/school-setup/employee-designations', '/school-setup/employee-departments', '/fee-setup/fee-types', '/fee-setup/fee-structures', '/fee-setup/fee-concessions', '/fee-setup/tax-types', '/fee-setup/fee-structures/new', '/fee-setup/fee-structures/:feeStructureId/edit', '/fee-dashboard', '/fee-status', '/fee-reports/class', '/fee-reports/concessions-given', '/employees', '/employees/new', '/employees/:employeeId', '/employees/:employeeId/edit', '/attendance/mark', '/attendance/report', '/examinations/grade-scales', '/examinations/schemes', '/examinations/schemes/new', '/examinations/schemes/blank', '/examinations/schemes/:schemeId', '/examinations/report-card-settings', '/examinations/activity-areas', '/examinations/schedule', '/examinations/marks', '/examinations/class-report', '/examinations/results', '/calendar', '/school-setup/periods', '/timetable', '/timetable/my', '/leave/my', '/leave/mine', '/leave/requests', '/leave/students', '/homework', '/homework/my', '/notices', '/notices/my', '/admissions/:admissionId/edit', '/assessments', '/assessments/my', '/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
       for (const url of Object.keys(ROUTE_ROLES).map((p) => p.replace(':schoolId', 'sch1'))) {
         expect([url, canAccess(url, SUPER)]).toEqual([url, !schoolSide.includes(url)]);
       }
@@ -214,9 +216,13 @@ describe('route-roles', () => {
         }
         return found;
       };
-      const main = routes.find((r) => r.canActivateChild?.length);
+      const guarded = routes.filter((r) => r.canActivateChild?.length);
+      const main = guarded.find((r) => r.path === '');
       expect(main, 'main layout route with the role guard').toBeDefined();
-      return walk(main!.children!, '');
+      const family = guarded.find((r) => r.path === 'family');
+      expect(family, 'the parent shell route with the role guard').toBeDefined();
+      const familyPages = await walk(((await family!.loadChildren!()) as Route[]), 'family');
+      return [...(await walk(main!.children!, '')), ...familyPages.map((p) => p.replace(/^\/family$/, '/family'))];
     }
 
     it('every page behind the main layout has a ROUTE_ROLES entry (nothing silently blocked)', async () => {
@@ -254,5 +260,26 @@ describe('route-roles: Transport', () => {
 
   it('a Driver login can open no staff screen at all (fail closed: the role is listed nowhere)', () => {
     expect(Object.entries(ROUTE_ROLES).filter(([, access]) => Array.isArray(access) && access.includes(ROLES.DRIVER))).toEqual([]);
+  });
+});
+
+describe('route-roles: the parent shell (/family)', () => {
+  const FAMILY = ['/family', '/family/children/:studentId', '/family/notices', '/family/calendar', '/family/account', '/family/account/change-password'];
+  const STAFF_AND_OTHERS = [ROLES.SUPER_ADMIN, ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER, ROLES.STUDENT, ROLES.DRIVER, 'Test Role'];
+
+  it('only a Guardian opens the parent pages; a Student, every staff role, a Driver and a custom role are denied', () => {
+    for (const url of FAMILY) {
+      expect([url, canAccess(url, [ROLES.GUARDIAN])]).toEqual([url, true]);
+      for (const role of STAFF_AND_OTHERS) expect([url, role, canAccess(url, [role])]).toEqual([url, role, false]);
+    }
+    expect(canAccess('/family/children/GHS001ST001', [ROLES.GUARDIAN])).toBe(true);
+    expect(canAccess('/family/children/GHS001ST001/anything', [ROLES.GUARDIAN])).toBe(false);   // an unlisted parent URL fails closed
+    expect(canAccess('/family/unknown', [ROLES.GUARDIAN])).toBe(false);
+  });
+
+  it('a Guardian opens NO staff route: every entry outside /family that is not open to everyone excludes the Guardian role', () => {
+    const staff = Object.entries(ROUTE_ROLES).filter(([url, access]) => !url.startsWith('/family') && access !== AUTHENTICATED);
+    expect(staff.length).toBeGreaterThan(50);
+    for (const [url] of staff) expect([url, canAccess(url.replace(':schoolId', 's1'), [ROLES.GUARDIAN])]).toEqual([url, false]);
   });
 });

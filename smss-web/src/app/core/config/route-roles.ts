@@ -35,11 +35,19 @@ export type RouteAccess = readonly string[] | typeof AUTHENTICATED;
  */
 export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/dashboard': AUTHENTICATED,
+
+  // The parent's screens (the parent shell, mounted at /family): ONLY a Guardian login. A Student or a staff login that opens them is denied (fail closed), and the Guardian role appears in NO staff route below.
+  '/family': [ROLES.GUARDIAN],
+  '/family/children/:studentId': [ROLES.GUARDIAN],
+  '/family/notices': [ROLES.GUARDIAN],
+  '/family/calendar': [ROLES.GUARDIAN],
+  '/family/account': [ROLES.GUARDIAN],
+  '/family/account/change-password': [ROLES.GUARDIAN],
   '/change-password': AUTHENTICATED,
 
   // School-side page: the API resolves the school from the token (400 for accounts without one, e.g. Super Admin).
   // Every school role may OPEN it (the API hands non-admins a limited, read-only profile); only the School Admin sees Edit (the API enforces it too).
-  '/school-profile': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF],
+  '/school-profile': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ADMISSION_STAFF],
   '/students': [ROLES.SCHOOL_ADMIN],
   '/students/onboard-existing': [ROLES.SCHOOL_ADMIN],
   '/students/import': [ROLES.SCHOOL_ADMIN],
@@ -85,7 +93,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/fee-setup/fee-structures/new': [ROLES.SCHOOL_ADMIN],
   '/fee-setup/fee-structures/:feeStructureId/edit': [ROLES.SCHOOL_ADMIN],
   // Calendar: every role of a school reads it (the page only shows Add / Edit / Delete to School Admin and Principal; the API re-checks)
-  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
+  '/calendar': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
   // Attendance: the class teacher marks it (the API re-checks they are THAT section's teacher); a School Admin may also
   '/attendance/mark': [ROLES.TEACHER, ROLES.SCHOOL_ADMIN],
   // Monthly attendance report: School Admin and Principal (read-only) for any section; a Teacher gets it for the section they are class teacher of (the API enforces which)
@@ -100,7 +108,7 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   '/assessments/my': [ROLES.STUDENT],
   // Notices: the School Admin and Principal publish / edit / delete them; EVERY school role reads the ones addressed to it (the API decides which).
   '/notices': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
-  '/notices/my': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.GUARDIAN, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
+  '/notices/my': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ADMISSION_STAFF, ROLES.STORE_KEEPER],
   // Leave: any staff member with a login applies for their own leave; the School Admin and Principal decide staff leave; the class teacher
   // (or a School Admin) records and decides student leave. The API re-checks every action (e.g. WHICH class teacher).
   '/leave/my': [ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.SCHOOL_ADMIN, ROLES.STORE_KEEPER],

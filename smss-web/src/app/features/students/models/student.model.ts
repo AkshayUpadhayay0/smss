@@ -1,4 +1,5 @@
 import { ParentDelivery } from '../../parent-account/models/parent-account.model';
+import { PaymentLateFee } from './fee-payment.model';
 // Mirrors StudentListItemDto / StudentProfileDto / GuardianSummaryDto.
 // studentId is the business id string (e.g. DPS001ST001), never a number.
 
@@ -266,6 +267,10 @@ export interface MyFeePayment {
   totalAmount?: number;
   receiptNumber: string;
   paymentMode: string;
+  /** The payment id (so its receipt can be opened). */
+  paymentId?: number;
+  /** The late fee charged with this payment (only an APPLIED one ever reaches a student or a parent). */
+  lateFee?: PaymentLateFee | null;
 }
 
 export interface StudentMyFees {

@@ -107,7 +107,7 @@ describe('DashboardPageComponent', () => {
     http.verify();
   });
 
-  it.each([['Guardian']])('leaves %s on the existing placeholder and calls nothing', (role) => {
+  it.each([['Test Role']])('leaves a custom role (%s) on the existing placeholder and calls nothing (a Guardian is sent to /family instead)', (role) => {
     const { fixture, http } = open([role]);
     expect(fixture.nativeElement.querySelector('app-placeholder-page')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-student-dashboard')).toBeNull();
@@ -133,7 +133,7 @@ describe('DashboardPageComponent', () => {
     });
 
     it.each([
-      ['Student'], ['Super Admin'], ['Teacher'], ['School Admin'], ['Principal'], ['Accountant'], ['Admission Staff'], ['Guardian'],
+      ['Student'], ['Super Admin'], ['Teacher'], ['School Admin'], ['Principal'], ['Accountant'], ['Admission Staff'],
     ])('%s still lands exactly where it did: no redirect to /inventory', (role) => {
       clearSessions();
       seedSession({ user: makeUser({ schoolId: 'S', roles: [role] }) });
@@ -142,6 +142,17 @@ describe('DashboardPageComponent', () => {
       const fixture = TestBed.createComponent(DashboardPageComponent);
       fixture.detectChanges();
       expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('a Guardian has no dashboard: they are sent to the family screen (and never to /inventory)', () => {
+      clearSessions();
+      seedSession({ user: makeUser({ schoolId: 'S', roles: ['Guardian'] }) });
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+      const navigate = spyNavigate();
+      const fixture = TestBed.createComponent(DashboardPageComponent);
+      fixture.detectChanges();
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate.mock.calls[0][0]).toBe('/family');
     });
 
     it('an account that is a Store Keeper AND holds another dashboard role keeps the other role dashboard', () => {

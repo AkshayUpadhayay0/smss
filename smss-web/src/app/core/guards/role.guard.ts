@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateChildFn, Router } from '@angular/router';
-import { canAccess } from '../config/route-roles';
+import { ROLES, canAccess } from '../config/route-roles';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
 
@@ -11,6 +11,7 @@ import { ToastService } from '../services/toast.service';
  * Fails closed: a URL with no ROUTE_ROLES entry is denied.
  * Also holds a first-login user (isFirstLogin) on /change-password until they have set their own password.
  */
+const isFamilyUrl = (url: string) => /^\/family(?:[?#/]|$)/.test(url);
 const isChangePasswordUrl = (url: string) => /^\/change-password(?:[?#/]|$)/.test(url);
 
 export const roleGuard: CanActivateChildFn = (_route, state) => {
@@ -26,7 +27,11 @@ export const roleGuard: CanActivateChildFn = (_route, state) => {
   if (auth.user()?.isFirstLogin && !isChangePasswordUrl(state.url)) {
     return router.createUrlTree(['/change-password']);
   }
+  // A parent (Guardian) only ever lives in the parent shell: any other URL (a staff page, /dashboard, a typo) lands on /family. /change-password is the one shared page and is not reached by a parent (they use /family/account/change-password).
+  const parent = auth.currentUserRoles().includes(ROLES.GUARDIAN) && !auth.currentUserRoles().includes(ROLES.STUDENT);
+  if (parent && !isFamilyUrl(state.url)) return router.createUrlTree(['/family']);
   if (canAccess(state.url, auth.currentUserRoles())) return true;
+  if (parent) return router.createUrlTree(['/family']);
 
   toast.danger("You don't have permission to view that page.", 'Access denied');
   return router.createUrlTree(['/dashboard']);

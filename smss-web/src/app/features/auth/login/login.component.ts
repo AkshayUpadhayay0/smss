@@ -62,6 +62,8 @@ export class LoginComponent {
             void this.router.navigateByUrl('/change-password');
             return;
           }
+          // A parent always lands on the family screen, even with one child
+          if (user.roles.includes('Guardian') && !user.roles.includes('Student')) { void this.router.navigateByUrl('/family'); return; }
           // A School Admin whose school setup is unfinished is routed to the next setup step instead
           this.onboarding.landingFor(safeReturnUrl(this.returnUrl()) ?? '/dashboard').subscribe((target) => void this.router.navigateByUrl(target));
         },
