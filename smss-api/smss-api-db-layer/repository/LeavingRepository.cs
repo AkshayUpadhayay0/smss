@@ -80,7 +80,8 @@ SELECT btrim(concat_ws(' ', s.first_name, s.middle_name, s.last_name)) AS ""Stud
        (y.closed_at IS NOT NULL) AS ""YearClosed"", e.outcome AS ""Outcome"", e.leaving_date AS ""LeavingDate"",
        (SELECT count(*)::int FROM public.tb_student_enrollments n JOIN public.tb_academic_years ny ON ny.academic_year_id = n.academic_year_id AND ny.school_id = @school
          WHERE n.school_id = @school AND n.student_id = s.student_id AND n.enrollment_id <> e.enrollment_id AND (ny.start_date > y.start_date OR (ny.start_date = y.start_date AND n.enrollment_id > e.enrollment_id))) AS ""LaterEnrolments"",
-       (e.leaving_date IS NULL) AS ""FromPromotion"", 0 AS ""Certificates""
+       (e.leaving_date IS NULL) AS ""FromPromotion"",
+       (SELECT count(*)::int FROM public.tb_transfer_certificates tc WHERE tc.school_id = @school AND tc.enrollment_id = e.enrollment_id AND tc.status = 'ISSUED') AS ""Certificates""
   FROM public.tb_students s
   JOIN public.tb_student_enrollments e ON e.student_id = s.student_id AND e.school_id = @school
   JOIN public.tb_academic_years y ON y.academic_year_id = e.academic_year_id AND y.school_id = @school

@@ -13,9 +13,9 @@ const ROLE_SETS: Record<string, string[]> = {
 const INVENTORY_ROUTES = ['/inventory', '/inventory/items', '/inventory/add-stock', '/inventory/adjustments', '/inventory/issues', '/inventory/suppliers', '/inventory/guide'];
 const isInventory = (route: string) => route === '/inventory' || route.startsWith('/inventory/');
 /** Pages added after Inventory, on purpose, by other modules. The frozen golden predates them, so they are set aside here (never added to the golden). */
-const ADDED_AFTER_INVENTORY = ['/family', '/family/children/:studentId', '/family/notices', '/family/calendar', '/family/account', '/family/account/change-password', '/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/fee-setup/late-fee', '/fee-reports/late-fee', '/schools/:schoolId/whatsapp'];
+const ADDED_AFTER_INVENTORY = ['/family', '/family/children/:studentId', '/family/notices', '/family/calendar', '/family/account', '/family/account/change-password', '/school-setup/notifications', '/school-setup/academic-setup', '/student-documents', '/parent-details', '/duplicate-parents', '/promotion', '/promotion/pending', '/transfer-certificates', '/fee-setup/late-fee', '/fee-reports/late-fee', '/schools/:schoolId/whatsapp'];
 /** Top-level menu items that are not part of the frozen golden: Inventory itself and the later flat Promotion item (School Admin and Principal). */
-const AFTER_INVENTORY_ITEMS = ['Inventory', 'Promotion'];
+const AFTER_INVENTORY_ITEMS = ['Inventory', 'Promotion', 'Transfer Certificates'];
 /** Stage 7a, on purpose: a parent no longer opens the staff Calendar, My Notices and School Profile pages (they have the parent shell: /family/calendar, /family/notices); the frozen golden for the Guardian is read without them. */
 const PARENT_MOVED_ROUTES = ['/calendar', '/notices/my', '/school-profile'];
 const PARENT_MOVED_LABELS = ['Calendar', 'My Notices', 'School Profile', 'School profile'];

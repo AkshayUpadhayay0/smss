@@ -63,6 +63,8 @@ export const ROUTE_ROLES: Readonly<Record<string, RouteAccess>> = {
   // Promotion of students into a later year (preview; the run comes next): School Admin and Principal only (the API re-checks).
   '/promotion': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   '/promotion/pending': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
+  // Transfer certificates (Stage 8b): School Admin and Principal issue, download, duplicate and void (the API re-checks).
+  '/transfer-certificates': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   // Parent records that share a mobile number, and the merge: School Admin and Principal only (the API re-checks).
   '/duplicate-parents': [ROLES.SCHOOL_ADMIN, ROLES.PRINCIPAL],
   // Admission applications: School Admin, Principal and Admission Staff add, edit, confirm and reject them (the API re-checks).
