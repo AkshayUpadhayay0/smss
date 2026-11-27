@@ -186,6 +186,16 @@ namespace smss_api_db_layer.repository
             return rows.Select(r => new ReportRosterRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, DateOnly.FromDateTime(r.EnrollmentDate), r.EnrollmentStatus, r.StudentStatus)).ToList();
         }
 
+        public async Task<List<MonthMarkRow>> GetMarksInOtherSectionsAsync(string schoolId, long academicYearId, long sectionId, IReadOnlyCollection<string> studentIds, DateOnly fromDate, DateOnly toDate, CancellationToken ct)
+        {
+            if (studentIds.Count == 0) return new List<MonthMarkRow>();
+            var ids = studentIds.ToList();
+            return await (from a in _db.StudentAttendance.AsNoTracking()
+                          where a.SchoolId == schoolId && a.AcademicYearId == academicYearId && a.SectionId != sectionId && ids.Contains(a.StudentId) && a.AttendanceDate >= fromDate && a.AttendanceDate <= toDate
+                          join st in _db.LutAttendanceStatuses.AsNoTracking() on a.AttendanceStatusId equals st.AttendanceStatusId
+                          select new MonthMarkRow(a.StudentId, a.AttendanceDate, st.StatusCode)).ToListAsync(ct);
+        }
+
         private sealed class SecChangeRow { public string StudentId { get; set; } = null!; public long FromSectionId { get; set; } public long ToSectionId { get; set; } public DateOnly EffectiveDate { get; set; } }
 
         public async Task<List<ReportRosterRow>> GetMonthlyReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct)

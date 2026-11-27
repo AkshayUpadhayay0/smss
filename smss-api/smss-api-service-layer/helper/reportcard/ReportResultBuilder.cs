@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Extensions.Logging;
 using smss_api_db_layer.entity;
 using smss_api_db_layer.@interface;
@@ -160,10 +160,11 @@ namespace smss_api_service_layer.helper.reportcard
                 var from = terms.Min(t => t.StartDate); var to = terms.Max(t => t.EndDate);
                 var roster = await _attendance.GetReportRosterAsync(schoolId, sch.AcademicYearId, section.SectionId, ct);
                 var attMarks = await _attendance.GetMonthMarksAsync(schoolId, section.SectionId, from, to, ct);
+                var elsewhere = await _attendance.GetMarksInOtherSectionsAsync(schoolId, sch.AcademicYearId, section.SectionId, roster.Select(r => r.StudentId).ToList(), from, to, ct);   // days marked before a mid-term section change
                 var holidays = await _attendance.GetHolidaysAsync(schoolId, from, to, activeId, ct);
                 foreach (var t in terms)
                 {
-                    var a = TermAttendanceRules.Compute(t.StartDate, t.EndDate, today, year.StartDate, year.EndDate, holidays, roster, attMarks, activeId);
+                    var a = TermAttendanceRules.Compute(t.StartDate, t.EndDate, today, year.StartDate, year.EndDate, holidays, roster, attMarks, activeId, elsewhere);
                     attendance[t.TermId] = (a, new());
                     unmarked.AddRange(a.UnmarkedDates);
                 }

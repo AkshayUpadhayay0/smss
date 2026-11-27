@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Storage;
+﻿using Microsoft.EntityFrameworkCore.Storage;
 using smss_api_db_layer.entity;
 
 namespace smss_api_db_layer.@interface
@@ -72,6 +72,11 @@ namespace smss_api_db_layer.@interface
         /// The roster of the MONTHLY attendance report: the students enrolled in the section AND the students who have attendance rows in it for the year but have since moved to another section (the rows store
         /// their own class and section). A student who moved sections carries the stretches they were in this section.
         /// </summary>
+        /// <summary>
+        /// The marks of these students in the date range that were made in ANOTHER section of the year (the rows store their own section): a student who moved sections keeps the days they were marked before the move.
+        /// Used by the report card's term attendance, which counts a student's days wherever they were marked.
+        /// </summary>
+        Task<List<MonthMarkRow>> GetMarksInOtherSectionsAsync(string schoolId, long academicYearId, long sectionId, IReadOnlyCollection<string> studentIds, DateOnly fromDate, DateOnly toDate, CancellationToken ct);
         Task<List<ReportRosterRow>> GetMonthlyReportRosterAsync(string schoolId, long academicYearId, long sectionId, CancellationToken ct);
         /// <summary>The section's marks between two dates, one row per mark.</summary>
         Task<List<MonthMarkRow>> GetMonthMarksAsync(string schoolId, long sectionId, DateOnly from, DateOnly to, CancellationToken ct);

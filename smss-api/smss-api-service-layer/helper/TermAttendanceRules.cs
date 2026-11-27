@@ -1,4 +1,4 @@
-using smss_api_db_layer.@interface;
+﻿using smss_api_db_layer.@interface;
 
 namespace smss_api_service_layer.helper
 {
@@ -21,9 +21,11 @@ namespace smss_api_service_layer.helper
     public static class TermAttendanceRules
     {
         public static TermAttendanceResult Compute(DateOnly from, DateOnly to, DateOnly today, DateOnly yearStart, DateOnly yearEnd, IReadOnlyList<HolidayRow> holidays,
-            IReadOnlyList<ReportRosterRow> roster, IReadOnlyList<MonthMarkRow> marks, int activeStatusId)
+            IReadOnlyList<ReportRosterRow> roster, IReadOnlyList<MonthMarkRow> marks, int activeStatusId, IReadOnlyList<MonthMarkRow>? otherSectionMarks = null)
         {
-            var byStudent = marks.Where(m => m.Date >= from && m.Date <= to).GroupBy(m => m.StudentId).ToDictionary(g => g.Key, g => g.GroupBy(m => m.Date).ToDictionary(x => x.Key, x => x.First().StatusCode));
+            // a student's own days: the marks made in this section first, then (for a student who moved sections during the term) the marks made in their other section(s); one mark per day, never counted twice
+            var own = marks.Concat(otherSectionMarks ?? Array.Empty<MonthMarkRow>()).Where(m => m.Date >= from && m.Date <= to);
+            var byStudent = own.GroupBy(m => m.StudentId).ToDictionary(g => g.Key, g => g.GroupBy(m => m.Date).ToDictionary(x => x.Key, x => x.First().StatusCode));
             var markedPerDay = marks.Where(m => m.Date >= from && m.Date <= to).GroupBy(m => m.Date).ToDictionary(g => g.Key, g => g.Select(m => m.StudentId).Distinct().Count());
             var days = new List<DayClass>();
             for (var d = from; d <= to; d = d.AddDays(1)) days.Add(AttendanceDayRules.Classify(d, yearStart, yearEnd, holidays));
@@ -32,13 +34,13 @@ namespace smss_api_service_layer.helper
             foreach (var r in roster)
             {
                 var active = r.EnrollmentStatusId == activeStatusId && r.StudentStatusId == activeStatusId;
-                var own = byStudent.GetValueOrDefault(r.StudentId);
-                if (!(active && r.EnrollmentDate <= to) && own == null) continue;
+                var mine = byStudent.GetValueOrDefault(r.StudentId);
+                if (!(active && r.EnrollmentDate <= to) && mine == null) continue;
                 int present = 0, absent = 0, notMarked = 0;
                 foreach (var day in days)
                 {
                     if (!AttendanceDayRules.CountsForStudent(day, r.EnrollmentDate)) continue;
-                    var code = own != null && own.TryGetValue(day.Date, out var c) ? c : null;
+                    var code = mine != null && mine.TryGetValue(day.Date, out var c) ? c : null;
                     if (code == AttendanceReportBuilder.PresentCode) present++;
                     else if (code == AttendanceReportBuilder.AbsentCode) absent++;
                     else if (day.Date <= today) notMarked++;

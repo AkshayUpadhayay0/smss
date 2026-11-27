@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -412,8 +412,9 @@ namespace smss_api_service_layer.service
                 var from = term.StartDate; var to = term.EndDate;
                 var attRoster = await _attendance.GetReportRosterAsync(schoolId, c.Scheme.AcademicYearId, sectionId, ct);
                 var marks = await _attendance.GetMonthMarksAsync(schoolId, sectionId, from, to, ct);
+                var elsewhere = await _attendance.GetMarksInOtherSectionsAsync(schoolId, c.Scheme.AcademicYearId, sectionId, attRoster.Select(r => r.StudentId).ToList(), from, to, ct);   // days marked before a mid-term section change
                 var holidays = await _attendance.GetHolidaysAsync(schoolId, from, to, c.Active, ct);
-                var calc = TermAttendanceRules.Compute(from, to, today, c.Year.StartDate, c.Year.EndDate, holidays, attRoster, marks, c.Active);   // the Attendance module's own rules, shared with the report card
+                var calc = TermAttendanceRules.Compute(from, to, today, c.Year.StartDate, c.Year.EndDate, holidays, attRoster, marks, c.Active, elsewhere);   // the Attendance module's own rules, shared with the report card
                 dto.WorkingDays = calc.WorkingDays; dto.UnmarkedDates = calc.UnmarkedDates; dto.UnmarkedDays = calc.UnmarkedDates.Count;
                 foreach (var r in attRoster.Where(r => calc.ByStudent.ContainsKey(r.StudentId)))
                 {
