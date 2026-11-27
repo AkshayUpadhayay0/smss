@@ -91,17 +91,17 @@ Merge **in this order**; each PR is opened against `main` (stacked: PR n+1 is ba
 | # | Commits (old hashes) | Scripts it needs |
 |---|---|---|
 | 1 | `57b4534` | none |
-| 2 | `2075f71` .. `8d9ab16` (Stage 1) | smss-yc-1a, smss-yc-1b |
-| 3 | `6e9272a` .. `fa93fab` (Stage 2) | smss-st-2a, 2b, 2c, 2d |
-| 4 | `bbe16d5` .. `470fc0d` (Stage 3) | smss-st-3a, 3d |
-| 5 | `47892fc` .. `44e8495` (Stages 4a, 4b) | smss-st-4b1, 4b4 |
-| 6 | `2f81870` .. `3d5fa85` (Stage 5) | smss-st-5a1 |
-| 7 | `a444df6` .. `74a5c9c` (Stages 6, 7a) | smss-st-6a |
+| 2 | `2075f71` .. `8d9ab16` (Stage 1) | smss-yc-1a, then smss-yc-1b (1a needs the S1 and S2 scripts, already on main) |
+| 3 | `6e9272a` .. `fa93fab` (Stage 2) | smss-st-2a, 2b, 2c, 2d (in this order) |
+| 4 | `bbe16d5` .. `470fc0d` (Stage 3) | smss-st-3a, then 3d (3d stops without 3a); read-only helper smss-st-3-dryrun.sql |
+| 5 | `47892fc` .. `44e8495` (Stages 4a, 4b) | smss-st-4b1, then 4b4 (4b1 needs the enrolment keys of yc-1a); read-only helper smss-st-4a-dryrun.sql |
+| 6 | `2f81870` .. `3d5fa85` (Stage 5) | smss-st-5a1 (needs the tax-types script, already on main) |
+| 7 | `a444df6` .. `74a5c9c` (Stages 6, 7a) | smss-st-6a (needs the guardians table of 3a) |
 | 8 | `0882263`, `0b06ae2` (Stage 7b mobile, deploy docs) | none |
 | 9 | `d8c86c6`, `1649be8`, `9ea0176`, `6e58140`, `1ddcb9f` (Stage 8) | smss-st-8a, 8b, 8b2, 8c |
 | 10 | `49bf361`, `f21ccae`, `c633624`, `6e4ff35`, this plan | none |
 
-(The S1 to S7 academic-year scripts are already on `main`. The full ordered list of the 30 scripts is `Docs/deploy-order.md`.) The old hashes help only to find the subjects; in the rewritten history use `git log --grep`.
+Scripts 1 to 14 of `Docs/deploy-order.md` (fee tax, concession, effective-from, removal log, inventory, push notifications, partner schools, S1 to S7) are already on `main`; the 16 scripts above are numbers 15 to 30 in that file, in the same order as the PRs (checked against `git diff main..24_nov -- Docs/*.sql`: exactly these 16 plus the two read-only dry-run helpers). ( The full ordered list of the 30 scripts is `Docs/deploy-order.md`.) The old hashes help only to find the subjects; in the rewritten history use `git log --grep`.
 
 ### Test baselines (backend passed / web / mobile)
 After PR 6: backend 2551+; PR 7 (6b, 6c, 7a): 2648, web 1748; PR 8: mobile 235; PR 9: backend 2697 (21 old failures, fixed in PR 10), web 1772; PR 10 final: **0 failed / 2726 passed / 19 skipped**, web 1773, mobile 236. Backend tests need the scratch Postgres template, never the real database.
@@ -114,21 +114,21 @@ After PR 6: backend 2551+; PR 7 (6b, 6c, 7a): 2648, web 1748; PR 8: mobile 235; 
 **Title:** Stage 1: year-end foundations
 **Description:** tables and APIs of Stage 1. **Migrations:** `smss-yc-1a-RUN-ME.sql`, `smss-yc-1b-RUN-ME.sql`, before deploy. **Config:** none. **Tests:** the Stage 1 test files in `smss-api-tests`; web specs for the screens. **Rollback:** the scripts only add; old code ignores the new tables and columns, so redeploying the previous build is safe; do not drop.
 
-### PR 3: Stage 2
-**Title:** Stage 2: <fill from the commit subjects of `6e9272a`..`fa93fab`>
-**Description:** **Migrations:** `smss-st-2a`, `2b`, `2c`, `2d` (in that order). **Config:** none new. **Tests:** Stage 2 DB tests (scratch template). **Rollback:** additive only; previous build keeps working.
+### PR 3: Stage 2 (student and guardian details, two-step admission, documents)
+**Title:** Stage 2: optional last name, guardian and school WhatsApp, two-step admission, student documents
+**Description:** 2a makes the last name optional (only the first name is mandatory) and sweeps every place a student's name is built, with tests; 2b adds guardian WhatsApp and email and the school's WhatsApp number and location; 2c splits admission into two steps (Application added, then Confirmed); 2d adds student documents (`required_from` on document types). **Migrations, in order, before deploy:** `smss-st-2a-RUN-ME.sql`, `smss-st-2b-RUN-ME.sql`, `smss-st-2c-RUN-ME.sql`, `smss-st-2d-RUN-ME.sql`. **Config:** none new. **Tests:** the Stage 2 DB tests run on the scratch template plus the web specs of the admission and document screens. **Rollback:** additive scripts; the previous build keeps working against the migrated database, so redeploy it if needed; do not drop the new columns.
 
-### PR 4: Stage 3
-**Title:** Stage 3: <subjects of `bbe16d5`..`470fc0d`>
-**Description:** **Migrations:** `smss-st-3a`, `smss-st-3d`. **Config:** none. **Tests:** Stage 3 tests. **Rollback:** additive; redeploy previous build.
+### PR 4: Stage 3 (guardians)
+**Title:** Stage 3: guardians (shared parents, sibling pick, duplicate merge, school WhatsApp sender status)
+**Description:** 3a guardian schema foundation; 3b guardian edit, "Complete parent details", bulk WhatsApp and dashboard tiles; 3c sibling pick and guardian reuse; 3d duplicate-parent report and merge, with an audit trail; 3e school WhatsApp sender status. **Migrations, in order, before deploy:** `smss-st-3a-RUN-ME.sql`, then `smss-st-3d-RUN-ME.sql` (it stops with a message if 3a is missing). Optional read-only check beforehand: `smss-st-3-dryrun.sql` (changes nothing). **Config:** none new. **Tests:** Stage 3 DB tests (scratch template) and web specs. **Rollback:** additive; the previous build ignores the new tables. A merge of duplicate parents is recorded in the audit table, so it can be undone by hand from there; take the pg_dump first.
 
 ### PR 5: Stages 4a and 4b (promotion)
 **Title:** Stage 4: student promotion and year change
 **Description:** **Migrations:** `smss-st-4b1`, `smss-st-4b4`. 4b4 changes data rules for enrolments: take the backup and read the violators output before running. **Config:** none. **Tests:** promotion tests (the source-scan test lists the code paths allowed to write enrolments). **Rollback:** restore from the pre-migration dump if a promotion was run; otherwise additive.
 
-### PR 6: Stage 5
-**Title:** Stage 5: <subjects of `2f81870`..`3d5fa85`>
-**Description:** **Migration:** `smss-st-5a1`. **Config:** none. **Tests:** Stage 5 tests (report card designs, demo seed stays unpublished). **Rollback:** additive.
+### PR 6: Stage 5 (late fee)
+**Title:** Stage 5: late fee (rule, calculation, recorded at payment, reporting)
+**Description:** 5a-1 late-fee schema, rule and fee-type flag screen (nothing is charged yet); 5a-2 late-fee arithmetic and a read-only preview on the payment screen; 5b records the late fee at payment; 5c late-fee reporting (API and web). **Migration, before deploy:** `smss-st-5a1-RUN-ME.sql` (needs the tax-types script, already on `main`). **Config:** none new. **Tests:** late-fee arithmetic and payment tests (scratch template) and web specs. **Rollback:** the script is additive and a fee type only charges late fees when its flag is switched on, so turning the flags off stops all late fees; late fees already recorded on payments stay (they are part of the receipts). Redeploying the previous build is safe.
 
 ### PR 7: Stages 6 and 7a (fees, parent accounts, WhatsApp)
 **Title:** Stages 6 and 7a: <fee reminders, parent accounts, WhatsApp>
