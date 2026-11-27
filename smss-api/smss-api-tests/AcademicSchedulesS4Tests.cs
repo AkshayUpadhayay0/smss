@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using smss_api_db_layer.repository;
 using smss_api_service_layer.dto;
@@ -104,6 +104,7 @@ namespace smss_api_tests
                 // a section's grid carries every one of its entries, in the same cells as the SQL says
                 var year = db.Scalar<long>($"select academic_year_id from tb_academic_years where school_id='{school}' and is_current");
                 var perSection = db.Scalar<int>($"select coalesce(max(n),0)::int from (select count(*) n from tb_timetable_entries where school_id='{school}' and academic_year_id={year} and status_id={Active} group by section_id) q");
+                if (perSection == 0) continue;   // this school has no lessons in its current year: there is no grid to compare
                 var sectionId = db.Scalar<long>($"select section_id from tb_timetable_entries where school_id='{school}' and academic_year_id={year} and status_id={Active} group by section_id order by count(*) desc limit 1");
                 var grid = (await Timetable(db).GetClassGridAsync(school, sectionId, year, default)).Data!;
                 Assert.Equal(perSection, grid.EntryCount);

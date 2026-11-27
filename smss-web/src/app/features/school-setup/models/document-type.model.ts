@@ -11,6 +11,8 @@ export interface DocumentType {
   documentCode: string;
   appliesTo: AppliesTo;
   isRequired: boolean;
+  /** The day the type became required (set by the server when it is switched on); the requirement applies to students admitted on or after it. Null while not required. */
+  requiredFrom?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +33,8 @@ export interface DocumentTypeRow extends Record<string, unknown> {
   documentCode: string;
   appliesToLabel: string;
   requiredLabel: string;
+  /** "26 Nov 2026", or "-" while the type is not required. */
+  requiredFromLabel: string;
   statusName: string;
   isActive: boolean;
 }

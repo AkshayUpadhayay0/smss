@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using smss_api_db_layer.context;
@@ -60,6 +60,8 @@ namespace smss_api_tests
                 cmd.ExecuteNonQuery();
             }
             Conn = new NpgsqlConnectionStringBuilder(Server!) { Database = _name, MaxPoolSize = 30 }.ConnectionString;
+            // The template is a copy of a development database that has been used: the reminder log may already hold rows from earlier runs. The log tests count its rows and the reminder job visits every school with reminders switched on, so every test database starts with an empty log and no reminder settings (each test switches on what it needs).
+            using (var c = new NpgsqlConnection(Conn)) { c.Open(); using var cmd = new NpgsqlCommand("TRUNCATE TABLE public.tb_push_notification_log; DELETE FROM public.tb_school_notification_settings", c); cmd.ExecuteNonQuery(); }
         }
 
         public void Dispose()

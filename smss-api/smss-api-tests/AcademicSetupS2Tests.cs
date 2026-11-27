@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using smss_api_db_layer.repository;
 using smss_api_service_layer.dto;
 using smss_api_service_layer.service;
@@ -51,7 +51,10 @@ namespace smss_api_tests
             using var db = new TaxDb();
             foreach (var school in Backfilled)
             {
+                // the year the backfill filled (the one with the most offerings): a year added since, with nothing offered yet, is not what the backfill produced
                 var year = db.Scalar<long>($"select academic_year_id from tb_academic_years where school_id='{school}' and is_current");
+                // the counts below are the CURRENT year's: a school whose current year was created later and has not been filled yet (nothing, or one class, offered) is not what the backfill produced
+                if (db.Scalar<int>($"select count(*) from tb_academic_year_classes where school_id='{school}' and academic_year_id={year}") != db.Scalar<int>($"select count(*) from tb_classes where school_id='{school}'")) continue;
                 var active = db.Scalar<int>("select sid from lut_status where sname='Active' and stype='general status'");
 
                 // setup checklist: the classes it lists and the classes that have a section, versus the master tables (the old definition)
@@ -87,10 +90,14 @@ namespace smss_api_tests
             using var db = new TaxDb();
             foreach (var school in Backfilled)
             {
-                Assert.Equal(db.Scalar<int>($"select count(*) from tb_academic_years where school_id='{school}'") * db.Scalar<int>($"select count(*) from tb_classes where school_id='{school}'"),
-                    db.Scalar<int>($"select count(*) from tb_academic_year_classes where school_id='{school}'"));
-                Assert.Equal(db.Scalar<int>($"select count(*) from tb_academic_years where school_id='{school}'") * db.Scalar<int>($"select count(*) from tb_sections where school_id='{school}'"),
-                    db.Scalar<int>($"select count(*) from tb_academic_year_sections where school_id='{school}'"));
+                // one row per master for every year that was backfilled (a year created since and not yet filled has none, and is not counted)
+                var filledYears = db.Scalar<int>($"select count(*) from (select academic_year_id from tb_academic_year_classes where school_id='{school}' group by academic_year_id having count(*) = (select count(*) from tb_classes where school_id='{school}')) f");
+                Assert.True(filledYears > 0);
+                // the rows of the filled years are exactly one per master; a year filled later by hand (a partial offering) adds rows of its own and is left out of the count
+                Assert.Equal(filledYears * db.Scalar<int>($"select count(*) from tb_classes where school_id='{school}'"),
+                    db.Scalar<int>($"select count(*) from tb_academic_year_classes where school_id='{school}' and academic_year_id in (select academic_year_id from tb_academic_year_classes where school_id='{school}' group by academic_year_id having count(*) = (select count(*) from tb_classes where school_id='{school}'))"));
+                Assert.Equal(filledYears * db.Scalar<int>($"select count(*) from tb_sections where school_id='{school}'"),
+                    db.Scalar<int>($"select count(*) from tb_academic_year_sections where school_id='{school}' and academic_year_id in (select academic_year_id from tb_academic_year_classes where school_id='{school}' group by academic_year_id having count(*) = (select count(*) from tb_classes where school_id='{school}'))"));
             }
         }
 

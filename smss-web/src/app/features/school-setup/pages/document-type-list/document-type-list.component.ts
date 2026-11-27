@@ -23,6 +23,7 @@ const COLUMNS: TableColumn<DocumentTypeRow>[] = [
   { key: 'documentCode', label: 'Document Code', sortable: true },
   { key: 'appliesToLabel', label: 'Applies To', sortable: true, type: 'badge' },
   { key: 'requiredLabel', label: 'Required', sortable: true, type: 'badge' },
+  { key: 'requiredFromLabel', label: 'Required from', sortable: true },
   { key: 'statusName', label: 'Status', sortable: true, type: 'status' },
 ];
 
@@ -98,6 +99,7 @@ export class DocumentTypeListComponent implements OnInit {
       documentCode: d.documentCode,
       appliesToLabel: APPLIES_TO_LABELS[d.appliesTo] ?? d.appliesTo,
       requiredLabel: d.isRequired ? 'Yes' : 'No',
+      requiredFromLabel: d.isRequired && d.requiredFrom ? new Date(d.requiredFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-',
       statusName: d.isActive ? 'Active' : 'Inactive',
       isActive: d.isActive,
     };
