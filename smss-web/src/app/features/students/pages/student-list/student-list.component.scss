@@ -105,3 +105,14 @@ app-card + app-card {
     color: var(--color-text-muted);
   }
 }
+
+.year-note {
+  align-self: end;
+  margin: 0;
+  padding-bottom: var(--space-2);
+  color: var(--color-text);
+
+  small {
+    color: var(--color-text-muted);
+  }
+}

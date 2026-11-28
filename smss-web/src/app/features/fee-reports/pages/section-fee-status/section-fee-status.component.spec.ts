@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { SectionFeeGrid, SectionFeeStatus, SectionFeeStudent } from '../../models/section-fee-status.model';
 import { SectionFeeStatusComponent } from './section-fee-status.component';
@@ -208,5 +209,33 @@ describe('SectionFeeStatusComponent (month-wise)', () => {
       expect(lines).toHaveLength(2);
       res();
     }, 10));
+  });
+});
+
+describe('SectionFeeStatusComponent follows the header viewing year (School Admin)', () => {
+  const yr = (id: number, name: string, isCurrent: boolean) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent, statusName: 'Active', state: isCurrent ? 'CURRENT' : 'PAST', isClosed: false, usage: {}, createdAt: '', updatedAt: '' });
+
+  it('asks for the viewing year explicitly, and again with the new year when the header changes it', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'School Id', roles: ['School Admin'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(SectionFeeStatusComponent);
+    fixture.detectChanges();
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([yr(39, '2025-26', false), yr(40, '2026-27', true)])));
+    http.expectOne(`${API}/api/Attendance/my-sections`).flush(env(MY));
+    TestBed.tick();
+    fixture.detectChanges();
+    const first = http.match((x) => x.url === STATUS_URL);
+    expect(first.map((r) => r.request.params.get('academicYearId'))).toEqual(['40']);
+    first[0].flush(env(DATA));
+    TestBed.inject(YearContextService).select('39');
+    TestBed.tick();
+    fixture.detectChanges();
+    const second = http.match((x) => x.url === STATUS_URL);
+    expect(second.map((r) => r.request.params.get('academicYearId'))).toEqual(['39']);
+    second[0].flush(env(DATA));
+    http.verify();
+    clearSessions();
   });
 });

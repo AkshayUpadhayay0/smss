@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { YearContextService } from '../../../../core/services/year-context.service';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, untracked, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -81,6 +82,31 @@ export class SectionFeeStatusComponent implements OnInit {
   protected readonly tone = (status: string) =>
     ({ Paid: 'green', 'Partially paid': 'yellow', Overdue: 'red', Unpaid: 'orange', 'Not due yet': 'blue' } as Record<string, string>)[status] ?? 'gray';
 
+  private readonly yearContext = inject(YearContextService);
+  /** The year the last request asked for (undefined = the server's current year), so a change of the header's viewing year reloads exactly once. */
+  private usedYear: number | undefined;
+
+  constructor() {
+    effect(() => {
+      const id = this.yearContext.viewingYearId();
+      const ready = this.yearContext.state() === 'ready';
+      untracked(() => {
+        if (!ready || id === null || !this.sectionControl.value) return;
+        const same = id === this.usedYear || (this.usedYear === undefined && !this.yearContext.isNonCurrent());
+        if (same) return;
+        this.grid.set(null);
+        this.loadStatus(true);
+        if (this.view() === 'year') this.loadGrid();
+      });
+    });
+  }
+
+  /** The viewing year as an explicit id, or undefined when the user has no selector / the years are unavailable (the server's current year, as before). */
+  private requestedYear(): number | undefined {
+    const id = this.yearContext.viewingYearId();
+    return this.yearContext.state() === 'ready' && id !== null ? id : undefined;
+  }
+
   ngOnInit(): void {
     this.sectionControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.grid.set(null);
@@ -118,11 +144,12 @@ export class SectionFeeStatusComponent implements OnInit {
     if (!id) { this.data.set(null); return; }
     this.loading.set(true);
     this.loadFailed.set(false);
+    this.usedYear = this.requestedYear();
     this.fees
-      .sectionStatus(id, undefined, useDefault ? undefined : this.monthControl.value || undefined)
+      .sectionStatus(id, this.usedYear, useDefault ? undefined : this.monthControl.value || undefined)
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (d) => { this.data.set(d); this.monthControl.setValue(d.month, { emitEvent: false }); },
+        next: (d) => { this.data.set(d); this.monthControl.setValue(d.month, { emitEvent: false }); if (d.academicYearName) this.yearName.set(d.academicYearName); },
         error: () => { this.data.set(null); this.loadFailed.set(true); },
       });
   }
@@ -144,7 +171,7 @@ export class SectionFeeStatusComponent implements OnInit {
     this.gridLoading.set(true);
     this.gridFailed.set(false);
     this.fees
-      .sectionStatusMonths(id)
+      .sectionStatusMonths(id, this.requestedYear())
       .pipe(finalize(() => this.gridLoading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({ next: (g) => this.grid.set(g), error: () => this.gridFailed.set(true) });
   }

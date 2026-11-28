@@ -41,4 +41,5 @@ export function seedSession(overrides: Partial<AuthSession> = {}, where: 'local'
 export function clearSessions(): void {
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem('smss.viewingYear');   // the per-session viewing year must never leak from one test into the next
 }

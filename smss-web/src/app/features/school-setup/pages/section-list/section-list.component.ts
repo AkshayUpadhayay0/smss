@@ -1,3 +1,5 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
+import { syncYearControl } from '../../../../core/utils/follow-viewing-year';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -61,6 +63,11 @@ export class SectionListComponent implements OnInit {
 
   // ---- class teachers (per academic year)
   protected readonly yearControl = new FormControl('', { nonNullable: true });
+  protected readonly yearContext = inject(YearContextService);
+  /** The class teachers shown are those of the app's viewing year (header selector); this page keeps a hidden control so its load logic is unchanged. */
+  private readonly viewing = syncYearControl(this.yearControl);
+  /** A non-current year is shown: look, but do not assign (class teachers are assigned in the current year). The server also refuses writes to a closed year. */
+  protected readonly readOnlyYear = this.yearContext.readOnlyView;
   protected readonly yearOptions = signal<SelectOption[]>([]);
   /** sectionId -> its class teacher for the chosen year (active sections only). */
   private readonly assignments = signal<ReadonlyMap<number, ClassTeacherSection>>(new Map());
@@ -125,7 +132,7 @@ export class SectionListComponent implements OnInit {
         const active = years.filter((y) => y.statusName === 'Active');
         this.yearOptions.set(active.map((y) => ({ label: y.isCurrent ? `${y.yearName} (current)` : y.yearName, value: String(y.academicYearId) })));
         const year = active.find((y) => y.isCurrent) ?? active[0];
-        if (year) this.yearControl.setValue(String(year.academicYearId)); // emits: loads the class teachers
+        if (year && !this.viewing.usable() && !this.viewing.waiting()) this.yearControl.setValue(String(year.academicYearId)); // fallback only: emits and loads the class teachers
       },
       error: () => undefined, // the list still works without the class teacher column
     });

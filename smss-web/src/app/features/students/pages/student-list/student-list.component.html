@@ -5,7 +5,7 @@
 
 <app-card>
   <div class="filters">
-    <app-select label="Academic year" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
+    <p class="year-note" data-year-note>Academic year <b>{{ yearContext.viewingYearName() || '…' }}</b><small> (change it in the header)</small></p>
     <app-select label="Class" placeholder="Select class…" [options]="classOptions()" [formControl]="classControl" />
     <app-select
       label="Section"

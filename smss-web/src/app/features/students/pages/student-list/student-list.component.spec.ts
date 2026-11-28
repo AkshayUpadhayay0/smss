@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { StudentListComponent } from './student-list.component';
 import { environment } from '../../../../../environments/environment';
@@ -44,7 +45,8 @@ describe('StudentListComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(StudentListComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear/sch2026006`.replace('/sch2026006', '')).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     fixture.detectChanges();
@@ -239,8 +241,22 @@ describe('StudentListComponent', () => {
   it('restores the filter it was opened with (Back to Students)', () => {
     create({ academicYearId: '2', classId: '4', sectionId: '13' });
     const [req] = studentRequests();
-    expect(req.request.params.get('academicYearId')).toBe('2');
+    expect(req.request.params.get('academicYearId')).toBe('3');   // the year is the header viewing year (an old ?academicYearId in the URL no longer overrides it); class and section are restored
     expect(req.request.params.get('classSectionId')).toBe('13');
+    req.flush(env(STUDENTS));
+  });
+
+  it('follows the header viewing year: no picker of its own, and another year asks the server for that year with the explicit id', () => {
+    create();
+    expect(el().querySelector('app-select[label="Academic year"]')).toBeNull();
+    expect(el().querySelector('[data-year-note]')?.textContent).toContain('2026-2027');
+    cmp()['classControl'].setValue('4');
+    cmp()['sectionControl'].setValue('13');
+    studentRequests().forEach((r) => r.flush(env(STUDENTS)));
+    TestBed.inject(YearContextService).select('2');
+    TestBed.tick();
+    const [req] = studentRequests();
+    expect(req.request.params.get('academicYearId')).toBe('2');
     req.flush(env(STUDENTS));
   });
 });

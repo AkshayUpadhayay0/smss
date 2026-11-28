@@ -1,3 +1,5 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
+import { syncYearControl } from '../../../../core/utils/follow-viewing-year';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -86,6 +88,9 @@ export class StudentListComponent implements OnInit {
 
   // ── Filters ─────────────────────────────────────────────────────────
   protected readonly yearControl = new FormControl('', { nonNullable: true });
+  protected readonly yearContext = inject(YearContextService);
+  /** The year is the app's viewing year (header selector); this page keeps a hidden control so its load logic is unchanged. */
+  private readonly viewing = syncYearControl(this.yearControl);
   protected readonly classControl = new FormControl('', { nonNullable: true });
   protected readonly sectionControl = new FormControl('', { nonNullable: true });
   protected readonly feeStatusControl = new FormControl('All', { nonNullable: true });
@@ -184,8 +189,9 @@ export class StudentListComponent implements OnInit {
         const q = this.route.snapshot.queryParamMap;
         const wantedYear = q.get('academicYearId');
         const year = pickYear(years, wantedYear);
+        // The viewing year (header) drives the page; only when the years could not be loaded for the header does the page use its own default.
         // These must emit: `ready` is derived from the controls' valueChanges, so a silent set would leave it false
-        if (year) this.yearControl.setValue(String(year.academicYearId));
+        if (year && !this.viewing.usable() && !this.viewing.waiting()) this.yearControl.setValue(String(year.academicYearId));
 
         const wantedFee = q.get('feeStatus');
         if (wantedFee && FEE_STATUS_OPTIONS.some((o) => o.value === wantedFee)) this.feeStatusControl.setValue(wantedFee, { emitEvent: false });

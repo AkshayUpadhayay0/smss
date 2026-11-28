@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { SectionListComponent } from './section-list.component';
 
@@ -41,7 +42,8 @@ describe('SectionListComponent: class teachers', () => {
     fixture = TestBed.createComponent(SectionListComponent);
     fixture.detectChanges();
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     answer(list);
   }
   function answer(list: unknown) {
@@ -157,12 +159,28 @@ describe('SectionListComponent: class teachers', () => {
     fixture = TestBed.createComponent(SectionListComponent);
     fixture.detectChanges();
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     http.expectOne((r) => r.url === `${API}/api/ClassTeacher`).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'Server Error' });
     // (the teachers request travels with the list: when the list fails it is abandoned, not answered)
     http.match(`${API}/api/ClassTeacher/eligible-teachers`);
     fixture.detectChanges();
     expect(cmp()['pageRows']().length).toBe(3);
     expect(el().textContent).toContain('Class teachers could not be loaded');
+  });
+
+  it('a non-current viewing year shows the class teachers read-only: a banner and a disabled dropdown; the current year is editable', () => {
+    open();
+    expect(el().querySelector('[data-readonly-year]')).toBeNull();
+    TestBed.inject(YearContextService).select('5');
+    TestBed.tick();
+    const l = http.expectOne((r) => r.url === `${API}/api/ClassTeacher`);
+    expect(l.request.params.get('academicYearId')).toBe('5');
+    l.flush(env(LIST(ct(1, 10, null, null))));
+    fixture.detectChanges();
+    http.match(`${API}/api/ClassTeacher/eligible-teachers`).forEach((r) => r.flush(env(TEACHERS)));   // the teacher list is re-read with the year; only the read-only state matters here
+    fixture.detectChanges();
+    expect(el().querySelector('[data-readonly-year]')?.textContent).toContain('read-only');
+    expect(cmp()['readOnlyYear']()).toBe(true);
   });
 });

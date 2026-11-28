@@ -4,8 +4,10 @@
 
 <app-card>
   <div class="year-bar">
-    <app-select label="Academic year (for class teachers)" placeholder="Select year…" [options]="yearOptions()" [formControl]="yearControl" />
-    <p class="year-hint">Each section has one class teacher per academic year. Only active Teaching employees with a Teacher login can be chosen.</p>
+    <p class="year-hint" data-year-note>Class teachers of academic year <b>{{ yearContext.viewingYearName() || '…' }}</b> (change the year in the header). Each section has one class teacher per academic year. Only active Teaching employees with a Teacher login can be chosen.</p>
+    @if (readOnlyYear()) {
+      <p class="notice warn" role="status" data-readonly-year>You are viewing {{ yearContext.viewingYearName() }}, not the current year: class teachers are shown read-only. Switch back to the current year in the header to assign them.</p>
+    }
   </div>
   @if (teacherFailed()) {
     <p class="notice warn" role="alert">Class teachers could not be loaded. <app-button variant="secondary" size="sm" (click)="loadClassTeachers()">Try again</app-button></p>
@@ -42,7 +44,7 @@
               [options]="teacherOptions(row)"
               [ngModel]="row.classTeacherId"
               (ngModelChange)="onTeacherChange(row, $event)"
-              [disabled]="!yearControl.value || teacherLoading() || teacherFailed() || teacherSavingId() !== null"
+              [disabled]="!yearControl.value || teacherLoading() || teacherFailed() || teacherSavingId() !== null || readOnlyYear()"
             />
           }
           @if (!row.classTeacherId && yearControl.value && !teacherLoading() && !teacherFailed()) {

@@ -1,3 +1,4 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
@@ -36,14 +37,8 @@ import { ExaminationsService } from '../../services/examinations.service';
         </p>
       </app-card>
     } @else {
-      @if (years().length > 1) {
-        <div class="bar">
-          <label class="field"><span>Academic year</span>
-            <select [value]="year()" (change)="year.set($any($event.target).value)" aria-label="Academic year">
-              @for (y of years(); track y) { <option [value]="y" [selected]="y === year()">{{ y }}</option> }
-            </select>
-          </label>
-        </div>
+      @if (year()) {
+        <p class="note" data-year-note>Schemes of academic year <b>{{ year() }}</b> (change the year in the header).</p>
       }
       <app-card [noPadding]="true">
         <div class="table-wrap">
@@ -92,8 +87,10 @@ export class ReportSchemesComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
   protected readonly busyId = signal<number | null>(null);
-  protected readonly year = signal('');
-  protected readonly years = computed(() => [...new Set(this.schemes().map((s) => s.academicYearName))]);
+  /** The year shown is the app's viewing year (header selector); only when that is unavailable does the page pick the first year it has schemes for. */
+  private readonly yearContext = inject(YearContextService);
+  private readonly ownYear = signal('');
+  protected readonly year = computed(() => (this.yearContext.state() === 'ready' ? this.yearContext.viewingYearName() : this.ownYear()));
   protected readonly shown = computed(() => this.schemes().filter((s) => !this.year() || s.academicYearName === this.year()));
 
   ngOnInit(): void { this.load(); }
@@ -102,7 +99,7 @@ export class ReportSchemesComponent implements OnInit {
     this.loading.set(true);
     this.failed.set(false);
     this.service.schemes().pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (l) => { this.schemes.set(l); if (!this.year() || !l.some((s) => s.academicYearName === this.year())) this.year.set(l[0]?.academicYearName ?? ''); },
+      next: (l) => { this.schemes.set(l); if (!this.ownYear() || !l.some((s) => s.academicYearName === this.ownYear())) this.ownYear.set(l[0]?.academicYearName ?? ''); },
       error: () => this.failed.set(true),
     });
   }
