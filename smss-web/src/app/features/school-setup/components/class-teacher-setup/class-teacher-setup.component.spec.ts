@@ -56,7 +56,33 @@ describe('ClassTeacherSetupComponent', () => {
     fixture.detectChanges();
   }
 
+  /** Opening the Assign dialog reloads the teachers (a teacher or login added meanwhile is seen). */
+  function openAssign(sel: string, answer: object | 'fail' = envelope(TEACHERS)) {
+    click(sel);
+    const req = http.expectOne(`${API}/api/ClassTeacher/eligible-teachers`);
+    if (answer === 'fail') req.flush({ message: 'x' }, { status: 500, statusText: 'err' }); else req.flush(answer as object);
+    fixture.detectChanges();
+  }
+
   afterEach(() => http.verify());
+
+  it('says why the list is empty when no teacher is eligible', async () => {
+    await open();
+    openAssign('[data-section="11"] [data-assign]', envelope([]));
+    expect(root().querySelector('[data-teachers-empty]')?.textContent).toContain('Teacher role');
+  });
+
+  it('shows a failure with Try again instead of a silently empty list, and a retry fills it', async () => {
+    await open();
+    openAssign('[data-section="11"] [data-assign]', 'fail');
+    expect(root().querySelector('[data-teachers-failed]')).not.toBeNull();
+    click('[data-teachers-retry]');
+    http.expectOne(`${API}/api/ClassTeacher/eligible-teachers`).flush(envelope(TEACHERS));
+    fixture.detectChanges();
+    expect(root().querySelector('[data-teachers-failed]')).toBeNull();
+    expect(root().querySelectorAll('[data-pick] option').length).toBe(3);
+  });
+
 
   it('shows each section with its current teacher and since when', async () => {
     await open();
@@ -68,7 +94,7 @@ describe('ClassTeacherSetupComponent', () => {
 
   it('a teacher who already has another section needs a confirm, and the confirm is sent', async () => {
     await open();
-    click('[data-section="11"] [data-assign]');
+    openAssign('[data-section="11"] [data-assign]');
     const pick = root().querySelector('[data-pick]') as HTMLSelectElement;
     pick.value = 'T1';
     pick.dispatchEvent(new Event('change'));
@@ -91,7 +117,7 @@ describe('ClassTeacherSetupComponent', () => {
 
   it('a teacher with no other section is saved without a confirm', async () => {
     await open();
-    click('[data-section="11"] [data-assign]');
+    openAssign('[data-section="11"] [data-assign]');
     const pick = root().querySelector('[data-pick]') as HTMLSelectElement;
     pick.value = 'T2';
     pick.dispatchEvent(new Event('change'));

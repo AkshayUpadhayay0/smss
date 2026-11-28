@@ -66,6 +66,21 @@ namespace smss_api_tests
 
         // ---------------------------------------------------------------- the backfill kept every current teacher current
         [DbFact]
+        public async Task Every_seeded_school_lists_its_own_teaching_staff_as_choosable_class_teachers_and_nobody_elses()
+        {
+            using var db = new TaxDb();
+            foreach (var school in Backfilled)
+            {
+                var expected = db.Scalar<int>($"select count(*) from tb_employees where school_id='{school}' and employee_type='Teaching'");
+                var r = await Svc(db).GetEligibleTeachersAsync(school, default);
+                Assert.True(r.Status); Assert.Equal(expected, r.Data!.Count);
+                Assert.All(r.Data!, t => Assert.True(db.Scalar<int>($"select count(*) from tb_employees where employee_id='{t.EmployeeId}' and school_id='{school}'") == 1));   // only this school's people
+                Assert.All(r.Data!, t => Assert.False(string.IsNullOrWhiteSpace(t.FullName)));
+            }
+            Assert.Empty((await Svc(db).GetEligibleTeachersAsync("TEST261121001", default)).Data!);   // a school with no employees: an empty list, not an error
+        }
+
+        [DbFact]
         public async Task After_the_backfill_every_current_teacher_is_still_current_with_a_start_date_and_no_end()
         {
             using var db = new TaxDb();

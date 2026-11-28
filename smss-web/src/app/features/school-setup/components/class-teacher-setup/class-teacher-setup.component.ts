@@ -47,6 +47,8 @@ export class ClassTeacherSetupComponent {
   protected readonly failed = signal(false);
   protected readonly data = signal<ClassTeacherList | null>(null);
   protected readonly teachers = signal<EligibleTeacher[]>([]);
+  protected readonly teachersLoading = signal(false);
+  protected readonly teachersFailed = signal(false);
   protected readonly busy = signal(false);
 
   // the dialog
@@ -88,7 +90,17 @@ export class ClassTeacherSetupComponent {
       next: (d) => this.data.set(d),
       error: () => { this.data.set(null); this.failed.set(true); },
     });
-    if (this.teachers().length === 0) this.api.eligible().subscribe({ next: (t) => this.teachers.set(t), error: () => undefined });
+    if (this.teachers().length === 0 && !this.teachersLoading()) this.loadTeachers();
+  }
+
+  /** The teachers who can be picked. Reloaded each time the Assign dialog opens (a teacher or login added since is then seen); a failure is shown, never an empty list. */
+  protected loadTeachers(): void {
+    this.teachersLoading.set(true);
+    this.teachersFailed.set(false);
+    this.api.eligible().pipe(finalize(() => this.teachersLoading.set(false))).subscribe({
+      next: (t) => this.teachers.set(t),
+      error: () => this.teachersFailed.set(true),
+    });
   }
 
   protected open(mode: Mode, s: ClassTeacherSection): void {
@@ -97,6 +109,7 @@ export class ClassTeacherSetupComponent {
     this.pick.set('');
     this.reason.set('');
     this.confirmMultiple.set(false);
+    if (mode === 'assign') this.loadTeachers();
     if (mode === 'history') {
       this.history.set([]);
       this.historyLoading.set(true);

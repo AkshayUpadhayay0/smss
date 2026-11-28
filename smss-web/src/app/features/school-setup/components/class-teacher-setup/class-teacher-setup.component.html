@@ -60,6 +60,13 @@
               }
             </select>
           </label>
+          @if (teachersLoading() && teachers().length === 0) {
+            <p data-teachers-loading>Loading teachers…</p>
+          } @else if (teachersFailed()) {
+            <p class="warn" data-teachers-failed>The list of teachers could not be loaded. <button type="button" class="link" data-teachers-retry (click)="loadTeachers()">Try again</button></p>
+          } @else if (teachers().length === 0) {
+            <p class="warn" data-teachers-empty>No teacher can be chosen yet. A teacher needs an Active employee record of type Teaching, whose login is Active and holds the Teacher role (Employees, then Create login).</p>
+          }
           @if (others().length) {
             <div class="warn" data-warning>
               <app-icon name="circle-alert" [size]="16" />
