@@ -78,7 +78,7 @@ namespace smss_api_tests
 
         public FeePaymentService Payments() { var c = Ctx(); return new FeePaymentService(new FeePaymentRepository(c), new StudentFeeRepository(c), NullLogger<FeePaymentService>.Instance, new LateFeeRepository(c)); }
         public TaxTypeService Taxes() => new(new TaxTypeRepository(Ctx()), NullLogger<TaxTypeService>.Instance);
-        public FeeReportService Reports() { var c = Ctx(); return new FeeReportService(new FeeReportRepository(c), new StudentRepository(c), NullLogger<FeeReportService>.Instance, new LateFeeReportRepository(c)); }
+        public FeeReportService Reports() { var c = Ctx(); return new FeeReportService(new FeeReportRepository(c), new StudentRepository(c), NullLogger<FeeReportService>.Instance, new LateFeeReportRepository(c), new EarlierYearDuesRepository(c)); }
 
         public async Task<TaxTypeDto> NewTax(string school, string name, string code, decimal rate)
         {

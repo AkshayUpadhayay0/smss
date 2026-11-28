@@ -76,6 +76,10 @@ namespace smss_api_service_layer.dto
         public decimal Outstanding { get; set; }
         /// <summary>Overdue | Partially Paid | Pending | Paid | Not Set: the same rule as the student list.</summary>
         public string Status { get; set; } = "Not Set";
+        /// <summary>Still unpaid from academic years BEFORE this one (derived on every read; nothing is carried forward). A separate column, never added to the year's own figures.</summary>
+        public decimal EarlierYears { get; set; }
+        /// <summary>The student left or was transferred out and still owes money: listed, flagged, so the dues are not forgotten.</summary>
+        public bool Left { get; set; }
     }
 
     public class ClassFeeReportDto
@@ -93,6 +97,7 @@ namespace smss_api_service_layer.dto
         public decimal TotalCollected { get; set; }
         public decimal TotalConcession { get; set; }
         public decimal TotalOutstanding { get; set; }
+        public decimal TotalEarlierYears { get; set; }
         public Dictionary<string, int> StatusCounts { get; set; } = new();
         public bool CanManage { get; set; }
     }

@@ -334,7 +334,7 @@ namespace smss_api_tests
                 r["assessment roster"] = (await new AssessmentRepository(db.Ctx()).GetRosterAsync(A, TaxDb.YearA, sec, active, default)).Any(x => x.StudentId == s);
                 r["report marks roster"] = (await new ReportMarksRepository(db.Ctx()).GetRosterAsync(A, TaxDb.YearA, sec, active, default)).Any(x => x.StudentId == s);
                 r["class student list"] = (await new StudentRepository(db.Ctx()).GetEnrolledStudentsAsync(A, TaxDb.YearA, sec, default)).Any(x => x.StudentId == s);
-                r["fee class students"] = (await new FeeReportRepository(db.Ctx()).GetClassStudentsAsync(A, TaxDb.YearA, cls, sec, default)).Any(x => x.StudentId == s);
+                r["fee class students"] = (await new FeeReportRepository(db.Ctx()).GetClassStudentsAsync(A, TaxDb.YearA, cls, sec, default)).Any(x => x.StudentId == s && x.Live);   // the repository now also returns a leaver (Live = false) so the report can keep them while they owe money
                 r["push eligible"] = (await new NotificationRepository(db.Ctx()).GetEligibleStudentsAsync(A, TaxDb.YearA, "Student", default)).Any(x => x.StudentId == s);
                 return r;
             }

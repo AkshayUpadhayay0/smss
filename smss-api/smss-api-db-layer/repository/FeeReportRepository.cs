@@ -141,14 +141,17 @@ namespace smss_api_db_layer.repository
 
         public async Task<List<ClassStudentRow>> GetClassStudentsAsync(string schoolId, long academicYearId, long classId, long? sectionId, CancellationToken ct)
         {
+            // every enrolment of the class in the year, with the two facts the report needs: did it end with a leaving, and is it counted by the shared live rule
             var rows = await (
-                from e in _db.StudentEnrollments.AsNoTracking().LiveForYear(_db.AcademicYears)
+                from e in _db.StudentEnrollments.AsNoTracking()
+                join y in _db.AcademicYears.AsNoTracking() on e.AcademicYearId equals y.AcademicYearId
                 join s in _db.Students.AsNoTracking() on e.StudentId equals s.StudentId
                 join sec in _db.Sections.AsNoTracking() on e.ClassSectionId equals sec.SectionId
-                where e.SchoolId == schoolId && s.SchoolId == schoolId && sec.SchoolId == schoolId
+                where e.SchoolId == schoolId && s.SchoolId == schoolId && sec.SchoolId == schoolId && y.SchoolId == schoolId
                       && e.AcademicYearId == academicYearId && sec.ClassId == classId && (sectionId == null || sec.SectionId == sectionId)
-                select new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, sec.SectionName }).ToListAsync(ct);
-            return rows.Select(r => new ClassStudentRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, r.SectionName)).ToList();
+                select new { s.StudentId, s.FirstName, s.MiddleName, s.LastName, e.RollNumber, sec.SectionName, e.Outcome, y.IsCurrent }).ToListAsync(ct);
+            return rows.Select(r => new ClassStudentRow(r.StudentId, r.FirstName, r.MiddleName, r.LastName, r.RollNumber, r.SectionName,
+                Left: r.Outcome is LiveEnrolment.Left or LiveEnrolment.TransferredOut, Live: LiveEnrolment.IsLiveForYear(r.Outcome, r.IsCurrent))).ToList();
         }
     }
 }

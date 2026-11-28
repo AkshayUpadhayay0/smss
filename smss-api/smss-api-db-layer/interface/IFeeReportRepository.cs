@@ -10,7 +10,8 @@ namespace smss_api_db_layer.@interface
     public record ConcessionLogRow(long PaymentId, string ReceiptNumber, DateTime PaymentDate, string StudentId, string StudentName, long ConcessionId, string ConcessionName,
         string ConcessionCode, string ConcessionType, decimal ConcessionValue, decimal ConcessionAmount, string? Reason, string? AppliedByName, string Status);
     public record ConcessionLogPage(List<ConcessionLogRow> Rows, int TotalRows, decimal ActiveTotal);
-    public record ClassStudentRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, string SectionName);
+    /// <summary>Left: the enrolment ended with LEFT or TRANSFERRED_OUT. Live: counted in the class by the shared live-enrolment rule for that year; a student who is not live is listed only while they still owe something.</summary>
+    public record ClassStudentRow(string StudentId, string FirstName, string? MiddleName, string? LastName, string? RollNumber, string SectionName, bool Left = false, bool Live = true);
 
     // Read-only. Every method takes the school id; the installments' status rules live in FeeSchedule.Status and the SQL conditions here mirror it.
     public interface IFeeReportRepository

@@ -15,10 +15,12 @@ namespace smss_api_service_layer.service
         private readonly IStudentRepository _students;
         private readonly ILogger<FeeReportService> _logger;
         private readonly ILateFeeReportRepository? _lateFees;
+        private readonly IEarlierYearDuesRepository? _earlier;
 
-        public FeeReportService(IFeeReportRepository repo, IStudentRepository students, ILogger<FeeReportService> logger, ILateFeeReportRepository? lateFees = null)
+        public FeeReportService(IFeeReportRepository repo, IStudentRepository students, ILogger<FeeReportService> logger, ILateFeeReportRepository? lateFees = null, IEarlierYearDuesRepository? earlier = null)
         {
             _lateFees = lateFees;
+            _earlier = earlier;
             _repo = repo;
             _students = students;
             _logger = logger;
@@ -111,6 +113,19 @@ namespace smss_api_service_layer.service
                 DateOnly? monthFrom = dueMonth == null ? null : new DateOnly(dueMonth.Value.Year, dueMonth.Value.Month, 1);
                 DateOnly? monthTo = monthFrom?.AddMonths(1).AddDays(-1);
                 var fees = await _students.GetFeeAggregatesAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), SchoolClock.Today(), ct, monthFrom, monthTo);
+                // what each still owes from years BEFORE this one: its own column (a failure leaves the column at 0 and is logged, the report still works)
+                var earlier = new Dictionary<string, decimal>();
+                if (_earlier != null && students.Count > 0)
+                {
+                    try
+                    {
+                        var rowsEarlier = await _earlier.GetOutstandingAsync(schoolId, students.Select(s => s.StudentId).ToList(), students.Select(_ => year.StartDate).ToList(), SchoolClock.Today(), ct);
+                        foreach (var g in rowsEarlier.GroupBy(r => r.StudentId)) earlier[g.Key] = g.Sum(r => r.Outstanding);
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Class fee report: earlier-year dues could not be read"); }
+                }
+                // a student who left (or was transferred out) is no longer counted in the class, but stays on the report while anything is unpaid, flagged Left
+                students = students.Where(s => s.Live || (fees.TryGetValue(s.StudentId, out var lf) && lf.TotalDue > lf.TotalPaid) || earlier.GetValueOrDefault(s.StudentId) > 0).ToList();
                 if (monthFrom != null) students = students.Where(s => fees.TryGetValue(s.StudentId, out var f) && f.TotalDue > 0).ToList();
                 var concessions = await _repo.GetConcessionGivenByStudentAsync(schoolId, academicYearId, students.Select(s => s.StudentId).ToList(), ct);
 
@@ -125,7 +140,8 @@ namespace smss_api_service_layer.service
                         FullName = string.Join(' ', new[] { s.FirstName, s.MiddleName, s.LastName }.Where(p => !string.IsNullOrWhiteSpace(p))),
                         RollNumber = s.RollNumber, SectionName = s.SectionName,
                         TotalDue = due, TotalCollected = paid - concession, Concession = concession, Outstanding = Math.Max(due - paid, 0),
-                        Status = FeeSchedule.Overall(f != null, due, paid, f?.OverdueCount ?? 0)
+                        Status = FeeSchedule.Overall(f != null, due, paid, f?.OverdueCount ?? 0),
+                        EarlierYears = earlier.GetValueOrDefault(s.StudentId), Left = s.Left
                     };
                 }).OrderBy(r => r.SectionName, StringComparer.OrdinalIgnoreCase).ThenBy(r => int.TryParse(r.RollNumber, out var n) ? n : int.MaxValue).ThenBy(r => r.RollNumber, StringComparer.OrdinalIgnoreCase)
                   .ThenBy(r => r.FullName, StringComparer.OrdinalIgnoreCase).ToList();
@@ -134,7 +150,7 @@ namespace smss_api_service_layer.service
                 {
                     AcademicYearId = year.AcademicYearId, AcademicYearName = year.YearName, ClassId = classId, ClassName = className, SectionId = sectionId, Month = monthFrom?.ToString("yyyy-MM"),
                     Students = rows,
-                    TotalDue = rows.Sum(r => r.TotalDue), TotalCollected = rows.Sum(r => r.TotalCollected), TotalConcession = rows.Sum(r => r.Concession), TotalOutstanding = rows.Sum(r => r.Outstanding),
+                    TotalDue = rows.Sum(r => r.TotalDue), TotalCollected = rows.Sum(r => r.TotalCollected), TotalConcession = rows.Sum(r => r.Concession), TotalOutstanding = rows.Sum(r => r.Outstanding), TotalEarlierYears = rows.Sum(r => r.EarlierYears),
                     StatusCounts = FeeSchedule.OverallStatuses.ToDictionary(s => s, s => rows.Count(r => r.Status == s)),
                     CanManage = canManage
                 });

@@ -15,7 +15,7 @@ const CLASSES = [{ classId: 7, className: 'Class 1', statusName: 'Active' }];
 const SECTIONS = [{ sectionId: 20, classId: 7, className: 'Class 1', sectionName: 'A', statusName: 'Active' }];
 import { ClassFeeReportComponent } from './class-fee-report.component';
 
-const row = (id: string, name: string, due: number, paid: number, status: string) => ({ studentId: id, fullName: name, rollNumber: null, sectionName: 'A', totalDue: due, totalCollected: paid, concession: 0, outstanding: due - paid, status });
+const row = (id: string, name: string, due: number, paid: number, status: string, extra: Record<string, unknown> = {}) => ({ studentId: id, fullName: name, rollNumber: null, sectionName: 'A', totalDue: due, totalCollected: paid, concession: 0, outstanding: due - paid, status, ...extra });
 const REPORT = (canManage: boolean) => ({
   academicYearId: 3, academicYearName: '2026-27', classId: 7, className: 'Class 1', sectionId: null, canManage,
   students: [row('S1', 'Asha', 30000, 30000, 'Paid'), row('S2', 'Bela', 30000, 0, 'Overdue'), row('S3', 'Chitra', 30000, 5000, 'Partially Paid'), row('S4', 'Dev', 0, 0, 'Not Set')],
@@ -134,5 +134,26 @@ describe('ClassFeeReportComponent', () => {
   it('without a class in the URL it waits for one', () => {
     open(['School Admin'], true, {});
     expect(el().textContent).toContain('Select a class to see its fee report');
+  });
+
+  it('has a separate Earlier years column (not part of Outstanding) and marks a student who left but still owes', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['School Admin'] }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: new Map(Object.entries({ academicYearId: '3', classId: '7' })) } } }] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ClassFeeReportComponent);
+    fixture.detectChanges();
+    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
+    http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
+    const withEarlier = { ...REPORT(true), students: [row('S2', 'Bela', 30000, 0, 'Overdue', { earlierYears: 500 }), row('S5', 'Esha', 1000, 0, 'Pending', { earlierYears: 200, left: true })], totalEarlierYears: 700, totalOutstanding: 31000 };
+    reportReqs().forEach((r) => r.flush(env(withEarlier)));
+    fixture.detectChanges();
+    const text = el().textContent ?? '';
+    expect(text).toContain('Earlier years');
+    expect(text).toContain('₹500.00');
+    expect(names()).toContain('Esha (Left)');
+    expect(el().querySelector('[data-earlier-total]')?.textContent).toContain('₹700.00');
+    expect(cmp()['sortedRows']().find((r: { studentId: string }) => r.studentId === 'S2').outstanding).toBe('₹30,000.00');   // the year's figure stays on its own
   });
 });

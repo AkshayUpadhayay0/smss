@@ -59,6 +59,7 @@
         <span>Collected <b>{{ inr(r.totalCollected) }}</b></span>
         <span>Concession <b>{{ inr(r.totalConcession ?? 0) }}</b></span>
         <span>Outstanding <b>{{ inr(r.totalOutstanding) }}</b></span>
+        @if ((r.totalEarlierYears ?? 0) > 0) { <span data-earlier-total>Earlier years <b>{{ inr(r.totalEarlierYears ?? 0) }}</b></span> }
       </div>
     }
     @if (failed()) {

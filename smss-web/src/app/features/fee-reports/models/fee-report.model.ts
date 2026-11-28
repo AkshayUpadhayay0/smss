@@ -68,6 +68,10 @@ export interface ClassFeeRow {
   concession?: number;
   outstanding: number;
   status: OverallFeeStatus;
+  /** Still unpaid from academic years BEFORE this one (its own column; never part of the year's figures). Absent on an older server. */
+  earlierYears?: number;
+  /** The student left or was transferred out and still owes money. */
+  left?: boolean;
 }
 
 export interface ClassFeeReport {
@@ -83,6 +87,7 @@ export interface ClassFeeReport {
   totalCollected: number;
   totalConcession?: number;
   totalOutstanding: number;
+  totalEarlierYears?: number;
   statusCounts: Record<string, number>;
   canManage: boolean;
 }
@@ -97,11 +102,14 @@ export interface ClassFeeTableRow extends Record<string, unknown> {
   totalCollected: string;
   concession: string;
   outstanding: string;
+  earlierYears: string;
   status: string;
   totalDueNum: number;
   totalCollectedNum: number;
   concessionNum: number;
   outstandingNum: number;
+  earlierYearsNum: number;
+  left: boolean;
 }
 
 /** Worst first, so sorting by status puts the students who need a call at the top. */
