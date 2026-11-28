@@ -85,6 +85,24 @@ type Step = 'upload' | 'preview' | 'result';
               <p class="banner good" role="status">Every row is ready. Students will be added to <strong>{{ p.academicYearName }}</strong> as "Existing Student".</p>
             }
 
+            @if ((p.classesWithoutFeeStructure ?? []).length > 0) {
+              <p class="banner soft" role="status" data-banner="no-structure">These classes have no fee structure for {{ p.academicYearName }}, so their students will get <strong>no fees</strong>: @for (c of p.classesWithoutFeeStructure; track c.className; let last = $last) { <strong>{{ c.className }}</strong> ({{ c.students }} student{{ c.students === 1 ? '' : 's' }}){{ last ? '.' : ', ' }} }Create the structure first, then use Assign fees.</p>
+            }
+
+            @if (p.yearStarted) {
+              <app-card title="Fees">
+                <p class="note">Each imported student gets the fee structure of their class. By default dues start from today and nothing is back-dated.</p>
+                <label class="check"><input type="checkbox" data-from-start [checked]="fromStart()" (change)="fromStart.set($any($event.target).checked)" />
+                  <span>Charge from the year's start ({{ p.yearStart }}) <small>The year has already begun, so this creates dues that are already past.</small></span></label>
+                @if (fromStart()) {
+                  <label class="check"><input type="checkbox" data-confirm-backdating [checked]="confirmed()" (change)="confirmed.set($any($event.target).checked)" />
+                    <span>I confirm: dues dated before today will be created and logged.</span></label>
+                  <label class="field"><span>Reason (required)</span>
+                    <textarea data-reason rows="2" maxlength="500" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
+                }
+              </app-card>
+            }
+
             <app-card>
               <div class="filters" role="group" aria-label="Show rows">
                 @for (f of filters; track f.key) {
@@ -126,7 +144,7 @@ type Step = 'upload' | 'preview' | 'result';
               @if (p.summary.errors > 0) {
                 <app-button variant="secondary" [disabled]="downloadingReport()" (click)="downloadReport()"><app-icon name="download" [size]="16" />{{ downloadingReport() ? 'Preparing…' : 'Download error report' }}</app-button>
               }
-              <app-button [disabled]="!p.summary.canImport || committing()" (click)="confirmImport()">{{ committing() ? 'Importing…' : 'Import ' + p.summary.importable + ' student' + (p.summary.importable === 1 ? '' : 's') }}</app-button>
+              <app-button [disabled]="!p.summary.canImport || committing() || !feesReady()" (click)="confirmImport()">{{ committing() ? 'Importing…' : 'Import ' + p.summary.importable + ' student' + (p.summary.importable === 1 ? '' : 's') }}</app-button>
             </div>
             @if (committing()) { <p class="note" role="status">Importing. Please keep this page open.</p> }
           }
@@ -147,6 +165,13 @@ type Step = 'upload' | 'preview' | 'result';
                 <tbody>@for (c of r.byClass; track c.className + c.sectionName) { <tr><td data-label="Class">{{ c.className }}</td><td data-label="Section">{{ c.sectionName }}</td><td data-label="Students">{{ c.students }}</td></tr> }</tbody>
               </table>
             </div>
+            @if ((r.feesAssigned ?? 0) + (r.feesNoStructure ?? 0) + (r.feesFailed?.length ?? 0) > 0) {
+              <p class="note" data-fees-result>Fees: <strong>{{ r.feesAssigned ?? 0 }}</strong> assigned{{ r.feesBackdated ? ", charged from the year's start" : '' }}, <strong>{{ r.feesNoStructure ?? 0 }}</strong> without a fee structure for their class, <strong>{{ r.feesFailed?.length ?? 0 }}</strong> failed.</p>
+            }
+            @if ((r.feesFailed?.length ?? 0) > 0) {
+              <h3>Fees not assigned</h3>
+              <ul class="notes" data-fees-failed>@for (f of r.feesFailed; track f.studentId) { <li>{{ f.studentName }} ({{ f.studentId }}, {{ f.className }}): {{ f.reason }}</li> }</ul>
+            }
             @if (r.notes.length > 0) {
               <h3>Still to do</h3>
               <ul class="notes">@for (n of r.notes; track n) { <li>{{ n }}</li> }</ul>
@@ -176,6 +201,10 @@ type Step = 'upload' | 'preview' | 'result';
     .banner { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--color-danger-soft); border: 1px solid var(--color-border); line-height: 1.5; }
     .banner.soft { background: var(--color-warning-soft); }
     .banner.good { background: var(--color-success-soft); }
+    .check { display: flex; gap: var(--space-3); align-items: flex-start; margin-top: var(--space-3); }
+    .check small { display: block; color: var(--color-text-muted); }
+    .field { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+    .field textarea { font: inherit; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
     .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
     .stat { background: var(--color-surface, #fff); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: 2px; }
     .num { font-size: 1.5rem; font-weight: var(--weight-semibold); }
@@ -238,6 +267,11 @@ export class StudentImportComponent {
   protected readonly result = signal<ImportResult | null>(null);
   protected readonly filter = signal<ImportFilter>('all');
   protected readonly commitFailed = signal(false);
+  protected readonly fromStart = signal(false);
+  protected readonly confirmed = signal(false);
+  protected readonly reason = signal('');
+  /** Charging from the year's start needs the confirmation and a written reason. */
+  protected readonly feesReady = computed(() => !this.fromStart() || (this.confirmed() && this.reason().trim().length > 0));
 
   protected readonly rows = computed(() => filterRows(this.preview()?.rows ?? [], this.filter()));
 
@@ -292,7 +326,7 @@ export class StudentImportComponent {
     });
     if (!ok) return;
     this.committing.set(true);
-    this.service.commit(f).pipe(finalize(() => this.committing.set(false))).subscribe({
+    this.service.commit(f, { chargeFromYearStart: this.fromStart(), confirmBackdating: this.fromStart() && this.confirmed(), reason: this.fromStart() ? this.reason().trim() : null }).pipe(finalize(() => this.committing.set(false))).subscribe({
       next: (r) => { this.result.set(r); this.step.set('result'); this.toast.success(`${r.imported} student${r.imported === 1 ? '' : 's'} imported.`); },
       error: () => {
         // The server re-checked the file and refused (or something failed): nothing was saved. Show the current state of the file.
@@ -318,6 +352,9 @@ export class StudentImportComponent {
     this.result.set(null);
     this.pickError.set(null);
     this.commitFailed.set(false);
+    this.fromStart.set(false);
+    this.confirmed.set(false);
+    this.reason.set('');
     this.filter.set('all');
     this.step.set('upload');
   }

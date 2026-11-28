@@ -48,7 +48,7 @@ namespace smss_api.Controllers
         [HttpPost("commit")]
         [RequestSizeLimit(3_000_000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 3_000_000)]
-        public async Task<IActionResult> Commit(IFormFile? file, CancellationToken ct)
+        public async Task<IActionResult> Commit(IFormFile? file, [FromForm] bool chargeFromYearStart, [FromForm] bool confirmBackdating, [FromForm] string? reason, CancellationToken ct)
         {
             var denied = Guard(out var school);
             if (denied != null) return denied;
@@ -56,7 +56,7 @@ namespace smss_api.Controllers
             var (bytes, error) = await ReadUploadAsync(file, ct);
             if (bytes == null) return error!;
             long.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId);   // who is importing: recorded as the one who ticked the parent consent
-            var response = await _service.CommitAsync(school, bytes, ct, userId);
+            var response = await _service.CommitAsync(school, bytes, ct, userId, new ImportFeeOptions { ChargeFromYearStart = chargeFromYearStart, ConfirmBackdating = confirmBackdating, Reason = reason });
             return StatusCode(response.StatusCode, response);
         }
 

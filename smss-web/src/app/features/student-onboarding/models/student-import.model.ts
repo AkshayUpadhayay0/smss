@@ -44,8 +44,20 @@ export interface ImportPreview {
   /** Problems with the file as a whole (wrong sheet, missing columns, too many rows, set-up missing). */
   fileErrors: string[];
   academicYearName: string;
+  /** The year's first day (yyyy-mm-dd) and whether it has already passed: then "charge from the year's start" can be offered. */
+  yearStart?: string;
+  yearStarted?: boolean;
+  /** Classes of importable rows with NO active fee structure for the year: those students get no fees. */
+  classesWithoutFeeStructure?: ImportNoFeeClass[];
   rows: ImportRow[];
 }
+
+export interface ImportNoFeeClass { className: string; students: number }
+
+/** What the admin chose for the fees of the imported students. Without chargeFromYearStart nothing is back-dated. */
+export interface ImportFeeChoice { chargeFromYearStart: boolean; confirmBackdating: boolean; reason: string | null }
+
+export interface ImportFeeFailure { studentId: string; studentName: string; className: string; reason: string }
 
 export interface ImportClassCount { className: string; sectionName: string; students: number }
 
@@ -61,6 +73,11 @@ export interface ImportResult {
   byClass: ImportClassCount[];
   /** Things the school still has to do (fees, logins). */
   notes: string[];
+  /** Fees: students given their class's fee structure, students whose class has none, whether dues were charged from the year's start, and the ones that failed (the import itself stands). */
+  feesAssigned?: number;
+  feesNoStructure?: number;
+  feesBackdated?: boolean;
+  feesFailed?: ImportFeeFailure[];
 }
 
 export const MAX_IMPORT_FILE_BYTES = 1024 * 1024;

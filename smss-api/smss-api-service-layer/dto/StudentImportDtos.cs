@@ -46,6 +46,11 @@ namespace smss_api_service_layer.dto
         /// <summary>Problems with the file as a whole (wrong sheet, missing columns, too many rows, no Existing Student admission type...).</summary>
         public List<string> FileErrors { get; set; } = new();
         public string AcademicYearName { get; set; } = "";
+        /// <summary>The year's first day, and whether it has already passed: then the dialog offers "charge from the year's start" (back-dated).</summary>
+        public DateOnly YearStart { get; set; }
+        public bool YearStarted { get; set; }
+        /// <summary>Classes of importable rows that have NO active fee structure for the year: those students will get no fees.</summary>
+        public List<ImportNoFeeClassDto> ClassesWithoutFeeStructure { get; set; } = new();
         public List<ImportRowDto> Rows { get; set; } = new();
     }
 
@@ -56,8 +61,36 @@ namespace smss_api_service_layer.dto
         public int Students { get; set; }
     }
 
+    public class ImportNoFeeClassDto
+    {
+        public string ClassName { get; set; } = "";
+        public int Students { get; set; }
+    }
+
+    /// <summary>What the admin chose for the fees of the imported students. Without ChargeFromYearStart nothing is back-dated.</summary>
+    public class ImportFeeOptions
+    {
+        public bool ChargeFromYearStart { get; set; }
+        public bool ConfirmBackdating { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    public class ImportFeeFailureDto
+    {
+        public string StudentId { get; set; } = "";
+        public string StudentName { get; set; } = "";
+        public string ClassName { get; set; } = "";
+        /// <summary>A plain sentence, no technical detail.</summary>
+        public string Reason { get; set; } = "";
+    }
+
     public class ImportResultDto
     {
+        /// <summary>Fees: students who got their class's fee structure, students whose class has none (left as they were), the ones that failed (listed; the import itself stands), and whether the dues were charged from the year's start.</summary>
+        public int FeesAssigned { get; set; }
+        public int FeesNoStructure { get; set; }
+        public bool FeesBackdated { get; set; }
+        public List<ImportFeeFailureDto> FeesFailed { get; set; } = new();
         public int Imported { get; set; }
         public string AcademicYearName { get; set; } = "";
         public int WarningRows { get; set; }

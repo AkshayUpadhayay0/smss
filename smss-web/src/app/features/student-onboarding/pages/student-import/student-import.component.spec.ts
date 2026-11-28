@@ -193,4 +193,59 @@ describe('StudentImportComponent', () => {
     expect(text()).not.toContain('Import complete');
     expect(text()).toContain('already belongs to a student');
   });
+
+  const withFees = (p: ImportPreview, extra: Partial<ImportPreview>): ImportPreview => ({ ...p, ...extra });
+  const tick = (sel: string) => { (el().querySelector(sel) as HTMLInputElement).click(); fixture.detectChanges(); };
+
+  it('names the classes that have no fee structure and says those students get no fees', () => {
+    check(withFees(PREVIEW([row(2, 'OK')]), { classesWithoutFeeStructure: [{ className: 'Class 3', students: 1 }] }));
+    const banner = el().querySelector('[data-banner="no-structure"]')?.textContent ?? '';
+    expect(banner).toContain('Class 3');
+    expect(banner).toContain('no fees');
+  });
+
+  it('offers charging from the year start only once the year has begun; the tick needs a confirmation and a reason, and nothing is back-dated without it', async () => {
+    check(PREVIEW([row(2, 'OK')]));
+    expect(el().querySelector('[data-from-start]')).toBeNull();          // year not started: no offer
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(StudentImportComponent);
+    fixture.detectChanges();
+    check(withFees(PREVIEW([row(2, 'OK')]), { yearStarted: true, yearStart: '2026-04-01' }));
+    expect(button('Import 1 student')!.disabled).toBe(false);             // no tick: nothing back-dated, ready
+    tick('[data-from-start]');
+    expect(button('Import 1 student')!.disabled).toBe(true);              // needs the confirmation and a reason
+    tick('[data-confirm-backdating]');
+    expect(button('Import 1 student')!.disabled).toBe(true);
+    const reason = el().querySelector('[data-reason]') as HTMLTextAreaElement;
+    reason.value = 'Students were already studying'; reason.dispatchEvent(new Event('input')); fixture.detectChanges();
+    expect(button('Import 1 student')!.disabled).toBe(false);
+    vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(true);
+    button('Import 1 student')!.click();
+    await fixture.whenStable();
+    const req = http.expectOne(`${API}/api/StudentImport/commit`);
+    const form = req.request.body as FormData;
+    expect([form.get('chargeFromYearStart'), form.get('confirmBackdating'), form.get('reason')]).toEqual(['true', 'true', 'Students were already studying']);
+    req.flush({ status: true, statusCode: 201, message: 'ok', data: { imported: 1, academicYearName: '2026-27', warningRows: 0, firstStudentId: 'S1', lastStudentId: 'S1', byClass: [], notes: [], feesAssigned: 0, feesNoStructure: 0, feesBackdated: true, feesFailed: [{ studentId: 'S1', studentName: 'A', className: 'Class 3', reason: 'The student was added, but the fee structure could not be assigned automatically.' }] } });
+    fixture.detectChanges();
+    expect(text()).toContain('Fees not assigned');
+    expect(text()).toContain('could not be assigned automatically');
+    expect(text()).toContain('1 failed');
+  });
+
+  it('without the tick the commit says so explicitly (no back-dating fields)', async () => {
+    check(withFees(PREVIEW([row(2, 'OK')]), { yearStarted: true, yearStart: '2026-04-01' }));
+    vi.spyOn(TestBed.inject(ConfirmDialogService), 'confirm').mockResolvedValue(true);
+    button('Import 1 student')!.click();
+    await fixture.whenStable();
+    const req = http.expectOne(`${API}/api/StudentImport/commit`);
+    const form = req.request.body as FormData;
+    expect(form.get('chargeFromYearStart')).toBe('false');
+    expect(form.get('reason')).toBeNull();
+    req.flush({ status: true, statusCode: 201, message: 'ok', data: { imported: 1, academicYearName: '2026-27', warningRows: 0, firstStudentId: 'S1', lastStudentId: 'S1', byClass: [], notes: [], feesAssigned: 1, feesNoStructure: 0, feesBackdated: false, feesFailed: [] } });
+    fixture.detectChanges();
+    expect(text()).toContain('1 assigned');
+  });
 });

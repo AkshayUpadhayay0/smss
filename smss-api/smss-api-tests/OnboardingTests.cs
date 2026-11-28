@@ -384,7 +384,7 @@ namespace smss_api_tests
             {
                 var svc = Fake.Of<IStudentImportService>();
                 var c = Fake.WithUser(new StudentImportController(svc, onb), user);
-                return (() => c.Commit(Xlsx(), Ct), svc);
+                return (() => c.Commit(Xlsx(), false, false, null, Ct), svc);
             }),
             new("admission submit", "SubmitAsync", (onb, user) =>
             {

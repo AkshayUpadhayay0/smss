@@ -390,7 +390,7 @@ StudentFeeController.RemoveConcession(String,Int64,Nullable`1,CancellationToken)
 StudentFeeController.UpdateFeeItem(String,Int64,UpdateFeeItemRequest,CancellationToken) => School Admin
 StudentIdCardController.GetSectionCards(Int64,CancellationToken) => School Admin
 StudentIdCardController.GetStudentCard(String,CancellationToken) => School Admin
-StudentImportController.Commit(IFormFile,CancellationToken) => School Admin
+StudentImportController.Commit(IFormFile,Boolean,Boolean,String,CancellationToken) => School Admin
 StudentImportController.ErrorReport(IFormFile,CancellationToken) => -
 StudentImportController.Preview(IFormFile,CancellationToken) => -
 StudentImportController.Template(CancellationToken) => School Admin

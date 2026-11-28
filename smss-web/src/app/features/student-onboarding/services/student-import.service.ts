@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { ImportPreview, ImportResult } from '../models/student-import.model';
+import { ImportFeeChoice, ImportPreview, ImportResult } from '../models/student-import.model';
 
 const BASE = '/api/StudentImport';
 
@@ -19,8 +19,11 @@ export class StudentImportService {
     return this.api.upload<ImportPreview>(`${BASE}/preview`, file);
   }
 
-  commit(file: File): Observable<ImportResult> {
-    return this.api.upload<ImportResult>(`${BASE}/commit`, file);
+  commit(file: File, fees?: ImportFeeChoice): Observable<ImportResult> {
+    const extra: Record<string, string> = fees?.chargeFromYearStart
+      ? { chargeFromYearStart: 'true', confirmBackdating: String(fees.confirmBackdating), reason: fees.reason ?? '' }
+      : { chargeFromYearStart: 'false' };
+    return this.api.upload<ImportResult>(`${BASE}/commit`, file, 'file', undefined, extra);
   }
 
   errorReport(file: File): Observable<Blob> {

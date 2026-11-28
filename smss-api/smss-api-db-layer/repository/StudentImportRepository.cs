@@ -56,6 +56,9 @@ namespace smss_api_db_layer.repository
             return (await _db.Students.AsNoTracking().Where(s => s.SchoolId == schoolId && list.Contains(s.AdmissionNumber)).Select(s => s.AdmissionNumber).ToListAsync(ct)).ToHashSet();
         }
 
+        public async Task<HashSet<long>> ClassIdsWithFeeStructureAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            (await _db.FeeStructures.AsNoTracking().Where(f => f.SchoolId == schoolId && f.AcademicYearId == academicYearId && f.IsActive).Select(f => f.ClassId).Distinct().ToListAsync(ct)).ToHashSet();
+
         public async Task<HashSet<long>> OfferedSectionIdsAsync(string schoolId, long academicYearId, CancellationToken ct)
         {
             var activeId = await _db.LutStatus.AsNoTracking().Where(s => s.Sname == "Active" && s.Stype == "general status").Select(s => (int?)s.Sid).FirstOrDefaultAsync(ct);

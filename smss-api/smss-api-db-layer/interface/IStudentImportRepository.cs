@@ -33,6 +33,8 @@ namespace smss_api_db_layer.@interface
         Task<int> CountStudentsAsync(string schoolId, CancellationToken ct);
         Task<int> MaxAdmissionNumberSequenceAsync(string schoolId, string prefix, CancellationToken ct);
         /// <summary>Serialises imports (and their admission-number allocation) for one school until the transaction ends.</summary>
+        /// <summary>The classes of this school that have an ACTIVE fee structure for the year.</summary>
+        Task<HashSet<long>> ClassIdsWithFeeStructureAsync(string schoolId, long academicYearId, CancellationToken ct);
         Task LockSchoolImportAsync(string schoolId, CancellationToken ct);
 
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);

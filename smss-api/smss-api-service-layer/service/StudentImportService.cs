@@ -65,7 +65,13 @@ namespace smss_api_service_layer.service
 
         private readonly IStudentImportRepository _repo;
         private readonly ILogger<StudentImportService> _logger;
+        private readonly IFeeRepairRepository? _feeLookup;
+        private readonly IAdmissionRepository? _admission;
+        private readonly IStudentFeeBillingService? _billing;
+        /// <summary>Without the fee services the import still works but assigns no fees (only tests of the sheet itself build it this way; the API always uses the full constructor).</summary>
         public StudentImportService(IStudentImportRepository repo, ILogger<StudentImportService> logger) { _repo = repo; _logger = logger; }
+        public StudentImportService(IStudentImportRepository repo, ILogger<StudentImportService> logger, IFeeRepairRepository feeLookup, IAdmissionRepository admission, IStudentFeeBillingService billing)
+            : this(repo, logger) { _feeLookup = feeLookup; _admission = admission; _billing = billing; }
 
         // ============================================================================ models
         private sealed class RawRow
@@ -144,12 +150,27 @@ namespace smss_api_service_layer.service
         }
 
         // ============================================================================ commit
-        public async Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct, long userId = 0)
+        public async Task<ApiResponse<ImportResultDto>> CommitAsync(string schoolId, byte[] file, CancellationToken ct, long userId = 0, ImportFeeOptions? fees = null)
         {
             try
             {
                 var bad = ExcelFileGuard.Inspect(file);
                 if (bad != null) return Result<ImportResultDto>(400, bad, null);
+
+                // back-dating is done only when asked for AND confirmed, with a reason; the check the Assign fees repair uses runs BEFORE anything is imported
+                FeeSyncOptions? feeOptions = null;
+                if (fees is { ChargeFromYearStart: true } && _billing != null)
+                {
+                    var activeId = await _repo.GetActiveStatusIdAsync(ct);
+                    var current = activeId == null ? null : await _repo.GetCurrentYearAsync(schoolId, activeId.Value, ct);
+                    if (current != null && current.StartDate < SchoolClock.Today())
+                    {
+                        var start = current.StartDate;
+                        var problem = await _billing.CheckChargeFromAsync(schoolId, current.AcademicYearId, start, fees.ConfirmBackdating, fees.Reason, ct);
+                        if (problem != null) return Result<ImportResultDto>(400, problem, null);
+                        feeOptions = new FeeSyncOptions { ChargeFrom = start, Backdate = true, BackdatingReason = fees.Reason!.Trim(), UserId = userId > 0 ? userId : null };
+                    }
+                }
 
                 for (var attempt = 0; attempt < 3; attempt++)
                 {
@@ -218,10 +239,10 @@ namespace smss_api_service_layer.service
                                              .OrderBy(g => g.ClassName, StringComparer.OrdinalIgnoreCase).ThenBy(g => g.SectionName, StringComparer.OrdinalIgnoreCase).ToList(),
                             Notes = new List<string>
                             {
-                                "No fee structure was assigned to these students. Assign fees from the fee screens or each student's Fees tab.",
                                 "No student logins were created. Use Create Login on a student's profile when a student needs one."
                             }
                         };
+                        await AssignFeesAsync(schoolId, ctx.Year.AcademicYearId, created.Select(c => c.StudentId).ToList(), feeOptions, result, ct);   // AFTER the commit: a failure here never undoes the import
                         if (result.SkippedRows > 0) result.Notes.Insert(0, $"{result.SkippedRows} row(s) had errors and were NOT imported (sheet rows {string.Join(", ", result.SkippedRowNumbers.Take(30))}{(result.SkippedRowNumbers.Count > 30 ? ", ..." : "")}). Download the error report, fix them and upload them again.");
                         return Result(201, result.SkippedRows > 0 ? $"{created.Count} students imported; {result.SkippedRows} row(s) with errors were skipped." : $"{created.Count} students imported.", result);
                     }
@@ -243,6 +264,42 @@ namespace smss_api_service_layer.service
                 return Result<ImportResultDto>(409, "Could not allocate student IDs. Nothing was imported. Please try again.", null);
             }
             catch (Exception ex) { _logger.LogError(ex, "Error while importing students"); return Result<ImportResultDto>(500, "Something went wrong. Nothing was imported. Please try again later.", null); }
+        }
+
+        /// <summary>The same assignment code admission and the Assign fees repair use, once per imported student; best-effort. Fills the fee counts and notes of the result.</summary>
+        private async Task AssignFeesAsync(string schoolId, long yearId, List<string> studentIds, FeeSyncOptions? options, ImportResultDto result, CancellationToken ct)
+        {
+            if (_feeLookup == null || _admission == null || _billing == null)
+            {
+                result.Notes.Add("Fees were not assigned. Use Assign fees from the fee screens.");
+                return;
+            }
+            try
+            {
+                _repo.ClearTracking();
+                var mine = studentIds.ToHashSet();
+                var missing = (await _feeLookup.ListMissingAsync(schoolId, yearId, ct)).Where(m => mine.Contains(m.StudentId)).ToList();   // only the students THIS import created
+                result.FeesNoStructure = missing.Count(m => m.FeeStructureId == null);
+                result.FeesBackdated = options != null;
+                foreach (var m in missing.Where(m => m.FeeStructureId != null))
+                {
+                    var warning = await FeeAutoAssignment.TryAssignAsync(_admission, _billing, null, _logger, schoolId, m.StudentId, yearId, m.FeeStructureId!.Value, DateTime.UtcNow, ct, options);
+                    if (warning == null) result.FeesAssigned++;
+                    else result.FeesFailed.Add(new ImportFeeFailureDto { StudentId = m.StudentId, StudentName = m.StudentName, ClassName = m.ClassName, Reason = warning });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fees could not be assigned after a student import for school {SchoolId}", schoolId);
+                result.Notes.Add("The students were imported, but their fees could not be assigned. Use Assign fees from the fee screens.");
+                return;
+            }
+            if (result.FeesNoStructure > 0)
+                result.Notes.Add($"{result.FeesNoStructure} student(s) are in classes with no fee structure for {result.AcademicYearName}, so they got no fees. Create the structure, then use Assign fees.");
+            if (result.FeesFailed.Count > 0)
+                result.Notes.Add($"Fees could not be assigned to {result.FeesFailed.Count} student(s) (listed below). The import itself is complete; assign their fees from each student's Fees tab.");
+            if (result.FeesAssigned > 0)
+                result.Notes.Add(result.FeesBackdated ? $"Fees were assigned to {result.FeesAssigned} student(s), charged from the year's start." : $"Fees were assigned to {result.FeesAssigned} student(s); dues start from today.");
         }
 
         // ============================================================================ error report
@@ -345,6 +402,13 @@ namespace smss_api_service_layer.service
             }
 
             Finish(v);
+
+            // ---- fees: classes whose students will get no fee structure (the import assigns the class's ACTIVE structure for the year, like admission does)
+            v.Preview.YearStart = year.StartDate;
+            v.Preview.YearStarted = v.Preview.YearStart < SchoolClock.Today();
+            var withStructure = await _repo.ClassIdsWithFeeStructureAsync(schoolId, year.AcademicYearId, ct);
+            v.Preview.ClassesWithoutFeeStructure = v.Rows.Where(r => r.Errors.Count == 0 && r.ClassId != 0 && !withStructure.Contains(r.ClassId))
+                .GroupBy(r => r.ClassName).Select(g => new ImportNoFeeClassDto { ClassName = g.Key, Students = g.Count() }).OrderBy(g => g.ClassName, StringComparer.OrdinalIgnoreCase).ToList();
 
             // ---- hint (information only, never an error or a warning, never an automatic link): the file's guardian number already belongs to a guardian of this school (maybe a sibling)
             var existingKeys = await _repo.GuardianPhoneKeysAsync(schoolId, ct) ?? new HashSet<string>();
