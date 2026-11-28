@@ -27,6 +27,30 @@
         </div>
       }
     </div>
+
+    @if (year.canChoose()) {
+      <div class="year" data-viewing-year>
+        @switch (year.state()) {
+          @case ('ready') {
+            <label class="year-pick">
+              <span class="year-label">Viewing year</span>
+              <select data-year-select aria-label="Viewing academic year" (change)="onYearPick($event)">
+                @for (o of year.options(); track o.value) {
+                  <option [value]="o.value" [selected]="o.value === year.selectedValue()">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            @if (year.isNonCurrent()) {
+              <span class="year-chip" data-year-chip role="status">Viewing {{ year.viewingYearName() }}, not the current year
+                <button type="button" class="year-back" data-year-back (click)="year.useCurrent()">Back to current</button></span>
+            }
+          }
+          @case ('loading') { <span class="year-note" data-year-loading role="status">Loading years…</span> }
+          @case ('none') { <span class="year-note" data-year-none>No academic year yet</span> }
+          @case ('failed') { <button type="button" class="year-back" data-year-retry (click)="year.refresh()">Years could not be loaded. Try again</button> }
+        }
+      </div>
+    }
   </div>
 
   <div class="right">

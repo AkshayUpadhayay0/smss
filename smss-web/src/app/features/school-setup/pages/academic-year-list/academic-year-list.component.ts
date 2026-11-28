@@ -18,6 +18,7 @@ import { FeeRepairModalComponent } from '../../components/fee-repair-modal/fee-r
 import { YearCopyWizardComponent } from '../../components/year-copy-wizard/year-copy-wizard.component';
 import { AcademicYearFormModalComponent } from '../../components/academic-year-form-modal/academic-year-form-modal.component';
 import { AcademicYear, AcademicYearRow, AcademicYearState, AcademicYearUsage } from '../../models/academic-year.model';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { AcademicYearService } from '../../services/academic-year.service';
 
 const COLUMNS: TableColumn<AcademicYearRow>[] = [
@@ -66,6 +67,8 @@ const formatDate = (iso: string): string => {
 })
 export class AcademicYearListComponent implements OnInit {
   private readonly service = inject(AcademicYearService);
+  /** The header's viewing year follows the current flag: tell it whenever this list changes (set current, close, deactivate, add). */
+  private readonly yearContext = inject(YearContextService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
 
@@ -123,7 +126,10 @@ export class AcademicYearListComponent implements OnInit {
       .list()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (years) => this.years.set(years),
+        next: (years) => {
+          this.years.set(years);
+          this.yearContext.refresh();
+        },
         error: () => this.loadFailed.set(true), // already toasted by the interceptor
       });
   }
@@ -243,6 +249,7 @@ export class AcademicYearListComponent implements OnInit {
         this.years.update((list) => list.map((y) => (y.academicYearId === updated.academicYearId ? updated : y)));
         this.toast.success(message(updated));
         if (reload) this.load();
+        else this.yearContext.refresh();
       },
       // The server's refusal (e.g. "Set a different year as current…") is already toasted by the interceptor
       error: () => undefined,

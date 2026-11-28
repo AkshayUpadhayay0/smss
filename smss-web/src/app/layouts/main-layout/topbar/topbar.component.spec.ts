@@ -91,6 +91,8 @@ describe('TopbarComponent notification bell', () => {
     fixture.detectChanges();
     http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: 'Test School', logoUrl: null }));
     http.expectOne(`${API}/api/Notice/unread-count`).flush(env({ count: 0 }));
+    TestBed.tick();
+    http.expectOne(`${API}/api/AcademicYear`).flush(env([]));   // the viewing-year selector reads the school's years (School Admin)
     (el().querySelector('button.user') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el().textContent).not.toContain('My profile');
@@ -185,6 +187,7 @@ describe('TopbarComponent school avatar', () => {
   const brand = (logoUrl: string | null, name = 'Test School') => {
     http.expectOne(`${API}/api/SchoolRegistration/me/brand`).flush(env({ schoolName: name, logoUrl }));
     http.match(`${API}/api/Notice/unread-count`).forEach((r) => r.flush(env({ count: 0 })));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([])));   // only the School Admin / Principal / Accountant selector asks
     fixture.detectChanges();
   };
   afterEach(() => {
@@ -239,5 +242,71 @@ describe('TopbarComponent school avatar', () => {
     http.match(`${API}/api/Notice/unread-count`).forEach((r) => r.flush(env({ count: 0 })));
     fixture.detectChanges();
     expect(avatar().querySelector('img')).not.toBeNull();
+  });
+});
+
+describe('TopbarComponent viewing year', () => {
+  let fixture: ComponentFixture<TopbarComponent>;
+  let http: HttpTestingController;
+  const el = () => fixture.nativeElement as HTMLElement;
+  const yr = (id: number, name: string, extra: Record<string, unknown> = {}) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent: false, statusName: 'Active', state: 'PAST', isClosed: false, usage: {}, createdAt: '', updatedAt: '', ...extra });
+  const YEARS = [yr(1, '2025-26', { isClosed: true, state: 'CLOSED' }), yr(2, '2026-27', { isCurrent: true, state: 'CURRENT' }), yr(3, '2027-28', { state: 'UPCOMING' })];
+
+  function open(roles: string[], years: unknown[] | null = YEARS, stored?: string) {
+    clearSessions();
+    sessionStorage.removeItem('smss.viewingYear');
+    if (stored) sessionStorage.setItem('smss.viewingYear', stored);
+    seedSession({ user: makeUser({ schoolId: 'S', userType: 'Employee', roles }) });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(TopbarComponent);
+    fixture.detectChanges();
+    http.match(`${API}/api/SchoolRegistration/me/brand`).forEach((r) => r.flush(env({ schoolName: 'S', logoUrl: null })));
+    http.match(`${API}/api/Notice/unread-count`).forEach((r) => r.flush(env({ count: 0 })));
+    if (years) http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(years)));
+    fixture.detectChanges();
+  }
+  afterEach(() => { http.verify(); clearSessions(); sessionStorage.removeItem('smss.viewingYear'); });
+
+  it('School Admin, Principal and Accountant see the selector with every year labelled; Teacher, Student and Guardian never do', () => {
+    for (const role of ['School Admin', 'Principal', 'Accountant']) {
+      TestBed.resetTestingModule();
+      open([role]);
+      const labels = [...el().querySelectorAll('[data-year-select] option')].map((o) => o.textContent?.trim());
+      expect(labels).toEqual(['2025-26 (Closed)', '2026-27 (Current)', '2027-28 (Upcoming)']);
+      expect((el().querySelector('[data-year-select]') as HTMLSelectElement).value).toBe('2');
+      expect(el().querySelector('[data-year-chip]')).toBeNull();                                  // the current year: no chip
+    }
+    for (const role of ['Teacher', 'Student', 'Guardian']) {
+      TestBed.resetTestingModule();
+      open([role], null);
+      expect(el().querySelector('[data-viewing-year]')).toBeNull();
+    }
+  });
+
+  it('picking another year shows the highlighted chip; Back to current clears it', () => {
+    open(['School Admin']);
+    const select = el().querySelector('[data-year-select]') as HTMLSelectElement;
+    select.value = '1';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-year-chip]')?.textContent).toContain('2025-26');
+    expect(sessionStorage.getItem('smss.viewingYear')).toBe('1');
+    (el().querySelector('[data-year-back]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el().querySelector('[data-year-chip]')).toBeNull();
+    expect(sessionStorage.getItem('smss.viewingYear')).toBe('current');
+  });
+
+  it('a reload keeps the picked year (chip shows at once), loading and empty states are worded', () => {
+    open(['School Admin'], YEARS, '3');
+    expect(el().querySelector('[data-year-chip]')?.textContent).toContain('2027-28');
+    TestBed.resetTestingModule();
+    open(['Accountant'], null);
+    expect(el().querySelector('[data-year-loading]')).not.toBeNull();
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([])));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-year-none]')).not.toBeNull();
+    expect(el().querySelector('[data-year-select]')).toBeNull();
   });
 });

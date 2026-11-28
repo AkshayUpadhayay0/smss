@@ -22,6 +22,8 @@ export class AuthService {
   private readonly secureImages = inject(SecureImageService);
 
   private readonly session = signal<AuthSession | null>(this.load());
+  /** Counts real sign-ins (a typed password), never refreshes or page reloads: per-session choices (the viewing year) start afresh at every one. */
+  readonly loginEpoch = signal(0);
   private refreshing$: Observable<string> | null = null;
 
   readonly user = computed<AuthUser | null>(() => this.session()?.user ?? null);
@@ -55,7 +57,10 @@ export class AuthService {
 
   login(request: LoginRequest): Observable<AuthUser> {
     return this.api.post<LoginResponse>(`${BASE}/login`, request, { skipErrorToast: true }).pipe(
-      tap((res) => this.store(res, request.rememberMe)),
+      tap((res) => {
+        this.store(res, request.rememberMe);
+        this.loginEpoch.update((n) => n + 1);
+      }),
       map((res) => res.user),
     );
   }

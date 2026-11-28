@@ -5,6 +5,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { canAccess } from '../../../core/config/route-roles';
 import { searchNav } from '../nav.config';
 import { AuthService } from '../../../core/services/auth.service';
+import { YearContextService } from '../../../core/services/year-context.service';
 import { Notice } from '../../../features/notices/models/notice.model';
 import { NoticeService } from '../../../features/notices/services/notice.service';
 import { publishedLabel, snippet } from '../../../features/notices/utils/notice-format';
@@ -27,6 +28,8 @@ const BELL_LIMIT = 5;
 export class TopbarComponent implements OnInit {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly auth = inject(AuthService);
+  /** The viewing year: a selector (School Admin, Principal, Accountant only) and a chip whenever it is not the current year. */
+  protected readonly year = inject(YearContextService);
   private readonly router = inject(Router);
   private readonly notices = inject(NoticeService);
   private readonly schoolApi = inject(SchoolService);
@@ -64,6 +67,10 @@ export class TopbarComponent implements OnInit {
   protected readonly searchTerm = signal('');
   /** Pages this role can open that match what was typed (the same set the sidebar offers). */
   protected readonly searchHits = computed(() => searchNav(this.searchTerm(), this.auth.currentUserRoles(), this.auth.hasEmployeeRecord()));
+
+  protected onYearPick(event: Event): void {
+    this.year.select((event.target as HTMLSelectElement).value);
+  }
 
   protected onSearchInput(event: Event): void {
     this.searchTerm.set((event.target as HTMLInputElement).value);
