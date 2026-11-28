@@ -40,7 +40,7 @@ namespace smss_api_tests
             return w;
         }
 
-        private static void Student(TaxDb db, World w, string id, long section, long year, string? outcome)
+        public static void Student(TaxDb db, World w, string id, long section, long year, string? outcome)
         {
             db.Exec($@"insert into tb_students (student_id, school_id, admission_number, first_name, last_name, date_of_birth, admission_type_id, admission_date, status_id)
                        values ('{id}', '{w.School}', '{id}-N', 'Stu', '{id}', '2015-01-01', (select admission_type_id from lut_admission_type where type_code='NEW_ADMISSION'), '2025-04-01', {Active})");

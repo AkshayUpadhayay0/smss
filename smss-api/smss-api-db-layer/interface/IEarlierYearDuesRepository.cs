@@ -34,6 +34,8 @@ namespace smss_api_db_layer.@interface
     {
         /// <summary>Per student and earlier year, the outstanding amount (only years with something unpaid). <paramref name="referenceStarts"/> is parallel to <paramref name="studentIds"/>: the start date of the year shown for that student; earlier = starts before it.</summary>
         Task<List<EarlierYearAmountRow>> GetOutstandingAsync(string schoolId, IReadOnlyList<string> studentIds, IReadOnlyList<DateOnly> referenceStarts, DateOnly overdueBefore, CancellationToken ct);
+        /// <summary>The start date of one of the school's academic years (null when it is not this school's).</summary>
+        Task<DateOnly?> GetYearStartAsync(string schoolId, long academicYearId, CancellationToken ct);
         /// <summary>The unpaid installments of one student in years that start before the date, oldest first.</summary>
         Task<List<EarlierDueRow>> GetDuesAsync(string schoolId, string studentId, DateOnly referenceStart, CancellationToken ct);
     }

@@ -40,8 +40,9 @@ namespace smss_api_service_layer.service
         private readonly ILogger<FeeReminderService> _logger;
 
         public FeeReminderService(INotificationRepository repo, IStudentRepository students, IFcmSender fcm, TimeProvider clock,
-            Microsoft.Extensions.Options.IOptions<FirebaseOptions> firebase, ILogger<FeeReminderService> logger)
+            Microsoft.Extensions.Options.IOptions<FirebaseOptions> firebase, ILogger<FeeReminderService> logger, IEarlierYearDuesRepository? earlier = null)
         {
+            _earlier = earlier;
             _repo = repo;
             _students = students;
             _fcm = fcm;
@@ -149,16 +150,26 @@ namespace smss_api_service_layer.service
 
         // ------------------------------------------------------------------ who is overdue (reuses the Student module's definition)
 
+        private readonly IEarlierYearDuesRepository? _earlier;
+
         private async Task<List<EligibleStudent>> FindOverdueStudentsAsync(string schoolId, long yearId, int graceDays, DateOnly today, CancellationToken ct)
         {
             var eligible = await _repo.GetEligibleStudentsAsync(schoolId, yearId, UserTypes.Student, ct);
             if (eligible.Count == 0) return eligible;
             var cutoff = today.AddDays(-Math.Max(0, graceDays));
             var overdue = new List<EligibleStudent>();
+            var yearStart = _earlier == null ? null : await _earlier.GetYearStartAsync(schoolId, yearId, ct);
             foreach (var chunk in eligible.Chunk(AggregateChunk))
             {
                 var aggregates = await _students.GetFeeAggregatesAsync(schoolId, yearId, chunk.Select(e => e.StudentId).ToArray(), cutoff, ct);
-                overdue.AddRange(chunk.Where(e => aggregates.TryGetValue(e.StudentId, out var a) && a.OverdueCount > 0));
+                // an installment still unpaid from an EARLIER year counts toward the overdue count too (the reminder text stays the same, neutral, no amounts)
+                var earlierOverdue = new HashSet<string>(StringComparer.Ordinal);
+                if (_earlier != null && yearStart != null)
+                {
+                    var ids = chunk.Select(e => e.StudentId).ToList();
+                    foreach (var r in await _earlier.GetOutstandingAsync(schoolId, ids, ids.Select(_ => yearStart.Value).ToList(), cutoff, ct)) if (r.OverdueCount > 0) earlierOverdue.Add(r.StudentId);
+                }
+                overdue.AddRange(chunk.Where(e => (aggregates.TryGetValue(e.StudentId, out var a) && a.OverdueCount > 0) || earlierOverdue.Contains(e.StudentId)));
             }
             return overdue;
         }

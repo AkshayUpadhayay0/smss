@@ -31,6 +31,9 @@ SELECT x.student_id AS ""StudentId"", y.academic_year_id AS ""AcademicYearId"", 
                 new NpgsqlParameter("cutoff", NpgsqlDbType.Date) { Value = overdueBefore }).ToListAsync(ct);
         }
 
+        public Task<DateOnly?> GetYearStartAsync(string schoolId, long academicYearId, CancellationToken ct) =>
+            _db.AcademicYears.AsNoTracking().Where(y => y.SchoolId == schoolId && y.AcademicYearId == academicYearId).Select(y => (DateOnly?)y.StartDate).FirstOrDefaultAsync(ct);
+
         public Task<List<EarlierDueRow>> GetDuesAsync(string schoolId, string studentId, DateOnly referenceStart, CancellationToken ct) =>
             _db.Database.SqlQueryRaw<EarlierDueRow>(@"
 SELECT d.fee_due_id AS ""FeeDueId"", d.student_fee_item_id AS ""StudentFeeItemId"", i.fee_type_id AS ""FeeTypeId"",
