@@ -104,6 +104,16 @@ namespace smss_api_service_layer.dto
         public decimal Outstanding { get; set; }
         /// <summary>Paid / Partially Paid / Pending / Overdue. Computed on every read, never stored.</summary>
         public string Status { get; set; } = null!;
+        /// <summary>Set only on an installment of an EARLIER year (EarlierDues); empty for the year shown.</summary>
+        public string? AcademicYearName { get; set; }
+    }
+
+    /// <summary>What a student still owes from one earlier academic year. Derived on every read from that year's own dues: nothing is carried forward or moved.</summary>
+    public class EarlierYearAmountDto
+    {
+        public long AcademicYearId { get; set; }
+        public string AcademicYearName { get; set; } = null!;
+        public decimal Outstanding { get; set; }
     }
 
     public class StudentFeeDuesDto
@@ -117,6 +127,11 @@ namespace smss_api_service_layer.dto
         public decimal OverdueAmount { get; set; }
         public int OverdueCount { get; set; }
         public List<StudentFeeDueDto> Dues { get; set; } = new();
+        /// <summary>"Outstanding from earlier years": per earlier year, what is still unpaid (only years with something unpaid), oldest first. Beside the year's own figures, never added to them.</summary>
+        public List<EarlierYearAmountDto> EarlierYears { get; set; } = new();
+        public decimal OutstandingEarlierYears { get; set; }
+        /// <summary>The unpaid installments of those earlier years, oldest first, so the payment dialog can list them first. Empty when nothing is owed from earlier years.</summary>
+        public List<StudentFeeDueDto> EarlierDues { get; set; } = new();
     }
 
     /// <summary>One fee head of the structure that applies to a class, for the admission form (nothing is created yet).</summary>

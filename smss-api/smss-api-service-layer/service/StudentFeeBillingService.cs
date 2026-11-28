@@ -13,11 +13,14 @@ namespace smss_api_service_layer.service
         private readonly IStudentFeeRepository _fees;
         private readonly ILogger<StudentFeeBillingService> _logger;
 
-        public StudentFeeBillingService(IStudentFeeBillingRepository repo, IStudentFeeRepository fees, ILogger<StudentFeeBillingService> logger)
+        private readonly IEarlierYearDuesRepository? _earlier;
+
+        public StudentFeeBillingService(IStudentFeeBillingRepository repo, IStudentFeeRepository fees, ILogger<StudentFeeBillingService> logger, IEarlierYearDuesRepository? earlier = null)
         {
             _repo = repo;
             _fees = fees;
             _logger = logger;
+            _earlier = earlier;
         }
 
         // ================= syncing items and dues =================
@@ -348,9 +351,30 @@ namespace smss_api_service_layer.service
                 dto.Outstanding = dto.Dues.Sum(d => d.Outstanding);
                 dto.OverdueCount = dto.Dues.Count(d => d.Status == FeeSchedule.StatusOverdue);
                 dto.OverdueAmount = dto.Dues.Where(d => d.Status == FeeSchedule.StatusOverdue).Sum(d => d.Outstanding);
+                await AddEarlierYearsAsync(schoolId, studentId, ctx.Year.StartDate, today, dto, ct);
                 return Result(200, "Successfully fetched", dto);
             }
             catch (Exception ex) { return Error<StudentFeeDuesDto>(ex, "fetching student fee dues"); }
+        }
+
+        /// <summary>Beside the year's own dues: what the student still owes from years that start BEFORE this one, per year, with the unpaid installments. A failure here never fails the dues read (the extra block is just left empty and logged).</summary>
+        private async Task AddEarlierYearsAsync(string schoolId, string studentId, DateOnly yearStart, DateOnly today, StudentFeeDuesDto dto, CancellationToken ct)
+        {
+            if (_earlier == null) return;
+            try
+            {
+                var dues = await _earlier.GetDuesAsync(schoolId, studentId, yearStart, ct);
+                foreach (var d in dues)
+                    dto.EarlierDues.Add(new StudentFeeDueDto
+                    {
+                        FeeDueId = d.FeeDueId, StudentFeeItemId = d.StudentFeeItemId, FeeTypeId = d.FeeTypeId, FeeTypeName = d.FeeTypeName, FrequencyName = d.FrequencyName,
+                        InstallmentPlan = FeeSchedule.NormalisePlan(d.InstallmentPlan), Source = d.Source, DueDate = d.DueDate, AmountDue = d.AmountDue, AmountPaid = d.AmountPaid,
+                        Outstanding = Math.Max(d.AmountDue - d.AmountPaid, 0), Status = FeeSchedule.Status(d.AmountDue, d.AmountPaid, d.DueDate, today), AcademicYearName = d.YearName
+                    });
+                dto.EarlierYears = dues.GroupBy(d => (d.AcademicYearId, d.YearName)).Select(g => new EarlierYearAmountDto { AcademicYearId = g.Key.AcademicYearId, AcademicYearName = g.Key.YearName, Outstanding = g.Sum(x => Math.Max(x.AmountDue - x.AmountPaid, 0)) }).ToList();
+                dto.OutstandingEarlierYears = dto.EarlierYears.Sum(y => y.Outstanding);
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Earlier-year dues of student {StudentId} could not be read", studentId); dto.EarlierDues.Clear(); dto.EarlierYears.Clear(); dto.OutstandingEarlierYears = 0; }
         }
 
         public async Task<string?> CheckChargeFromAsync(string schoolId, long academicYearId, DateOnly chargeFrom, bool confirmedBackdating, string? reason, CancellationToken ct)

@@ -92,6 +92,7 @@ builder.Services.AddScoped<ITransferCertificateService, TransferCertificateServi
 builder.Services.AddScoped<ISectionChangeRepository, SectionChangeRepository>();
 builder.Services.AddScoped<ISectionChangeService, SectionChangeService>();
 builder.Services.AddScoped<IFeeRepairRepository, FeeRepairRepository>();
+builder.Services.AddScoped<IEarlierYearDuesRepository, EarlierYearDuesRepository>();
 builder.Services.AddScoped<IFeeRepairService, FeeRepairService>();
 builder.Services.AddScoped<IStudentIdCardRepository, StudentIdCardRepository>();
 builder.Services.AddScoped<IStudentIdCardService, StudentIdCardService>();
