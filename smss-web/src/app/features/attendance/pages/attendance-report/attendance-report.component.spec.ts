@@ -1,3 +1,4 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -39,6 +40,8 @@ const REPORT: MonthlyAttendanceReport = {
   summary: { studentCount: 3, averagePercentage: 77.8, studentsBelowThreshold: 1, thresholdPercentage: 75, workingDays: 4, daysNotMarked: 1, notMarkedDates: ['2026-11-05'] },
 };
 
+const YR = (id: number, name: string, isCurrent: boolean) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent, statusName: 'Active', state: isCurrent ? 'CURRENT' : 'PAST', isClosed: false, usage: {}, createdAt: '', updatedAt: '' });
+
 describe('AttendanceReportComponent', () => {
   let fixture: ComponentFixture<AttendanceReportComponent>;
   let http: HttpTestingController;
@@ -52,6 +55,10 @@ describe('AttendanceReportComponent', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AttendanceReportComponent);
+    fixture.detectChanges();
+    // School Admin / Principal: the page waits for the header's viewing year, then asks for the options of that year (a Teacher has no selector and asks at once)
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([YR(30, '2025-26', false), YR(40, '2026-27', true)])));
+    TestBed.tick();
     fixture.detectChanges();
     const o = http.expectOne((r) => r.url === `${API}/api/Attendance/report/options`);
     if (options === 'fail') {
@@ -151,7 +158,8 @@ describe('AttendanceReportComponent', () => {
     const q = http.expectOne((r) => r.url === `${API}/api/Attendance/report/monthly`);
     expect([q.request.params.get('year'), q.request.params.get('month')]).toEqual(['2026', '10']);
     q.flush(env({ ...REPORT, month: 10, monthName: 'October 2026' }));
-    cmp()['yearControl'].setValue('30');
+    TestBed.inject(YearContextService).select('30');   // the year is chosen in the header, not on this page
+    TestBed.tick();
     const o = http.expectOne((r) => r.url === `${API}/api/Attendance/report/options`);
     expect(o.request.params.get('academicYearId')).toBe('30');
     o.flush(env({ ...OPTIONS_ALL, academicYearId: 30 }));

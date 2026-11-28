@@ -1,3 +1,5 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
+import { followViewingYear } from '../../../../core/utils/follow-viewing-year';
 import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -88,11 +90,9 @@ export class AdmissionListComponent implements OnInit {
   protected readonly statusControl = new FormControl('', { nonNullable: true });
   /** '' = all classes / years. The options are the classes and years that actually have applications. */
   protected readonly classControl = new FormControl('', { nonNullable: true });
-  protected readonly yearControl = new FormControl('', { nonNullable: true });
   protected readonly classFilter = signal('');
-  protected readonly yearFilter = signal('');
+  protected readonly yearContext = inject(YearContextService);
   protected readonly classOptions = computed<SelectOption[]>(() => this.distinctOptions((a) => [a.appliedClassId, a.appliedClassName]));
-  protected readonly yearOptions = computed<SelectOption[]>(() => this.distinctOptions((a) => [a.academicYearId, a.academicYearName]));
   protected readonly sortKey = signal<string | null>('applicationDateText');
   protected readonly sortDirection = signal<SortDirection>('desc');
   protected readonly page = signal(1);
@@ -102,14 +102,12 @@ export class AdmissionListComponent implements OnInit {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
     const cls = this.classFilter();
-    const year = this.yearFilter();
     const key = this.sortKey();
     const dir = this.sortDirection() === 'asc' ? 1 : -1;
 
     const rows = this.admissions()
       .filter((a) => !status || a.statusName === status)
       .filter((a) => !cls || String(a.appliedClassId) === cls)
-      .filter((a) => !year || String(a.academicYearId) === year)
       .filter((a) => !q || [a.applicationNumber, a.applicantFullName, a.appliedClassName ?? '', a.admissionTypeName ?? ''].some((t) => t.toLowerCase().includes(q)));
 
     const sorted = [...rows];
@@ -130,6 +128,14 @@ export class AdmissionListComponent implements OnInit {
     return this.filtered().slice(start, start + this.pageSize());
   });
 
+  constructor() {
+    // the year is the app's viewing year (header selector): the server is asked for that year's applications, with the explicit id
+    followViewingYear((id) => {
+      this.page.set(1);
+      this.load(id);
+    });
+  }
+
   ngOnInit(): void {
     this.statusControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
       this.statusFilter.set(v ?? '');
@@ -139,11 +145,6 @@ export class AdmissionListComponent implements OnInit {
       this.classFilter.set(v ?? '');
       this.page.set(1);
     });
-    this.yearControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
-      this.yearFilter.set(v ?? '');
-      this.page.set(1);
-    });
-    this.load();
   }
 
   private distinctOptions(pick: (a: Admission) => [number, string | null | undefined]): SelectOption[] {
@@ -155,11 +156,16 @@ export class AdmissionListComponent implements OnInit {
     return [{ label: 'All', value: '' }, ...[...seen].sort((x, y) => x[1].localeCompare(y[1], undefined, { numeric: true })).map(([id, name]) => ({ label: name, value: String(id) }))];
   }
 
-  protected load(): void {
+  private viewingYearOrUndefined(): number | undefined {
+    const id = this.yearContext.viewingYearId();
+    return this.yearContext.state() === 'ready' && id !== null ? id : undefined;
+  }
+
+  protected load(academicYearId: number | undefined = this.viewingYearOrUndefined()): void {
     this.loading.set(true);
     this.loadFailed.set(false);
     this.service
-      .getAll()
+      .getAll(academicYearId ? { academicYearId } : {})
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (list) => this.admissions.set(list ?? []),

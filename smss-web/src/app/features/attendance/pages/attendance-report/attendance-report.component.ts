@@ -1,3 +1,5 @@
+import { YearContextService } from '../../../../core/services/year-context.service';
+import { followViewingYear } from '../../../../core/utils/follow-viewing-year';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -51,6 +53,7 @@ export class AttendanceReportComponent implements OnInit {
   protected readonly optionsFailed = signal(false);
 
   protected readonly yearControl = new FormControl('', { nonNullable: true });
+  private readonly yearContext = inject(YearContextService);
   protected readonly classControl = new FormControl('', { nonNullable: true });
   protected readonly sectionControl = new FormControl('', { nonNullable: true });
   protected readonly monthControl = new FormControl('', { nonNullable: true });
@@ -85,8 +88,15 @@ export class AttendanceReportComponent implements OnInit {
   protected readonly noSections = computed(() => !this.loadingOptions() && !this.optionsFailed() && (this.options()?.sections.length ?? 0) === 0);
   protected readonly yearName = computed(() => (this.options()?.years ?? []).find((y) => String(y.academicYearId) === this.yearId())?.yearName ?? '');
 
+  constructor() {
+    // the year is the app's viewing year (header selector); Teachers have no selector and keep the server's current year
+    followViewingYear((id) => {
+      this.report.set(null);
+      this.loadOptions(id);
+    });
+  }
+
   ngOnInit(): void {
-    this.yearControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => this.onYear(v));
     this.classControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
       this.classId.set(v);
       const first = this.sectionOptions()[0];
@@ -94,10 +104,9 @@ export class AttendanceReportComponent implements OnInit {
     });
     this.sectionControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadReport());
     this.monthControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadReport());
-    this.loadOptions();
   }
 
-  protected loadOptions(academicYearId?: number): void {
+  protected loadOptions(academicYearId: number | undefined = this.viewingYearOrUndefined()): void {
     this.loadingOptions.set(true);
     this.optionsFailed.set(false);
     this.service
@@ -131,9 +140,9 @@ export class AttendanceReportComponent implements OnInit {
     this.loadReport();
   }
 
-  private onYear(value: string): void {
-    this.report.set(null);
-    if (value) this.loadOptions(Number(value));
+  private viewingYearOrUndefined(): number | undefined {
+    const id = this.yearContext.viewingYearId();
+    return this.yearContext.state() === 'ready' && id !== null ? id : undefined;
   }
 
   protected loadReport(): void {

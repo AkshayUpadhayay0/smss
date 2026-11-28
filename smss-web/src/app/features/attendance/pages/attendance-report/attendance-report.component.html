@@ -19,7 +19,7 @@
 } @else {
   <app-card>
     <div class="filters">
-      <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
+      <p class="year-note" data-year-note>Academic year <b>{{ yearName() || '…' }}</b><small> (change it in the header)</small></p>
       @if (allSections()) {
         <app-select label="Class" [options]="classOptions()" [formControl]="classControl" />
       }
