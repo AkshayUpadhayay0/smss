@@ -49,7 +49,8 @@ describe('HomeworkListComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(HomeworkListComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the page's own list and the header's viewing year both ask
+    TestBed.tick();
     http.expectOne(withParams('/api/Timetable/my', { academicYearId: '6' })).flush(env(grid));
     http.expectOne(withParams('/api/Homework/my', { academicYearId: '6' })).flush(env(list));
     fixture.detectChanges();
@@ -61,7 +62,8 @@ describe('HomeworkListComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(HomeworkListComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));
+    TestBed.tick();
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     http.expectOne(`${API}/api/Subjects`).flush(env([{ subjectId: 7, subjectName: 'Maths', statusName: 'Active' }, { subjectId: 8, subjectName: 'English', statusName: 'Active' }, { subjectId: 9, subjectName: 'Old', statusName: 'Inactive' }]));
     http.expectOne(withParams('/api/Homework', { academicYearId: '6' })).flush(env([hw(1, 'Chapter 3')]));

@@ -12,6 +12,7 @@
     <app-admission-actions [admission]="a" (changed)="onChanged($event)" />
   }
 </app-page-header>
+<app-viewing-year-banner />
 
 @if (loading()) {
   <app-card><p class="status-note">Loading application…</p></app-card>

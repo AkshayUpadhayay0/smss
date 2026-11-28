@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -16,10 +17,11 @@ type Step = 'upload' | 'preview' | 'result';
  */
 @Component({
   selector: 'app-student-import',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, RouterLink],
+  imports: [ViewingYearBannerComponent, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header title="Import Students" subtitle="Add many existing students from an Excel file" icon="upload" [breadcrumbs]="breadcrumbs" />
+<app-viewing-year-banner />
 
     @switch (step()) {
       @case ('upload') {

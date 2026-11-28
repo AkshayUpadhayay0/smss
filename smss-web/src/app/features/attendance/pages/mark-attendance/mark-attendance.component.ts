@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -14,7 +15,7 @@ import { AttendanceService } from '../../services/attendance.service';
  */
 @Component({
   selector: 'app-mark-attendance',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './mark-attendance.component.scss',
   templateUrl: './mark-attendance.component.html',

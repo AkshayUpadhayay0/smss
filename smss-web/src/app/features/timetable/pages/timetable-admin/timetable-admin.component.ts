@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -16,11 +17,12 @@ import { TimetableService } from '../../services/timetable.service';
 /** School Admin: pick a year, class and section, then click any cell of the weekly grid to assign / change / clear it. */
 @Component({
   selector: 'app-timetable-admin',
-  imports: [ReactiveFormsModule, CardComponent, PageHeaderComponent, SelectComponent, TimetableGridComponent, SlotModalComponent, TimetableVersionsComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, CardComponent, PageHeaderComponent, SelectComponent, TimetableGridComponent, SlotModalComponent, TimetableVersionsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './timetable-admin.component.scss',
   template: `
     <app-page-header title="Timetable" subtitle="Plan each section's week: subject, teacher and room for every period" icon="calendar" [breadcrumbs]="breadcrumbs" />
+<app-viewing-year-banner />
 
     <app-card>
       <div class="pickers">

@@ -54,7 +54,8 @@ describe('TimetableAdminComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TimetableAdminComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the page's own list and the header's viewing year both ask
+    TestBed.tick();
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     fixture.detectChanges();

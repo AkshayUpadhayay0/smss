@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -36,13 +37,14 @@ const COLUMNS: TableColumn<HomeworkRow>[] = [
  */
 @Component({
   selector: 'app-homework-list',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, TableComponent, HomeworkFormModalComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, TableComponent, HomeworkFormModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './homework-list.component.scss',
   template: `
     <app-page-header title="Homework" [subtitle]="isAdmin() ? 'Homework set for every class' : 'Homework you have set'" icon="graduation-cap" [breadcrumbs]="breadcrumbs">
       <app-button [disabled]="!yearControl.value" (click)="modal.set({ homework: null })"><app-icon name="plus" [size]="16" />Add Homework</app-button>
     </app-page-header>
+<app-viewing-year-banner />
 
     <app-card>
       <div class="filters">

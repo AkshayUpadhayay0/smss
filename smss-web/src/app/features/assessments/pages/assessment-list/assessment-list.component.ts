@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -38,13 +39,14 @@ const COLUMNS: TableColumn<AssessmentRow>[] = [
  */
 @Component({
   selector: 'app-assessment-list',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, TableComponent, AssessmentFormModalComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, TableComponent, AssessmentFormModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './assessment-list.component.scss',
   template: `
     <app-page-header title="Assessments" [subtitle]="isAdmin() ? 'Class tests recorded for every class' : 'Class tests you have recorded'" icon="file-text" [breadcrumbs]="breadcrumbs">
       <app-button [disabled]="!yearControl.value" (click)="modal.set({ assessment: null })"><app-icon name="plus" [size]="16" />Record Test</app-button>
     </app-page-header>
+<app-viewing-year-banner />
 
     <app-card>
       <div class="filters">

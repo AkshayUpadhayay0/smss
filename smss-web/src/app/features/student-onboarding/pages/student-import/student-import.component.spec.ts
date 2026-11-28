@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ImportPreview, ImportRow, fileProblem, filterRows } from '../../models/student-import.model';
 import { StudentImportComponent } from './student-import.component';
@@ -50,6 +51,7 @@ describe('StudentImportComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(StudentImportComponent);
     fixture.detectChanges();
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([])));   // the viewing-year banner reads the school's years (School Admin)
   });
   afterEach(() => { http.verify(); clearSessions(); vi.restoreAllMocks(); });
 
@@ -213,6 +215,7 @@ describe('StudentImportComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(StudentImportComponent);
     fixture.detectChanges();
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([])));
     check(withFees(PREVIEW([row(2, 'OK')]), { yearStarted: true, yearStart: '2026-04-01' }));
     expect(button('Import 1 student')!.disabled).toBe(false);             // no tick: nothing back-dated, ready
     tick('[data-from-start]');
@@ -247,5 +250,14 @@ describe('StudentImportComponent', () => {
     req.flush({ status: true, statusCode: 201, message: 'ok', data: { imported: 1, academicYearName: '2026-27', warningRows: 0, firstStudentId: 'S1', lastStudentId: 'S1', byClass: [], notes: [], feesAssigned: 1, feesNoStructure: 0, feesBackdated: false, feesFailed: [] } });
     fixture.detectChanges();
     expect(text()).toContain('1 assigned');
+  });
+
+  it('shows the data-entry banner when the header is viewing another year: the import always goes into the current year', () => {
+    const yr = (id: number, name: string, isCurrent: boolean) => ({ academicYearId: id, schoolId: 'S', yearName: name, startDate: '2026-04-01', endDate: '2027-03-31', isCurrent, statusName: 'Active', state: isCurrent ? 'CURRENT' : 'PAST', isClosed: false, usage: {}, createdAt: '', updatedAt: '' });
+    TestBed.inject(YearContextService).refresh();
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env([yr(1, '2025-26', false), yr(2, '2026-27', true)])));
+    TestBed.inject(YearContextService).select('1');
+    fixture.detectChanges();
+    expect(el().querySelector('[data-viewing-year-banner]')?.textContent).toContain('goes into');
   });
 });

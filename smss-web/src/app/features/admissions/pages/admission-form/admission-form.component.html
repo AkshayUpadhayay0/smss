@@ -1,6 +1,7 @@
 <app-page-header [title]="editing() ? 'Edit Application' : 'New Application'" [subtitle]="editing() ? 'Change the applicant details (only possible before a decision)' : 'Record a new admission application'" icon="user" [breadcrumbs]="breadcrumbs()">
   <app-button variant="secondary" (click)="cancel()"><app-icon name="arrow-left" [size]="16" />Back to list</app-button>
 </app-page-header>
+<app-viewing-year-banner />
 
 <form class="sections" [formGroup]="form" (ngSubmit)="submit()" novalidate>
   <app-card title="Applicant Details">

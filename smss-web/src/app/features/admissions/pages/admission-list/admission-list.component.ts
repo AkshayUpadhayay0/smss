@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -52,7 +53,7 @@ const byText = (a: unknown, b: unknown) => String(a ?? '').localeCompare(String(
 /** The school's admission applications, with the workflow actions valid for each row's status. */
 @Component({
   selector: 'app-admission-list',
-  imports: [
+  imports: [ViewingYearBannerComponent, 
     ReactiveFormsModule,
     ButtonComponent,
     CardComponent,

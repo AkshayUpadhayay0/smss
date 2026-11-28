@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -40,7 +41,7 @@ function pastDate(c: AbstractControl): ValidationErrors | null {
 /** Direct entry of a student the school already has: no application, review or approval stage. */
 @Component({
   selector: 'app-existing-student-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent, WhatsAppFieldComponent, GuardianFieldsComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, ButtonComponent, CardComponent, FeeConfigurationComponent, IconComponent, InputComponent, LogoUploadComponent, PageHeaderComponent, SelectComponent, TextareaComponent, WhatsAppFieldComponent, GuardianFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './existing-student-form.component.scss',
   templateUrl: './existing-student-form.component.html',

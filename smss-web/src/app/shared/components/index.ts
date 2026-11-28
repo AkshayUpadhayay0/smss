@@ -14,3 +14,4 @@ export * from './modal/modal.component';
 export * from './textarea/textarea.component';
 export * from './secure-image/secure-image.component';
 export * from './whatsapp-field/whatsapp-field.component';
+export * from './viewing-year-banner/viewing-year-banner.component';

@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -21,7 +22,7 @@ interface Step {
 
 @Component({
   selector: 'app-admission-detail',
-  imports: [ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent, AdmissionDocumentsComponent, ParentAccountCardComponent],
+  imports: [ViewingYearBannerComponent, ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, AdmissionActionsComponent, AdmissionDocumentsComponent, ParentAccountCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-detail.component.scss',
   templateUrl: './admission-detail.component.html',

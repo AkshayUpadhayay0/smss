@@ -1,3 +1,4 @@
+import { ViewingYearBannerComponent } from '../../../../shared/components/viewing-year-banner/viewing-year-banner.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -37,7 +38,7 @@ const num = (v: string): number | null => (v.trim() === '' ? null : Number(v));
 
 @Component({
   selector: 'app-admission-form',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, GuardianFieldsComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, WhatsAppFieldComponent],
+  imports: [ViewingYearBannerComponent, ReactiveFormsModule, ButtonComponent, CardComponent, GuardianFieldsComponent, IconComponent, InputComponent, PageHeaderComponent, SelectComponent, WhatsAppFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admission-form.component.scss',
   templateUrl: './admission-form.component.html',
