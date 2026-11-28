@@ -6,7 +6,9 @@ import { finalize } from 'rxjs';
 import { canAccess } from '../../../../core/config/route-roles';
 import { historyClassOptions, historyYearOptions, pickYear } from '../../../../core/utils/history-options';
 import { AuthService } from '../../../../core/services/auth.service';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { formatInr } from '../../../../core/utils/currency';
+import { syncYearControl } from '../../../../core/utils/follow-viewing-year';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption, SortChange, SortDirection, TableColumn, TableComponent } from '../../../../shared/components';
 import { monthLabel } from '../../../dashboard/utils/school-admin-dashboard-format';
 import { Section } from '../../../school-setup/models/section.model';
@@ -48,6 +50,9 @@ export class ClassFeeReportComponent implements OnInit {
   protected readonly inr = formatInr;
 
   protected readonly yearControl = new FormControl('', { nonNullable: true });
+  protected readonly yearContext = inject(YearContextService);
+  /** The year is the app's viewing year (header selector); this page keeps a hidden control so its load logic is unchanged. */
+  private readonly viewing = syncYearControl(this.yearControl);
   protected readonly classControl = new FormControl('', { nonNullable: true });
   protected readonly sectionControl = new FormControl('', { nonNullable: true });
   protected readonly yearOptions = signal<SelectOption[]>([]);
@@ -129,7 +134,7 @@ export class ClassFeeReportComponent implements OnInit {
 
         // opened from the dashboard with its filter in the URL
         const q = this.route.snapshot.queryParamMap;
-        const year = pickYear(years, q.get('academicYearId'));
+        const year = pickYear(years, q.get('academicYearId'));   // only used when the viewing year is unavailable
         const wantedMonth = q.get('month');
         this.month.set(wantedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(wantedMonth) ? wantedMonth : null);
         // opened for a month without a class (the dashboard card is school-wide): start with the first class
@@ -140,7 +145,8 @@ export class ClassFeeReportComponent implements OnInit {
           this.classControl.setValue(wantedClass, { emitEvent: false });
           if (wantedSection && this.sectionOptions().some((o) => o.value === wantedSection)) this.sectionControl.setValue(wantedSection, { emitEvent: false });
         }
-        if (year) this.yearControl.setValue(String(year.academicYearId)); // emits: loads once everything above is in place
+        if (year && !this.viewing.usable() && !this.viewing.waiting()) this.yearControl.setValue(String(year.academicYearId)); // emits: loads once everything above is in place
+        else if (this.yearControl.value) this.load();
       });
   }
 

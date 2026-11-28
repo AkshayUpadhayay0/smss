@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 
 const API = environment.apiUrl;
@@ -40,7 +41,8 @@ describe('FeeDashboardComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(FeeDashboardComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     const [first] = dashReqs();
@@ -104,5 +106,16 @@ describe('FeeDashboardComponent', () => {
     expect(card.querySelector('a[href="/fee-reports/concessions-given"]')).not.toBeNull();
     expect(card.querySelector('button')).toBeNull();                       // nothing to click: read-only
     expect(text).toContain('not part of "Collected"'.replace('not', 'Not'));
+  });
+
+  it('has no year picker of its own and follows the header viewing year (an explicit id on every request)', () => {
+    open(['School Admin'], true);
+    expect(el().querySelector('app-select[label="Academic year"]')).toBeNull();
+    expect(el().querySelector('[data-year-note]')?.textContent).toContain('2026-27');
+    TestBed.inject(YearContextService).select('2');
+    TestBed.tick();
+    const [r] = dashReqs();
+    expect(r.request.params.get('academicYearId')).toBe('2');
+    r.flush(env(DASH(true)));
   });
 });

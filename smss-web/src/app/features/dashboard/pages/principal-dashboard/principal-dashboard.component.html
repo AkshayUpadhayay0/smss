@@ -9,7 +9,7 @@
   </app-card>
 } @else {
   @let d = data()!;
-  <app-dashboard-year-bar [options]="yearOptions()" [selected]="selectedYear()" [note]="d.viewingNote" (yearChange)="load($event)" />
+  <app-dashboard-year-bar [note]="d.viewingNote" />
 
   <!-- ============================================================ headline numbers -->
   <section class="cards" [class.loading]="loading()" aria-label="Headline numbers">

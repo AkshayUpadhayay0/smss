@@ -6,6 +6,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
@@ -60,10 +61,12 @@ describe('PrincipalDashboardComponent', () => {
     fixture = TestBed.createComponent(PrincipalDashboardComponent);
     fixture.detectChanges();
     http.match(YEARS).forEach((r) => r.flush(env([year(6, '2025-26', { isClosed: true }), year(7, '2026-27', { isCurrent: true })])));
+    TestBed.tick();   // the page follows the header's viewing year: it asks for the summary once the year is known
+    fixture.detectChanges();
   }
   function open(d: PrincipalDashboard): void {
     create();
-    http.expectOne(URL).flush(env(d));
+    http.expectOne((r) => r.url === URL).flush(env(d));
     fixture.detectChanges();
   }
   afterEach(() => { http.verify(); clearSessions(); });
@@ -143,27 +146,30 @@ describe('PrincipalDashboardComponent', () => {
 
   it('a failed request offers Try again', () => {
     create();
-    http.expectOne(URL).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'err' });
+    http.expectOne((r) => r.url === URL).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'err' });
     fixture.detectChanges();
     expect(text()).toContain('could not be loaded');
     expect([...el().querySelectorAll('button')].some((b) => b.textContent?.includes('Try again'))).toBe(true);
   });
 
-  it('lists every year in the selector (closed ones marked) and shows the year on screen as selected', () => {
-    open(principalDashboard());
-    const bar = fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance;
-    expect(bar.options().map((o: { label: string }) => o.label)).toEqual(['2025-26 (closed, read-only)', '2026-27 (current)']);
-    expect(bar.selected()).toBe('7');
-    expect(el().querySelector('[data-note="viewing"]')).toBeNull();   // the current year needs no note
+  it('has no year picker of its own: it asks for the header viewing year, explicitly', () => {
+    create();
+    const req = http.expectOne((r) => r.url === URL);
+    expect(req.request.params.get('academicYearId')).toBe('7');           // the current year, sent as an explicit id
+    req.flush(env(principalDashboard()));
+    fixture.detectChanges();
+    expect(el().querySelector('app-select')).toBeNull();
+    expect(el().querySelector('[data-note="viewing"]')).toBeNull();     // the current year needs no note
   });
 
-  it('choosing another year asks the endpoint for that year and says which year is shown; the current year is not changed', () => {
+  it('picking another year in the header asks the endpoint for that year and says which year is shown; the current year is not changed', () => {
     open(principalDashboard());
-    fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance.yearChange.emit(6);
+    TestBed.inject(YearContextService).select('6');
+    TestBed.tick();
     const req = http.expectOne((r) => r.url === URL);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('academicYearId')).toBe('6');
-    req.flush(env(principalDashboard({ academicYearId: 6, academicYearName: '2025-26', academicYearIsCurrent: false, viewingNote: 'You are viewing 2025-26 (closed, read-only). The school\'s current year is 2026-27.' })));
+    req.flush(env(principalDashboard({ academicYearId: 6, academicYearName: '2025-26', academicYearIsCurrent: false, viewingNote: 'You are viewing 2025-26 (closed, read-only). The school current year is 2026-27.' })));
     fixture.detectChanges();
     expect(el().querySelector('[data-note="viewing"]')!.textContent).toContain('You are viewing 2025-26');
     expect(text()).toContain('academic year 2025-26');

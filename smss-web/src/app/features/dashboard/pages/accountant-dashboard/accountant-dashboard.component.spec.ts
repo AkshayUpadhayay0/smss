@@ -6,6 +6,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { AccountantDashboard } from '../../models/accountant-dashboard.model';
@@ -51,10 +52,12 @@ describe('AccountantDashboardComponent', () => {
     fixture = TestBed.createComponent(AccountantDashboardComponent);
     fixture.detectChanges();
     http.match(YEARS).forEach((r) => r.flush(env([year(6, '2025-26', { isClosed: true }), year(7, '2026-27', { isCurrent: true })])));
+    TestBed.tick();   // the page follows the header's viewing year
+    fixture.detectChanges();
   }
   function open(d: AccountantDashboard): void {
     create();
-    http.expectOne(URL).flush(env(d));
+    http.expectOne((r) => r.url === URL).flush(env(d));
     fixture.detectChanges();
   }
   afterEach(() => { http.verify(); clearSessions(); });
@@ -123,7 +126,7 @@ describe('AccountantDashboardComponent', () => {
 
   it('a failed request offers Try again', () => {
     create();
-    http.expectOne(URL).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'err' });
+    http.expectOne((r) => r.url === URL).flush({ status: false, statusCode: 500, message: 'x', data: null }, { status: 500, statusText: 'err' });
     fixture.detectChanges();
     expect(text()).toContain('could not be loaded');
     expect([...el().querySelectorAll('button')].some((b) => b.textContent?.includes('Try again'))).toBe(true);
@@ -150,9 +153,10 @@ describe('AccountantDashboardComponent', () => {
     http.verify();
   });
 
-  it('choosing another year asks for that year and says so; the cash cards stay what the server sent', () => {
+  it('picking another year in the header asks for that year and says so; the cash cards stay what the server sent', () => {
     open(accountantDashboard());
-    fixture.debugElement.query(By.css('app-dashboard-year-bar')).componentInstance.yearChange.emit(6);
+    TestBed.inject(YearContextService).select('6');
+    TestBed.tick();
     const req = http.expectOne((r) => r.url === URL);
     expect(req.request.params.get('academicYearId')).toBe('6');
     req.flush(env(accountantDashboard({ academicYearId: 6, academicYearName: '2025-26', viewingNote: 'You are viewing 2025-26. The school\'s current year is 2026-27.' })));

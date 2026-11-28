@@ -1,13 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
-import { historyYearOptions } from '../../../../core/utils/history-options';
-import { ButtonComponent, CardComponent, IconComponent, SelectComponent, SelectOption } from '../../../../shared/components';
-import { AcademicYear } from '../../../school-setup/models/academic-year.model';
-import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
+import { followViewingYear } from '../../../../core/utils/follow-viewing-year';
+import { ButtonComponent, CardComponent, IconComponent } from '../../../../shared/components';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { WelcomeBannerComponent } from '../../components/welcome-banner/welcome-banner.component';
 import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
@@ -22,22 +19,18 @@ import { readChartColors } from '../../utils/super-admin-charts';
  */
 @Component({
   selector: 'app-school-admin-dashboard',
-  imports: [RouterLink, ReactiveFormsModule, ButtonComponent, CardComponent, IconComponent, SelectComponent, ChartHostComponent, WelcomeBannerComponent, PendingPromotionTileComponent],
+  imports: [RouterLink, ButtonComponent, CardComponent, IconComponent, ChartHostComponent, WelcomeBannerComponent, PendingPromotionTileComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './school-admin-dashboard.component.scss',
   templateUrl: './school-admin-dashboard.component.html',
 })
-export class SchoolAdminDashboardComponent implements OnInit {
+export class SchoolAdminDashboardComponent {
   private readonly service = inject(SchoolAdminDashboardService);
   private readonly auth = inject(AuthService);
-  private readonly yearService = inject(AcademicYearService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly colors = readChartColors();
 
   protected readonly data = signal<SchoolAdminDashboard | null>(null);
-  /** Every year of the school: the dashboard can LOOK at any of them. This is only a view: it never changes the school's current year. */
-  protected readonly yearOptions = signal<SelectOption[]>([]);
-  protected readonly yearControl = new FormControl('', { nonNullable: true });
   /** The viewed year is not the school's current year (or the current one is closed history): say so in words. */
   protected readonly viewingNote = computed(() => {
     const d = this.data();
@@ -71,13 +64,8 @@ export class SchoolAdminDashboardComponent implements OnInit {
 
   protected readonly skeletons = [0, 1, 2, 3, 4];
 
-  ngOnInit(): void {
-    this.yearService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (years: AcademicYear[]) => this.yearOptions.set(historyYearOptions(years)),
-      error: () => undefined,   // the dashboard still works on the current year without the selector
-    });
-    this.yearControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => this.load(v ? Number(v) : undefined));
-    this.load();
+  constructor() {
+    followViewingYear((id) => this.load(id)); // the year comes from the header selector
   }
 
   protected load(academicYearId?: number): void {
@@ -90,11 +78,7 @@ export class SchoolAdminDashboardComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (d) => {
-          this.data.set(d);
-          // show the year actually on screen in the selector, without triggering another load
-          if (d.session) this.yearControl.setValue(String(d.session.academicYearId), { emitEvent: false });
-        },
+        next: (d) => this.data.set(d),
         error: () => this.loadFailed.set(true),
       });
   }

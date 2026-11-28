@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 
 const API = environment.apiUrl;
@@ -37,7 +38,8 @@ describe('ClassFeeReportComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ClassFeeReportComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     const reqs = reportReqs();
@@ -143,7 +145,8 @@ describe('ClassFeeReportComponent', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ClassFeeReportComponent);
     fixture.detectChanges();
-    http.expectOne(`${API}/api/AcademicYear`).flush(env(YEARS));
+    http.match(`${API}/api/AcademicYear`).forEach((r) => r.flush(env(YEARS)));   // the header's viewing year and this page's own option list both ask
+    TestBed.tick();
     http.expectOne(`${API}/api/Classes`).flush(env(CLASSES));
     http.expectOne(`${API}/api/Sections`).flush(env(SECTIONS));
     const withEarlier = { ...REPORT(true), students: [row('S2', 'Bela', 30000, 0, 'Overdue', { earlierYears: 500 }), row('S5', 'Esha', 1000, 0, 'Pending', { earlierYears: 200, left: true })], totalEarlierYears: 700, totalOutstanding: 31000 };
@@ -155,5 +158,15 @@ describe('ClassFeeReportComponent', () => {
     expect(names()).toContain('Esha (Left)');
     expect(el().querySelector('[data-earlier-total]')?.textContent).toContain('₹700.00');
     expect(cmp()['sortedRows']().find((r: { studentId: string }) => r.studentId === 'S2').outstanding).toBe('₹30,000.00');   // the year's figure stays on its own
+  });
+
+  it('follows the header viewing year: another year asks the server for that year, with the explicit id', () => {
+    open(['School Admin'], true);
+    expect(el().querySelector('[data-year-note]')?.textContent).toContain('2026-27');
+    TestBed.inject(YearContextService).select('2');
+    TestBed.tick();
+    const [r] = reportReqs();
+    expect(r.request.params.get('academicYearId')).toBe('2');
+    r.flush(env(REPORT(true)));
   });
 });

@@ -3,7 +3,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { formatInr } from '../../../../core/utils/currency';
+import { syncYearControl } from '../../../../core/utils/follow-viewing-year';
 import { historyClassOptions, historyYearOptions, pickYear } from '../../../../core/utils/history-options';
 import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectComponent, SelectOption } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
@@ -25,13 +27,16 @@ export class FeeDashboardComponent implements OnInit {
   private readonly reports = inject(FeeReportService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly yearContext = inject(YearContextService);
+  protected readonly yearControl = new FormControl('', { nonNullable: true });
+  /** The year is the app's viewing year (header selector); this page keeps a hidden control so its load logic is unchanged. */
+  private readonly viewing = syncYearControl(this.yearControl);
 
   protected readonly breadcrumbs = [{ label: 'Fees' }, { label: 'Fee Dashboard' }];
   protected readonly dayOptions = DAY_OPTIONS;
   protected readonly inr = formatInr;
   protected readonly date = formatDate;
 
-  protected readonly yearControl = new FormControl('', { nonNullable: true });
   protected readonly classControl = new FormControl('', { nonNullable: true });
   protected readonly sectionControl = new FormControl('', { nonNullable: true });
   protected readonly daysControl = new FormControl('7', { nonNullable: true });
@@ -72,8 +77,9 @@ export class FeeDashboardComponent implements OnInit {
         this.yearOptions.set(historyYearOptions(years));
         this.classOptions.set([{ label: 'All classes', value: '' }, ...historyClassOptions(classes)]);
         this.allSections.set(sections);
+        // the viewing year drives the page; only when the years could not be loaded for the header does the page use its own default
         const year = pickYear(years);
-        if (year) this.yearControl.setValue(String(year.academicYearId));
+        if (year && !this.viewing.usable() && !this.viewing.waiting()) this.yearControl.setValue(String(year.academicYearId));
       });
   }
 

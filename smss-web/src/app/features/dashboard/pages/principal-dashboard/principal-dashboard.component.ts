@@ -1,12 +1,11 @@
 import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { historyYearOptions } from '../../../../core/utils/history-options';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectOption } from '../../../../shared/components';
+import { followViewingYear } from '../../../../core/utils/follow-viewing-year';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent } from '../../../../shared/components';
 import { formatDate } from '../../../admissions/models/admission.model';
-import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
 import { describeWhen } from '../../../calendar/utils/calendar-dates';
 import { audienceLabel, publishedLabel } from '../../../notices/utils/notice-format';
 import { ChartHostComponent } from '../../components/chart/chart.component';
@@ -29,9 +28,8 @@ import { readChartColors } from '../../utils/super-admin-charts';
   styleUrl: '../role-dashboard.scss',
   templateUrl: './principal-dashboard.component.html',
 })
-export class PrincipalDashboardComponent implements OnInit {
+export class PrincipalDashboardComponent {
   private readonly service = inject(PrincipalDashboardService);
-  private readonly yearService = inject(AcademicYearService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly colors = readChartColors();
 
@@ -41,9 +39,6 @@ export class PrincipalDashboardComponent implements OnInit {
   protected readonly date = formatDate;
   protected readonly when = describeWhen;
 
-  /** Every year of the school: the dashboard can LOOK at any of them. This only chooses what is shown, never the school's current year. */
-  protected readonly yearOptions = signal<SelectOption[]>([]);
-  protected readonly selectedYear = computed(() => String(this.data()?.academicYearId ?? ''));
   protected readonly data = signal<PrincipalDashboard | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
@@ -74,12 +69,8 @@ export class PrincipalDashboardComponent implements OnInit {
     return scope === 'YEAR' ? 'Whole year' : (term ?? 'Term');
   }
 
-  ngOnInit(): void {
-    this.yearService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (years) => this.yearOptions.set(historyYearOptions(years)),
-      error: () => undefined,   // the dashboard still works on the current year without the selector
-    });
-    this.load();
+  constructor() {
+    followViewingYear((id) => this.load(id)); // the year comes from the header selector
   }
 
   protected load(academicYearId?: number): void {

@@ -29,7 +29,6 @@
   }
 
   <div class="year-bar">
-    <app-select label="Academic year" [options]="yearOptions()" [formControl]="yearControl" />
     @if (viewingNote(); as note) {
       <p class="note" role="status" data-note="viewing"><app-icon name="info" [size]="16" /><span>{{ note }}</span></p>
     }

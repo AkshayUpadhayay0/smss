@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { formatInr } from '../../../../core/utils/currency';
-import { historyYearOptions } from '../../../../core/utils/history-options';
-import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, SelectOption, TableColumn, TableComponent } from '../../../../shared/components';
-import { AcademicYearService } from '../../../school-setup/services/academic-year.service';
+import { followViewingYear } from '../../../../core/utils/follow-viewing-year';
+import { ButtonComponent, CardComponent, IconComponent, PageHeaderComponent, TableColumn, TableComponent } from '../../../../shared/components';
 import { publishedLabel } from '../../../notices/utils/notice-format';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { DashboardYearBarComponent } from '../../components/dashboard-year-bar/dashboard-year-bar.component';
@@ -34,9 +33,8 @@ interface PaymentRow {
   styleUrl: '../role-dashboard.scss',
   templateUrl: './accountant-dashboard.component.html',
 })
-export class AccountantDashboardComponent implements OnInit {
+export class AccountantDashboardComponent {
   private readonly service = inject(AccountantDashboardService);
-  private readonly yearService = inject(AcademicYearService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly colors = readChartColors();
 
@@ -49,9 +47,6 @@ export class AccountantDashboardComponent implements OnInit {
     { key: 'paidOn', label: 'Paid on' },
   ];
 
-  /** Every year of the school: the dashboard can LOOK at any of them (the dues cards follow it). This never changes the school's current year. */
-  protected readonly yearOptions = signal<SelectOption[]>([]);
-  protected readonly selectedYear = computed(() => String(this.data()?.academicYearId ?? ''));
   protected readonly data = signal<AccountantDashboard | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
@@ -79,12 +74,8 @@ export class AccountantDashboardComponent implements OnInit {
     return year ? `Fee collection at a glance · dues for academic year ${year}` : 'Fee collection at a glance';
   });
 
-  ngOnInit(): void {
-    this.yearService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (years) => this.yearOptions.set(historyYearOptions(years)),
-      error: () => undefined,   // the dashboard still works on the current year without the selector
-    });
-    this.load();
+  constructor() {
+    followViewingYear((id) => this.load(id)); // the year comes from the header selector
   }
 
   protected load(academicYearId?: number): void {

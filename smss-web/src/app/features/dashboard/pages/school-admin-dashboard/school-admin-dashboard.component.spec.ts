@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import type { ApexOptions } from 'ng-apexcharts';
 import { environment } from '../../../../../environments/environment';
+import { YearContextService } from '../../../../core/services/year-context.service';
 import { clearSessions, makeUser, seedSession } from '../../../../core/testing/auth-test-utils';
 import { ChartHostComponent } from '../../components/chart/chart.component';
 import { PendingPromotionTileComponent } from '../../../promotion/components/pending-promotion-tile/pending-promotion-tile.component';
@@ -51,8 +52,10 @@ describe('SchoolAdminDashboardComponent', () => {
     fixture = TestBed.createComponent(SchoolAdminDashboardComponent);
     fixture.detectChanges();
     flushYears(years);
+    TestBed.tick();   // the page follows the header's viewing year
+    fixture.detectChanges();
     if (flush) {
-      flush(http.expectOne(URL));
+      flush(http.expectOne((r) => r.url === URL));
       fixture.detectChanges();
     }
   }
@@ -65,16 +68,16 @@ describe('SchoolAdminDashboardComponent', () => {
 
   it('carries the Pending promotion tile (it fetches its own count)', () => {
     open();
-    http.expectOne(URL).flush(env(dashboard()));
+    http.expectOne((r) => r.url === URL).flush(env(dashboard()));
     fixture.detectChanges();
     expect(el().querySelector('app-pending-promotion-tile')).not.toBeNull();
   });
 
   it('asks the one endpoint, with no school id anywhere in the request', () => {
     open();
-    const req = http.expectOne(URL);
+    const req = http.expectOne((r) => r.url === URL);
     expect(req.request.url).toBe(URL);   // no id in the path
-    expect(req.request.params.keys()).toEqual([]);   // none in the query either
+    expect(req.request.params.keys()).toEqual(['academicYearId']);   // only the (explicit) year; never a school id
     req.flush(env(dashboard()));
   });
 
@@ -82,7 +85,7 @@ describe('SchoolAdminDashboardComponent', () => {
     open();
     expect(el().querySelector('[data-state="loading"]')).not.toBeNull();
     expect(el().querySelectorAll('.sk-card').length).toBeGreaterThan(0);
-    http.expectOne(URL).flush(env(dashboard()));
+    http.expectOne((r) => r.url === URL).flush(env(dashboard()));
     fixture.detectChanges();
     expect(el().querySelector('[data-state="loading"]')).toBeNull();
     expect([...el().querySelectorAll('h2')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Students & Fees November 2026', 'Money', 'People']);
@@ -158,12 +161,12 @@ describe('SchoolAdminDashboardComponent', () => {
 
   it('shows an error with a Try again button that asks again', () => {
     open();
-    http.expectOne(URL).flush({ message: 'x' }, { status: 500, statusText: 'err' });
+    http.expectOne((r) => r.url === URL).flush({ message: 'x' }, { status: 500, statusText: 'err' });
     fixture.detectChanges();
     expect(el().querySelector('[data-state="error"]')).not.toBeNull();
     expect(text()).toContain('could not be loaded');
     (el().querySelector('[data-state="error"] button') as HTMLButtonElement).click();
-    http.expectOne(URL).flush(env(dashboard()));
+    http.expectOne((r) => r.url === URL).flush(env(dashboard()));
     fixture.detectChanges();
     expect(el().querySelector('[data-state="error"]')).toBeNull();
     expect(card('total-students')).not.toBeNull();
@@ -175,17 +178,19 @@ describe('SchoolAdminDashboardComponent', () => {
     expect(text()).toContain('ZZ Demo School');
     expect(text()).toContain('Academic Year 2026-27');
   });
-  it('lists every year of the school in the selector, closed ones marked', () => {
-    open(withData(dashboard()), [year(1, '2025-26', { isClosed: true }), year(3, '2026-27', { isCurrent: true })]);
-    const options = [...el().querySelectorAll('app-select option, app-select [role="option"]')].map((o) => o.textContent?.trim());
-    expect(options.join('|')).toContain('2025-26 (closed, read-only)');
+  it('has no year picker of its own (the year is chosen once, in the header) and asks for the viewing year explicitly', () => {
+    open();
+    const req = http.expectOne((r) => r.url === URL);
+    expect(req.request.params.get('academicYearId')).toBe('3');            // the current year, sent as an explicit id
+    req.flush(env(dashboard()));
+    fixture.detectChanges();
+    expect(el().querySelector('app-select')).toBeNull();
   });
 
-  it('choosing another year asks the endpoint for that year only and never changes the current year', () => {
-    open(withData(dashboard()));
-    const select = el().querySelector('app-select');
-    expect(select).not.toBeNull();
-    fixture.componentInstance['yearControl'].setValue('2');
+  it('picking another year in the header asks the endpoint for that year only and never changes the current year', () => {
+    open(withData(dashboard()), [year(2, '2027-28'), year(3, '2026-27', { isCurrent: true })]);
+    TestBed.inject(YearContextService).select('2');
+    TestBed.tick();
     const req = http.expectOne((r) => r.url === URL);
     expect(req.request.params.get('academicYearId')).toBe('2');
     expect(req.request.method).toBe('GET');
