@@ -226,10 +226,10 @@ namespace smss_api_tests
         [Fact]
         public void The_family_responses_have_exactly_the_agreed_fields_and_none_that_could_carry_another_guardian_or_an_internal_remark()
         {
-            Assert.Equal(new[] { "AdmissionNumber", "AcademicYearName", "AttendanceToday", "ChipState", "ClassName", "FeeDueNow", "FullName", "ProfilePhotoUrl", "ReadOnly", "RollNumber", "SectionName", "StatusName", "StudentId" }.OrderBy(x => x), Names<FamilyChildCardDto>());
+            Assert.Equal(new[] { "AdmissionNumber", "AcademicYearName", "AttendanceToday", "ChipState", "ClassName", "FeeDueNow", "FeeEarlierYears", "FullName", "ProfilePhotoUrl", "ReadOnly", "RollNumber", "SectionName", "StatusName", "StudentId" }.OrderBy(x => x), Names<FamilyChildCardDto>());
             Assert.Equal(new[] { "Children", "FeeTile" }, Names<FamilyChildrenDto>());
-            Assert.Equal(new[] { "AllPaid", "Children", "TotalDueNow" }, Names<FamilyFeeTileDto>());
-            Assert.Equal(new[] { "DueNow", "FullName", "StudentId" }, Names<FamilyFeeChildDto>());
+            Assert.Equal(new[] { "AllPaid", "Children", "TotalDueNow", "TotalEarlierYears" }, Names<FamilyFeeTileDto>());
+            Assert.Equal(new[] { "DueNow", "EarlierYears", "FullName", "StudentId" }, Names<FamilyFeeChildDto>());
             Assert.Equal(new[] { "ExamDate", "ExamName", "TermName" }, Names<FamilyExamDto>());
             // the own-view fee DTOs the family reuses carry no concession reason and the payment has no void fields
             var banned = new[] { "Reason", "Remarks", "VoidedBy", "VoidReason", "CollectedBy", "Waive", "Note" };
@@ -332,6 +332,49 @@ namespace smss_api_tests
             db.Exec($"update tb_student_fee_dues d set amount_paid = amount_due from tb_student_fee_items i where i.student_fee_item_id = d.student_fee_item_id and i.student_id = '{s2}' and d.due_date <= '{today}'::date");
             var paid = (await probe.Service(db).ListChildrenAsync(Guardian(A, p), default)).Data!;
             Assert.True(paid.FeeTile.AllPaid); Assert.Equal(0, paid.FeeTile.TotalDueNow); Assert.Empty(paid.FeeTile.Children);
+        }
+
+        // ------------------------------------------------------------------------------------------------ earlier years (derived, nothing carried forward)
+        private static FamilyService EarlierService(TaxDb db, Probe probe)
+        {
+            var ctx = db.Ctx(); var accounts = new ParentAccountRepository(ctx); var students = new StudentRepository(ctx); var guardians = new GuardianRepository(ctx);
+            return new FamilyService(new StudentAccessService(accounts, students, guardians), accounts, students, guardians, probe.Students, probe.Attendance, probe.Homework, probe.Timetable, probe.Reports, probe.Schedule, probe.Fees, probe.Payments, probe.Leave, probe.Photos, probe.Notices, probe.Events,
+                NullLogger<FamilyService>.Instance, new EarlierYearDuesRepository(ctx));
+        }
+
+        [DbFact]
+        public async Task A_parents_tile_shows_each_childs_earlier_year_amount_is_not_Paid_while_any_remains_and_never_counts_another_familys_child()
+        {
+            using var db = new TaxDb(); var w = EarlierYearsKit.Build(db, "ZEG");
+            var mine = Parent(db, "ZEG", "ZEGGD1", w.P, w.R, w.L);          // promoted with override, repeated, left
+            var other = Parent(db, "ZEG", "ZEGGD2", w.N);                   // someone else's child
+            var probe = new Probe();
+            var r = (await EarlierService(db, probe).ListChildrenAsync(new AccessCaller("ZEG", mine.UserId, false, true, mine.GuardianId), default)).Data!;
+            Assert.Equal(new[] { 300m, 500m, 200m }, new[] { w.P, w.R, w.L }.Select(id => r.Children.Single(c => c.StudentId == id).FeeEarlierYears).ToArray());
+            Assert.Equal(1000m, r.FeeTile.TotalEarlierYears);
+            Assert.False(r.FeeTile.AllPaid);
+            // every current-year due paid: the tile is STILL not Paid because earlier years remain
+            db.Exec("update tb_student_fee_dues d set amount_paid = amount_due from tb_student_fee_items i, tb_academic_years y where i.student_fee_item_id = d.student_fee_item_id and y.academic_year_id = i.academic_year_id and y.is_current and d.school_id = 'ZEG'");
+            var after = (await EarlierService(db, probe).ListChildrenAsync(new AccessCaller("ZEG", mine.UserId, false, true, mine.GuardianId), default)).Data!;
+            Assert.Equal(0, after.FeeTile.TotalDueNow); Assert.False(after.FeeTile.AllPaid); Assert.Equal(1000m, after.FeeTile.TotalEarlierYears);
+            // the other parent sees only their own child (nothing earlier owed)
+            var theirs = (await EarlierService(db, probe).ListChildrenAsync(new AccessCaller("ZEG", other.UserId, false, true, other.GuardianId), default)).Data!;
+            Assert.Equal(0, theirs.FeeTile.TotalEarlierYears); Assert.True(theirs.FeeTile.AllPaid);
+        }
+
+        [DbFact]
+        public async Task A_students_own_fees_carry_the_earlier_years_and_a_school_admins_cross_school_read_finds_nothing()
+        {
+            using var db = new TaxDb(); var w = EarlierYearsKit.Build(db, "ZEH");
+            var ctx = db.Ctx();
+            var billing = new StudentFeeBillingService(new StudentFeeBillingRepository(ctx), new StudentFeeRepository(ctx), NullLogger<StudentFeeBillingService>.Instance, new EarlierYearDuesRepository(ctx));
+            var my = new StudentMyFeesService(new StudentRepository(ctx), billing, db.Payments(), NullLogger<StudentMyFeesService>.Instance);
+            var fees = (await my.GetFeesForStudentAsync("ZEH", w.P, default)).Data!;
+            Assert.Equal(300, fees.EarlierYearsOutstanding);
+            Assert.Equal("2025-26", Assert.Single(fees.EarlierYears).AcademicYearName);
+            Assert.Equal(("2025-26", 300m), (Assert.Single(fees.EarlierDues).AcademicYearName, Assert.Single(fees.EarlierDues).Balance));
+            Assert.Equal(1000, fees.Balance);                                          // this year's own balance is separate
+            Assert.Equal(404, (await my.GetFeesForStudentAsync("ZEG", w.P, default)).StatusCode);   // another school's id: not found
         }
 
         [DbFact]

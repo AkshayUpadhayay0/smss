@@ -242,7 +242,7 @@ export class StudentFeesTabComponent implements OnInit {
       this.dues.set(null);
       // no structure for this year yet, but the student can still owe money from an earlier year: show and allow paying that
       this.students.getFeeDues(this.studentId()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (d) => this.dues.set((d.earlierDues ?? []).length > 0 ? d : null),
+        next: (d) => this.dues.set((d?.earlierDues ?? []).length > 0 ? d : null),
         error: () => undefined,
       });
       return;

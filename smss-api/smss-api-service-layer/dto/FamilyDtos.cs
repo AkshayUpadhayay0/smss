@@ -21,6 +21,8 @@ namespace smss_api_service_layer.dto
         public string? AttendanceToday { get; set; }
         /// <summary>What is owed on instalments whose due date is today or earlier, in the child's own enrolment year. 0 = nothing due now.</summary>
         public decimal FeeDueNow { get; set; }
+        /// <summary>Unpaid from years before the year shown for this child (derived; nothing is carried forward).</summary>
+        public decimal FeeEarlierYears { get; set; }
     }
 
     public class FamilyFeeChildDto
@@ -28,6 +30,8 @@ namespace smss_api_service_layer.dto
         public string StudentId { get; set; } = null!;
         public string FullName { get; set; } = null!;
         public decimal DueNow { get; set; }
+        /// <summary>Still unpaid from years BEFORE the one shown for this child (derived; nothing is carried forward). Shown beside the year's own amount.</summary>
+        public decimal EarlierYears { get; set; }
     }
 
     /// <summary>"Paid" only when EVERY child has nothing due now; otherwise the total due now with the per-child breakdown (only the children who owe).</summary>
@@ -35,6 +39,8 @@ namespace smss_api_service_layer.dto
     {
         public bool AllPaid { get; set; }
         public decimal TotalDueNow { get; set; }
+        /// <summary>The children's unpaid amounts from earlier years, added up. AllPaid is false while this is above zero.</summary>
+        public decimal TotalEarlierYears { get; set; }
         public List<FamilyFeeChildDto> Children { get; set; } = new();
     }
 

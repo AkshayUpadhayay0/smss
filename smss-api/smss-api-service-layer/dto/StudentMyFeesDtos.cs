@@ -19,6 +19,10 @@ namespace smss_api_service_layer.dto
         public List<MyFeeHeadDto> Heads { get; set; } = new();
         public List<MyFeeDueDto> Dues { get; set; } = new();
         public List<MyFeePaymentDto> Payments { get; set; } = new();
+        /// <summary>"Outstanding from earlier years": per earlier year, what is still unpaid (derived on every read; nothing is carried forward), beside this year's figures.</summary>
+        public List<EarlierYearAmountDto> EarlierYears { get; set; } = new();
+        public decimal EarlierYearsOutstanding { get; set; }
+        public List<MyFeeDueDto> EarlierDues { get; set; } = new();
     }
 
     public class MyFeeHeadDto
@@ -44,6 +48,8 @@ namespace smss_api_service_layer.dto
         public decimal AmountPaid { get; set; }
         public decimal Balance { get; set; }
         public string Status { get; set; } = null!;
+        /// <summary>Set only on an installment of an earlier year.</summary>
+        public string? AcademicYearName { get; set; }
     }
 
     public class MyFeePaymentDto : PaymentTaxFields

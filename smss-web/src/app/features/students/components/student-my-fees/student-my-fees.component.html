@@ -3,6 +3,23 @@
 } @else if (loadFailed()) {
   <app-card><div class="note"><p role="alert">Your fees could not be loaded.</p><app-button variant="secondary" size="sm" (click)="load()">Try again</app-button></div></app-card>
 } @else if (fees(); as f) {
+  @if ((f.earlierYearsOutstanding ?? 0) > 0) {
+    <app-card title="Outstanding from earlier years">
+      <p class="note" data-earlier-years>Unpaid from earlier years, beside this year's fees below:
+        @for (y of f.earlierYears ?? []; track y.academicYearId; let last = $last) { <strong>{{ y.academicYearName }}</strong> {{ inr(y.outstanding) }}{{ last ? '.' : ' · ' }} }
+        Total <strong>{{ inr(f.earlierYearsOutstanding ?? 0) }}</strong>. Please ask the school office to collect it.</p>
+      <div class="dues" role="table" aria-label="Unpaid instalments of earlier years">
+        @for (d of f.earlierDues ?? []; track $index) {
+          <div class="row" role="row">
+            <span role="cell" class="fee" data-label="Fee">{{ d.feeTypeName }} · {{ d.academicYearName }}</span>
+            <span role="cell" data-label="Due date">{{ fmt(d.dueDate) }}</span>
+            <span role="cell" class="num" data-label="Balance">{{ inr(d.balance) }}</span>
+            <span role="cell" data-label="Status"><span class="pill {{ tone(d.status) }}">{{ d.status }}</span></span>
+          </div>
+        }
+      </div>
+    </app-card>
+  }
   @if (!f.hasFees) {
     <app-card><p class="note">No fees have been assigned to you yet{{ f.academicYearName ? ' for ' + f.academicYearName : '' }}. If you think this is a mistake, please ask the school office.</p></app-card>
   } @else {

@@ -205,9 +205,15 @@ function FeesTab({ id }: { id: string }) {
   const [receiptId, setReceiptId] = useState<number | null>(null);
   const f = q.data;
   return (
-    <QueryState loading={q.isPending} error={q.error} onRetry={() => void q.refetch()} empty={f && !f.hasFees ? { title: 'No fees', message: 'No fees have been set for this child yet.', icon: 'credit-card' } : null}>
+    <QueryState loading={q.isPending} error={q.error} onRetry={() => void q.refetch()} empty={f && !f.hasFees && !((f.earlierYearsOutstanding ?? 0) > 0) ? { title: 'No fees', message: 'No fees have been set for this child yet.', icon: 'credit-card' } : null}>
       {f ? (
         <>
+          {(f.earlierYearsOutstanding ?? 0) > 0 ? (
+            <Card accessibilityLabel={`Outstanding from earlier years ${rupees(f.earlierYearsOutstanding ?? 0)}`}>
+              <Text weight="bold" color={colors.ink}>Outstanding from earlier years: {rupees(f.earlierYearsOutstanding ?? 0)}</Text>
+              {(f.earlierYears ?? []).map((y) => (<Text key={y.academicYearId} variant="small">{y.academicYearName}: {rupees(y.outstanding)}</Text>))}
+            </Card>
+          ) : null}
           <Card><Text weight="bold" color={colors.ink}>{f.overallStatus}</Text><Text>Total {rupees(f.totalDue)} · Paid {rupees(f.totalPaid)} · Balance {rupees(f.balance)}</Text></Card>
           <Text weight="bold" color={colors.ink}>Instalments</Text>
           {f.dues.map((d) => (<Card key={d.dueDate + d.feeTypeName} style={styles.line}><View style={{ flex: 1 }}><Text>{d.feeTypeName}</Text><Text variant="small">Due {formatShort(d.dueDate)} · {rupees(d.amountPaid)} of {rupees(d.amountDue)}</Text></View><Chip label={d.status} tone={d.status === 'Paid' ? 'success' : d.status === 'Overdue' ? 'danger' : 'neutral'} /></Card>))}

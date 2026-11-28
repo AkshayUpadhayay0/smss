@@ -56,6 +56,8 @@ namespace smss_api_service_layer.service
                     HasFees = applicable.Count > 0 || d.Dues.Count > 0,
                     OverallStatus = FeeSchedule.Overall(applicable.Count > 0 || d.Dues.Count > 0, d.TotalDue, d.TotalPaid, d.OverdueCount),
                     TotalDue = d.TotalDue, TotalPaid = d.TotalPaid, Balance = d.Outstanding, OverdueAmount = d.OverdueAmount, OverdueCount = d.OverdueCount,
+                    EarlierYears = d.EarlierYears, EarlierYearsOutstanding = d.OutstandingEarlierYears,
+                    EarlierDues = d.EarlierDues.Select(x => new MyFeeDueDto { FeeTypeName = x.FeeTypeName, DueDate = x.DueDate, AmountDue = x.AmountDue, AmountPaid = x.AmountPaid, Balance = x.Outstanding, Status = x.Status, AcademicYearName = x.AcademicYearName }).ToList(),
                     Heads = applicable.Select(i => new MyFeeHeadDto
                     {
                         FeeTypeName = i.FeeTypeName, FrequencyName = i.FrequencyName, InstallmentPlan = i.InstallmentPlan, Amount = i.BaseAmount, Concession = i.ConcessionAmount, NetAmount = i.NetAmount, AnnualNetAmount = i.AnnualNetAmount

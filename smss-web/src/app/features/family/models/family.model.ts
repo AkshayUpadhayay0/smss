@@ -17,10 +17,12 @@ export interface FamilyChildCard {
   /** Present / Absent, or null when today is not marked (or the child is not current). */
   attendanceToday?: string | null;
   feeDueNow: number;
+  /** Unpaid from years before the one shown for this child (derived). Absent on an older server. */
+  feeEarlierYears?: number;
 }
 
-export interface FamilyFeeChild { studentId: string; fullName: string; dueNow: number }
-export interface FamilyFeeTile { allPaid: boolean; totalDueNow: number; children: FamilyFeeChild[] }
+export interface FamilyFeeChild { studentId: string; fullName: string; dueNow: number; earlierYears?: number }
+export interface FamilyFeeTile { allPaid: boolean; totalDueNow: number; totalEarlierYears?: number; children: FamilyFeeChild[] }
 export interface FamilyChildren { children: FamilyChildCard[]; feeTile: FamilyFeeTile }
 
 export interface FamilyChildProfile {

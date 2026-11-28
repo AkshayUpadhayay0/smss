@@ -72,8 +72,9 @@ namespace smss_api_service_layer.service
 
         public FamilyService(IStudentAccessService access, IParentAccountRepository accounts, IStudentRepository students, IGuardianRepository guardians, IStudentService studentService, IAttendanceService attendance,
             IHomeworkService homework, ITimetableService timetable, IReportResultService reports, IReportScheduleService schedule, IStudentMyFeesService fees, IFeePaymentService payments, IStudentLeaveService leave,
-            IStudentPhotoService photos, INoticeService notices, ISchoolEventService events, ILogger<FamilyService> logger)
+            IStudentPhotoService photos, INoticeService notices, ISchoolEventService events, ILogger<FamilyService> logger, IEarlierYearDuesRepository? earlier = null)
         {
+            _earlier = earlier;
             _access = access; _accounts = accounts; _students = students; _guardians = guardians; _studentService = studentService; _attendance = attendance; _homework = homework; _timetable = timetable;
             _reports = reports; _schedule = schedule; _fees = fees; _payments = payments; _leave = leave; _photos = photos; _notices = notices; _events = events; _logger = logger;
         }
@@ -99,6 +100,7 @@ namespace smss_api_service_layer.service
                 var statuses = await _students.GetGeneralStatusNamesAsync(ct);
                 var today = SchoolClock.Today();
                 var result = new FamilyChildrenDto();
+                var starts = new List<(string StudentId, DateOnly Start)>();
                 foreach (var c in await _accounts.ListLinkedChildrenAsync(caller.SchoolId, info.GuardianId, ct))
                 {
                     var enrollments = await _students.GetEnrollmentsAsync(caller.SchoolId, c.StudentId, ct);
@@ -123,18 +125,36 @@ namespace smss_api_service_layer.service
                     {
                         var dues = await _students.GetFeeDueRowsAsync(caller.SchoolId, chosen.AcademicYearId, new[] { c.StudentId }, ct);
                         card.FeeDueNow = dues.Where(d => d.DueDate <= today && d.AmountDue > d.AmountPaid).Sum(d => d.AmountDue - d.AmountPaid);
+                        starts.Add((c.StudentId, chosen.AcademicYearStart));
                     }
                     result.Children.Add(card);
                 }
+                await AddEarlierYearsAsync(caller.SchoolId, result, starts, today, ct);
                 result.FeeTile = new FamilyFeeTileDto
                 {
                     TotalDueNow = result.Children.Sum(c => c.FeeDueNow),
-                    AllPaid = result.Children.All(c => c.FeeDueNow == 0),
-                    Children = result.Children.Where(c => c.FeeDueNow > 0).Select(c => new FamilyFeeChildDto { StudentId = c.StudentId, FullName = c.FullName, DueNow = c.FeeDueNow }).ToList(),
+                    TotalEarlierYears = result.Children.Sum(c => c.FeeEarlierYears),
+                    AllPaid = result.Children.All(c => c.FeeDueNow == 0 && c.FeeEarlierYears == 0),
+                    Children = result.Children.Where(c => c.FeeDueNow > 0 || c.FeeEarlierYears > 0).Select(c => new FamilyFeeChildDto { StudentId = c.StudentId, FullName = c.FullName, DueNow = c.FeeDueNow, EarlierYears = c.FeeEarlierYears }).ToList(),
                 };
                 return Ok(result);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogError(ex, "Error while listing a parent's children"); return Refused<FamilyChildrenDto>(new(null, 500, "Something went wrong. Please try again later.")); }
+        }
+
+        private readonly IEarlierYearDuesRepository? _earlier;
+
+        /// <summary>One grouped read for all the parent's children: what each still owes from years before the year shown for them. Only the children linked to this guardian are asked about (the list above came from the guardian's own links). A failure never fails the page.</summary>
+        private async Task AddEarlierYearsAsync(string schoolId, FamilyChildrenDto result, List<(string StudentId, DateOnly Start)> starts, DateOnly today, CancellationToken ct)
+        {
+            if (_earlier == null || starts.Count == 0) return;
+            try
+            {
+                var rows = await _earlier.GetOutstandingAsync(schoolId, starts.Select(s => s.StudentId).ToList(), starts.Select(s => s.Start).ToList(), today, ct);
+                foreach (var g in rows.GroupBy(r => r.StudentId))
+                    result.Children.First(c => c.StudentId == g.Key).FeeEarlierYears = g.Sum(r => r.Outstanding);
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Earlier-year dues of a parent's children could not be read"); }
         }
 
         // ------------------------------------------------------------------------------------------------ one child, behind the helper

@@ -87,4 +87,12 @@ describe('FamilyHomeComponent', () => {
     open(data());
     expect(el().innerHTML).not.toMatch(/token|password/i);
   });
+
+  it('shows the earlier-year amount beside the due now, and is not Paid while any earlier-year amount remains', () => {
+    open(data({ children: [card('S1', 'Aarav', { feeDueNow: 0, feeEarlierYears: 300 }) as never], feeTile: { allPaid: false, totalDueNow: 0, totalEarlierYears: 300, children: [{ studentId: 'S1', fullName: 'Aarav', dueNow: 0, earlierYears: 300 }] } }));
+    expect(el().querySelector('[data-field="fee-paid"]')).toBeNull();
+    expect(el().querySelector('[data-field="fee-earlier"]')?.textContent).toContain('₹300');
+    expect(el().querySelector('[data-fee-child="S1"]')?.textContent).toContain('from earlier years');
+    expect(el().querySelector('[data-chip="fee-earlier"]')?.textContent).toContain('₹300');
+  });
 });

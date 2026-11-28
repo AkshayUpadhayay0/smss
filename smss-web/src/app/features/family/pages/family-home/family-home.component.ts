@@ -27,9 +27,10 @@ import { FamilyService } from '../../services/family.service';
             <strong data-field="fee-paid">Fees: Paid</strong><span>Nothing is due right now for any of your children.</span>
           } @else {
             <strong data-field="fee-due">Fees due now: {{ d.feeTile.totalDueNow | currency: 'INR' : 'symbol' : '1.0-2' }}</strong>
+            @if ((d.feeTile.totalEarlierYears ?? 0) > 0) { <span data-field="fee-earlier">Outstanding from earlier years: {{ d.feeTile.totalEarlierYears | currency: 'INR' : 'symbol' : '1.0-2' }}</span> }
             <ul>
               @for (c of d.feeTile.children; track c.studentId) {
-                <li [attr.data-fee-child]="c.studentId"><a [routerLink]="['/family/children', c.studentId]" [queryParams]="{ tab: 'fees' }">{{ c.fullName }}</a>: {{ c.dueNow | currency: 'INR' : 'symbol' : '1.0-2' }}</li>
+                <li [attr.data-fee-child]="c.studentId"><a [routerLink]="['/family/children', c.studentId]" [queryParams]="{ tab: 'fees' }">{{ c.fullName }}</a>: {{ c.dueNow | currency: 'INR' : 'symbol' : '1.0-2' }}@if ((c.earlierYears ?? 0) > 0) { <span> + {{ c.earlierYears | currency: 'INR' : 'symbol' : '1.0-2' }} from earlier years</span> }</li>
               }
             </ul>
           }
@@ -48,6 +49,7 @@ import { FamilyService } from '../../services/family.service';
                   @else if (c.attendanceToday) { <span class="chip" [class.bad]="c.attendanceToday === 'Absent'" data-chip="attendance">Today: {{ c.attendanceToday }}</span> }
                   @else { <span class="chip muted" data-chip="attendance">Today: not marked yet</span> }
                   @if (c.feeDueNow > 0) { <span class="chip bad" data-chip="fee">Fee due {{ c.feeDueNow | currency: 'INR' : 'symbol' : '1.0-2' }}</span> }
+                  @if ((c.feeEarlierYears ?? 0) > 0) { <span class="chip bad" data-chip="fee-earlier">Earlier years {{ c.feeEarlierYears | currency: 'INR' : 'symbol' : '1.0-2' }}</span> }
                 </div>
               </div>
             </a>

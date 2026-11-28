@@ -21,12 +21,15 @@ export interface FamilyChild {
   /** "Present" / "Absent", or null when today is not marked (or the child is not current). */
   attendanceToday: string | null;
   feeDueNow: number;
+  /** Unpaid from years before the one shown for this child (derived; absent on an older server). */
+  feeEarlierYears?: number;
 }
 
 export interface FamilyFeeTile {
   allPaid: boolean;
   totalDueNow: number;
-  children: { studentId: string; fullName: string; dueNow: number }[];
+  totalEarlierYears?: number;
+  children: { studentId: string; fullName: string; dueNow: number; earlierYears?: number }[];
 }
 
 export interface FamilyChildren {
@@ -97,6 +100,10 @@ export interface FamilyFees {
   totalPaid: number;
   balance: number;
   dues: { feeTypeName: string; dueDate: string; amountDue: number; amountPaid: number; balance: number; status: string }[];
+  /** "Outstanding from earlier years" (derived; nothing is carried forward). Absent on an older server. */
+  earlierYears?: { academicYearId: number; academicYearName: string; outstanding: number }[];
+  earlierYearsOutstanding?: number;
+  earlierDues?: { feeTypeName: string; dueDate: string; balance: number; status: string; academicYearName?: string | null }[];
   payments: {
     paymentId?: number;
     paymentDate: string;

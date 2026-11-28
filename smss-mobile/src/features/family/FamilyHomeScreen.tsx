@@ -38,9 +38,10 @@ export function FamilyHome() {
               ) : (
                 <>
                   <Text variant="heading" weight="bold" color={colors.ink}>Fees due now: {rupees(data.feeTile.totalDueNow)}</Text>
+                  {(data.feeTile.totalEarlierYears ?? 0) > 0 ? <Text variant="body" weight="bold">Outstanding from earlier years: {rupees(data.feeTile.totalEarlierYears ?? 0)}</Text> : null}
                   {data.feeTile.children.map((c) => (
                     <Pressable key={c.studentId} onPress={() => router.push({ pathname: '/(family)/child/[studentId]', params: { studentId: c.studentId, tab: 'fees' } } as unknown as Href)} accessibilityRole="button" accessibilityLabel={`${c.fullName}, ${rupees(c.dueNow)} due`}>
-                      <Text variant="body">{c.fullName}: {rupees(c.dueNow)}</Text>
+                      <Text variant="body">{c.fullName}: {rupees(c.dueNow)}{(c.earlierYears ?? 0) > 0 ? ` + ${rupees(c.earlierYears ?? 0)} from earlier years` : ''}</Text>
                     </Pressable>
                   ))}
                 </>
@@ -64,6 +65,7 @@ export function FamilyHome() {
                       <View style={styles.chips}>
                         <Chip label={chip.label} tone={chip.tone} />
                         {c.feeDueNow > 0 ? <Chip label={`Fee due ${rupees(c.feeDueNow)}`} tone="danger" /> : null}
+                        {(c.feeEarlierYears ?? 0) > 0 ? <Chip label={`Earlier years ${rupees(c.feeEarlierYears ?? 0)}`} tone="danger" /> : null}
                       </View>
                     </View>
                     <Icon name="chevron-right" size={20} color={colors.muted} />

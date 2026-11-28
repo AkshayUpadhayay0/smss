@@ -141,4 +141,18 @@ describe('StudentMyFeesComponent', () => {
     expect(row).toContain('₹0.00');
     expect(text()).not.toContain('reason');
   });
+
+  it('shows "Outstanding from earlier years" per year, with those instalments, beside this year', () => {
+    open((r) => r.flush(env({ ...FEES, earlierYearsOutstanding: 300, earlierYears: [{ academicYearId: 1, academicYearName: '2025-26', outstanding: 300 }],
+      earlierDues: [{ feeTypeName: 'Tuition Fee', dueDate: '2025-06-10', amountDue: 300, amountPaid: 0, balance: 300, status: 'Overdue', academicYearName: '2025-26' }] })));
+    const t = (fixture.nativeElement as HTMLElement).querySelector('[data-earlier-years]')?.textContent ?? '';
+    expect(t).toContain('2025-26');
+    expect(t).toContain('300');
+    expect(fixture.nativeElement.textContent).toContain('Tuition Fee · 2025-26');
+  });
+
+  it('shows nothing about earlier years when none is owed', () => {
+    open((r) => r.flush(env(FEES)));
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-earlier-years]')).toBeNull();
+  });
 });

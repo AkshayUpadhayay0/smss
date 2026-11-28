@@ -245,6 +245,8 @@ export interface MyFeeDue {
   balance: number;
   /** Paid / Partially Paid / Pending / Overdue */
   status: string;
+  /** Set only on an installment of an earlier year. */
+  academicYearName?: string | null;
 }
 
 export interface MyFeePayment {
@@ -285,6 +287,10 @@ export interface StudentMyFees {
   heads: MyFeeHead[];
   dues: MyFeeDue[];
   payments: MyFeePayment[];
+  /** "Outstanding from earlier years": per earlier year, what is still unpaid (derived; nothing is carried forward). Absent on an older server. */
+  earlierYears?: { academicYearId: number; academicYearName: string; outstanding: number }[];
+  earlierYearsOutstanding?: number;
+  earlierDues?: MyFeeDue[];
 }
 
 /** Mirrors IdCardPreviewDto as GET /api/Student/me/id-card/preview returns it: both faces of the student's own card, PNG as base64. */
