@@ -73,5 +73,24 @@ namespace smss_api_tests
             Assert.Equal(new[] { 300m, 500m }, rows.OrderBy(x => x.StudentId == e.P ? 0 : 1).Select(x => x.Outstanding).ToArray());
             Assert.Empty(await repo.GetDuesAsync("ZEE", d.P, ref1, default));
         }
+
+        [DbFact]
+        public async Task A_payment_in_auto_mode_pays_the_earlier_year_first_and_an_explicit_choice_can_pay_only_this_year()
+        {
+            using var db = new TaxDb(); var w = EarlierYearsKit.Build(db, "ZEF");
+            var auto = await db.Pay(w.P, 700, school: "ZEF");                             // oldest installment first, across years
+            Assert.True(auto.Status, auto.Message);
+            Assert.Equal(300, db.Scalar<decimal>($"select amount_paid from tb_student_fee_dues where student_id='{w.P}' and due_date = date '2025-06-10'"));
+            Assert.Equal(400, db.Scalar<decimal>($"select amount_paid from tb_student_fee_dues where student_id='{w.P}' and due_date = date '2026-05-10'"));
+            var after = (await Svc(db).GetDuesAsync("ZEF", w.P, default)).Data!;
+            Assert.Equal((600m, 0m), (after.Outstanding, after.OutstandingEarlierYears));
+
+            // not forced: paying only this year's installment leaves the earlier year untouched
+            var thisYear = db.Scalar<long>($"select fee_due_id from tb_student_fee_dues where student_id='{w.R}' and due_date = date '2026-05-10'");
+            var explicitPay = await db.Pay(w.R, 100, allocations: new List<smss_api_service_layer.dto.PaymentAllocationRequest> { new() { FeeDueId = thisYear, Amount = 100 } }, school: "ZEF");
+            Assert.True(explicitPay.Status, explicitPay.Message);
+            var repeated = (await Svc(db).GetDuesAsync("ZEF", w.R, default)).Data!;
+            Assert.Equal((900m, 500m), (repeated.Outstanding, repeated.OutstandingEarlierYears));
+        }
     }
 }

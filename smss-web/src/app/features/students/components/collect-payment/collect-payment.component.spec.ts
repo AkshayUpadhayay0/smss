@@ -50,7 +50,7 @@ describe('CollectPaymentDialogComponent', () => {
   const setMode = (m: string) => { cmp()['modeControl'].setValue(m); tick(); };
   const typeReceived = (v: string) => { const i = el().querySelector<HTMLInputElement>('#cp-received')!; i.value = v; i.dispatchEvent(new Event('input')); tick(); };
 
-  function open(opts: { taxes?: TaxType[]; concessions?: ConcessionChoice[]; roles?: string[]; lateRule?: unknown } = {}) {
+  function open(opts: { taxes?: TaxType[]; concessions?: ConcessionChoice[]; roles?: string[]; lateRule?: unknown; earlier?: StudentFeeDue[] } = {}) {
     clearSessions();
     seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: opts.roles ?? ['School Admin'] }) });
     TestBed.resetTestingModule();
@@ -59,6 +59,7 @@ describe('CollectPaymentDialogComponent', () => {
     fixture = TestBed.createComponent(CollectPaymentDialogComponent);
     fixture.componentRef.setInput('studentId', 'DPS001ST001');
     fixture.componentRef.setInput('dues', DUES);
+    if (opts.earlier) fixture.componentRef.setInput('earlierDues', opts.earlier);
     recorded = [];
     fixture.componentInstance.recorded.subscribe((r) => recorded.push(r));
     fixture.detectChanges();
@@ -532,5 +533,32 @@ describe('CollectPaymentDialogComponent', () => {
       tick();
       expect(cmp()['canSubmit']()).toBe(true);                                            // the server still works the late fee out and the receipt shows it
     });
+  });
+
+  // ============================================================== earlier years
+  const EARLIER = [{ ...due(90, '2025-07-10', 500, 0, TUITION, 'Overdue'), academicYearName: '2025-26' }];
+
+  it('lists an earlier year unpaid installment FIRST, pre-ticked, labelled with its year, and the payment sends it first', () => {
+    open({ earlier: EARLIER });
+    expect(rows().map((r) => r.dueId)).toEqual([90, 2, 3, 4]);          // the earlier year first, then this year oldest first
+    expect(rows()[0].checked).toBe(true);
+    expect(rows().slice(1).every((r) => !r.checked)).toBe(true);        // only the earlier year is pre-ticked
+    expect(el().querySelector('[data-earlier-year]')?.textContent).toContain('2025-26');
+    submitButton();                                                      // (the payment itself is covered above; here the selection is what matters)
+    expect(cmp()['hasSelection']()).toBe(true);
+  });
+
+  it('does not force the earlier year: unticking it leaves only this year installments selected', () => {
+    open({ earlier: EARLIER });
+    check(90, false);
+    expect(cmp()['hasSelection']()).toBe(false);
+    check(2, true);
+    expect(rows().filter((r) => r.checked).map((r) => r.dueId)).toEqual([2]);
+  });
+
+  it('the oldest-first helper fills the earlier year before this year', () => {
+    open({ earlier: EARLIER });
+    cmp()['oldestText'].set('600'); cmp()['applyOldest'](); tick();
+    expect(rows().filter((r) => r.checked).map((r) => r.dueId)).toEqual([90, 2]);   // 500 earlier + 100 of this year's oldest
   });
 });

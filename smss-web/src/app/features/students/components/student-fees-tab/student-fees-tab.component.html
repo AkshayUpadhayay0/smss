@@ -162,6 +162,9 @@
                 <div><span>Paid</span><strong>{{ s.paid }}</strong></div>
                 <div><span>Outstanding</span><strong>{{ s.outstanding }}</strong></div>
                 <div class="overdue" [class.on]="s.overdueCount > 0"><span>Overdue</span><strong>{{ s.overdue }} ({{ s.overdueCount }})</strong></div>
+                @if (s.earlier) {
+                  <div class="overdue on" data-earlier-years><span>Outstanding from earlier years</span><strong>{{ s.earlier }}</strong><small>{{ s.earlierYears.join(' · ') }}</small></div>
+                }
               </div>
             }
             <app-table [columns]="dueColumns" [rows]="dueRows()" emptyMessage="No installments yet." />
@@ -238,7 +241,7 @@
     }
 
     @if (collectOpen() && dues(); as d) {
-      <app-collect-payment-dialog [studentId]="studentId()" [dues]="d.dues" (recorded)="onRecorded($event)" (closed)="collectOpen.set(false)" />
+      <app-collect-payment-dialog [studentId]="studentId()" [dues]="d.dues" [earlierDues]="d.earlierDues ?? []" (recorded)="onRecorded($event)" (closed)="collectOpen.set(false)" />
     }
 
     @if (voiding(); as v) {

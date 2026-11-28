@@ -97,7 +97,7 @@ export class StudentFeesTabComponent implements OnInit {
   protected readonly voidReady = computed(() => this.voidReasonText().trim().length > 0 && !this.busy());
 
   /** Collecting needs at least one installment with something left to pay. */
-  protected readonly canCollect = computed(() => (this.dues()?.dues ?? []).some((d) => d.outstanding > 0));
+  protected readonly canCollect = computed(() => (this.dues()?.dues ?? []).some((d) => d.outstanding > 0) || (this.dues()?.earlierDues ?? []).some((d) => d.outstanding > 0));
 
   protected readonly paymentRows = computed<PaymentRow[]>(() =>
     this.payments().map((p) => ({
@@ -159,7 +159,7 @@ export class StudentFeesTabComponent implements OnInit {
   protected readonly dueSummary = computed(() => {
     const d = this.dues();
     if (!d) return null;
-    return { total: formatInr(d.totalDue), paid: formatInr(d.totalPaid), outstanding: formatInr(d.outstanding), overdue: formatInr(d.overdueAmount), overdueCount: d.overdueCount };
+    return { total: formatInr(d.totalDue), paid: formatInr(d.totalPaid), outstanding: formatInr(d.outstanding), overdue: formatInr(d.overdueAmount), overdueCount: d.overdueCount, earlier: (d.outstandingEarlierYears ?? 0) > 0 ? formatInr(d.outstandingEarlierYears ?? 0) : null, earlierYears: (d.earlierYears ?? []).map((y) => `${y.academicYearName}: ${formatInr(y.outstanding)}`) };
   });
 
   /** The example under the plan dropdown: what happens when the chosen plan starts part-way through a billing cycle. */
@@ -240,6 +240,11 @@ export class StudentFeesTabComponent implements OnInit {
     if (!f?.feeStructureId) {
       this.items.set(null);
       this.dues.set(null);
+      // no structure for this year yet, but the student can still owe money from an earlier year: show and allow paying that
+      this.students.getFeeDues(this.studentId()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (d) => this.dues.set((d.earlierDues ?? []).length > 0 ? d : null),
+        error: () => undefined,
+      });
       return;
     }
     this.billingFailed.set(false);

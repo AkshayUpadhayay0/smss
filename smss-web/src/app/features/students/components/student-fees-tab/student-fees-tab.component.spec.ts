@@ -87,8 +87,13 @@ describe('StudentFeesTabComponent', () => {
     fixture.detectChanges();
     http.expectOne(URL).flush(env(fees));
     if (fees.feeStructureId) flushBilling();
-    else flushPayments();
+    else { flushPayments(); flushNoStructureDues(); }
     fixture.detectChanges();
+  }
+
+  /** No structure for this year: the tab still asks the dues once, for earlier years' unpaid installments (none here). */
+  function flushNoStructureDues(dues: StudentFeeDues = { ...DUES, dues: [], earlierYears: [], outstandingEarlierYears: 0, earlierDues: [] }) {
+    http.expectOne(`${URL}/fee-dues`).flush(env(dues));
   }
 
   function flushPayments(payments: PaymentSummary[] = PAYMENTS) {
@@ -409,5 +414,36 @@ describe('StudentFeesTabComponent', () => {
       expect(cmp()['receipt']()).toEqual({ data: RECEIPT, justPaid: false });
       expect((fixture.nativeElement as HTMLElement).querySelector('app-fee-receipt-dialog')).not.toBeNull();
     });
+  });
+
+  const EARLIER_DUES: StudentFeeDues = {
+    ...DUES, earlierYears: [{ academicYearId: 1, academicYearName: '2025-26', outstanding: 300 }], outstandingEarlierYears: 300,
+    earlierDues: [{ feeDueId: 90, studentFeeItemId: 9, feeTypeId: 1, feeTypeName: 'Tuition Fee', frequencyName: 'Monthly', dueDate: '2025-06-10', amountDue: 300, amountPaid: 0, outstanding: 300, status: 'Overdue', academicYearName: '2025-26' }],
+  };
+
+  it('shows "Outstanding from earlier years" per year beside the current year figures', () => {
+    open(assigned);
+    cmp()['dues'].set(EARLIER_DUES);   // the schedule as the server now returns it, with earlier years
+    fixture.detectChanges();
+    const t = (fixture.nativeElement as HTMLElement).querySelector('[data-earlier-years]')?.textContent ?? '';
+    expect(t).toContain('Outstanding from earlier years');
+    expect(t).toContain('2025-26');
+    expect(t).toContain('300');
+  });
+
+  it('a student with no structure this year but earlier dues can still pay them: the schedule loads and Collect Payment is on', () => {
+    clearSessions();
+    seedSession({ user: makeUser({ schoolId: 'DPS261013001', roles: ['School Admin'] }) });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(StudentFeesTabComponent);
+    fixture.componentRef.setInput('studentId', 'DPS001ST001');
+    fixture.detectChanges();
+    http.expectOne(URL).flush(env(base));
+    flushPayments();
+    flushNoStructureDues({ ...EARLIER_DUES, dues: [] });
+    fixture.detectChanges();
+    expect(cmp()['canCollect']()).toBe(true);
   });
 });

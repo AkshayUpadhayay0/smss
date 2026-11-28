@@ -16,7 +16,7 @@
             <label class="pick">
               <input type="checkbox" [checked]="r.checked" (change)="toggle(r, $event)" />
               <span class="what">
-                <strong>{{ r.feeTypeName }}</strong>
+                <strong>{{ r.feeTypeName }}@if (r.yearName) { <span class="pill tone-red" data-earlier-year> Earlier year {{ r.yearName }}</span> }</strong>
                 <small>Due {{ dueDate(r) }} · <span class="pill" [class]="'pill tone-' + tone(status(r))">{{ status(r) }}</span> · {{ paise(r.outstanding) }} outstanding</small>
               </span>
             </label>

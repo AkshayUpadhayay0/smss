@@ -44,6 +44,8 @@ export class CollectPaymentDialogComponent implements OnInit {
   readonly studentId = input.required<string>();
   /** The student's installments; only those with something outstanding are listed. */
   readonly dues = input.required<StudentFeeDue[]>();
+  /** Unpaid installments of EARLIER academic years: listed first and pre-ticked, but nothing forces them (untick to pay only this year). */
+  readonly earlierDues = input<StudentFeeDue[]>([]);
 
   readonly recorded = output<FeeReceipt>();
   readonly closed = output<void>();
@@ -201,12 +203,14 @@ export class CollectPaymentDialogComponent implements OnInit {
       error: () => this.lateFeeOn.set(false),   // no preview, the payment screen works exactly as before
     });
     const meta: Record<number, { dueDate: string; status: string }> = {};
-    const rows = this.dues()
+    const earlier = new Set(this.earlierDues().map((d) => d.feeDueId));
+    const rows = [...this.earlierDues(), ...this.dues().filter((d) => !earlier.has(d.feeDueId))]
       .filter((d) => d.outstanding > 0)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.feeDueId - b.feeDueId)
-      .map((d) => {
+      .map((d): PayRow => {
         meta[d.feeDueId] = { dueDate: d.dueDate, status: d.status };
-        return { dueId: d.feeDueId, feeTypeId: d.feeTypeId ?? null, feeTypeName: d.feeTypeName, outstanding: toPaise(d.outstanding), checked: false, amount: rupees(toPaise(d.outstanding)) };
+        const isEarlier = earlier.has(d.feeDueId);
+        return { dueId: d.feeDueId, feeTypeId: d.feeTypeId ?? null, feeTypeName: d.feeTypeName, outstanding: toPaise(d.outstanding), checked: isEarlier, amount: rupees(toPaise(d.outstanding)), ...(isEarlier ? { yearName: d.academicYearName ?? 'an earlier year' } : {}) };
       });
     this.meta.set(meta);
     this.rows.set(rows);

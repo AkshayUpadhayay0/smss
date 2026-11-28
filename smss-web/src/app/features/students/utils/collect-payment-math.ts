@@ -18,6 +18,8 @@ export interface PayRow {
   checked: boolean;
   /** What the cashier typed for this installment, in rupees. */
   amount: string;
+  /** Set on an installment of an EARLIER academic year (listed first, pre-ticked, still optional). */
+  yearName?: string;
 }
 
 export const MIN_PAISE = 1;

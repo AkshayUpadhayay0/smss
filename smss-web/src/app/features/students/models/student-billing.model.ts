@@ -112,7 +112,12 @@ export interface StudentFeeDue {
   outstanding: number;
   /** Computed by the server on every read (never stored). */
   status: FeeDueStatus;
+  /** Set only on an installment of an EARLIER year (earlierDues). */
+  academicYearName?: string | null;
 }
+
+/** What is still unpaid from one earlier academic year (derived on every read; nothing is carried forward). */
+export interface EarlierYearAmount { academicYearId: number; academicYearName: string; outstanding: number }
 
 export interface StudentFeeDues {
   studentId: string;
@@ -124,6 +129,11 @@ export interface StudentFeeDues {
   overdueAmount: number;
   overdueCount: number;
   dues: StudentFeeDue[];
+  /** "Outstanding from earlier years": per earlier year with something unpaid, oldest first. Absent on an older server. */
+  earlierYears?: EarlierYearAmount[];
+  outstandingEarlierYears?: number;
+  /** The unpaid installments of those earlier years, oldest first (the payment dialog lists them first). */
+  earlierDues?: StudentFeeDue[];
 }
 
 export interface UpdateFeeItemRequest {
